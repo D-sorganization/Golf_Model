@@ -1,0 +1,15 @@
+# Simulink temporary files
+**/slprj/
+**/*.slxc
+**/*.r2024b
+**/*.r2025a
+
+# MATLAB temporary files
+**/*.asv
+**/*.autosave
+
+# Windows long filename issues
+**/modeladvisor/**/*.slx
+
+# Other temporary files
+**/.MATLABDriveTag 
