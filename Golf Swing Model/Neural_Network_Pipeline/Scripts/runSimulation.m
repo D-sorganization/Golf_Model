@@ -34,7 +34,7 @@ if nargin < 1
     model_name = 'GolfSwing3D_Kinetic';
 end
 
-%% Check if model is loaded
+%% Check if model is loaded and stop any running simulation
 if ~bdIsLoaded(model_name)
     try
         load_system(model_name);
@@ -43,6 +43,14 @@ if ~bdIsLoaded(model_name)
         error_msg = sprintf('Failed to load model %s: %s', model_name, ME.message);
         simOut = [];
         return;
+    end
+else
+    % Stop any running simulation
+    try
+        set_param(model_name, 'SimulationCommand', 'stop');
+        pause(0.1); % Brief pause to ensure simulation stops
+    catch
+        % Ignore errors if no simulation is running
     end
 end
 

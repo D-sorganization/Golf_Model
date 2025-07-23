@@ -1,5 +1,9 @@
+function generateCompleteDataset(input_config)
 % generateCompleteDataset.m
 % Complete pipeline for generating golf swing dataset with randomized inputs
+% 
+% Inputs:
+%   input_config - Optional configuration structure (if not provided, uses defaults)
 % 
 % This script:
 % 1. Generates random polynomial inputs for joint torques
@@ -8,17 +12,33 @@
 % 4. Extracts joint states and beam data
 % 5. Stores comprehensive dataset for neural network training
 
-clear; clc; close all;
+if nargin < 1
+    input_config = struct();
+end
 
 fprintf('=== Golf Swing Dataset Generation Pipeline ===\n\n');
 
 %% Configuration
 config = struct();
 
-% Dataset size
-config.num_simulations = 1000;
-config.simulation_duration = 0.3; % seconds
-config.sample_rate = 1000; % Hz
+% Dataset size (use input config if provided, otherwise defaults)
+if isfield(input_config, 'num_simulations')
+    config.num_simulations = input_config.num_simulations;
+else
+    config.num_simulations = 1000;
+end
+
+if isfield(input_config, 'simulation_duration')
+    config.simulation_duration = input_config.simulation_duration;
+else
+    config.simulation_duration = 0.3; % seconds
+end
+
+if isfield(input_config, 'sample_rate')
+    config.sample_rate = input_config.sample_rate;
+else
+    config.sample_rate = 1000; % Hz
+end
 
 % Polynomial input ranges
 config.hip_torque_range = [-50, 50]; % Nm
@@ -102,6 +122,9 @@ for sim_idx = 1:config.num_simulations
             repmat('░', 1, progress_bar_length - filled_length), ...
             sim_idx, config.num_simulations, progress * 100);
     
+    % Initialize simulation timer
+    sim_start_time = tic;
+    
     try
         %% Generate random inputs
         polynomial_inputs = generatePolynomialInputs(config);
@@ -114,7 +137,6 @@ for sim_idx = 1:config.num_simulations
         end
         
         %% Run simulation
-        sim_start_time = tic;
         [simOut, sim_success, error_msg] = runSimulation(config.model_name, config);
         sim_time = toc(sim_start_time);
         

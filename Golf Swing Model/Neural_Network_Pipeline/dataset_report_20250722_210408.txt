@@ -1,0 +1,23 @@
+=== Golf Swing Dataset Report ===
+
+Generation Date: 22-Jul-2025 21:04:08
+Dataset Version: 1.0
+Description: Golf swing dataset with randomized polynomial inputs and starting positions
+
+Configuration:
+  Total simulations: 10
+  Simulation duration: 3.000000e-01 seconds
+  Sample rate: 1000 Hz
+  Model: GolfSwing3D_Kinetic
+
+Results:
+  Successful simulations: 0 (0.0%)
+  Failed simulations: 10 (100.0%)
+  Average simulation time: NaN seconds
+  Total dataset size: ~0.0 GB
+
+Error Analysis:
+  Failed to update model parameters: 9 occurrences
+  Simulation failed: Cannot start a new command line simulation while a simulation has started for the same model.: 1 occurrences
+
+Parameter Distribution:
