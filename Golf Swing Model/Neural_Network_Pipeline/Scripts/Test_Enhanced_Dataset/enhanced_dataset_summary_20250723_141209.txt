@@ -1,0 +1,32 @@
+=== Enhanced Golf Swing Dataset Summary ===
+
+Generation Time: 23-Jul-2025 14:12:08
+Model: GolfSwing3D_Kinetic
+Total Simulations: 3
+Successful Simulations: 3
+Failed Simulations: 0
+Success Rate: 100.0%
+Include Inertial Data: true
+
+--- Inertial Data Summary ---
+Total Segments: 19
+Total Mass: 79.80 kg
+Total Length: 4.40 m
+Total Volume: 0.0407 m³
+Average Mass: 4.20 kg
+Average Length: 0.232 m
+
+--- Sample Simulation Analysis ---
+Time Points: 31
+Time Range: [0.000, 0.300] seconds
+Number of Joints: 28
+Joint Position Range: [-104.3, 125.5] degrees
+Joint Velocity Range: [-2746.4, 3495.7] deg/s
+Joint Acceleration Range: [-36175.7, 48692.3] deg/s²
+Torque Range: [-486398.8, 352586.2] N⋅m
+Midhands Position Range:
+  X: [0.945, 1.431] m
+  Y: [0.337, 0.801] m
+  Z: [1.349, 2.016] m
+
+=== End of Summary ===

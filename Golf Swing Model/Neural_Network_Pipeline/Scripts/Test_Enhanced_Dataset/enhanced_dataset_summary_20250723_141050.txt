@@ -1,0 +1,20 @@
+=== Enhanced Golf Swing Dataset Summary ===
+
+Generation Time: 23-Jul-2025 14:10:50
+Model: GolfSwing3D_Kinetic
+Total Simulations: 5
+Successful Simulations: 0
+Failed Simulations: 5
+Success Rate: 0.0%
+Include Inertial Data: true
+
+--- Inertial Data Summary ---
+Total Segments: 19
+Total Mass: 79.80 kg
+Total Length: 4.40 m
+Total Volume: 0.0407 m³
+Average Mass: 4.20 kg
+Average Length: 0.232 m
+
+
+=== End of Summary ===
