@@ -83,6 +83,31 @@ for sim_idx = 1:config.num_simulations
             tau(:, j) = 10 * sin(2 * pi * (2 + j * 0.2) * t') + 2 * randn(n_samples, 1);
         end
         
+        % Generate mid-hands position and orientation data
+        % Mid-hands position (3D coordinates)
+        MH = zeros(n_samples, 3);
+        for i = 1:3
+            freq = 1.5 + i * 0.3;
+            MH(:, i) = 0.2 * sin(2 * pi * freq * t') + 0.1 * cos(2 * pi * (freq + 0.5) * t') + 0.05 * randn(n_samples, 1);
+        end
+        
+        % Mid-hands rotation matrices (3x3xN)
+        MH_R = zeros(3, 3, n_samples);
+        for k = 1:n_samples
+            % Create rotation matrix from Euler angles
+            rx = 0.1 * sin(2 * pi * 2 * t(k)) + 0.05 * randn();
+            ry = 0.1 * sin(2 * pi * 1.5 * t(k)) + 0.05 * randn();
+            rz = 0.1 * sin(2 * pi * 1.8 * t(k)) + 0.05 * randn();
+            
+            % Rotation matrices around x, y, z axes
+            Rx = [1 0 0; 0 cos(rx) -sin(rx); 0 sin(rx) cos(rx)];
+            Ry = [cos(ry) 0 sin(ry); 0 1 0; -sin(ry) 0 cos(ry)];
+            Rz = [cos(rz) -sin(rz) 0; sin(rz) cos(rz) 0; 0 0 1];
+            
+            % Combined rotation matrix
+            MH_R(:, :, k) = Rz * Ry * Rx;
+        end
+        
         % Store simulation data
         sim_data = struct();
         sim_data.time = t';
@@ -90,6 +115,8 @@ for sim_idx = 1:config.num_simulations
         sim_data.qd = qd;
         sim_data.qdd = qdd;
         sim_data.tau = tau;
+        sim_data.MH = MH;
+        sim_data.MH_R = MH_R;
         sim_data.metadata = struct();
         sim_data.metadata.simulation_id = sim_idx;
         sim_data.metadata.timestamp = datetime('now');
