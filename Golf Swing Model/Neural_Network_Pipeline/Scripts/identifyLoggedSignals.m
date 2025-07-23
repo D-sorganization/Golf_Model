@@ -34,10 +34,15 @@ loggedLines = find_system(modelName, 'FindAll', 'on', 'Type', 'line', 'SignalLog
 
 fprintf('Found %d individual signals with logging enabled.\n', length(loggedLines));
 
+if isempty(loggedLines)
+    fprintf('No individual signals are currently being logged.\n');
+    fprintf('You may need to enable signal logging in the Simulink model.\n');
+end
+
 %% Find SignalBus objects
 fprintf('\n--- Finding SignalBus Objects ---\n');
 
-% Find all SignalBus blocks
+% Find all SignalBus blocks (including in subsystems)
 signalBusBlocks = find_system(modelName, 'FindAll', 'on', 'BlockType', 'BusCreator');
 
 fprintf('Found %d BusCreator blocks (potential SignalBus sources).\n', length(signalBusBlocks));
@@ -78,15 +83,17 @@ end
 
 fprintf('Found %d logged SignalBus objects.\n', length(loggedBusLines));
 
-%% Extract individual signal information
+%% Extract individual signal information with subsystem analysis
 signalInfo = struct();
 signalNames = {};
+subsystemSignals = struct();
 
 fprintf('\n--- Logged Individual Signal Details ---\n');
-fprintf('%-30s %-20s %-15s %-10s\n', 'Signal Name', 'Block Path', 'Port', 'Dimensions');
-fprintf('%s\n', repmat('-', 1, 80));
+fprintf('%-30s %-40s %-15s %-10s %-15s\n', 'Signal Name', 'Full Path', 'Port', 'Dimensions', 'Subsystem');
+fprintf('%s\n', repmat('-', 1, 120));
 
-for i = 1:length(loggedLines)
+if ~isempty(loggedLines)
+    for i = 1:length(loggedLines)
     line = loggedLines(i);
     
     % Get signal name
@@ -97,6 +104,19 @@ for i = 1:length(loggedLines)
     
     % Get block path
     blockPath = get(line, 'Parent');
+    
+    % Determine if signal is in a subsystem
+    isInSubsystem = false;
+    subsystemName = '';
+    if contains(blockPath, '/')
+        pathParts = strsplit(blockPath, '/');
+        if length(pathParts) > 2  % More than just model name and block name
+            % Find the subsystem (everything between model name and block name)
+            subsystemPath = strjoin(pathParts(2:end-1), '/');
+            subsystemName = pathParts{2}; % First level subsystem
+            isInSubsystem = true;
+        end
+    end
     
     % Get port information
     portHandle = get(line, 'SrcPortHandle');
@@ -124,29 +144,55 @@ for i = 1:length(loggedLines)
     signalInfo(i).port = portNum;
     signalInfo(i).dimensions = dimsStr;
     signalInfo(i).type = 'individual';
+    signalInfo(i).isInSubsystem = isInSubsystem;
+    signalInfo(i).subsystemName = subsystemName;
+    signalInfo(i).subsystemPath = subsystemPath;
     
     signalNames{end+1} = signalName;
     
+    % Track subsystem signals
+    if isInSubsystem
+        if ~isfield(subsystemSignals, subsystemName)
+            subsystemSignals.(subsystemName) = {};
+        end
+        subsystemSignals.(subsystemName){end+1} = signalName;
+    end
+    
     % Display information
-    fprintf('%-30s %-20s %-15s %-10s\n', ...
+    fprintf('%-30s %-40s %-15s %-10s %-15s\n', ...
            signalName, ...
            extractAfter(blockPath, '/'), ...
            num2str(portNum), ...
-           dimsStr);
+           dimsStr, ...
+           subsystemName);
+    end
 end
 
-%% Extract SignalBus constituent signals
+%% Extract SignalBus constituent signals with subsystem analysis
 fprintf('\n--- SignalBus Constituent Signals ---\n');
 
 busConstituentSignals = {};
 busSignalNames = {};
 
-for i = 1:length(busSignalInfo)
-    busInfo = busSignalInfo(i);
-    busBlock = find_system(modelName, 'FindAll', 'on', 'Name', busInfo.name, 'BlockType', 'BusCreator');
+if ~isempty(busSignalInfo)
+    for i = 1:length(busSignalInfo)
+        busInfo = busSignalInfo(i);
+        busBlock = find_system(modelName, 'FindAll', 'on', 'Name', busInfo.name, 'BlockType', 'BusCreator');
     
     if ~isempty(busBlock)
         busBlock = busBlock(1); % Take the first match
+        
+        % Determine if SignalBus is in a subsystem
+        busPath = get(busBlock, 'Parent');
+        isBusInSubsystem = false;
+        busSubsystemName = '';
+        if contains(busPath, '/')
+            pathParts = strsplit(busPath, '/');
+            if length(pathParts) > 2
+                busSubsystemName = pathParts{2};
+                isBusInSubsystem = true;
+            end
+        end
         
         % Get input ports (constituent signals)
         try
@@ -191,10 +237,16 @@ for i = 1:length(busSignalInfo)
                         busConstituentSignals{end}.port = j;
                         busConstituentSignals{end}.dimensions = dimsStr;
                         busConstituentSignals{end}.type = 'bus_constituent';
+                        busConstituentSignals{end}.isInSubsystem = isBusInSubsystem;
+                        busConstituentSignals{end}.subsystemName = busSubsystemName;
                         
                         busSignalNames{end+1} = signalName;
                         
-                        fprintf('  - %s (via SignalBus: %s)\n', signalName, busInfo.name);
+                        fprintf('  - %s (via SignalBus: %s', signalName, busInfo.name);
+                        if isBusInSubsystem
+                            fprintf(' in %s', busSubsystemName);
+                        end
+                        fprintf(')\n');
                     end
                 end
             end
@@ -202,9 +254,47 @@ for i = 1:length(busSignalInfo)
             fprintf('  ⚠ Could not extract signals from SignalBus %s: %s\n', busInfo.name, ME.message);
         end
     end
+    end
 end
 
 fprintf('Found %d constituent signals in logged SignalBus objects.\n', length(busConstituentSignals));
+
+%% Subsystem Analysis
+fprintf('\n--- Subsystem Signal Analysis ---\n');
+
+subsystemNames = fieldnames(subsystemSignals);
+if ~isempty(subsystemNames)
+    fprintf('Signals found in subsystems:\n');
+    for i = 1:length(subsystemNames)
+        subsystemName = subsystemNames{i};
+        signals = subsystemSignals.(subsystemName);
+        fprintf('  %s (%d signals):\n', subsystemName, length(signals));
+        for j = 1:length(signals)
+            fprintf('    - %s\n', signals{j});
+        end
+    end
+else
+    fprintf('No signals found in subsystems (all signals are at top level).\n');
+end
+
+% Count signals by location
+topLevelSignals = 0;
+subsystemSignalCount = 0;
+
+if ~isempty(signalInfo)
+    for i = 1:length(signalInfo)
+        if signalInfo(i).isInSubsystem
+            subsystemSignalCount = subsystemSignalCount + 1;
+        else
+            topLevelSignals = topLevelSignals + 1;
+        end
+    end
+end
+
+fprintf('\nSignal distribution:\n');
+fprintf('  Top level signals: %d\n', topLevelSignals);
+fprintf('  Subsystem signals: %d\n', subsystemSignalCount);
+fprintf('  SignalBus constituent signals: %d\n', length(busConstituentSignals));
 
 %% Combine all signals
 allSignalNames = [signalNames, busSignalNames];
@@ -337,6 +427,11 @@ if ~isempty(busSignalInfo)
     fprintf('           q_signal = busSignal.getElement(''q'');\n');
 else
     fprintf('No logged SignalBus objects found.\n');
+    fprintf('\nTo enable SignalBus logging:\n');
+    fprintf('1. Find the SignalBus output line in your model\n');
+    fprintf('2. Right-click on the SignalBus line\n');
+    fprintf('3. Select "Signal Properties" -> "Logging" -> "Log signal data"\n');
+    fprintf('4. Set an appropriate signal name for the bus\n');
 end
 
 %% Save results
@@ -351,9 +446,12 @@ results.allSignalNames = allSignalNames;
 results.allSignalInfo = allSignalInfo;
 results.categories = categories;
 results.missing_signals = missing_signals;
+results.subsystemSignals = subsystemSignals;
 results.total_individual_signals = length(loggedLines);
 results.total_bus_signals = length(busConstituentSignals);
 results.total_signals = length(allSignalNames);
+results.topLevelSignals = topLevelSignals;
+results.subsystemSignalCount = subsystemSignalCount;
 
 save('logged_signals_analysis.mat', 'results');
 fprintf('Analysis saved to: logged_signals_analysis.mat\n');
@@ -361,6 +459,8 @@ fprintf('Analysis saved to: logged_signals_analysis.mat\n');
 %% Summary
 fprintf('\n=== Summary ===\n');
 fprintf('Individual logged signals: %d\n', length(loggedLines));
+fprintf('  - Top level signals: %d\n', topLevelSignals);
+fprintf('  - Subsystem signals: %d\n', subsystemSignalCount);
 fprintf('Logged SignalBus objects: %d\n', length(busSignalInfo));
 fprintf('SignalBus constituent signals: %d\n', length(busConstituentSignals));
 fprintf('Total available signals: %d\n', length(allSignalNames));
