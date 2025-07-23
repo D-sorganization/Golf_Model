@@ -51,22 +51,22 @@ categories.torques = {};
 categories.energy = {};
 categories.other = {};
 
+simscapeSignalNames = {};
+
 for i = 1:length(signals)
     signal = signals(i);
     signalName = signal.Name;
-    signalPath = signal.BlockPath;
+    simscapeSignalNames{end+1} = signalName;
     
-    % Categorize based on name and path
-    if contains(signalName, 'q') || contains(signalPath, 'joint')
+    % Categorize based on name patterns
+    if contains(signalName, 'q') || contains(signalName, 'joint')
         categories.joint_states{end+1} = signalName;
-    elseif contains(signalName, 'x') || contains(signalName, 'y') || contains(signalName, 'z')
-        if contains(signalName, 'v') || contains(signalName, 'vel')
-            categories.velocities{end+1} = signalName;
-        elseif contains(signalName, 'a') || contains(signalName, 'acc')
-            categories.accelerations{end+1} = signalName;
-        else
-            categories.positions{end+1} = signalName;
-        end
+    elseif contains(signalName, 'x') || contains(signalName, 'y') || contains(signalName, 'z') || contains(signalName, 'pos')
+        categories.positions{end+1} = signalName;
+    elseif contains(signalName, 'v') || contains(signalName, 'vel') || contains(signalName, 'd')
+        categories.velocities{end+1} = signalName;
+    elseif contains(signalName, 'a') || contains(signalName, 'accel')
+        categories.accelerations{end+1} = signalName;
     elseif contains(signalName, 'force') || contains(signalName, 'F')
         categories.forces{end+1} = signalName;
     elseif contains(signalName, 'torque') || contains(signalName, 'tau') || contains(signalName, 'T')
@@ -79,7 +79,7 @@ for i = 1:length(signals)
 end
 
 % Display categories
-fprintf('\nJoint States (%d):\n', length(categories.joint_states));
+fprintf('Joint States (%d):\n', length(categories.joint_states));
 for i = 1:length(categories.joint_states)
     fprintf('  - %s\n', categories.joint_states{i});
 end

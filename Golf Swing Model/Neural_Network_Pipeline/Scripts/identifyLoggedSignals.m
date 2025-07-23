@@ -88,7 +88,7 @@ end
 fprintf('Found %d logged SignalBus objects.\n', length(loggedBusLines));
 
 %% Extract individual signal information with subsystem analysis
-signalInfo = struct();
+signalInfo = [];
 signalNames = {};
 subsystemSignals = struct();
 
@@ -143,14 +143,20 @@ if ~isempty(loggedLines)
     end
     
     % Store information
-    signalInfo(i).name = signalName;
-    signalInfo(i).blockPath = blockPath;
-    signalInfo(i).port = portNum;
-    signalInfo(i).dimensions = dimsStr;
-    signalInfo(i).type = 'individual';
-    signalInfo(i).isInSubsystem = isInSubsystem;
-    signalInfo(i).subsystemName = subsystemName;
-    signalInfo(i).subsystemPath = subsystemPath;
+    if isempty(signalInfo)
+        signalInfo = struct('name', {signalName}, 'blockPath', {blockPath}, 'port', {portNum}, ...
+                           'dimensions', {dimsStr}, 'type', {'individual'}, 'isInSubsystem', {isInSubsystem}, ...
+                           'subsystemName', {subsystemName}, 'subsystemPath', {subsystemPath});
+    else
+        signalInfo(i).name = signalName;
+        signalInfo(i).blockPath = blockPath;
+        signalInfo(i).port = portNum;
+        signalInfo(i).dimensions = dimsStr;
+        signalInfo(i).type = 'individual';
+        signalInfo(i).isInSubsystem = isInSubsystem;
+        signalInfo(i).subsystemName = subsystemName;
+        signalInfo(i).subsystemPath = subsystemPath;
+    end
     
     signalNames{end+1} = signalName;
     
@@ -285,7 +291,7 @@ end
 topLevelSignals = 0;
 subsystemSignalCount = 0;
 
-if ~isempty(signalInfo)
+if ~isempty(signalInfo) && isstruct(signalInfo)
     for i = 1:length(signalInfo)
         if signalInfo(i).isInSubsystem
             subsystemSignalCount = subsystemSignalCount + 1;
@@ -302,7 +308,17 @@ fprintf('  SignalBus constituent signals: %d\n', length(busConstituentSignals));
 
 %% Combine all signals
 allSignalNames = [signalNames, busSignalNames];
-allSignalInfo = [signalInfo, busConstituentSignals];
+
+% Handle empty arrays properly
+if isempty(signalInfo) && isempty(busConstituentSignals)
+    allSignalInfo = [];
+elseif isempty(signalInfo)
+    allSignalInfo = busConstituentSignals;
+elseif isempty(busConstituentSignals)
+    allSignalInfo = signalInfo;
+else
+    allSignalInfo = [signalInfo, busConstituentSignals];
+end
 
 fprintf('\n--- Combined Signal Summary ---\n');
 fprintf('Individual logged signals: %d\n', length(signalNames));
@@ -436,6 +452,212 @@ else
     fprintf('2. Right-click on the SignalBus line\n');
     fprintf('3. Select "Signal Properties" -> "Logging" -> "Log signal data"\n');
     fprintf('4. Set an appropriate signal name for the bus\n');
+end
+
+%% Simscape Results Explorer Analysis
+fprintf('\n--- Simscape Results Explorer Analysis ---\n');
+
+% Check Simscape logging settings
+try
+    simscapeLogType = get_param(modelName, 'SimscapeLogType');
+    fprintf('Simscape logging type: %s\n', simscapeLogType);
+    
+    if strcmp(simscapeLogType, 'none')
+        fprintf('⚠ Simscape logging is disabled. Enable it to access Simscape Results Explorer data.\n');
+        fprintf('To enable: Set SimscapeLogType to ''all'' or ''sensors'' in model parameters.\n');
+    else
+        fprintf('✓ Simscape logging is enabled.\n');
+        
+        % Try to access Simscape Results Explorer data
+        try
+            % Check if there are any Simscape runs
+            simscapeRuns = Simulink.sdi.getAllRunIDs;
+            
+            if ~isempty(simscapeRuns)
+                fprintf('Found %d Simscape runs in Results Explorer.\n', length(simscapeRuns));
+                
+                % Get the most recent run
+                latestRun = simscapeRuns(end);
+                runObj = Simulink.sdi.getRun(latestRun);
+                
+                fprintf('Latest run: %s (ID: %d)\n', runObj.Name, latestRun);
+                
+                % Get all signals from the run
+                signals = runObj.getAllSignals;
+                fprintf('Total Simscape signals available: %d\n', length(signals));
+                
+                if length(signals) > 0
+                    fprintf('\n--- Available Simscape Signals ---\n');
+                    
+                    % Categorize Simscape signals
+                    simscapeCategories = struct();
+                    simscapeCategories.joint_states = {};
+                    simscapeCategories.positions = {};
+                    simscapeCategories.velocities = {};
+                    simscapeCategories.forces = {};
+                    simscapeCategories.torques = {};
+                    simscapeCategories.energy = {};
+                    simscapeCategories.other = {};
+                    
+                    simscapeSignalNames = {};
+                    
+                    for i = 1:length(signals)
+                        signal = signals(i);
+                        signalName = signal.Name;
+                        simscapeSignalNames{end+1} = signalName;
+                        
+                        % Categorize based on name patterns
+                        if contains(signalName, 'q') || contains(signalName, 'joint')
+                            simscapeCategories.joint_states{end+1} = signalName;
+                        elseif contains(signalName, 'x') || contains(signalName, 'y') || contains(signalName, 'z') || contains(signalName, 'pos')
+                            simscapeCategories.positions{end+1} = signalName;
+                        elseif contains(signalName, 'v') || contains(signalName, 'vel') || contains(signalName, 'd')
+                            simscapeCategories.velocities{end+1} = signalName;
+                        elseif contains(signalName, 'force') || contains(signalName, 'F')
+                            simscapeCategories.forces{end+1} = signalName;
+                        elseif contains(signalName, 'torque') || contains(signalName, 'tau') || contains(signalName, 'T')
+                            simscapeCategories.torques{end+1} = signalName;
+                        elseif contains(signalName, 'energy') || contains(signalName, 'kinetic') || contains(signalName, 'potential')
+                            simscapeCategories.energy{end+1} = signalName;
+                        else
+                            simscapeCategories.other{end+1} = signalName;
+                        end
+                    end
+                    
+                    % Display categories
+                    fprintf('Joint States (%d):\n', length(simscapeCategories.joint_states));
+                    for i = 1:length(simscapeCategories.joint_states)
+                        fprintf('  - %s\n', simscapeCategories.joint_states{i});
+                    end
+                    
+                    fprintf('\nPositions (%d):\n', length(simscapeCategories.positions));
+                    for i = 1:length(simscapeCategories.positions)
+                        fprintf('  - %s\n', simscapeCategories.positions{i});
+                    end
+                    
+                    fprintf('\nVelocities (%d):\n', length(simscapeCategories.velocities));
+                    for i = 1:length(simscapeCategories.velocities)
+                        fprintf('  - %s\n', simscapeCategories.velocities{i});
+                    end
+                    
+                    fprintf('\nForces (%d):\n', length(simscapeCategories.forces));
+                    for i = 1:length(simscapeCategories.forces)
+                        fprintf('  - %s\n', simscapeCategories.forces{i});
+                    end
+                    
+                    fprintf('\nTorques (%d):\n', length(simscapeCategories.torques));
+                    for i = 1:length(simscapeCategories.torques)
+                        fprintf('  - %s\n', simscapeCategories.torques{i});
+                    end
+                    
+                    fprintf('\nEnergy (%d):\n', length(simscapeCategories.energy));
+                    for i = 1:length(simscapeCategories.energy)
+                        fprintf('  - %s\n', simscapeCategories.energy{i});
+                    end
+                    
+                    fprintf('\nOther (%d):\n', length(simscapeCategories.other));
+                    for i = 1:length(simscapeCategories.other)
+                        fprintf('  - %s\n', simscapeCategories.other{i});
+                    end
+                    
+                    % Check for required signals in Simscape data
+                    fprintf('\n--- Neural Network Requirements Check (Simscape) ---\n');
+                    required_signals = {'q', 'qd', 'qdd', 'tau'};
+                    missing_simscape = {};
+                    found_simscape = {};
+                    
+                    for i = 1:length(required_signals)
+                        req_signal = required_signals{i};
+                        found = false;
+                        
+                        for j = 1:length(simscapeSignalNames)
+                            if contains(simscapeSignalNames{j}, req_signal)
+                                fprintf('✓ Found %s: %s (Simscape)\n', req_signal, simscapeSignalNames{j});
+                                found_simscape{end+1} = req_signal;
+                                found = true;
+                                break;
+                            end
+                        end
+                        
+                        if ~found
+                            fprintf('✗ Missing %s in Simscape data\n', req_signal);
+                            missing_simscape{end+1} = req_signal;
+                        end
+                    end
+                    
+                    % Add Simscape signals to overall results
+                    allSignalNames = [allSignalNames, simscapeSignalNames];
+                    
+                    % Update categories with Simscape signals
+                    categories.joint_states = [categories.joint_states, simscapeCategories.joint_states];
+                    categories.positions = [categories.positions, simscapeCategories.positions];
+                    categories.velocities = [categories.velocities, simscapeCategories.velocities];
+                    categories.forces = [categories.forces, simscapeCategories.forces];
+                    categories.torques = [categories.torques, simscapeCategories.torques];
+                    categories.other = [categories.other, simscapeCategories.other];
+                    
+                else
+                    fprintf('No signals found in Simscape Results Explorer.\n');
+                end
+                
+            else
+                fprintf('No Simscape runs found in Results Explorer.\n');
+                fprintf('Run a simulation to generate Simscape data.\n');
+            end
+            
+        catch ME
+            fprintf('Error accessing Simscape Results Explorer: %s\n', ME.message);
+            fprintf('Make sure you have run a simulation and Simscape logging is enabled.\n');
+        end
+        
+    end
+    
+catch ME
+    fprintf('Error checking Simscape logging settings: %s\n', ME.message);
+end
+
+%% Data Inspector Analysis
+fprintf('\n--- Data Inspector Analysis ---\n');
+
+try
+    % Check if Data Inspector has any data
+    inspectorRuns = Simulink.sdi.getAllRunIDs;
+    
+    if ~isempty(inspectorRuns)
+        fprintf('Found %d runs in Data Inspector.\n', length(inspectorRuns));
+        
+        % Get the most recent run
+        latestRun = inspectorRuns(end);
+        runObj = Simulink.sdi.getRun(latestRun);
+        
+        % Get all signals from Data Inspector
+        inspectorSignals = runObj.getAllSignals;
+        fprintf('Total Data Inspector signals: %d\n', length(inspectorSignals));
+        
+        if length(inspectorSignals) > 0
+            inspectorSignalNames = {};
+            for i = 1:length(inspectorSignals)
+                signal = inspectorSignals(i);
+                inspectorSignalNames{end+1} = signal.Name;
+            end
+            
+            fprintf('Data Inspector signals:\n');
+            for i = 1:min(10, length(inspectorSignalNames))  % Show first 10
+                fprintf('  - %s\n', inspectorSignalNames{i});
+            end
+            if length(inspectorSignalNames) > 10
+                fprintf('  ... and %d more signals\n', length(inspectorSignalNames) - 10);
+            end
+            
+            % Add to overall results
+            allSignalNames = [allSignalNames, inspectorSignalNames];
+        end
+    else
+        fprintf('No runs found in Data Inspector.\n');
+    end
+    
+catch ME
+    fprintf('Error accessing Data Inspector: %s\n', ME.message);
 end
 
 %% Save results
