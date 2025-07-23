@@ -49,7 +49,7 @@ fprintf('Found %d BusCreator blocks (potential SignalBus sources).\n', length(si
 
 % Find logged SignalBus lines
 loggedBusLines = {};
-busSignalInfo = struct();
+busSignalInfo = [];
 
 for i = 1:length(signalBusBlocks)
     busBlock = signalBusBlocks(i);
@@ -67,9 +67,13 @@ for i = 1:length(signalBusBlocks)
                     loggedBusLines{end+1} = outLine;
                     
                     % Get bus signal information
-                    busSignalInfo(end+1).name = busName;
-                    busSignalInfo(end).path = busPath;
-                    busSignalInfo(end).line = outLine;
+                    if isempty(busSignalInfo)
+                        busSignalInfo = struct('name', {busName}, 'path', {busPath}, 'line', {outLine});
+                    else
+                        busSignalInfo(end+1).name = busName;
+                        busSignalInfo(end).path = busPath;
+                        busSignalInfo(end).line = outLine;
+                    end
                     
                     fprintf('✓ Found logged SignalBus: %s at %s\n', busName, busPath);
                 end
@@ -174,7 +178,7 @@ fprintf('\n--- SignalBus Constituent Signals ---\n');
 busConstituentSignals = {};
 busSignalNames = {};
 
-if ~isempty(busSignalInfo)
+if ~isempty(busSignalInfo) && isstruct(busSignalInfo)
     for i = 1:length(busSignalInfo)
         busInfo = busSignalInfo(i);
         busBlock = find_system(modelName, 'FindAll', 'on', 'Name', busInfo.name, 'BlockType', 'BusCreator');
@@ -413,7 +417,7 @@ end
 %% SignalBus Analysis
 fprintf('\n--- SignalBus Analysis ---\n');
 
-if ~isempty(busSignalInfo)
+if ~isempty(busSignalInfo) && isstruct(busSignalInfo)
     fprintf('Logged SignalBus objects found:\n');
     for i = 1:length(busSignalInfo)
         fprintf('  - %s at %s\n', busSignalInfo(i).name, busSignalInfo(i).path);
