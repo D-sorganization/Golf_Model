@@ -8,7 +8,7 @@ fprintf('=== Golf Swing Simulation Time Estimator ===\n\n');
 %% Configuration
 config = struct();
 config.num_simulations = 1000;
-config.simulation_duration = 2; % seconds
+config.simulation_duration = 0.3; % seconds
 config.sample_rate = 1000; % Hz
 
 % Model complexity factors

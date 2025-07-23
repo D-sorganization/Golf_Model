@@ -17,7 +17,7 @@ config = struct();
 
 % Dataset size
 config.num_simulations = 1000;
-config.simulation_duration = 2; % seconds
+config.simulation_duration = 0.3; % seconds
 config.sample_rate = 1000; % Hz
 
 % Polynomial input ranges

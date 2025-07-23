@@ -70,7 +70,7 @@ fprintf('--------------------------------\n');
 
 try
     % Set simulation parameters
-    set_param(model_name, 'StopTime', '2.0');
+    set_param(model_name, 'StopTime', '0.3');
     set_param(model_name, 'Solver', 'ode23t');
     set_param(model_name, 'RelTol', '1e-3');
     set_param(model_name, 'AbsTol', '1e-5');
