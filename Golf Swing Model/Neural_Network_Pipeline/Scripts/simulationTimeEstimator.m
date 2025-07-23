@@ -8,7 +8,7 @@ fprintf('=== Golf Swing Simulation Time Estimator ===\n\n');
 %% Configuration
 config = struct();
 config.num_simulations = 1000;
-config.simulation_duration = 5; % seconds
+config.simulation_duration = 2; % seconds
 config.sample_rate = 1000; % Hz
 
 % Model complexity factors
@@ -16,8 +16,8 @@ config.has_flexible_beam = true;
 config.num_joints = 28;
 config.num_beam_modes = 10;
 config.solver_type = 'ode23t'; % Variable step solver
-config.relative_tolerance = 1e-4;
-config.absolute_tolerance = 1e-6;
+config.relative_tolerance = 1e-3;
+config.absolute_tolerance = 1e-5;
 
 fprintf('Configuration:\n');
 fprintf('  Simulations: %d\n', config.num_simulations);

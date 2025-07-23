@@ -15,22 +15,22 @@ end
 
 % Set default ranges if not specified
 if ~isfield(config, 'hip_torque_range')
-    config.hip_torque_range = [-50, 50]; % Nm
+    config.hip_torque_range = [-30, 30]; % Nm (reduced from [-50, 50])
 end
 if ~isfield(config, 'spine_torque_range')
-    config.spine_torque_range = [-30, 30]; % Nm
+    config.spine_torque_range = [-20, 20]; % Nm (reduced from [-30, 30])
 end
 if ~isfield(config, 'shoulder_torque_range')
-    config.shoulder_torque_range = [-20, 20]; % Nm
+    config.shoulder_torque_range = [-15, 15]; % Nm (reduced from [-20, 20])
 end
 if ~isfield(config, 'elbow_torque_range')
-    config.elbow_torque_range = [-15, 15]; % Nm
+    config.elbow_torque_range = [-10, 10]; % Nm (reduced from [-15, 15])
 end
 if ~isfield(config, 'wrist_torque_range')
-    config.wrist_torque_range = [-10, 10]; % Nm
+    config.wrist_torque_range = [-8, 8]; % Nm (reduced from [-10, 10])
 end
 if ~isfield(config, 'translation_force_range')
-    config.translation_force_range = [-100, 100]; % N
+    config.translation_force_range = [-50, 50]; % N (reduced from [-100, 100])
 end
 if ~isfield(config, 'polynomial_order')
     config.polynomial_order = 4; % 4th order polynomials

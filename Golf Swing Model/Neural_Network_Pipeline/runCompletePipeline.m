@@ -25,7 +25,7 @@ pipeline_config.generate_prediction_functions = true;
 % Dataset generation settings
 pipeline_config.dataset_config = struct();
 pipeline_config.dataset_config.num_simulations = 1000;
-pipeline_config.dataset_config.simulation_duration = 5;
+pipeline_config.dataset_config.simulation_duration = 2;
 pipeline_config.dataset_config.sample_rate = 1000;
 
 % Neural network settings

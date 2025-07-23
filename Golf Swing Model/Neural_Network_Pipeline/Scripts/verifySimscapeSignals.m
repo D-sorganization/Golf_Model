@@ -70,10 +70,10 @@ fprintf('--------------------------------\n');
 
 try
     % Set simulation parameters
-    set_param(model_name, 'StopTime', '1.0');
+    set_param(model_name, 'StopTime', '2.0');
     set_param(model_name, 'Solver', 'ode23t');
-    set_param(model_name, 'RelTol', '1e-4');
-    set_param(model_name, 'AbsTol', '1e-6');
+    set_param(model_name, 'RelTol', '1e-3');
+    set_param(model_name, 'AbsTol', '1e-5');
     
     fprintf('Running simulation...\n');
     simOut = sim(model_name);
@@ -288,12 +288,12 @@ if generate_test_dataset
     try
         % Generate sample polynomial inputs
         config = struct();
-        config.hip_torque_range = [-50, 50];
-        config.spine_torque_range = [-30, 30];
-        config.shoulder_torque_range = [-20, 20];
-        config.elbow_torque_range = [-15, 15];
-        config.wrist_torque_range = [-10, 10];
-        config.translation_force_range = [-100, 100];
+        config.hip_torque_range = [-30, 30];
+        config.spine_torque_range = [-20, 20];
+        config.shoulder_torque_range = [-15, 15];
+        config.elbow_torque_range = [-10, 10];
+        config.wrist_torque_range = [-8, 8];
+        config.translation_force_range = [-50, 50];
         config.polynomial_order = 4;
         config.swing_duration_range = [0.8, 1.2];
         

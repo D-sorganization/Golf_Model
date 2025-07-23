@@ -17,16 +17,16 @@ if nargin < 2
 end
 
 if ~isfield(config, 'max_simulation_time')
-    config.max_simulation_time = 30; % seconds (timeout)
+    config.max_simulation_time = 10; % seconds (timeout)
 end
 if ~isfield(config, 'solver_type')
     config.solver_type = 'ode23t';
 end
 if ~isfield(config, 'relative_tolerance')
-    config.relative_tolerance = 1e-4;
+    config.relative_tolerance = 1e-3;
 end
 if ~isfield(config, 'absolute_tolerance')
-    config.absolute_tolerance = 1e-6;
+    config.absolute_tolerance = 1e-5;
 end
 
 %% Default model name
@@ -106,6 +106,14 @@ try
     if actual_duration < expected_duration * 0.8
         success = false;
         error_msg = sprintf('Simulation ended early: %.2f s (expected %.2f s)', ...
+                           actual_duration, expected_duration);
+        return;
+    end
+    
+    % Check for excessive simulation time (safety check)
+    if actual_duration > expected_duration * 1.5
+        success = false;
+        error_msg = sprintf('Simulation ran too long: %.2f s (expected %.2f s)', ...
                            actual_duration, expected_duration);
         return;
     end

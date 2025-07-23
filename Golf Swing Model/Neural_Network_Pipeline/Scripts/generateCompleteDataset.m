@@ -17,7 +17,7 @@ config = struct();
 
 % Dataset size
 config.num_simulations = 1000;
-config.simulation_duration = 5; % seconds
+config.simulation_duration = 2; % seconds
 config.sample_rate = 1000; % Hz
 
 % Polynomial input ranges
@@ -39,9 +39,9 @@ config.shoulder_rotation_range = [-0.1, 0.1]; % radians
 
 % Simulation settings
 config.solver_type = 'ode23t';
-config.relative_tolerance = 1e-4;
-config.absolute_tolerance = 1e-6;
-config.max_simulation_time = 30; % seconds
+config.relative_tolerance = 1e-3;
+config.absolute_tolerance = 1e-5;
+config.max_simulation_time = 10; % seconds
 
 % Data storage settings
 config.save_interval = 50; % Save every N simulations
