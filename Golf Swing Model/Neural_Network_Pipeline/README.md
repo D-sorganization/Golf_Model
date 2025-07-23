@@ -1,198 +1,443 @@
 # Golf Swing Neural Network Pipeline
 
-This folder contains the complete machine learning pipeline for training a neural network to control the golf swing model using inverse dynamics.
+This pipeline generates a comprehensive dataset of golf swing simulations with randomized inputs and trains a neural network to map from desired kinematics to polynomial control inputs.
 
-## Folder Structure
+## Overview
+
+The pipeline consists of two main phases:
+
+1. **Dataset Generation**: Creates 1000+ simulations with randomized polynomial inputs and starting positions
+2. **Neural Network Training**: Trains a network to predict polynomial coefficients from kinematics features
+
+## Files Structure
 
 ```
 Neural_Network_Pipeline/
-├── README.md                    # This documentation file
-├── runCompletePipeline.m        # Master script to run the entire pipeline
-├── Scripts/                     # Individual pipeline scripts
-│   ├── extractSimKinematics.m   # Extract q, qdot, qdotdot from simulation outputs
-│   ├── generateDataset.m        # Generate training dataset with random polynomial inputs
-│   ├── trainInverseDynamicsModel.m  # Train neural network for inverse dynamics
-│   ├── controlWithNeuralNetwork.m   # Demonstrate control with desired kinematics
-│   ├── identifyLoggedSignals.m  # Analyze currently logged signals in Simulink model
-│   ├── enhancedSignalAnalysis.m # Enhanced analysis with ML-specific requirements
-│   ├── extractSimscapeData.m    # Extract data from Simscape Results Explorer
-│   ├── generateSimInputs.m      # Generate Simulink simulation inputs from coefficients
-│   └── computeLoss.m           # Compute loss between predicted and target kinematics
-├── Data/                        # Generated datasets and training data
-├── Models/                      # Trained neural network models
-└── Results/                     # Control demonstration results and plots
+├── Scripts/
+│   ├── generatePolynomialInputs.m          # Generate random polynomial coefficients
+│   ├── generateRandomStartingPositions.m   # Generate random starting positions
+│   ├── updateModelParameters.m             # Update Simulink model parameters
+│   ├── runSimulation.m                     # Run single simulation with error handling
+│   ├── extractJointStatesFromSimscape.m   # Extract joint states and beam data
+│   ├── generateCompleteDataset.m           # Main dataset generation script
+│   ├── trainKinematicsToPolynomialMap.m   # Neural network training script
+│   └── simulationTimeEstimator.m           # Estimate simulation time and requirements
+├── README.md                               # This file
+└── runCompletePipeline.m                   # Master script to run entire pipeline
 ```
 
-## Pipeline Overview
+## Prerequisites
 
-The neural network pipeline consists of three main phases:
-
-### Phase 1: Dataset Generation
-- **Script**: `Scripts/generateDataset.m`
-- **Purpose**: Generate large dataset of golf swing simulations with random polynomial torque inputs
-- **Input**: Random polynomial coefficients for 28 joints (7 coefficients each = 196 total)
-- **Output**: Training data with features [q, qd, tau, coeffs] and targets [qdd]
-- **Dependencies**: Simulink model `GolfSwing3D_Kinetic.slx`
-
-### Phase 2: Neural Network Training
-- **Script**: `Scripts/trainInverseDynamicsModel.m`
-- **Purpose**: Train neural network to predict joint torques from desired kinematics
-- **Input**: [q, qd, qdd] (84 features for 28 joints)
-- **Output**: τ (28 joint torques)
-- **Architecture**: Deep neural network with configurable hidden layers
-
-### Phase 3: Control Demonstration
-- **Script**: `Scripts/controlWithNeuralNetwork.m`
-- **Purpose**: Demonstrate neural network control with desired kinematics
-- **Input**: Desired trajectory [q_desired, qd_desired, qdd_desired]
-- **Output**: Controlled simulation following desired trajectory
-
-## Quick Start
-
-### Step 0: Analyze Current Signal Logging
-```matlab
-% Navigate to the Neural_Network_Pipeline folder
-cd Neural_Network_Pipeline
-
-% Analyze what signals are currently logged
-run('Scripts/enhancedSignalAnalysis.m')
-
-% If you have Simscape data, extract it
-run('Scripts/extractSimscapeData.m')
-```
-
-### Option 1: Run Complete Pipeline
-```matlab
-% Run the complete pipeline
-runCompletePipeline
-```
-
-### Option 2: Run Individual Steps
-```matlab
-% Step 1: Generate dataset
-run('Scripts/generateDataset.m')
-
-% Step 2: Train neural network
-run('Scripts/trainInverseDynamicsModel.m')
-
-% Step 3: Demonstrate control
-run('Scripts/controlWithNeuralNetwork.m')
-```
-
-## Configuration
-
-### Dataset Generation Parameters
-- `nSimulations`: Number of simulations to generate (default: 1000)
-- `coeffBounds`: Bounds for random polynomial coefficients (default: 50)
-- `batchSize`: Number of simulations per batch (default: 10)
-
-### Neural Network Parameters
-- `hiddenLayers`: Network architecture (default: [512, 256, 128, 64])
-- `maxEpochs`: Training epochs (default: 100)
-- `batchSize`: Training batch size (default: 128)
-- `learningRate`: Learning rate (default: 0.001)
-
-### Control Parameters
-- `simDuration`: Simulation duration (default: 1.0 seconds)
-- `useFeedback`: Enable feedback control (default: true)
-- `feedbackGain`: Feedback gain for position correction (default: 0.1)
-
-## Dependencies
-
-### Required MATLAB Toolboxes
-- Deep Learning Toolbox
+### Software Requirements
+- MATLAB R2020b or later
 - Simulink
-- Parallel Computing Toolbox (recommended)
+- Simscape Multibody
+- Deep Learning Toolbox
+- Statistics and Machine Learning Toolbox
 
-### Required Files
-- `Model/GolfSwing3D_Kinetic.slx` - Main Simulink model
-- `Machine Learning Polynomials/generateSimInputs.m` - Utility function
+### Model Requirements
+- `GolfSwing3D_Kinetic.slx` model must be available and functional
+- Model should have polynomial input blocks for joint torques
+- Model should have Simscape logging enabled
 
-## Output Files
+## Phase 0: System Verification
 
-### Generated Data
-- `Data/training_data.mat` - Training dataset
-- `Data/golf_swing_dataset.mat` - Full dataset with metadata
-- `Data/dataset_metadata.mat` - Dataset statistics and parameters
+### Step 1: Verify Simscape Signals and System Setup
 
-### Trained Models
-- `Models/inverse_dynamics_model.mat` - Trained neural network
-- `Models/predictions.mat` - Model predictions on test data
+Before running the full pipeline, verify that all required signals are available:
 
-### Results
-- `Results/neural_network_control_results.mat` - Control demonstration results
-- Various plots and visualizations
+```matlab
+% Run comprehensive signal verification
+[verification_results, test_dataset] = verifySimscapeSignals('GolfSwing3D_Kinetic', true);
+```
 
-## Signal Logging and Data Extraction
+This script will:
+- ✅ Check model loading and Simscape logging
+- ✅ Run a test simulation
+- ✅ Verify all required signal categories:
+  - Joint positions, velocities, accelerations, torques
+  - Beam modal coordinates, strain energy, displacement, forces/moments
+  - Clubhead, hand, and body kinematics
+- ✅ Check model workspace accessibility
+- ✅ Generate a test dataset from single simulation
+- ✅ Clean up workspace variables
+- ✅ Provide detailed reporting
 
-### Analyzing Current Signal Logging
-The pipeline includes tools to analyze what signals are currently being logged in your Simulink model:
+**Expected Output:**
+- Verification results structure
+- Test dataset file: `test_dataset_verification_YYYYMMDD_HHMMSS.mat`
+- Comprehensive console output with signal counts
 
-1. **`enhancedSignalAnalysis.m`** - Comprehensive analysis of logged signals
-   - Identifies currently logged signals
-   - Checks for required signals (q, qd, qdd, tau)
-   - Provides recommendations for additional logging
-   - Creates configuration scripts
+**Critical Checks:**
+- Overall Status: PASSED
+- All signal categories should have signals found
+- Model workspace should be accessible
+- Test dataset should be generated successfully
 
-2. **`extractSimscapeData.m`** - Extract data from Simscape Results Explorer
-   - Accesses Simscape logging data
-   - Converts to logsout format for neural network pipeline
-   - Categorizes available signals
-   - Tests compatibility with extraction functions
+**Quick Test:**
+```matlab
+% Run quick verification test
+testVerification
+```
 
-### Working with Simscape Results Explorer
-1. **Enable Simscape Logging**: Set `SimscapeLogType` to `'all'` in model parameters
-2. **Run Simulation**: Execute your model to generate Simscape data
-3. **Access Data**: Use `extractSimscapeData.m` to extract and convert data
-4. **Export to Workspace**: Right-click signals in Results Explorer → Export to Workspace
+## Phase 1: Dataset Generation
+
+Edit `generateCompleteDataset.m` to set your desired parameters:
+
+```matlab
+% Dataset size
+config.num_simulations = 1000;        % Number of simulations
+config.simulation_duration = 5;       % Seconds per simulation
+config.sample_rate = 1000;            % Hz
+
+% Polynomial input ranges (Nm)
+config.hip_torque_range = [-50, 50];
+config.spine_torque_range = [-30, 30];
+config.shoulder_torque_range = [-20, 20];
+config.elbow_torque_range = [-15, 15];
+config.wrist_torque_range = [-10, 10];
+config.translation_force_range = [-100, 100]; % N
+
+% Starting position ranges
+config.hip_position_range = [-0.1, 0.1];      % meters
+config.hip_rotation_range = [-0.2, 0.2];      % radians
+config.spine_tilt_range = [-0.3, 0.3];        % radians
+config.torso_rotation_range = [-0.4, 0.4];    % radians
+```
+
+### Step 2: Run Dataset Generation
+
+```matlab
+% Run the complete dataset generation
+generateCompleteDataset
+```
+
+**Expected Output:**
+- `golf_swing_dataset_YYYYMMDD_HHMMSS.mat` - Full resolution dataset
+- `golf_swing_dataset_archive_YYYYMMDD_HHMMSS.mat` - Downsampled archive
+- `dataset_report_YYYYMMDD_HHMMSS.txt` - Comprehensive report
+- `intermediate_dataset_*.mat` - Intermediate saves (every 50 simulations)
+
+**Time Estimate:**
+- Single core: 8-12 days
+- Parallel (8 cores): 1-1.5 days
+- Optimized parallel: 0.5-1 day
+
+### Step 3: Monitor Progress
+
+The script provides:
+- Real-time progress bar
+- Intermediate saves every 50 simulations
+- Error logging and recovery
+- Performance statistics
+
+## Phase 2: Neural Network Training
+
+### Step 1: Configure Neural Network
+
+Edit `trainKinematicsToPolynomialMap.m` to set training parameters:
+
+```matlab
+% Neural network configuration
+config.hidden_layers = [256, 128, 64];    % Hidden layer sizes
+config.learning_rate = 0.001;             % Learning rate
+config.batch_size = 32;                   % Batch size
+config.max_epochs = 100;                  % Maximum epochs
+config.dropout_rate = 0.3;                % Dropout rate
+
+% Kinematics features to use as input
+config.kinematics_features = {
+    'clubhead_speed_at_impact'
+    'clubhead_position_at_impact'
+    'maximum_clubhead_speed'
+    'swing_duration'
+    % ... add more features as needed
+};
+```
+
+### Step 2: Run Neural Network Training
+
+```matlab
+% Train the neural network
+trainKinematicsToPolynomialMap
+```
+
+**Expected Output:**
+- `kinematics_to_polynomial_model_YYYYMMDD_HHMMSS.mat` - Trained model
+- `predictPolynomialFromKinematics_YYYYMMDD_HHMMSS.m` - Prediction function
+- `training_results_YYYYMMDD_HHMMSS.png` - Training plots
+
+## Phase 3: Using the Trained Model
+
+### Step 1: Load the Model
+
+```matlab
+% Load the trained model
+model_data = load('kinematics_to_polynomial_model_YYYYMMDD_HHMMSS.mat');
+model = model_data.model;
+```
+
+### Step 2: Make Predictions
+
+```matlab
+% Define desired kinematics features
+desired_kinematics = [
+    45.0,    % clubhead_speed_at_impact (m/s)
+    0.1,     % clubhead_position_x (m)
+    0.0,     % clubhead_position_y (m)
+    0.0,     % clubhead_position_z (m)
+    50.0,    % maximum_clubhead_speed (m/s)
+    1.0      % swing_duration (s)
+];
+
+% Predict polynomial coefficients
+polynomial_coeffs = predictPolynomialFromKinematics(desired_kinematics);
+```
+
+### Step 3: Apply to Simulation
+
+```matlab
+% Update model with predicted coefficients
+success = updateModelParameters(polynomial_coeffs, starting_positions, 'GolfSwing3D_Kinetic');
+
+% Run simulation
+[simOut, success, error_msg] = runSimulation('GolfSwing3D_Kinetic');
+```
+
+## Detailed Instructions
+
+### Customizing Polynomial Inputs
+
+The `generatePolynomialInputs.m` script generates 4th-order polynomials for each joint:
+
+```matlab
+% Example: Hip torque X polynomial
+% τ(t) = a₀ + a₁t + a₂t² + a₃t³ + a₄t⁴
+hip_torque_x = [a₀, a₁, a₂, a₃, a₄];
+```
+
+**Available Polynomials:**
+- Hip torques: X, Y, Z (3 polynomials)
+- Spine torques: X, Y (2 polynomials)
+- Shoulder torques: Left/Right X, Y, Z (6 polynomials)
+- Elbow torques: Left/Right Z (2 polynomials)
+- Wrist torques: Left/Right X, Y (4 polynomials)
+- Translation forces: X, Y, Z (3 polynomials)
+
+### Customizing Starting Positions
+
+The `generateRandomStartingPositions.m` script randomizes:
+
+**Variable Positions (as requested):**
+- Hip position and rotation (6 DOF)
+- Spine tilt (2 DOF)
+- Torso rotation (1 DOF)
+- Shoulder positions and rotations (12 DOF)
+
+**Fixed Positions (arms and hands):**
+- Elbow rotations (2 DOF)
+- Forearm rotations (2 DOF)
+- Wrist rotations (4 DOF)
+
+### Data Extraction
+
+The `extractJointStatesFromSimscape.m` script extracts:
+
+**Joint States:**
+- `q`: Joint positions (28 signals)
+- `qd`: Joint velocities (28 signals)
+- `qdd`: Joint accelerations (24 signals)
+- `tau`: Joint torques (19 signals)
+
+**Beam States (Flexible Shaft):**
+- Modal coordinates (10 signals)
+- Strain energy (2 signals)
+- Displacement (3 signals)
+- Internal forces/moments (6 signals)
+- Tip position/orientation (6 signals)
+
+### Error Handling
+
+The pipeline includes comprehensive error handling:
+
+1. **Simulation Failures**: Logged and skipped, pipeline continues
+2. **Model Compilation Errors**: Detailed error messages
+3. **Data Extraction Failures**: Graceful degradation
+4. **Memory Issues**: Intermediate saves prevent data loss
+
+### Performance Optimization
+
+**For Faster Execution:**
+
+1. **Reduce Model Complexity:**
+   ```matlab
+   config.num_beam_modes = 6;  % Instead of 10
+   ```
+
+2. **Use Parallel Processing:**
+   ```matlab
+   % In generateCompleteDataset.m, add:
+   parpool('local', 8);  % Use 8 cores
+   parfor sim_idx = 1:config.num_simulations
+       % ... simulation code
+   end
+   ```
+
+3. **Optimize Solver Settings:**
+   ```matlab
+   config.solver_type = 'ode23t';
+   config.relative_tolerance = 1e-3;  % Less strict
+   config.absolute_tolerance = 1e-5;
+   ```
+
+4. **Reduce Dataset Size for Testing:**
+   ```matlab
+   config.num_simulations = 100;  % Start small
+   ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Simulink Model Not Found**
-   - Ensure `GolfSwing3D_Kinetic.slx` is in the `Model/` folder
-   - Check that the model name matches in `generateSimInputs.m`
+1. **Model Loading Errors:**
+   - Ensure `GolfSwing3D_Kinetic.slx` is in the MATLAB path
+   - Check for missing dependencies
 
-2. **Memory Issues**
-   - Reduce `nSimulations` or `batchSize`
-   - Use smaller neural network architecture
-   - Enable parallel processing if available
+2. **Simulation Failures:**
+   - Check solver settings
+   - Verify polynomial coefficient ranges
+   - Ensure starting positions are physically realistic
 
-3. **Training Convergence Issues**
-   - Reduce learning rate
-   - Increase number of epochs
+3. **Memory Issues:**
+   - Reduce `config.num_simulations`
+   - Increase `config.save_interval`
+   - Use archive dataset for training
+
+4. **Neural Network Training Issues:**
    - Check data normalization
+   - Adjust learning rate
+   - Increase/decrease network size
 
-4. **Poor Control Performance**
-   - Increase feedback gain
-   - Retrain with more diverse dataset
-   - Check desired trajectory feasibility
+### Debugging Tips
 
-### Performance Tips
+1. **Test with Small Dataset:**
+   ```matlab
+   config.num_simulations = 10;
+   ```
 
-1. **Use GPU**: Set `'ExecutionEnvironment', 'gpu'` in training options
-2. **Parallel Processing**: Enable parallel simulation with `parsim`
-3. **Data Preprocessing**: Normalize inputs and outputs for better training
-4. **Regularization**: Use dropout and batch normalization to prevent overfitting
+2. **Check Individual Components:**
+   ```matlab
+   % Test polynomial generation
+   poly_inputs = generatePolynomialInputs(config);
+   
+   % Test position generation
+   starting_positions = generateRandomStartingPositions(config);
+   
+   % Test single simulation
+   [simOut, success, error_msg] = runSimulation('GolfSwing3D_Kinetic');
+   ```
 
-## Customization
+3. **Monitor Memory Usage:**
+   ```matlab
+   memory  % Check available memory
+   whos    % Check workspace variables
+   ```
 
-### Adding New Joints
-1. Update `nJoints` in all scripts
-2. Modify `getJointNames()` in `generateSimInputs.m`
-3. Update neural network input/output dimensions
+## Output Files
 
-### Using Motion Capture Data
-1. Replace `generateDesiredGolfSwing()` in `controlWithNeuralNetwork.m`
-2. Load motion capture data and interpolate to desired time steps
-3. Ensure data format matches expected [q, qd, qdd] structure
+### Dataset Files
+- **Full Dataset**: `golf_swing_dataset_*.mat` (~4-5 GB)
+- **Archive Dataset**: `golf_swing_dataset_archive_*.mat` (~0.5 GB)
+- **Report**: `dataset_report_*.txt`
 
-### Custom Loss Functions
-1. Modify `computeLoss.m` for different loss metrics
-2. Add regularization terms in `trainInverseDynamicsModel.m`
-3. Implement custom evaluation metrics
+### Model Files
+- **Trained Model**: `kinematics_to_polynomial_model_*.mat`
+- **Prediction Function**: `predictPolynomialFromKinematics_*.m`
+- **Training Plots**: `training_results_*.png`
 
-## Contact
+### Intermediate Files
+- **Checkpoints**: `intermediate_dataset_*.mat` (every 50 simulations)
 
-For questions or issues with the neural network pipeline, refer to the main project documentation or contact the development team. 
+## Data Structure
+
+### Dataset Structure
+```matlab
+dataset = struct();
+dataset.config = config;                    % Configuration
+dataset.metadata = metadata;                % Metadata
+dataset.simulations = {sim1, sim2, ...};    % Cell array of simulation data
+dataset.parameters = {param1, param2, ...}; % Cell array of parameters
+dataset.success_flags = [true, false, ...]; % Success indicators
+dataset.error_messages = {'', 'error', ...}; % Error messages
+dataset.simulation_times = [1.2, 0.8, ...]; % Simulation times
+```
+
+### Simulation Data Structure
+```matlab
+sim_data = struct();
+sim_data.time = [0, 0.001, 0.002, ...];     % Time vector
+sim_data.q = [pos1; pos2; ...];             % Joint positions
+sim_data.qd = [vel1; vel2; ...];            % Joint velocities
+sim_data.qdd = [acc1; acc2; ...];           % Joint accelerations
+sim_data.tau = [torque1; torque2; ...];     % Joint torques
+sim_data.beam_states = [beam1; beam2; ...]; % Beam state data
+```
+
+## Advanced Usage
+
+### Custom Kinematics Features
+
+Add custom kinematics features in `trainKinematicsToPolynomialMap.m`:
+
+```matlab
+config.kinematics_features = {
+    'clubhead_speed_at_impact'
+    'clubhead_position_at_impact'
+    'maximum_clubhead_speed'
+    'swing_duration'
+    'custom_feature_1'
+    'custom_feature_2'
+};
+```
+
+Then implement extraction in `extractKinematicsFeatures()`:
+
+```matlab
+case 'custom_feature_1'
+    % Your custom feature calculation
+    features = [features, calculated_value];
+```
+
+### Custom Neural Network Architecture
+
+Modify the network architecture in `trainKinematicsToPolynomialMap.m`:
+
+```matlab
+% Custom architecture
+layers = [
+    featureInputLayer(size(X_train, 2))
+    fullyConnectedLayer(512)
+    reluLayer
+    dropoutLayer(0.5)
+    fullyConnectedLayer(256)
+    reluLayer
+    dropoutLayer(0.3)
+    fullyConnectedLayer(size(Y_train, 2))
+    regressionLayer
+];
+```
+
+## Support
+
+For issues or questions:
+1. Check the troubleshooting section
+2. Review error messages in the console
+3. Examine the dataset report for statistics
+4. Test with smaller datasets first
+
+## Version History
+
+- **v1.0**: Initial release with complete pipeline
+- Includes dataset generation, neural network training, and prediction functions
+- Supports flexible beam data extraction
+- Comprehensive error handling and progress monitoring 
