@@ -17,20 +17,48 @@ fprintf('Loading: %s\n', latest_file);
 
 data = load(latest_file);
 
-%% Define anatomical joint mapping (28 DOFs to actual joints)
-% Based on the joint structure you described
+%% Define Simulink signal names mapping (28 DOFs to actual Simulink signals)
+% Based on the actual GolfSwing3D_Kinetic model structure
 joint_labels = cell(28, 1);
 is_translation = false(28, 1); % Track which DOFs are translations vs rotations
 
-% Hips/Base - 6 DOF Joint (6 DOFs)
-joint_labels{1} = 'Hips_X_Translation';
-joint_labels{2} = 'Hips_Y_Translation';
-joint_labels{3} = 'Hips_Z_Translation';
-joint_labels{4} = 'Hips_X_Rotation';
-joint_labels{5} = 'Hips_Y_Rotation';
-joint_labels{6} = 'Hips_Z_Rotation';
-is_translation(1:3) = true; % First 3 are translations
-is_translation(4:6) = false; % Last 3 are rotations
+% Map to actual Simulink signal names from the model
+joint_labels{1} = 'Hip_Rx_q';           % Hip X rotation
+joint_labels{2} = 'Hip_Ry_q';           % Hip Y rotation  
+joint_labels{3} = 'Hip_Rz_q';           % Hip Z rotation
+joint_labels{4} = 'Torso_Rz_q';         % Torso rotation
+joint_labels{5} = 'Spine_Rx_q';         % Spine X rotation
+joint_labels{6} = 'Spine_Ry_q';         % Spine Y rotation
+is_translation(1:6) = false; % All rotations
+
+% Left side joints
+joint_labels{7} = 'LScap_Rx_q';         % Left Scapula X rotation
+joint_labels{8} = 'LScap_Ry_q';         % Left Scapula Y rotation
+joint_labels{9} = 'LShoulder_Rx_q';     % Left Shoulder X rotation
+joint_labels{10} = 'LShoulder_Ry_q';    % Left Shoulder Y rotation
+joint_labels{11} = 'LShoulder_Rz_q';    % Left Shoulder Z rotation
+joint_labels{12} = 'LElbow_Rz_q';       % Left Elbow rotation
+joint_labels{13} = 'LForearm_Rz_q';     % Left Forearm rotation
+joint_labels{14} = 'LWrist_Rx_q';       % Left Wrist X rotation
+joint_labels{15} = 'LWrist_Ry_q';       % Left Wrist Y rotation
+
+% Right side joints
+joint_labels{16} = 'RWrist_Rx_q';       % Right Wrist X rotation
+joint_labels{17} = 'RWrist_Ry_q';       % Right Wrist Y rotation
+joint_labels{18} = 'RForearm_Rz_q';     % Right Forearm rotation
+joint_labels{19} = 'RElbow_Rz_q';       % Right Elbow rotation
+joint_labels{20} = 'RScap_Rx_q';        % Right Scapula X rotation
+joint_labels{21} = 'RScap_Ry_q';        % Right Scapula Y rotation
+joint_labels{22} = 'RShoulder_Rx_q';    % Right Shoulder X rotation
+joint_labels{23} = 'RShoulder_Ry_q';    % Right Shoulder Y rotation
+joint_labels{24} = 'RShoulder_Rz_q';    % Right Shoulder Z rotation
+
+% Additional joints (if any)
+joint_labels{25} = 'Joint25_q';         % Additional joint 1
+joint_labels{26} = 'Joint26_q';         % Additional joint 2
+joint_labels{27} = 'Joint27_q';         % Additional joint 3
+joint_labels{28} = 'Joint28_q';         % Additional joint 4
+is_translation(7:28) = false; % All rotations
 
 % Spine - Universal Joint (2 DOFs)
 joint_labels{7} = 'Spine_Flexion';
@@ -199,22 +227,24 @@ if data.dataset.success_flags(1)
     writetable(data_table, csv_filename);
     fprintf('\n✓ Table saved to CSV: %s\n', csv_filename);
     
-    % Show joint breakdown
-    fprintf('\n=== Anatomical Joint Breakdown ===\n');
-    fprintf('Hips/Base (6 DOF): %s, %s, %s, %s, %s, %s\n', ...
+    % Show joint breakdown with Simulink signal names
+    fprintf('\n=== Simulink Signal Names Breakdown ===\n');
+    fprintf('Core Joints (6): %s, %s, %s, %s, %s, %s\n', ...
            joint_labels{1:6});
-    fprintf('Spine (Universal): %s, %s\n', joint_labels{7:8});
-    fprintf('Torso (Revolute): %s\n', joint_labels{9});
-    fprintf('LScap (Universal): %s, %s\n', joint_labels{10:11});
-    fprintf('RScap (Universal): %s, %s\n', joint_labels{12:13});
-    fprintf('LShoulder (Gimbal): %s, %s, %s\n', joint_labels{14:16});
-    fprintf('RShoulder (Gimbal): %s, %s, %s\n', joint_labels{17:19});
-    fprintf('LElbow (Revolute): %s\n', joint_labels{20});
-    fprintf('RElbow (Revolute): %s\n', joint_labels{21});
-    fprintf('LWrist (Revolute): %s\n', joint_labels{22});
-    fprintf('RWrist (Revolute): %s\n', joint_labels{23});
-    fprintf('LWrist (Universal): %s, %s\n', joint_labels{24:25});
-    fprintf('RWrist (Universal): %s, %s\n', joint_labels{26:27});
+    fprintf('Left Side (8): %s, %s, %s, %s, %s, %s, %s, %s\n', ...
+           joint_labels{7:14});
+    fprintf('Right Side (8): %s, %s, %s, %s, %s, %s, %s, %s\n', ...
+           joint_labels{15:22});
+    fprintf('Additional (4): %s, %s, %s, %s\n', joint_labels{23:26});
+    
+    % Show signal name mapping to actual Simulink paths
+    fprintf('\n=== Simulink Signal Path Mapping ===\n');
+    fprintf('Signal names map to actual Simulink model paths:\n');
+    fprintf('  Hip_Rx_q -> GolfSwing3D_Kinetic.Hips_and_Torso_Inputs.Hip_Kinetically_Driven.Hip_Joint.Rx.q\n');
+    fprintf('  Hip_Ry_q -> GolfSwing3D_Kinetic.Hips_and_Torso_Inputs.Hip_Kinetically_Driven.Hip_Joint.Ry.q\n');
+    fprintf('  Hip_Rz_q -> GolfSwing3D_Kinetic.Hips_and_Torso_Inputs.Hip_Kinetically_Driven.Hip_Joint.Rz.q\n');
+    fprintf('  Torso_Rz_q -> GolfSwing3D_Kinetic.Hips_and_Torso_Inputs.Torso_Kinetically_Driven.Revolute_Joint.Kinetically_Driven_Revolute.Rz.q\n');
+    fprintf('  ... (and so on for all 28 signals)\n');
     
     % Show mid-hands position and orientation data
     fprintf('\n=== Mid-Hands Position and Orientation Data ===\n');
@@ -310,8 +340,14 @@ end
 
 %% Also show the training data format with anatomical labels
 fprintf('\n=== Training Data Format (Anatomical Labels) ===\n');
-fprintf('X (Features) shape: %d x %d\n', size(data.X, 1), size(data.X, 2));
-fprintf('Y (Targets) shape: %d x %d\n', size(data.Y, 1), size(data.Y, 2));
+if isfield(data, 'X') && isfield(data, 'Y')
+    fprintf('X (Features) shape: %d x %d\n', size(data.X, 1), size(data.X, 2));
+    fprintf('Y (Targets) shape: %d x %d\n', size(data.Y, 1), size(data.Y, 2));
+    fprintf('Features: [Joint Positions (28), Joint Velocities (28), Joint Torques (28)] = 84 features\n');
+    fprintf('Targets: Joint Accelerations (28)\n');
+else
+    fprintf('Training data not found in this dataset\n');
+end
 
 % Create training data table with anatomical labels
 train_column_names = {};
