@@ -1,13 +1,13 @@
 # Golf Swing Neural Network Pipeline
 
-This pipeline generates a comprehensive dataset of golf swing simulations with randomized inputs and trains a neural network to map from desired kinematics to polynomial control inputs.
+This pipeline generates a comprehensive dataset of golf swing simulations with randomized inputs and trains a neural network to map from desired kinematics (joint positions, velocities, accelerations) to required joint torques. The polynomial inputs serve as a data generation tool to create diverse torque profiles.
 
 ## Overview
 
 The pipeline consists of two main phases:
 
 1. **Dataset Generation**: Creates 1000+ simulations with randomized polynomial inputs and starting positions
-2. **Neural Network Training**: Trains a network to predict polynomial coefficients from kinematics features
+2. **Neural Network Training**: Trains a network to predict joint torques from kinematics features (positions, velocities, accelerations)
 
 ## Files Structure
 
@@ -20,7 +20,7 @@ Neural_Network_Pipeline/
 │   ├── runSimulation.m                     # Run single simulation with error handling
 │   ├── extractJointStatesFromSimscape.m   # Extract joint states and beam data
 │   ├── generateCompleteDataset.m           # Main dataset generation script
-│   ├── trainKinematicsToPolynomialMap.m   # Neural network training script
+│   ├── trainKinematicsToTorqueMap.m       # Neural network training script
 │   └── simulationTimeEstimator.m           # Estimate simulation time and requirements
 ├── README.md                               # This file
 └── runCompletePipeline.m                   # Master script to run entire pipeline
@@ -87,16 +87,16 @@ Edit `generateCompleteDataset.m` to set your desired parameters:
 ```matlab
 % Dataset size
 config.num_simulations = 1000;        % Number of simulations
-config.simulation_duration = 5;       % Seconds per simulation
+config.simulation_duration = 0.3;       % Seconds per simulation
 config.sample_rate = 1000;            % Hz
 
-% Polynomial input ranges (Nm)
-config.hip_torque_range = [-50, 50];
-config.spine_torque_range = [-30, 30];
-config.shoulder_torque_range = [-20, 20];
-config.elbow_torque_range = [-15, 15];
-config.wrist_torque_range = [-10, 10];
-config.translation_force_range = [-100, 100]; % N
+% Polynomial input ranges (Nm) - Reduced for stability
+config.hip_torque_range = [-30, 30];
+config.spine_torque_range = [-20, 20];
+config.shoulder_torque_range = [-15, 15];
+config.elbow_torque_range = [-10, 10];
+config.wrist_torque_range = [-8, 8];
+config.translation_force_range = [-50, 50]; % N
 
 % Starting position ranges
 config.hip_position_range = [-0.1, 0.1];      % meters
@@ -119,9 +119,9 @@ generateCompleteDataset
 - `intermediate_dataset_*.mat` - Intermediate saves (every 50 simulations)
 
 **Time Estimate:**
-- Single core: 8-12 days
-- Parallel (8 cores): 1-1.5 days
-- Optimized parallel: 0.5-1 day
+- Single core: 0.5-1 day
+- Parallel (8 cores): 1-3 hours
+- Optimized parallel: 0.5-1 hour
 
 ### Step 3: Monitor Progress
 
@@ -135,7 +135,7 @@ The script provides:
 
 ### Step 1: Configure Neural Network
 
-Edit `trainKinematicsToPolynomialMap.m` to set training parameters:
+Edit `trainKinematicsToTorqueMap.m` to set training parameters:
 
 ```matlab
 % Neural network configuration
@@ -159,12 +159,12 @@ config.kinematics_features = {
 
 ```matlab
 % Train the neural network
-trainKinematicsToPolynomialMap
+trainKinematicsToTorqueMap
 ```
 
 **Expected Output:**
-- `kinematics_to_polynomial_model_YYYYMMDD_HHMMSS.mat` - Trained model
-- `predictPolynomialFromKinematics_YYYYMMDD_HHMMSS.m` - Prediction function
+- `kinematics_to_torque_model_YYYYMMDD_HHMMSS.mat` - Trained model
+- `predictTorqueFromKinematics_YYYYMMDD_HHMMSS.m` - Prediction function
 - `training_results_YYYYMMDD_HHMMSS.png` - Training plots
 
 ## Phase 3: Using the Trained Model
@@ -173,7 +173,7 @@ trainKinematicsToPolynomialMap
 
 ```matlab
 % Load the trained model
-model_data = load('kinematics_to_polynomial_model_YYYYMMDD_HHMMSS.mat');
+model_data = load('kinematics_to_torque_model_YYYYMMDD_HHMMSS.mat');
 model = model_data.model;
 ```
 
@@ -190,8 +190,8 @@ desired_kinematics = [
     1.0      % swing_duration (s)
 ];
 
-% Predict polynomial coefficients
-polynomial_coeffs = predictPolynomialFromKinematics(desired_kinematics);
+% Predict joint torques
+joint_torques = predictTorqueFromKinematics(desired_kinematics);
 ```
 
 ### Step 3: Apply to Simulation

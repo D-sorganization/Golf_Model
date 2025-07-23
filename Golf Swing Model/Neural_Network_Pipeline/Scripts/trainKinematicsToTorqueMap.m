@@ -1,16 +1,16 @@
-% trainKinematicsToPolynomialMap.m
-% Trains a neural network to map from desired kinematics to polynomial inputs
+% trainKinematicsToTorqueMap.m
+% Trains a neural network to map from desired kinematics to joint torques
 % 
 % This script:
 % 1. Loads the generated dataset
-% 2. Extracts kinematics (output) and polynomial inputs (target)
+% 2. Extracts kinematics (input) and joint torques (target)
 % 3. Preprocesses the data for neural network training
-% 4. Trains a neural network to predict polynomial coefficients
+% 4. Trains a neural network to predict joint torques from kinematics
 % 5. Evaluates the model and saves the trained network
 
 clear; clc; close all;
 
-fprintf('=== Kinematics to Polynomial Mapping Neural Network ===\n\n');
+fprintf('=== Kinematics to Torque Mapping Neural Network ===\n\n');
 
 %% Configuration
 config = struct();
@@ -43,8 +43,8 @@ config.kinematics_features = {
     'launch_angle'
 };
 
-% Polynomial outputs to predict
-config.polynomial_outputs = {
+% Joint torque outputs to predict
+config.torque_outputs = {
     'hip_torque_x', 'hip_torque_y', 'hip_torque_z'
     'spine_torque_x', 'spine_torque_y'
     'left_shoulder_x', 'left_shoulder_y', 'left_shoulder_z'
@@ -107,7 +107,7 @@ fprintf('\nPreparing training data...\n');
 
 % Initialize data arrays
 X = []; % Kinematics features
-Y = []; % Polynomial coefficients
+Y = []; % Joint torques
 
 % Extract features from each successful simulation
 for i = 1:num_successful
@@ -115,17 +115,16 @@ for i = 1:num_successful
     
     % Get simulation data
     sim_data = dataset.simulations{idx};
-    poly_inputs = dataset.parameters{idx}.polynomial_inputs;
     
-    % Extract kinematics features
+    % Extract kinematics features (input)
     kinematics_features = extractKinematicsFeatures(sim_data, config);
     
-    % Extract polynomial coefficients
-    polynomial_coeffs = extractPolynomialCoefficients(poly_inputs, config);
+    % Extract joint torques (target)
+    joint_torques = extractJointTorques(sim_data, config);
     
     % Add to data arrays
     X = [X; kinematics_features];
-    Y = [Y; polynomial_coeffs];
+    Y = [Y; joint_torques];
     
     % Progress update
     if mod(i, 100) == 0
@@ -134,8 +133,8 @@ for i = 1:num_successful
 end
 
 fprintf('✓ Data preparation complete\n');
-fprintf('Input features: %d\n', size(X, 2));
-fprintf('Output coefficients: %d\n', size(Y, 2));
+fprintf('Input features (kinematics): %d\n', size(X, 2));
+fprintf('Output targets (torques): %d\n', size(Y, 2));
 fprintf('Total samples: %d\n', size(X, 1));
 
 %% Data preprocessing
@@ -248,7 +247,7 @@ fprintf('  Mean R²: %.4f\n', mean(r_squared));
 %% Save the trained model
 fprintf('\nSaving trained model...\n');
 timestamp = datestr(now, 'yyyymmdd_HHMMSS');
-model_filename = sprintf('kinematics_to_polynomial_model_%s.mat', timestamp);
+model_filename = sprintf('kinematics_to_torque_model_%s.mat', timestamp);
 
 % Create model structure
 model = struct();
@@ -386,18 +385,24 @@ end
 
 end
 
-function coeffs = extractPolynomialCoefficients(poly_inputs, config)
-% Extract polynomial coefficients from polynomial inputs
-coeffs = [];
+function torques = extractJointTorques(sim_data, config)
+% Extract joint torques from simulation data
+torques = [];
 
-for i = 1:length(config.polynomial_outputs)
-    output_name = config.polynomial_outputs{i};
+for i = 1:length(config.torque_outputs)
+    torque_name = config.torque_outputs{i};
     
-    if isfield(poly_inputs, output_name)
-        coeffs = [coeffs, poly_inputs.(output_name)];
+    if isfield(sim_data, 'joint_torques') && isfield(sim_data.joint_torques, torque_name)
+        % Extract torque data (use mean over time for now)
+        torque_data = sim_data.joint_torques.(torque_name);
+        if isvector(torque_data)
+            torques = [torques, mean(torque_data)];
+        else
+            torques = [torques, mean(torque_data, 1)];
+        end
     else
-        % Add zeros for missing coefficients
-        coeffs = [coeffs, zeros(1, 5)]; % Assuming 5 coefficients per polynomial
+        % Add zeros for missing torques
+        torques = [torques, 0];
     end
 end
 
@@ -405,19 +410,19 @@ end
 
 function generatePredictionFunction(model, config, timestamp)
 % Generate a standalone prediction function
-func_filename = sprintf('predictPolynomialFromKinematics_%s.m', timestamp);
+func_filename = sprintf('predictTorqueFromKinematics_%s.m', timestamp);
 
 fid = fopen(func_filename, 'w');
 
-fprintf(fid, 'function polynomial_coeffs = predictPolynomialFromKinematics(kinematics_features)\n');
-fprintf(fid, '%% predictPolynomialFromKinematics.m\n');
-fprintf(fid, '%% Predicts polynomial coefficients from kinematics features\n');
+fprintf(fid, 'function joint_torques = predictTorqueFromKinematics(kinematics_features)\n');
+fprintf(fid, '%% predictTorqueFromKinematics.m\n');
+fprintf(fid, '%% Predicts joint torques from kinematics features\n');
 fprintf(fid, '%%\n');
 fprintf(fid, '%% Inputs:\n');
 fprintf(fid, '%%   kinematics_features - Vector of kinematics features\n');
 fprintf(fid, '%%\n');
 fprintf(fid, '%% Outputs:\n');
-fprintf(fid, '%%   polynomial_coeffs - Structure containing polynomial coefficients\n');
+fprintf(fid, '%%   joint_torques - Vector of predicted joint torques\n');
 fprintf(fid, '\n');
 
 % Add preprocessing constants

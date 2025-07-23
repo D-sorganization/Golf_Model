@@ -56,6 +56,10 @@ try
     % Enable Simscape logging
     set_param(model_name, 'SimscapeLogType', 'all');
     
+    % Enable output saving for traditional logging
+    set_param(model_name, 'SaveOutput', 'on');
+    set_param(model_name, 'SaveFormat', 'Dataset');
+    
     % Set simulation timeout
     set_param(model_name, 'SimulationCommand', 'start');
     
@@ -86,10 +90,17 @@ try
     end
     
     % Check if simulation completed successfully
-    if isempty(simOut) || ~isfield(simOut, 'tout') || isempty(simOut.tout)
+    if isempty(simOut)
         success = false;
         error_msg = 'Simulation returned empty results';
         return;
+    end
+    
+    % Check for traditional output (may not exist for Simscape models)
+    if isfield(simOut, 'tout') && ~isempty(simOut.tout)
+        fprintf('✓ Traditional output available\n');
+    else
+        fprintf('⚠ No traditional output (expected for Simscape models)\n');
     end
     
     % Check for simulation errors
@@ -99,23 +110,25 @@ try
         return;
     end
     
-    % Check if simulation ran for expected duration
-    expected_duration = str2double(get_param(model_name, 'StopTime'));
-    actual_duration = simOut.tout(end);
-    
-    if actual_duration < expected_duration * 0.8
-        success = false;
-        error_msg = sprintf('Simulation ended early: %.2f s (expected %.2f s)', ...
-                           actual_duration, expected_duration);
-        return;
-    end
-    
-    % Check for excessive simulation time (safety check)
-    if actual_duration > expected_duration * 1.5
-        success = false;
-        error_msg = sprintf('Simulation ran too long: %.2f s (expected %.2f s)', ...
-                           actual_duration, expected_duration);
-        return;
+    % Check if simulation ran for expected duration (if traditional output available)
+    if isfield(simOut, 'tout') && ~isempty(simOut.tout)
+        expected_duration = str2double(get_param(model_name, 'StopTime'));
+        actual_duration = simOut.tout(end);
+        
+        if actual_duration < expected_duration * 0.8
+            success = false;
+            error_msg = sprintf('Simulation ended early: %.2f s (expected %.2f s)', ...
+                               actual_duration, expected_duration);
+            return;
+        end
+        
+        % Check for excessive simulation time (safety check)
+        if actual_duration > expected_duration * 1.5
+            success = false;
+            error_msg = sprintf('Simulation ran too long: %.2f s (expected %.2f s)', ...
+                               actual_duration, expected_duration);
+            return;
+        end
     end
     
     fprintf('✓ Simulation completed successfully in %.2f seconds\n', sim_time);

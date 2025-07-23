@@ -133,7 +133,7 @@ if pipeline_config.run_neural_network_training
         
         % Train neural network
         fprintf('Starting neural network training...\n');
-        trainKinematicsToPolynomialMap;
+        trainKinematicsToTorqueMap;
         
         fprintf('✓ Neural network training completed successfully\n');
         
