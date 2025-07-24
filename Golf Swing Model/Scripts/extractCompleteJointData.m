@@ -2,7 +2,6 @@
 % Extract complete joint data from both logsout and individual signal bus structs
 % This captures ALL joint parameters including torques, positions, velocities, etc.
 
-clear; clc;
 
 fprintf('=== Extract Complete Joint Data ===\n\n');
 fprintf('This script will extract data from:\n');
@@ -167,8 +166,84 @@ fprintf('  Found log structs: %s\n', strjoin(foundLogStructs, ', '));
 fprintf('  Total fields extracted: %d\n', length(fieldnames(signalBusData)));
 fprintf('  Torque-related fields: %d\n', signalBusTorqueCount);
 
-%% Step 4: Analyze all torque data
-fprintf('\n--- Step 4: Analyze all torque data ---\n');
+%% Step 4: Extract Simscape Results Explorer data
+fprintf('\n--- Step 4: Extract Simscape Results Explorer data ---\n');
+
+simscapeData = struct();
+simscapeTorqueCount = 0;
+
+if isfield(out, 'simlog')
+    fprintf('✓ Found out.simlog (Simscape data)\n');
+    simlog = out.simlog;
+    fprintf('  Type: %s\n', class(simlog));
+    
+    % Extract Simscape data
+    if isa(simlog, 'simscape.logging.Node')
+        fprintf('  Extracting Simscape node data...\n');
+        
+        % Get all child nodes (joints, bodies, etc.)
+        childNodes = simlog.Children;
+        fprintf('  Found %d child nodes\n', length(childNodes));
+        
+        for i = 1:length(childNodes)
+            childNode = childNodes(i);
+            nodeName = childNode.Name;
+            fprintf('  Processing node: %s\n', nodeName);
+            
+            % Look for joint-related nodes
+            if contains(lower(nodeName), {'joint', 'actuator', 'motor', 'drive'})
+                fprintf('    ✓ Joint-related node found\n');
+                
+                % Get all signals in this node
+                signals = childNode.Children;
+                fprintf('    Signals: %d\n', length(signals));
+                
+                for j = 1:length(signals)
+                    signal = signals(j);
+                    signalName = signal.Name;
+                    fullSignalName = sprintf('%s.%s', nodeName, signalName);
+                    
+                    try
+                        % Get signal data
+                        if hasData(signal)
+                            [data, time] = getData(signal);
+                            
+                            simscapeData.(fullSignalName) = struct('data', data, 'time', time);
+                            
+                            % Check if it's torque-related
+                            if contains(lower(signalName), {'torque', 'tau', 'actuator', 'force', 'moment'}) || ...
+                               contains(lower(signalName), {'joint', 'motor', 'drive'})
+                                simscapeTorqueCount = simscapeTorqueCount + 1;
+                                fprintf('      ✓ Torque signal: %s (%d time points)\n', signalName, length(time));
+                            else
+                                fprintf('      ✓ Signal: %s (%d time points)\n', signalName, length(time));
+                            end
+                        else
+                            fprintf('      ✗ No data in signal: %s\n', signalName);
+                        end
+                        
+                    catch ME
+                        fprintf('      ✗ Error extracting signal %s: %s\n', signalName, ME.message);
+                    end
+                end
+            else
+                fprintf('    - Non-joint node: %s\n', nodeName);
+            end
+        end
+        
+        fprintf('\nSimscape extraction complete:\n');
+        fprintf('  Total signals: %d\n', length(fieldnames(simscapeData)));
+        fprintf('  Torque-related signals: %d\n', simscapeTorqueCount);
+        
+    else
+        fprintf('✗ simlog is not a simscape.logging.Node\n');
+    end
+else
+    fprintf('✗ out.simlog not found\n');
+end
+
+%% Step 5: Analyze all torque data
+fprintf('\n--- Step 5: Analyze all torque data ---\n');
 
 totalTorqueCount = logsoutTorqueCount + signalBusTorqueCount + simscapeTorqueCount;
 
@@ -263,82 +338,6 @@ if totalTorqueCount > 0
     
 else
     fprintf('⚠️  No torque-related signals found\n');
-end
-
-%% Step 5: Extract Simscape Results Explorer data
-fprintf('\n--- Step 5: Extract Simscape Results Explorer data ---\n');
-
-simscapeData = struct();
-simscapeTorqueCount = 0;
-
-if isfield(out, 'simlog')
-    fprintf('✓ Found out.simlog (Simscape data)\n');
-    simlog = out.simlog;
-    fprintf('  Type: %s\n', class(simlog));
-    
-    % Extract Simscape data
-    if isa(simlog, 'simscape.logging.Node')
-        fprintf('  Extracting Simscape node data...\n');
-        
-        % Get all child nodes (joints, bodies, etc.)
-        childNodes = simlog.Children;
-        fprintf('  Found %d child nodes\n', length(childNodes));
-        
-        for i = 1:length(childNodes)
-            childNode = childNodes(i);
-            nodeName = childNode.Name;
-            fprintf('  Processing node: %s\n', nodeName);
-            
-            % Look for joint-related nodes
-            if contains(lower(nodeName), {'joint', 'actuator', 'motor', 'drive'})
-                fprintf('    ✓ Joint-related node found\n');
-                
-                % Get all signals in this node
-                signals = childNode.Children;
-                fprintf('    Signals: %d\n', length(signals));
-                
-                for j = 1:length(signals)
-                    signal = signals(j);
-                    signalName = signal.Name;
-                    fullSignalName = sprintf('%s.%s', nodeName, signalName);
-                    
-                    try
-                        % Get signal data
-                        if hasData(signal)
-                            [data, time] = getData(signal);
-                            
-                            simscapeData.(fullSignalName) = struct('data', data, 'time', time);
-                            
-                            % Check if it's torque-related
-                            if contains(lower(signalName), {'torque', 'tau', 'actuator', 'force', 'moment'}) || ...
-                               contains(lower(signalName), {'joint', 'motor', 'drive'})
-                                simscapeTorqueCount = simscapeTorqueCount + 1;
-                                fprintf('      ✓ Torque signal: %s (%d time points)\n', signalName, length(time));
-                            else
-                                fprintf('      ✓ Signal: %s (%d time points)\n', signalName, length(time));
-                            end
-                        else
-                            fprintf('      ✗ No data in signal: %s\n', signalName);
-                        end
-                        
-                    catch ME
-                        fprintf('      ✗ Error extracting signal %s: %s\n', signalName, ME.message);
-                    end
-                end
-            else
-                fprintf('    - Non-joint node: %s\n', nodeName);
-            end
-        end
-        
-        fprintf('\nSimscape extraction complete:\n');
-        fprintf('  Total signals: %d\n', length(fieldnames(simscapeData)));
-        fprintf('  Torque-related signals: %d\n', simscapeTorqueCount);
-        
-    else
-        fprintf('✗ simlog is not a simscape.logging.Node\n');
-    end
-else
-    fprintf('✗ out.simlog not found\n');
 end
 
 %% Step 6: Check time vector
