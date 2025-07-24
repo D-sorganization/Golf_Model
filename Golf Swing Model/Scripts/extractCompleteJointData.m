@@ -378,9 +378,6 @@ try
     else
         fprintf('✗ simlog is not a simscape.logging.Node\n');
     end
-else
-    fprintf('✗ out.simlog not found\n');
-end
 catch ME
     fprintf('✗ Error accessing out.simlog: %s\n', ME.message);
 end
