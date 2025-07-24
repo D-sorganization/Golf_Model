@@ -281,9 +281,6 @@ for i = 1:length(expectedLogStructs)
         else
             fprintf('  ✗ %s is not a struct\n', structName);
         end
-    else
-        fprintf('✗ %s not found\n', structName);
-    end
     catch ME
         fprintf('✗ Error accessing %s: %s\n', structName, ME.message);
     end
