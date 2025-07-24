@@ -26,6 +26,42 @@ if ~exist('out', 'var')
 else
     fprintf('✓ Found variable ''out'' in workspace\n');
     fprintf('  Type: %s\n', class(out));
+    
+    % Debug: Check what fields are actually in out
+    fprintf('  Fields in out:\n');
+    if isstruct(out)
+        fields = fieldnames(out);
+        for i = 1:length(fields)
+            fprintf('    %d: %s\n', i, fields{i});
+        end
+    elseif isa(out, 'Simulink.SimulationOutput')
+        fprintf('    Simulink.SimulationOutput object\n');
+        % Try to get the actual data
+        try
+            simOut = out;
+            fprintf('    SimOut fields:\n');
+            if isfield(simOut, 'out')
+                fprintf('      ✓ out field found\n');
+            end
+            if isfield(simOut, 'logsout')
+                fprintf('      ✓ logsout field found\n');
+            end
+            if isfield(simOut, 'simlog')
+                fprintf('      ✓ simlog field found\n');
+            end
+            if isfield(simOut, 'tout')
+                fprintf('      ✓ tout field found\n');
+            end
+            if isfield(simOut, 'simulationMetadata')
+                fprintf('      ✓ simulationMetadata field found\n');
+            end
+            if isfield(simOut, 'ErrorMessage')
+                fprintf('      ✓ ErrorMessage field found\n');
+            end
+        catch ME
+            fprintf('    Error accessing SimOut fields: %s\n', ME.message);
+        end
+    end
 end
 
 %% Step 2: Extract data from logsout (main signals)
@@ -34,10 +70,24 @@ fprintf('\n--- Step 2: Extract from out.logsout ---\n');
 logsoutData = struct();
 logsoutTorqueCount = 0;
 
-if isfield(out, 'logsout') && ~isempty(out.logsout)
-    logsout = out.logsout;
-    fprintf('✓ Found out.logsout\n');
-    fprintf('  Type: %s\n', class(logsout));
+% Try different possible field names
+possibleLogsoutFields = {'logsout', 'out', 'simlog'};
+logsoutFound = false;
+
+for fieldIdx = 1:length(possibleLogsoutFields)
+    fieldName = possibleLogsoutFields{fieldIdx};
+    if isfield(out, fieldName) && ~isempty(out.(fieldName))
+        fprintf('✓ Found out.%s\n', fieldName);
+        logsout = out.(fieldName);
+        fprintf('  Type: %s\n', class(logsout));
+        logsoutFound = true;
+        break;
+    end
+end
+
+if ~logsoutFound
+    fprintf('✗ No logsout data found in any expected field\n');
+else
     
     if isa(logsout, 'Simulink.SimulationData.Dataset')
         fprintf('  Elements: %d\n', logsout.numElements);
@@ -246,6 +296,9 @@ end
 fprintf('\n--- Step 5: Analyze all torque data ---\n');
 
 totalTorqueCount = logsoutTorqueCount + signalBusTorqueCount + simscapeTorqueCount;
+
+% Initialize allTorqueData to avoid scope issues
+allTorqueData = struct();
 
 if totalTorqueCount > 0
     fprintf('✅ SUCCESS: Found %d total torque-related signals!\n\n', totalTorqueCount);
