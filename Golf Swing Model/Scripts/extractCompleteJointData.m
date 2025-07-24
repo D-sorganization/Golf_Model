@@ -458,56 +458,67 @@ catch ME
     fprintf('✗ Error accessing out.tout: %s\n', ME.message);
 end
 
-%% Step 7: Save extracted data
-fprintf('\n--- Step 7: Save extracted data ---\n');
+%% Step 7: Save extracted data (optional)
+fprintf('\n--- Step 7: Save extracted data (optional) ---\n');
 
-try
-    % Save with timestamp
-    timestamp = datestr(now, 'yyyymmdd_HHMMSS');
-    filename = sprintf('complete_joint_data_%s.mat', timestamp);
-    save(filename, 'logsoutData', 'signalBusData', 'simscapeData', 'allTorqueData', 'out');
-    
-    fprintf('✓ Complete joint data saved to: %s\n', filename);
-    fprintf('✓ Contains: logsoutData, signalBusData, simscapeData, allTorqueData, out\n');
-    
-    % Save summary
-    summaryFilename = sprintf('complete_joint_data_summary_%s.txt', timestamp);
-    fid = fopen(summaryFilename, 'w');
-    if fid ~= -1
-        fprintf(fid, 'Complete Joint Data Extraction Summary\n');
-        fprintf(fid, '=====================================\n\n');
-        fprintf(fid, 'Timestamp: %s\n', timestamp);
-        fprintf(fid, 'Data sources: out.logsout + signal bus structs\n');
-        fprintf(fid, '\nLogsout data:\n');
-        fprintf(fid, '  Total signals: %d\n', length(fieldnames(logsoutData)));
-        fprintf(fid, '  Torque-related signals: %d\n', logsoutTorqueCount);
+% Ask user if they want to save files
+saveFiles = input('Save extracted data to files? (y/n, default: n): ', 's');
+if isempty(saveFiles)
+    saveFiles = 'n';
+end
+
+if lower(saveFiles) == 'y'
+    try
+        % Save with timestamp
+        timestamp = datestr(now, 'yyyymmdd_HHMMSS');
+        filename = sprintf('complete_joint_data_%s.mat', timestamp);
+        save(filename, 'logsoutData', 'signalBusData', 'simscapeData', 'allTorqueData', 'out');
         
-        fprintf(fid, '\nSignal bus data:\n');
-        fprintf(fid, '  Found log structs: %s\n', strjoin(foundLogStructs, ', '));
-        fprintf(fid, '  Total fields: %d\n', length(fieldnames(signalBusData)));
-        fprintf(fid, '  Torque-related fields: %d\n', signalBusTorqueCount);
+        fprintf('✓ Complete joint data saved to: %s\n', filename);
+        fprintf('✓ Contains: logsoutData, signalBusData, simscapeData, allTorqueData, out\n');
         
-        fprintf(fid, '\nSimscape data:\n');
-        fprintf(fid, '  Total signals: %d\n', length(fieldnames(simscapeData)));
-        fprintf(fid, '  Torque-related signals: %d\n', simscapeTorqueCount);
-        
-        fprintf(fid, '\nCombined torque data:\n');
-        fprintf(fid, '  Total torque signals: %d\n', totalTorqueCount);
-        
-        if totalTorqueCount > 0
-            fprintf(fid, '\nAll torque signals:\n');
-            torqueFields = fieldnames(allTorqueData);
-            for i = 1:length(torqueFields)
-                fprintf(fid, '  %d: %s\n', i, torqueFields{i});
+        % Save summary
+        summaryFilename = sprintf('complete_joint_data_summary_%s.txt', timestamp);
+        fid = fopen(summaryFilename, 'w');
+        if fid ~= -1
+            fprintf(fid, 'Complete Joint Data Extraction Summary\n');
+            fprintf(fid, '=====================================\n\n');
+            fprintf(fid, 'Timestamp: %s\n', timestamp);
+            fprintf(fid, 'Data sources: out.logsout + signal bus structs\n');
+            fprintf(fid, '\nLogsout data:\n');
+            fprintf(fid, '  Total signals: %d\n', length(fieldnames(logsoutData)));
+            fprintf(fid, '  Torque-related signals: %d\n', logsoutTorqueCount);
+            
+            fprintf(fid, '\nSignal bus data:\n');
+            fprintf(fid, '  Found log structs: %s\n', strjoin(foundLogStructs, ', '));
+            fprintf(fid, '  Total fields: %d\n', length(fieldnames(signalBusData)));
+            fprintf(fid, '  Torque-related fields: %d\n', signalBusTorqueCount);
+            
+            fprintf(fid, '\nSimscape data:\n');
+            fprintf(fid, '  Total signals: %d\n', length(fieldnames(simscapeData)));
+            fprintf(fid, '  Torque-related signals: %d\n', simscapeTorqueCount);
+            
+            fprintf(fid, '\nCombined torque data:\n');
+            fprintf(fid, '  Total torque signals: %d\n', totalTorqueCount);
+            
+            if totalTorqueCount > 0
+                fprintf(fid, '\nAll torque signals:\n');
+                torqueFields = fieldnames(allTorqueData);
+                for i = 1:length(torqueFields)
+                    fprintf(fid, '  %d: %s\n', i, torqueFields{i});
+                end
             end
+            
+            fclose(fid);
+            fprintf('✓ Summary saved to: %s\n', summaryFilename);
         end
         
-        fclose(fid);
-        fprintf('✓ Summary saved to: %s\n', summaryFilename);
+    catch ME
+        fprintf('✗ Error saving data: %s\n', ME.message);
     end
-    
-catch ME
-    fprintf('✗ Error saving data: %s\n', ME.message);
+else
+    fprintf('✓ Skipping file save - data remains in workspace variables\n');
+    fprintf('  Available variables: logsoutData, signalBusData, simscapeData, allTorqueData\n');
 end
 
 %% Step 8: Summary
@@ -543,11 +554,44 @@ else
 end
 
 fprintf('\n📋 NEXT STEPS:\n');
-fprintf('1. Check the saved files for detailed data analysis\n');
-fprintf('2. Use logsoutData for main signals\n');
-fprintf('3. Use signalBusData for joint-specific parameters\n');
-fprintf('4. Use simscapeData for Simscape joint data\n');
-fprintf('5. Use allTorqueData for all torque-related signals\n');
-fprintf('6. Analyze specific joint torques as needed\n');
+fprintf('1. Use logsoutData for main signals\n');
+fprintf('2. Use signalBusData for joint-specific parameters\n');
+fprintf('3. Use simscapeData for Simscape joint data\n');
+fprintf('4. Use allTorqueData for all torque-related signals\n');
+fprintf('5. Analyze specific joint torques as needed\n');
+
+%% Step 9: Cleanup (optional)
+fprintf('\n--- Step 9: Cleanup (optional) ---\n');
+
+% Ask user if they want to clean up temporary variables
+cleanupVars = input('Clean up temporary variables? (y/n, default: n): ', 's');
+if isempty(cleanupVars)
+    cleanupVars = 'n';
+end
+
+if lower(cleanupVars) == 'y'
+    % List of temporary variables to clean up
+    tempVars = {'logsoutTorqueCount', 'signalBusTorqueCount', 'simscapeTorqueCount', ...
+                'totalTorqueCount', 'foundLogStructs', 'possibleLogsoutFields', ...
+                'logsoutFound', 'fieldIdx', 'fieldName', 'logsout', 'i', 'j', ...
+                'element', 'signalName', 'data', 'time', 'structName', 'logStruct', ...
+                'structFields', 'fieldData', 'fullFieldName', 'simlog', 'childNodes', ...
+                'childNode', 'nodeName', 'signals', 'signal', 'fullSignalName', ...
+                'torqueFields', 'joint', 'jointName', 'foundTorques', 'tout', ...
+                'timestamp', 'filename', 'summaryFilename', 'fid', 'saveFiles', ...
+                'cleanupVars', 'tempVars'};
+    
+    % Clean up temporary variables
+    for i = 1:length(tempVars)
+        if exist(tempVars{i}, 'var')
+            clear(tempVars{i});
+        end
+    end
+    
+    fprintf('✓ Temporary variables cleaned up\n');
+    fprintf('✓ Kept: logsoutData, signalBusData, simscapeData, allTorqueData, out\n');
+else
+    fprintf('✓ Keeping all variables in workspace\n');
+end
 
 fprintf('\n=== Complete Joint Data Extraction Complete ===\n'); 
