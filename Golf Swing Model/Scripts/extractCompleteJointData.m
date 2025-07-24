@@ -116,12 +116,25 @@ logsoutFound = false;
 for fieldIdx = 1:length(possibleLogsoutFields)
     fieldName = possibleLogsoutFields{fieldIdx};
     try
-        if isfield(out, fieldName) && ~isempty(out.(fieldName))
-            fprintf('✓ Found out.%s\n', fieldName);
-            logsout = out.(fieldName);
-            fprintf('  Type: %s\n', class(logsout));
-            logsoutFound = true;
-            break;
+        % For Simulink.SimulationOutput objects, we need to access properties differently
+        if isa(out, 'Simulink.SimulationOutput')
+            % Try to access the property directly
+            if ~isempty(out.(fieldName))
+                fprintf('✓ Found out.%s\n', fieldName);
+                logsout = out.(fieldName);
+                fprintf('  Type: %s\n', class(logsout));
+                logsoutFound = true;
+                break;
+            end
+        else
+            % For regular structs
+            if isfield(out, fieldName) && ~isempty(out.(fieldName))
+                fprintf('✓ Found out.%s\n', fieldName);
+                logsout = out.(fieldName);
+                fprintf('  Type: %s\n', class(logsout));
+                logsoutFound = true;
+                break;
+            end
         end
     catch ME
         fprintf('  ✗ Error accessing out.%s: %s\n', fieldName, ME.message);
@@ -186,12 +199,32 @@ for i = 1:length(expectedLogStructs)
     structName = expectedLogStructs{i};
     
     try
-        if isfield(out, structName)
-            fprintf('✓ Found %s\n', structName);
-            foundLogStructs{end+1} = structName;
-            
-            % Get the struct
-            logStruct = out.(structName);
+        % For Simulink.SimulationOutput objects, we need to access properties differently
+        if isa(out, 'Simulink.SimulationOutput')
+            % Try to access the property directly
+            if ~isempty(out.(structName))
+                fprintf('✓ Found %s\n', structName);
+                foundLogStructs{end+1} = structName;
+                
+                % Get the struct
+                logStruct = out.(structName);
+            else
+                fprintf('✗ %s not found or empty\n', structName);
+                continue;
+            end
+        else
+            % For regular structs
+            if isfield(out, structName)
+                fprintf('✓ Found %s\n', structName);
+                foundLogStructs{end+1} = structName;
+                
+                % Get the struct
+                logStruct = out.(structName);
+            else
+                fprintf('✗ %s not found\n', structName);
+                continue;
+            end
+        end
         
         if isstruct(logStruct)
             % Get all fields in this struct
@@ -268,10 +301,24 @@ simscapeData = struct();
 simscapeTorqueCount = 0;
 
 try
-    if isfield(out, 'simlog')
-        fprintf('✓ Found out.simlog (Simscape data)\n');
-        simlog = out.simlog;
-        fprintf('  Type: %s\n', class(simlog));
+    % For Simulink.SimulationOutput objects, we need to access properties differently
+    if isa(out, 'Simulink.SimulationOutput')
+        if ~isempty(out.simlog)
+            fprintf('✓ Found out.simlog (Simscape data)\n');
+            simlog = out.simlog;
+            fprintf('  Type: %s\n', class(simlog));
+        else
+            fprintf('✗ out.simlog not found or empty\n');
+        end
+    else
+        if isfield(out, 'simlog')
+            fprintf('✓ Found out.simlog (Simscape data)\n');
+            simlog = out.simlog;
+            fprintf('  Type: %s\n', class(simlog));
+        else
+            fprintf('✗ out.simlog not found\n');
+        end
+    end
     
     % Extract Simscape data
     if isa(simlog, 'simscape.logging.Node')
@@ -446,13 +493,25 @@ end
 fprintf('\n--- Step 6: Check time vector ---\n');
 
 try
-    if isfield(out, 'tout')
-        fprintf('✓ Found out.tout (time vector)\n');
-        tout = out.tout;
-        fprintf('  Size: %s\n', mat2str(size(tout)));
-        fprintf('  Time range: [%.3g, %.3g] seconds\n', tout(1), tout(end));
+    % For Simulink.SimulationOutput objects, we need to access properties differently
+    if isa(out, 'Simulink.SimulationOutput')
+        if ~isempty(out.tout)
+            fprintf('✓ Found out.tout (time vector)\n');
+            tout = out.tout;
+            fprintf('  Size: %s\n', mat2str(size(tout)));
+            fprintf('  Time range: [%.3g, %.3g] seconds\n', tout(1), tout(end));
+        else
+            fprintf('✗ out.tout not found or empty\n');
+        end
     else
-        fprintf('✗ out.tout not found\n');
+        if isfield(out, 'tout')
+            fprintf('✓ Found out.tout (time vector)\n');
+            tout = out.tout;
+            fprintf('  Size: %s\n', mat2str(size(tout)));
+            fprintf('  Time range: [%.3g, %.3g] seconds\n', tout(1), tout(end));
+        else
+            fprintf('✗ out.tout not found\n');
+        end
     end
 catch ME
     fprintf('✗ Error accessing out.tout: %s\n', ME.message);
