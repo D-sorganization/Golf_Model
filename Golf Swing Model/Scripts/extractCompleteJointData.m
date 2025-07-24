@@ -354,8 +354,8 @@ try
         
         if ~isempty(childNodes)
             fprintf('  Found %d child nodes\n', length(childNodes));
-        
-        for i = 1:length(childNodes)
+            
+            for i = 1:length(childNodes)
             childNode = childNodes(i);
             nodeName = childNode.Name;
             fprintf('  Processing node: %s\n', nodeName);
@@ -399,6 +399,7 @@ try
             else
                 fprintf('    - Non-joint node: %s\n', nodeName);
             end
+        end
         end
         
         fprintf('\nSimscape extraction complete:\n');
