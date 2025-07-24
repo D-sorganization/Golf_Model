@@ -6,10 +6,18 @@ clear; clc;
 fprintf('=== Exporting Dataset to CSV ===\n\n');
 
 % Find the most recent dataset file
-files = dir('test_dataset_*.mat');
+files = dir('golf_swing_dataset_*.mat');
 if isempty(files)
-    fprintf('No dataset files found\n');
-    return;
+    % Try alternative naming patterns
+    files = dir('test_dataset_*.mat');
+    if isempty(files)
+        files = dir('*dataset*.mat');
+        if isempty(files)
+            fprintf('No dataset files found\n');
+            fprintf('Looking for files with patterns: golf_swing_dataset_*.mat, test_dataset_*.mat, *dataset*.mat\n');
+            return;
+        end
+    end
 end
 
 % Sort by date and get the most recent
@@ -20,7 +28,7 @@ fprintf('Loading dataset: %s\n', latest_file);
 load(latest_file);
 
 % Find the most recent training data file
-files = dir('test_training_data_*.mat');
+files = dir('*training_data_*.mat');
 if ~isempty(files)
     [~, idx] = sort([files.datenum], 'descend');
     latest_training_file = files(idx(1)).name;

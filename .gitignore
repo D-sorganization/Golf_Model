@@ -12,4 +12,7 @@
 **/modeladvisor/**/*.slx
 
 # Other temporary files
-**/.MATLABDriveTag 
+**/.MATLABDriveTag
+
+# Simulation output data (large files, don't track in git)
+**/SimulationOutputData/ 
