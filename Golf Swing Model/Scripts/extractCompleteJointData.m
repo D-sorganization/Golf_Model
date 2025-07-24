@@ -115,12 +115,16 @@ logsoutFound = false;
 
 for fieldIdx = 1:length(possibleLogsoutFields)
     fieldName = possibleLogsoutFields{fieldIdx};
-    if isfield(out, fieldName) && ~isempty(out.(fieldName))
-        fprintf('✓ Found out.%s\n', fieldName);
-        logsout = out.(fieldName);
-        fprintf('  Type: %s\n', class(logsout));
-        logsoutFound = true;
-        break;
+    try
+        if isfield(out, fieldName) && ~isempty(out.(fieldName))
+            fprintf('✓ Found out.%s\n', fieldName);
+            logsout = out.(fieldName);
+            fprintf('  Type: %s\n', class(logsout));
+            logsoutFound = true;
+            break;
+        end
+    catch ME
+        fprintf('  ✗ Error accessing out.%s: %s\n', fieldName, ME.message);
     end
 end
 
@@ -181,12 +185,13 @@ foundLogStructs = {};
 for i = 1:length(expectedLogStructs)
     structName = expectedLogStructs{i};
     
-    if isfield(out, structName)
-        fprintf('✓ Found %s\n', structName);
-        foundLogStructs{end+1} = structName;
-        
-        % Get the struct
-        logStruct = out.(structName);
+    try
+        if isfield(out, structName)
+            fprintf('✓ Found %s\n', structName);
+            foundLogStructs{end+1} = structName;
+            
+            % Get the struct
+            logStruct = out.(structName);
         
         if isstruct(logStruct)
             % Get all fields in this struct
@@ -246,6 +251,9 @@ for i = 1:length(expectedLogStructs)
     else
         fprintf('✗ %s not found\n', structName);
     end
+    catch ME
+        fprintf('✗ Error accessing %s: %s\n', structName, ME.message);
+    end
 end
 
 fprintf('\nSignal bus extraction complete:\n');
@@ -259,10 +267,11 @@ fprintf('\n--- Step 4: Extract Simscape Results Explorer data ---\n');
 simscapeData = struct();
 simscapeTorqueCount = 0;
 
-if isfield(out, 'simlog')
-    fprintf('✓ Found out.simlog (Simscape data)\n');
-    simlog = out.simlog;
-    fprintf('  Type: %s\n', class(simlog));
+try
+    if isfield(out, 'simlog')
+        fprintf('✓ Found out.simlog (Simscape data)\n');
+        simlog = out.simlog;
+        fprintf('  Type: %s\n', class(simlog));
     
     % Extract Simscape data
     if isa(simlog, 'simscape.logging.Node')
@@ -327,6 +336,9 @@ if isfield(out, 'simlog')
     end
 else
     fprintf('✗ out.simlog not found\n');
+end
+catch ME
+    fprintf('✗ Error accessing out.simlog: %s\n', ME.message);
 end
 
 %% Step 5: Analyze all torque data
@@ -433,13 +445,17 @@ end
 %% Step 6: Check time vector
 fprintf('\n--- Step 6: Check time vector ---\n');
 
-if isfield(out, 'tout')
-    fprintf('✓ Found out.tout (time vector)\n');
-    tout = out.tout;
-    fprintf('  Size: %s\n', mat2str(size(tout)));
-    fprintf('  Time range: [%.3g, %.3g] seconds\n', tout(1), tout(end));
-else
-    fprintf('✗ out.tout not found\n');
+try
+    if isfield(out, 'tout')
+        fprintf('✓ Found out.tout (time vector)\n');
+        tout = out.tout;
+        fprintf('  Size: %s\n', mat2str(size(tout)));
+        fprintf('  Time range: [%.3g, %.3g] seconds\n', tout(1), tout(end));
+    else
+        fprintf('✗ out.tout not found\n');
+    end
+catch ME
+    fprintf('✗ Error accessing out.tout: %s\n', ME.message);
 end
 
 %% Step 7: Save extracted data
