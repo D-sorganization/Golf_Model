@@ -40,6 +40,12 @@ else
         try
             simOut = out;
             fprintf('    SimOut fields:\n');
+            
+            % Get all properties of the Simulink.SimulationOutput object
+            props = properties(simOut);
+            fprintf('      Properties: %s\n', strjoin(props, ', '));
+            
+            % Check specific fields
             if isfield(simOut, 'out')
                 fprintf('      ✓ out field found\n');
             end
@@ -58,6 +64,39 @@ else
             if isfield(simOut, 'ErrorMessage')
                 fprintf('      ✓ ErrorMessage field found\n');
             end
+            
+            % Try to access the data directly
+            fprintf('    Trying to access data directly:\n');
+            try
+                if ~isempty(simOut.out)
+                    fprintf('      ✓ simOut.out has data\n');
+                else
+                    fprintf('      ✗ simOut.out is empty\n');
+                end
+            catch ME
+                fprintf('      ✗ Error accessing simOut.out: %s\n', ME.message);
+            end
+            
+            try
+                if ~isempty(simOut.logsout)
+                    fprintf('      ✓ simOut.logsout has data\n');
+                else
+                    fprintf('      ✗ simOut.logsout is empty\n');
+                end
+            catch ME
+                fprintf('      ✗ Error accessing simOut.logsout: %s\n', ME.message);
+            end
+            
+            try
+                if ~isempty(simOut.simlog)
+                    fprintf('      ✓ simOut.simlog has data\n');
+                else
+                    fprintf('      ✗ simOut.simlog is empty\n');
+                end
+            catch ME
+                fprintf('      ✗ Error accessing simOut.simlog: %s\n', ME.message);
+            end
+            
         catch ME
             fprintf('    Error accessing SimOut fields: %s\n', ME.message);
         end
