@@ -122,8 +122,6 @@ else
     else
         fprintf('✗ logsout is not a Dataset\n');
     end
-else
-    fprintf('✗ out.logsout not found or empty\n');
 end
 
 %% Step 3: Extract data from individual signal bus structs
