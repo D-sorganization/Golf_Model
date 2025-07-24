@@ -153,7 +153,20 @@ else
             try
                 element = logsout.getElement(i);
                 signalName = element.Name;
-                [data, time] = element.getData;
+                
+                % Get data from Simulink.SimulationData.Signal
+                if isa(element, 'Simulink.SimulationData.Signal')
+                    data = element.Values.Data;
+                    time = element.Values.Time;
+                else
+                    % Try alternative methods
+                    try
+                        [data, time] = element.getData;
+                    catch
+                        data = element.Data;
+                        time = element.Time;
+                    end
+                end
                 
                 logsoutData.(signalName) = struct('data', data, 'time', time);
                 
@@ -231,13 +244,14 @@ for i = 1:length(expectedLogStructs)
             structFields = fieldnames(logStruct);
             fprintf('  Fields: %s\n', strjoin(structFields, ', '));
             
-            % Extract each field
-            for j = 1:length(structFields)
-                fieldName = structFields{j};
-                fullFieldName = sprintf('%s.%s', structName, fieldName);
-                
-                try
-                    fieldData = logStruct.(fieldName);
+                            % Extract each field
+                for j = 1:length(structFields)
+                    fieldName = structFields{j};
+                    % Create a valid field name for the struct
+                    fullFieldName = sprintf('%s_%s', structName, fieldName);
+                    
+                    try
+                        fieldData = logStruct.(fieldName);
                     
                     % Check if it's a timeseries or has time data
                     if isa(fieldData, 'timeseries')
@@ -322,8 +336,24 @@ try
         fprintf('  Extracting Simscape node data...\n');
         
         % Get all child nodes (joints, bodies, etc.)
-        childNodes = simlog.Children;
-        fprintf('  Found %d child nodes\n', length(childNodes));
+        try
+            childNodes = simlog.Children;
+        catch
+            % Try alternative property names
+            try
+                childNodes = simlog.children;
+            catch
+                try
+                    childNodes = simlog.Nodes;
+                catch
+                    fprintf('  ✗ Cannot access child nodes from simlog\n');
+                    childNodes = [];
+                end
+            end
+        end
+        
+        if ~isempty(childNodes)
+            fprintf('  Found %d child nodes\n', length(childNodes));
         
         for i = 1:length(childNodes)
             childNode = childNodes(i);
