@@ -542,16 +542,11 @@ catch ME
     fprintf('✗ Error accessing out.tout: %s\n', ME.message);
 end
 
-%% Step 7: Save extracted data (optional)
-fprintf('\n--- Step 7: Save extracted data (optional) ---\n');
+%% Step 7: Save extracted data
+fprintf('\n--- Step 7: Save extracted data ---\n');
 
-% Ask user if they want to save files
-saveFiles = input('Save extracted data to files? (y/n, default: n): ', 's');
-if isempty(saveFiles)
-    saveFiles = 'n';
-end
-
-if lower(saveFiles) == 'y'
+% Automatically save files without asking
+saveFiles = 'y';
     try
         % Save with timestamp
         timestamp = datestr(now, 'yyyymmdd_HHMMSS');
@@ -644,16 +639,11 @@ fprintf('3. Use simscapeData for Simscape joint data\n');
 fprintf('4. Use allTorqueData for all torque-related signals\n');
 fprintf('5. Analyze specific joint torques as needed\n');
 
-%% Step 9: Cleanup (optional)
-fprintf('\n--- Step 9: Cleanup (optional) ---\n');
+%% Step 9: Cleanup
+fprintf('\n--- Step 9: Cleanup ---\n');
 
-% Ask user if they want to clean up temporary variables
-cleanupVars = input('Clean up temporary variables? (y/n, default: n): ', 's');
-if isempty(cleanupVars)
-    cleanupVars = 'n';
-end
-
-if lower(cleanupVars) == 'y'
+% Automatically clean up temporary variables without asking
+cleanupVars = 'y';
     % List of temporary variables to clean up
     tempVars = {'logsoutTorqueCount', 'signalBusTorqueCount', 'simscapeTorqueCount', ...
                 'totalTorqueCount', 'foundLogStructs', 'possibleLogsoutFields', ...

@@ -100,6 +100,35 @@ end
 
 fprintf('\n=== Dataset Compilation Complete ===\n');
 
+%% Cleanup workspace
+fprintf('\n--- Cleaning up workspace ---\n');
+
+% Save output file names before cleanup
+output_csv = config.output_csv;
+output_summary = config.output_summary;
+
+% List of variables to clean up
+cleanup_vars = {'all_data', 'simulation_id', 'sim_idx', 'polynomial_coeffs', ...
+                'simInput', 'simOut', 'sim_data', 'data_table', 'column_names', ...
+                'config', 'timestamp', 'ME', 'i', 'j', 'field_name', 'coeff_values', ...
+                'time_vector', 'target_time', 'num_time_points', 'logsout', ...
+                'element', 'signal_name', 'data', 'time', 'resampled_data', ...
+                'expected_structs', 'struct_name', 'log_struct', 'fields', ...
+                'field_data', 'simlog', 'child_nodes', 'child_node', 'node_name', ...
+                'signals', 'signal', 'rotation_fields', 'matrix_data', 'n_frames', ...
+                'flattened', 'n_rows', 'n_cols', 'col', 'joints', 'joint', ...
+                'signal_bus_names', 'rotation_names', 'row', 'fid', 'cleanup_vars'};
+
+% Clean up variables
+for i = 1:length(cleanup_vars)
+    if exist(cleanup_vars{i}, 'var')
+        clear(cleanup_vars{i});
+    end
+end
+
+fprintf('✓ Workspace cleaned up\n');
+fprintf('✓ Kept: %s, %s\n', output_csv, output_summary);
+
 %% Helper Functions
 
 function coeffs = generateRandomPolynomialCoefficients()
