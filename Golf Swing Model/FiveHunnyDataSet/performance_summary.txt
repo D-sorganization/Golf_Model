@@ -1,0 +1,34 @@
+Golf Swing Training Data Generation - Performance Summary
+==========================================================
+
+Generated: 24-Jul-2025 23:01:02
+Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\FiveHunnyDataSet
+
+Configuration:
+  Number of trials: 500
+  Simulation duration: 0.3 seconds
+  Sample rate: 20 Hz
+  Model: GolfSwing3D_Kinetic
+  Output format: CSV files
+
+Results:
+  Successful trials: 500
+  Failed trials: 0
+  Success rate: 100.0%
+
+Performance Metrics:
+  Total execution time: 6468.97 seconds (107.82 minutes)
+  Average trial time: 73.90 seconds
+  Min trial time: 48.96 seconds
+  Max trial time: 470.48 seconds
+  Trial time std dev: 48.70 seconds
+
+Data Generated:
+  Total data points: 3500
+  Data columns per trial: 887
+  Average data points per trial: 7
+
+Files Created:
+  CSV trial files: 500 files
+  Performance log: performance_log.txt
+  Performance summary: performance_summary.txt

@@ -555,6 +555,201 @@ end
 
 %% Helper Functions
 
+function [trial_data, signal_names] = extractModelWorkspaceData(model_name, trial_data, signal_names, num_time_points)
+    % Extract segment lengths, inertials, and anthropomorphic parameters from model workspace
+    % This captures critical data for matching anthropomorphies to motion patterns
+    
+    try
+        % Get model workspace
+        model_workspace = get_param(model_name, 'ModelWorkspace');
+        workspace_vars = model_workspace.whos;
+        
+        fprintf('    Extracting model workspace data...\n');
+        
+        % Define categories of variables to extract
+        anthropomorphic_vars = {
+            % Segment lengths
+            'segment_lengths', 'arm_length', 'leg_length', 'torso_length', 'spine_length',
+            'left_arm_length', 'right_arm_length', 'left_leg_length', 'right_leg_length',
+            'left_forearm_length', 'right_forearm_length', 'left_upper_arm_length', 'right_upper_arm_length',
+            'left_thigh_length', 'right_thigh_length', 'left_shank_length', 'right_shank_length',
+            'neck_length', 'head_height', 'shoulder_width', 'hip_width',
+            
+            % Segment masses
+            'segment_masses', 'arm_mass', 'leg_mass', 'torso_mass', 'spine_mass',
+            'left_arm_mass', 'right_arm_mass', 'left_leg_mass', 'right_leg_mass',
+            'left_forearm_mass', 'right_forearm_mass', 'left_upper_arm_mass', 'right_upper_arm_mass',
+            'left_thigh_mass', 'right_thigh_mass', 'left_shank_mass', 'right_shank_mass',
+            'neck_mass', 'head_mass', 'total_mass', 'golfer_mass',
+            
+            % Segment inertias
+            'segment_inertias', 'arm_inertia', 'leg_inertia', 'torso_inertia', 'spine_inertia',
+            'left_arm_inertia', 'right_arm_inertia', 'left_leg_inertia', 'right_leg_inertia',
+            'left_forearm_inertia', 'right_forearm_inertia', 'left_upper_arm_inertia', 'right_upper_arm_inertia',
+            'left_thigh_inertia', 'right_thigh_inertia', 'left_shank_inertia', 'right_shank_inertia',
+            'neck_inertia', 'head_inertia',
+            
+            % Anthropomorphic parameters
+            'golfer_height', 'golfer_weight', 'golfer_bmi', 'golfer_age', 'golfer_gender',
+            'shoulder_height', 'hip_height', 'knee_height', 'ankle_height',
+            'arm_span', 'sitting_height', 'standing_height',
+            
+            % Club parameters
+            'club_length', 'club_mass', 'club_inertia', 'club_cg', 'club_moi',
+            'grip_length', 'shaft_length', 'head_mass', 'head_cg',
+            
+            % Joint parameters
+            'joint_limits', 'joint_stiffness', 'joint_damping', 'joint_friction',
+            'muscle_parameters', 'tendon_parameters', 'activation_parameters'
+        };
+        
+        extracted_count = 0;
+        
+        % Extract anthropomorphic variables
+        for i = 1:length(anthropomorphic_vars)
+            var_name = anthropomorphic_vars{i};
+            if model_workspace.hasVariable(var_name)
+                try
+                    var_value = model_workspace.getVariable(var_name);
+                    
+                    % Handle different data types
+                    if isnumeric(var_value)
+                        if isscalar(var_value)
+                            % Scalar value - repeat for all time points
+                            data_column = repmat(var_value, num_time_points, 1);
+                            trial_data = [trial_data, data_column];
+                            signal_names{end+1} = sprintf('ModelWorkspace_%s', var_name);
+                            extracted_count = extracted_count + 1;
+                            
+                        elseif isvector(var_value)
+                            % Vector value - handle as time-invariant parameters
+                            for j = 1:length(var_value)
+                                data_column = repmat(var_value(j), num_time_points, 1);
+                                trial_data = [trial_data, data_column];
+                                signal_names{end+1} = sprintf('ModelWorkspace_%s_%d', var_name, j);
+                                extracted_count = extracted_count + 1;
+                            end
+                            
+                        elseif ismatrix(var_value) && size(var_value, 1) == 3 && size(var_value, 2) == 3
+                            % 3x3 matrix (e.g., inertia tensor) - flatten to 9 components
+                            flat_inertia = var_value(:)'; % Flatten to row vector
+                            for j = 1:9
+                                data_column = repmat(flat_inertia(j), num_time_points, 1);
+                                trial_data = [trial_data, data_column];
+                                signal_names{end+1} = sprintf('ModelWorkspace_%s_%d', var_name, j);
+                                extracted_count = extracted_count + 1;
+                            end
+                        end
+                    end
+                catch ME
+                    % Continue to next variable
+                end
+            end
+        end
+        
+        % Extract all workspace variables that might be relevant
+        for i = 1:length(workspace_vars)
+            var_info = workspace_vars(i);
+            var_name = var_info.name;
+            
+            % Skip if already processed or if it's a system variable
+            if any(strcmp(anthropomorphic_vars, var_name)) || ...
+               startsWith(var_name, 'sl_') || startsWith(var_name, 'sim_') || ...
+               startsWith(var_name, 'gcs_') || startsWith(var_name, 'gcb_')
+                continue;
+            end
+            
+            try
+                var_value = model_workspace.getVariable(var_name);
+                
+                % Only extract numeric variables
+                if isnumeric(var_value)
+                    if isscalar(var_value)
+                        data_column = repmat(var_value, num_time_points, 1);
+                        trial_data = [trial_data, data_column];
+                        signal_names{end+1} = sprintf('ModelWorkspace_%s', var_name);
+                        extracted_count = extracted_count + 1;
+                        
+                    elseif isvector(var_value) && length(var_value) <= 10
+                        % Small vectors - extract each component
+                        for j = 1:length(var_value)
+                            data_column = repmat(var_value(j), num_time_points, 1);
+                            trial_data = [trial_data, data_column];
+                            signal_names{end+1} = sprintf('ModelWorkspace_%s_%d', var_name, j);
+                            extracted_count = extracted_count + 1;
+                        end
+                    end
+                end
+            catch ME
+                % Continue to next variable
+            end
+        end
+        
+        fprintf('    ✓ Extracted %d model workspace variables\n', extracted_count);
+        
+    catch ME
+        fprintf('    ⚠️  Could not extract model workspace data: %s\n', ME.message);
+    end
+end
+
+function [trial_data, signal_names] = filterDiscreteVariables(trial_data, signal_names)
+    % Filter out discrete variables that are all zeros (unused signals)
+    
+    try
+        fprintf('    Filtering discrete variables...\n');
+        
+        % Find discrete variable columns
+        discrete_indices = [];
+        for i = 1:length(signal_names)
+            if startsWith(signal_names{i}, 'Discrete_')
+                discrete_indices = [discrete_indices, i];
+            end
+        end
+        
+        if isempty(discrete_indices)
+            fprintf('    ✓ No discrete variables found to filter\n');
+            return;
+        end
+        
+        % Check which discrete variables are all zeros
+        zero_discrete_indices = [];
+        for i = 1:length(discrete_indices)
+            col_idx = discrete_indices(i);
+            if col_idx <= size(trial_data, 2)
+                if all(trial_data(:, col_idx) == 0)
+                    zero_discrete_indices = [zero_discrete_indices, col_idx];
+                end
+            end
+        end
+        
+        % Remove zero discrete variables
+        if ~isempty(zero_discrete_indices)
+            % Remove from trial_data (in reverse order to maintain indices)
+            for i = length(zero_discrete_indices):-1:1
+                col_idx = zero_discrete_indices(i);
+                if col_idx <= size(trial_data, 2)
+                    trial_data(:, col_idx) = [];
+                end
+            end
+            
+            % Remove from signal_names (in reverse order to maintain indices)
+            for i = length(zero_discrete_indices):-1:1
+                col_idx = zero_discrete_indices(i);
+                if col_idx <= length(signal_names)
+                    signal_names(col_idx) = [];
+                end
+            end
+            
+            fprintf('    ✓ Filtered out %d zero discrete variables\n', length(zero_discrete_indices));
+        else
+            fprintf('    ✓ No zero discrete variables found\n');
+        end
+        
+    catch ME
+        fprintf('    ⚠️  Error filtering discrete variables: %s\n', ME.message);
+    end
+end
+
 function [result, signal_names] = runSingleTrialWithCSV(sim_idx, config)
     % Run a single trial and save as CSV file with complete data
     
@@ -686,6 +881,9 @@ function [trial_data, signal_names] = extractCompleteTrialData(simOut, sim_idx, 
         % Add time and simulation ID
         trial_data = [trial_data, target_time', repmat(sim_idx, num_time_points, 1)];
         
+        % Extract model workspace data (NEW: segment lengths, inertials, anthropomorphies)
+        [trial_data, signal_names] = extractModelWorkspaceData(config.model_name, trial_data, signal_names, num_time_points);
+        
         % Extract logsout data (same as test script)
         [trial_data, signal_names] = extractLogsoutData(simOut, trial_data, signal_names, target_time);
         
@@ -694,6 +892,9 @@ function [trial_data, signal_names] = extractCompleteTrialData(simOut, sim_idx, 
         
         % Extract Simscape Results Explorer data (same as test script)
         [trial_data, signal_names] = extractSimscapeResultsData(simOut, trial_data, signal_names, target_time);
+        
+        % Filter out discrete variables that are all zeros (NEW)
+        [trial_data, signal_names] = filterDiscreteVariables(trial_data, signal_names);
         
         % Ensure unique column names
         signal_names = makeUniqueColumnNames(signal_names);
@@ -712,7 +913,7 @@ function [trial_data, signal_names] = extractCompleteTrialData(simOut, sim_idx, 
 end
 
 function [trial_data, signal_names] = extractLogsoutData(simOut, trial_data, signal_names, target_time)
-    % Extract data from logsout (same as test script)
+    % Extract data from logsout with improved rotation matrix handling
     try
         if ~isfield(simOut, 'logsout') || isempty(simOut.logsout)
             return;
@@ -726,10 +927,21 @@ function [trial_data, signal_names] = extractLogsoutData(simOut, trial_data, sig
                 data = element.Values.Data;
                 time = element.Values.Time;
                 
-                % Resample to target time
-                resampled_data = resampleSignal(data, time, target_time);
-                trial_data = [trial_data, resampled_data];
-                signal_names{end+1} = name;
+                % Handle rotation matrices and other multi-dimensional data
+                if ismatrix(data) && size(data, 2) > 1
+                    % Multi-dimensional data - extract each component
+                    for j = 1:size(data, 2)
+                        component_data = data(:, j);
+                        resampled_data = resampleSignal(component_data, time, target_time);
+                        trial_data = [trial_data, resampled_data];
+                        signal_names{end+1} = sprintf('%s_%d', name, j);
+                    end
+                else
+                    % Single-dimensional data
+                    resampled_data = resampleSignal(data, time, target_time);
+                    trial_data = [trial_data, resampled_data];
+                    signal_names{end+1} = name;
+                end
                 
             catch ME
                 % Continue to next signal
@@ -742,7 +954,7 @@ function [trial_data, signal_names] = extractLogsoutData(simOut, trial_data, sig
 end
 
 function [trial_data, signal_names] = extractSignalLogStructs(simOut, trial_data, signal_names, target_time)
-    % Extract data from signal log structs (same as test script)
+    % Extract data from signal log structs with improved rotation matrix handling
     try
         fields = fieldnames(simOut);
         
@@ -757,12 +969,23 @@ function [trial_data, signal_names] = extractSignalLogStructs(simOut, trial_data
                     subfield = struct_fields{j};
                     try
                         val = log_struct.(subfield);
-                        if isnumeric(val) && isvector(val) && length(val) > 1
-                            name = sprintf('%s_%s', field, subfield);
-                            % Resample to target time
-                            resampled_data = resampleSignal(val, 1:length(val), target_time);
-                            trial_data = [trial_data, resampled_data];
-                            signal_names{end+1} = name;
+                        if isnumeric(val)
+                            if isvector(val) && length(val) > 1
+                                % Vector data
+                                name = sprintf('%s_%s', field, subfield);
+                                resampled_data = resampleSignal(val, 1:length(val), target_time);
+                                trial_data = [trial_data, resampled_data];
+                                signal_names{end+1} = name;
+                            elseif ismatrix(val) && size(val, 2) > 1 && size(val, 1) > 1
+                                % Matrix data (e.g., rotation matrices) - extract each component
+                                for k = 1:size(val, 2)
+                                    component_data = val(:, k);
+                                    name = sprintf('%s_%s_%d', field, subfield, k);
+                                    resampled_data = resampleSignal(component_data, 1:length(component_data), target_time);
+                                    trial_data = [trial_data, resampled_data];
+                                    signal_names{end+1} = name;
+                                end
+                            end
                         end
                     catch
                         % Continue to next field
@@ -771,17 +994,28 @@ function [trial_data, signal_names] = extractSignalLogStructs(simOut, trial_data
             end
         end
         
-        % Also check for other numeric vectors in simOut (same as test script)
+        % Also check for other numeric vectors in simOut
         for i = 1:length(fields)
             field = fields{i};
             if ~endsWith(field, 'Logs') && ~strcmp(field, 'logsout') && ~strcmp(field, 'tout')
                 try
                     val = simOut.(field);
-                    if isnumeric(val) && isvector(val) && length(val) > 1
-                        % Resample to target time
-                        resampled_data = resampleSignal(val, 1:length(val), target_time);
-                        trial_data = [trial_data, resampled_data];
-                        signal_names{end+1} = field;
+                    if isnumeric(val)
+                        if isvector(val) && length(val) > 1
+                            % Vector data
+                            resampled_data = resampleSignal(val, 1:length(val), target_time);
+                            trial_data = [trial_data, resampled_data];
+                            signal_names{end+1} = field;
+                        elseif ismatrix(val) && size(val, 2) > 1 && size(val, 1) > 1
+                            % Matrix data - extract each component
+                            for k = 1:size(val, 2)
+                                component_data = val(:, k);
+                                name = sprintf('%s_%d', field, k);
+                                resampled_data = resampleSignal(component_data, 1:length(component_data), target_time);
+                                trial_data = [trial_data, resampled_data];
+                                signal_names{end+1} = name;
+                            end
+                        end
                     end
                 catch
                     % Continue to next field
@@ -795,7 +1029,7 @@ function [trial_data, signal_names] = extractSignalLogStructs(simOut, trial_data
 end
 
 function [trial_data, signal_names] = extractSimscapeResultsData(simOut, trial_data, signal_names, target_time)
-    % Extract data from Simscape Results Explorer (same as test script)
+    % Extract data from Simscape Results Explorer with improved rotation matrix handling
     try
         runIDs = Simulink.sdi.getAllRunIDs;
         if ~isempty(runIDs)
@@ -823,10 +1057,21 @@ function [trial_data, signal_names] = extractSimscapeResultsData(simOut, trial_d
                     clean_name = strrep(clean_name, '/', '_');
                     clean_name = strrep(clean_name, '\', '_');
                     
-                    % Resample to target time
-                    resampled_data = resampleSignal(data, time, target_time);
-                    trial_data = [trial_data, resampled_data];
-                    signal_names{end+1} = clean_name;
+                    % Handle rotation matrices and other multi-dimensional data
+                    if ismatrix(data) && size(data, 2) > 1
+                        % Multi-dimensional data - extract each component
+                        for j = 1:size(data, 2)
+                            component_data = data(:, j);
+                            resampled_data = resampleSignal(component_data, time, target_time);
+                            trial_data = [trial_data, resampled_data];
+                            signal_names{end+1} = sprintf('%s_%d', clean_name, j);
+                        end
+                    else
+                        % Single-dimensional data
+                        resampled_data = resampleSignal(data, time, target_time);
+                        trial_data = [trial_data, resampled_data];
+                        signal_names{end+1} = clean_name;
+                    end
                     
                 catch ME
                     % Continue to next signal
