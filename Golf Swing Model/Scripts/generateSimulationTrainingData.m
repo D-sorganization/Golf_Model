@@ -7,8 +7,19 @@ fprintf('=== Golf Swing Training Data Generator (CSV Version) ===\n\n');
 
 %% Workspace Cleanup Setup
 % Save current workspace state to restore later
-initial_vars = who;
-initial_vars = setdiff(initial_vars, {'initial_vars'}); % Don't save this variable
+% Get variables from base workspace before we start
+initial_vars = evalin('base', 'who');
+% Store initial_vars in base workspace for later cleanup
+assignin('base', 'initial_vars_backup', initial_vars);
+
+% Save current warning state for restoration later
+warning_state = warning('query', 'all');
+assignin('base', 'warning_state_backup', warning_state);
+
+% Suppress common Simulink warnings that clutter output
+warning('off', 'Simulink:Simulation:DesktopSimHelper');
+warning('off', 'SimscapeMultibody:Explorer:UnableToLaunchExplorer');
+warning('off', 'MATLAB:table:ModifiedAndSavedVarnames');
 
 %% Initialize Performance Tracking
 performance_metrics = struct();
@@ -159,10 +170,15 @@ fprintf('  Output format: CSV files (full data tables)\n');
 confirm = input('\nStart generation with these settings? (y/n): ', 's');
 if ~(strcmpi(confirm, 'y') || strcmpi(confirm, 'yes'))
     fprintf('Generation cancelled by user.\n');
+    % Clean up before returning
+    performEmergencyCleanup();
     return;
 end
 
 fprintf('\n');
+
+%% Main Execution Block with Error Handling
+try
 
 %% Create performance log file
 config.performance_log = fullfile(config.output_folder, 'performance_log.txt');
@@ -233,9 +249,15 @@ if use_parallel
             
             fprintf('Worker: Trial %d completed in %.2f seconds\n', sim_idx, trial_time);
             
+            % Clear local variables to prevent memory buildup in parallel workers
+            clear trial_start_time signal_names
+            
         catch ME
             fprintf('Worker: Simulation %d failed: %s\n', sim_idx, ME.message);
             trial_results{sim_idx} = [];
+            
+            % Clear local variables even on error
+            clear trial_start_time signal_names ME
         end
     end
     
@@ -359,16 +381,155 @@ fprintf('\n=== Generation Complete ===\n');
 fprintf('All CSV files have been created in: %s\n', config.output_folder);
 fprintf('Each CSV file contains a complete data table with all simulation data.\n');
 
+catch ME_main
+    % Handle any errors during main execution
+    fprintf('\n✗ Critical error during execution: %s\n', ME_main.message);
+    fprintf('Stack trace:\n');
+    for i = 1:length(ME_main.stack)
+        fprintf('  %s (line %d)\n', ME_main.stack(i).name, ME_main.stack(i).line);
+    end
+    fprintf('\nPerforming emergency cleanup...\n');
+    
+    % Try to save any partial performance data
+    try
+        if exist('config', 'var') && exist('performance_metrics', 'var')
+            savePerformanceSummary(config, performance_metrics);
+        end
+    catch
+        % Continue with cleanup even if saving fails
+    end
+end
+
 %% Clean up workspace
 fprintf('\n=== Cleaning up workspace ===\n');
-if evalin('base', 'exist(''initial_vars'', ''var'')')
-    % Clean up base workspace, keeping only variables that existed before the script
-    evalin('base', ['clearvars -except ', strjoin(initial_vars, ' ')]);
-    fprintf('✓ Cleared all temporary variables from base workspace\n');
-else
-    fprintf('No initial_vars found in base workspace. No cleanup performed.\n');
+
+try
+    % First, clean up Simulink-specific items
+    fprintf('Cleaning up Simulink states...\n');
+    
+    % Clear Simulation Data Inspector runs
+    try
+        Simulink.sdi.clear();
+        fprintf('✓ Cleared Simulation Data Inspector runs\n');
+    catch
+        fprintf('⚠️  Could not clear SDI runs (may not be available)\n');
+    end
+    
+    % Close any open Simulink models that might have been opened during simulation
+    try
+        models = find_system('Type', 'block_diagram');
+        for i = 1:length(models)
+            if ~strcmp(models{i}, 'simulink') % Don't close the main Simulink library
+                try
+                    close_system(models{i}, 0); % Close without saving
+                catch
+                    % Model might already be closed or protected
+                end
+            end
+        end
+        fprintf('✓ Closed temporary Simulink models\n');
+    catch
+        fprintf('⚠️  Could not close Simulink models\n');
+    end
+    
+    % Clean up parallel pool if we started it
+    if exist('use_parallel', 'var') && use_parallel
+        try
+            pool = gcp('nocreate');
+            if ~isempty(pool)
+                delete(pool);
+                fprintf('✓ Closed parallel pool\n');
+            end
+        catch
+            fprintf('⚠️  Could not close parallel pool\n');
+        end
+    end
+    
+    % Clean up base workspace variables
+    fprintf('Cleaning up base workspace variables...\n');
+    if evalin('base', 'exist(''initial_vars_backup'', ''var'')')
+        % Get the initial variables list
+        initial_vars_backup = evalin('base', 'initial_vars_backup');
+        
+        % Get current variables in base workspace
+        current_vars = evalin('base', 'who');
+        
+        % Find variables to remove (current vars that weren't in initial list)
+        vars_to_remove = setdiff(current_vars, initial_vars_backup);
+        
+        % Also remove our backup variables
+        vars_to_remove = union(vars_to_remove, {'initial_vars_backup', 'warning_state_backup'});
+        
+        if ~isempty(vars_to_remove)
+            % Remove the variables
+            for i = 1:length(vars_to_remove)
+                try
+                    evalin('base', ['clear ', vars_to_remove{i}]);
+                catch
+                    % Variable might already be cleared or protected
+                end
+            end
+            fprintf('✓ Cleared %d temporary variables from base workspace\n', length(vars_to_remove));
+            if length(vars_to_remove) <= 10  % Only show details if not too many
+                fprintf('  Removed variables: %s\n', strjoin(vars_to_remove, ', '));
+            end
+        else
+            fprintf('✓ No temporary variables to clear from base workspace\n');
+        end
+    else
+        fprintf('⚠️  No initial_vars_backup found. Performing basic cleanup...\n');
+        
+        % Fallback: remove common temporary variables that this script creates
+        common_temp_vars = {'config', 'performance_metrics', 'progress', 'trial_results', ...
+                          'simInput', 'simOut', 'use_parallel', 'pool', 'confirm', ...
+                          'num_trials_str', 'sim_time_str', 'folder_location', 'folder_name', ...
+                          'sample_rate_str', 'exec_mode', 'overwrite', 'fid', 'ME', ...
+                          'initial_vars_backup', 'warning_state_backup'};
+        
+        for i = 1:length(common_temp_vars)
+            if evalin('base', ['exist(''', common_temp_vars{i}, ''', ''var'')'])
+                try
+                    evalin('base', ['clear ', common_temp_vars{i}]);
+                catch
+                    % Continue if variable can't be cleared
+                end
+            end
+        end
+        fprintf('✓ Cleared common temporary variables from base workspace\n');
+    end
+    
+    % Restore warning state
+    fprintf('Restoring warning settings...\n');
+    try
+        if evalin('base', 'exist(''warning_state_backup'', ''var'')')
+            warning_state_backup = evalin('base', 'warning_state_backup');
+            warning(warning_state_backup);
+            fprintf('✓ Restored original warning settings\n');
+        else
+            % Restore commonly suppressed warnings
+            warning('on', 'Simulink:Simulation:DesktopSimHelper');
+            warning('on', 'SimscapeMultibody:Explorer:UnableToLaunchExplorer');
+            warning('on', 'MATLAB:table:ModifiedAndSavedVarnames');
+            fprintf('✓ Restored default warning settings\n');
+        end
+    catch
+        fprintf('⚠️  Could not restore warning settings\n');
+    end
+    
+    % Clear function workspace variables (local to this function)
+    fprintf('Cleaning up function workspace...\n');
+    clearvars -except % This clears all local variables in the function
+    
+    fprintf('✓ Workspace cleanup complete\n');
+    
+catch ME_cleanup
+    fprintf('⚠️  Workspace cleanup encountered errors: %s\n', ME_cleanup.message);
+    fprintf('   Some variables may remain in workspace\n');
+    fprintf('   You can manually run: performEmergencyCleanup() to retry cleanup\n');
 end
-fprintf('✓ Workspace cleanup complete\n');
+
+fprintf('\n=== Script Complete ===\n');
+fprintf('If you experience workspace issues, run: performEmergencyCleanup()\n');
 
 end
 
@@ -438,10 +599,16 @@ function [result, signal_names] = runSingleTrialWithCSV(sim_idx, config)
             signal_names = {}; % Ensure signal_names is empty if trial_data is empty
         end
         
+        % Clean up trial-specific variables to avoid memory buildup
+        clearvars polynomial_coeffs simInput simOut trial_data data_table timestamp filename filepath
+        
     catch ME
         fprintf('  Trial %d error: %s\n', sim_idx, ME.message);
         result = [];
         signal_names = {}; % Ensure signal_names is empty on error
+        
+        % Clean up even on error
+        clearvars polynomial_coeffs simInput simOut trial_data data_table timestamp filename filepath
     end
 end
 
@@ -511,10 +678,16 @@ function [trial_data, signal_names] = extractCompleteTrialData(simOut, sim_idx, 
         % Ensure unique column names
         signal_names = makeUniqueColumnNames(signal_names);
         
+        % Clean up temporary variables
+        clearvars time_vector target_time num_time_points
+        
     catch ME
         fprintf('    Error extracting trial data: %s\n', ME.message);
         trial_data = [];
         signal_names = {};
+        
+        % Clean up even on error
+        clearvars time_vector target_time num_time_points
     end
 end
 
@@ -771,5 +944,89 @@ function savePerformanceSummary(config, performance_metrics)
         
     catch ME
         fprintf('✗ Error saving performance summary: %s\n', ME.message);
+    end
+end
+
+function performEmergencyCleanup()
+    % Emergency cleanup function - can be called if script fails unexpectedly
+    % This function can be called manually by the user if needed
+    
+    fprintf('\n=== Emergency Workspace Cleanup ===\n');
+    
+    try
+        % Clean up Simulink states
+        try
+            Simulink.sdi.clear();
+            fprintf('✓ Cleared Simulation Data Inspector runs\n');
+        catch
+            fprintf('⚠️  Could not clear SDI runs\n');
+        end
+        
+        % Close parallel pool
+        try
+            pool = gcp('nocreate');
+            if ~isempty(pool)
+                delete(pool);
+                fprintf('✓ Closed parallel pool\n');
+            end
+        catch
+            fprintf('⚠️  Could not close parallel pool\n');
+        end
+        
+        % Close any open Simulink models
+        try
+            models = find_system('Type', 'block_diagram');
+            for i = 1:length(models)
+                if ~strcmp(models{i}, 'simulink')
+                    try
+                        close_system(models{i}, 0);
+                    catch
+                        % Continue
+                    end
+                end
+            end
+            fprintf('✓ Closed temporary Simulink models\n');
+        catch
+            fprintf('⚠️  Could not close Simulink models\n');
+        end
+        
+        % Clean up common variables
+        common_temp_vars = {'config', 'performance_metrics', 'progress', 'trial_results', ...
+                          'simInput', 'simOut', 'use_parallel', 'pool', 'confirm', ...
+                          'num_trials_str', 'sim_time_str', 'folder_location', 'folder_name', ...
+                          'sample_rate_str', 'exec_mode', 'overwrite', 'fid', 'ME', ...
+                          'initial_vars_backup', 'warning_state_backup'};
+        
+        cleared_count = 0;
+        for i = 1:length(common_temp_vars)
+            if evalin('base', ['exist(''', common_temp_vars{i}, ''', ''var'')'])
+                try
+                    evalin('base', ['clear ', common_temp_vars{i}]);
+                    cleared_count = cleared_count + 1;
+                catch
+                    % Continue
+                end
+            end
+        end
+        
+        if cleared_count > 0
+            fprintf('✓ Cleared %d common temporary variables\n', cleared_count);
+        end
+        
+        % Restore warnings
+        try
+            warning('on', 'Simulink:Simulation:DesktopSimHelper');
+            warning('on', 'SimscapeMultibody:Explorer:UnableToLaunchExplorer');
+            warning('on', 'MATLAB:table:ModifiedAndSavedVarnames');
+            fprintf('✓ Restored warning settings\n');
+        catch
+            fprintf('⚠️  Could not restore warning settings\n');
+        end
+        
+        fprintf('✓ Emergency cleanup complete\n');
+        fprintf('Note: If you need to run this cleanup manually, call: performEmergencyCleanup()\n');
+        
+    catch ME_emergency
+        fprintf('✗ Emergency cleanup failed: %s\n', ME_emergency.message);
     end
 end 
