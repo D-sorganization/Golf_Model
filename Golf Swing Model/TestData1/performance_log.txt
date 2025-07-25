@@ -1,0 +1,13 @@
+Golf Swing Training Data Generation - Performance Log
+==================================================
+
+Started: 25-Jul-2025 08:56:08
+Configuration:
+  Number of trials: 2
+  Simulation duration: 0.1 seconds
+  Sample rate: 2 Hz
+  Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\TestData1
+
+Trial Results:
+  Trial 1: success (51.75s, 1 points, 753 columns)
+  Trial 2: success (27.47s, 1 points, 753 columns)

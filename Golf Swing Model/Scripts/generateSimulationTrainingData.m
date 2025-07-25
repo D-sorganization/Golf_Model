@@ -181,22 +181,6 @@ fprintf('\n');
 %% Main Execution Block with Error Handling
 try
 
-%% Create performance log file
-config.performance_log = fullfile(config.output_folder, 'performance_log.txt');
-fid = fopen(config.performance_log, 'w');
-if fid ~= -1
-    fprintf(fid, 'Golf Swing Training Data Generation - Performance Log\n');
-    fprintf(fid, '==================================================\n\n');
-    fprintf(fid, 'Started: %s\n', datestr(now));
-    fprintf(fid, 'Configuration:\n');
-    fprintf(fid, '  Number of trials: %d\n', config.num_simulations);
-    fprintf(fid, '  Simulation duration: %.1f seconds\n', config.simulation_time);
-    fprintf(fid, '  Sample rate: %d Hz\n', config.sample_rate);
-    fprintf(fid, '  Output folder: %s\n', config.output_folder);
-    fprintf(fid, '\nTrial Results:\n');
-    fclose(fid);
-end
-
 %% Check for parallel computing availability
 if config.use_parallel
     fprintf('=== Parallel Computing Setup ===\n');
@@ -315,19 +299,14 @@ else
             fprintf('  CSV file: %s\n', result.filename);
             fprintf('  Data points: %d, Columns: %d\n', result.data_points, result.columns);
             
-            % Update performance log
-            updatePerformanceLog(config.performance_log, sim_idx, trial_time, result.data_points, result.columns, 'success');
-            
         else
             performance_metrics.failed_trials = performance_metrics.failed_trials + 1;
             fprintf('✗ Trial %d failed\n', sim_idx);
-            updatePerformanceLog(config.performance_log, sim_idx, trial_time, 0, 0, 'failed');
         end
         
     catch ME
         performance_metrics.failed_trials = performance_metrics.failed_trials + 1;
         fprintf('✗ Simulation %d failed: %s\n', sim_idx, ME.message);
-        updatePerformanceLog(config.performance_log, sim_idx, trial_time, 0, 0, 'error');
     end
     end % End of sequential for loop
 end % End of if use_parallel
@@ -380,11 +359,6 @@ fprintf('\n');
 
 fprintf('Files Created:\n');
 fprintf('  CSV trial files: %d files\n', performance_metrics.successful_trials);
-fprintf('  Performance log: performance_log.txt\n');
-fprintf('  Performance summary: performance_summary.txt\n');
-
-%% Save Performance Summary
-savePerformanceSummary(config, performance_metrics);
 
 fprintf('\n=== Generation Complete ===\n');
 fprintf('All CSV files have been created in: %s\n', config.output_folder);
@@ -413,7 +387,6 @@ catch ME_main
             if ~isfield(performance_metrics, 'total_time')
                 performance_metrics.total_time = 0;
             end
-            savePerformanceSummary(config, performance_metrics);
         end
     catch
         % Continue with cleanup even if saving fails
@@ -555,6 +528,37 @@ end
 
 %% Helper Functions
 
+function [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, data_column, column_name)
+    % Global helper function to safely add a column to trial_data
+    try
+        % Handle empty data
+        if isempty(data_column)
+            fprintf('      ⚠️  Skipping %s: empty data\n', column_name);
+            success = false;
+            return;
+        end
+        
+        % Ensure data_column is a column vector with correct dimensions
+        if ~iscolumn(data_column)
+            data_column = data_column(:);
+        end
+        
+        % Check if dimensions match
+        if size(trial_data, 1) == size(data_column, 1)
+            trial_data = [trial_data, data_column];
+            signal_names{end+1} = column_name;
+            success = true;
+        else
+            fprintf('      ⚠️  Skipping %s: dimension mismatch (expected %d rows, got %d)\n', ...
+                column_name, size(trial_data, 1), size(data_column, 1));
+            success = false;
+        end
+    catch ME
+        fprintf('      ⚠️  Error adding column %s: %s\n', column_name, ME.message);
+        success = false;
+    end
+end
+
 function [trial_data, signal_names] = extractModelWorkspaceData(model_name, trial_data, signal_names, num_time_points)
     % Extract segment lengths, inertials, and anthropomorphic parameters from model workspace
     % This captures critical data for matching anthropomorphies to motion patterns
@@ -617,17 +621,19 @@ function [trial_data, signal_names] = extractModelWorkspaceData(model_name, tria
                         if isscalar(var_value)
                             % Scalar value - repeat for all time points
                             data_column = repmat(var_value, num_time_points, 1);
-                            trial_data = [trial_data, data_column];
-                            signal_names{end+1} = sprintf('ModelWorkspace_%s', var_name);
-                            extracted_count = extracted_count + 1;
+                            [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, data_column, sprintf('ModelWorkspace_%s', var_name));
+                            if success
+                                extracted_count = extracted_count + 1;
+                            end
                             
                         elseif isvector(var_value)
                             % Vector value - handle as time-invariant parameters
                             for j = 1:length(var_value)
                                 data_column = repmat(var_value(j), num_time_points, 1);
-                                trial_data = [trial_data, data_column];
-                                signal_names{end+1} = sprintf('ModelWorkspace_%s_%d', var_name, j);
-                                extracted_count = extracted_count + 1;
+                                [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, data_column, sprintf('ModelWorkspace_%s_%d', var_name, j));
+                                if success
+                                    extracted_count = extracted_count + 1;
+                                end
                             end
                             
                         elseif ismatrix(var_value) && size(var_value, 1) == 3 && size(var_value, 2) == 3
@@ -635,13 +641,15 @@ function [trial_data, signal_names] = extractModelWorkspaceData(model_name, tria
                             flat_inertia = var_value(:)'; % Flatten to row vector
                             for j = 1:9
                                 data_column = repmat(flat_inertia(j), num_time_points, 1);
-                                trial_data = [trial_data, data_column];
-                                signal_names{end+1} = sprintf('ModelWorkspace_%s_%d', var_name, j);
-                                extracted_count = extracted_count + 1;
+                                [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, data_column, sprintf('ModelWorkspace_%s_%d', var_name, j));
+                                if success
+                                    extracted_count = extracted_count + 1;
+                                end
                             end
                         end
                     end
                 catch ME
+                    fprintf('      ⚠️  Error processing variable %s: %s\n', var_name, ME.message);
                     % Continue to next variable
                 end
             end
@@ -666,21 +674,24 @@ function [trial_data, signal_names] = extractModelWorkspaceData(model_name, tria
                 if isnumeric(var_value)
                     if isscalar(var_value)
                         data_column = repmat(var_value, num_time_points, 1);
-                        trial_data = [trial_data, data_column];
-                        signal_names{end+1} = sprintf('ModelWorkspace_%s', var_name);
-                        extracted_count = extracted_count + 1;
+                        [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, data_column, sprintf('ModelWorkspace_%s', var_name));
+                        if success
+                            extracted_count = extracted_count + 1;
+                        end
                         
                     elseif isvector(var_value) && length(var_value) <= 10
                         % Small vectors - extract each component
                         for j = 1:length(var_value)
                             data_column = repmat(var_value(j), num_time_points, 1);
-                            trial_data = [trial_data, data_column];
-                            signal_names{end+1} = sprintf('ModelWorkspace_%s_%d', var_name, j);
-                            extracted_count = extracted_count + 1;
+                            [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, data_column, sprintf('ModelWorkspace_%s_%d', var_name, j));
+                            if success
+                                extracted_count = extracted_count + 1;
+                            end
                         end
                     end
                 end
             catch ME
+                fprintf('      ⚠️  Error processing workspace variable %s: %s\n', var_name, ME.message);
                 % Continue to next variable
             end
         end
@@ -879,7 +890,15 @@ function [trial_data, signal_names] = extractCompleteTrialData(simOut, sim_idx, 
         signal_names = {'time', 'simulation_id'}; % Start with time and simulation ID
         
         % Add time and simulation ID
-        trial_data = [trial_data, target_time', repmat(sim_idx, num_time_points, 1)];
+        [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, target_time', 'time');
+        if ~success
+            fprintf('    ⚠️  Failed to add time column\n');
+        end
+        
+        [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, repmat(sim_idx, num_time_points, 1), 'simulation_id');
+        if ~success
+            fprintf('    ⚠️  Failed to add simulation_id column\n');
+        end
         
         % Extract model workspace data (NEW: segment lengths, inertials, anthropomorphies)
         [trial_data, signal_names] = extractModelWorkspaceData(config.model_name, trial_data, signal_names, num_time_points);
@@ -898,6 +917,14 @@ function [trial_data, signal_names] = extractCompleteTrialData(simOut, sim_idx, 
         
         % Ensure unique column names
         signal_names = makeUniqueColumnNames(signal_names);
+        
+        % Final validation - ensure trial_data and signal_names are consistent
+        if size(trial_data, 2) ~= length(signal_names)
+            fprintf('    ⚠️  Data/signal name mismatch detected. Truncating to match...\n');
+            min_length = min(size(trial_data, 2), length(signal_names));
+            trial_data = trial_data(:, 1:min_length);
+            signal_names = signal_names(1:min_length);
+        end
         
         % Clean up temporary variables
         clearvars time_vector target_time num_time_points
@@ -933,22 +960,28 @@ function [trial_data, signal_names] = extractLogsoutData(simOut, trial_data, sig
                     for j = 1:size(data, 2)
                         component_data = data(:, j);
                         resampled_data = resampleSignal(component_data, time, target_time);
-                        trial_data = [trial_data, resampled_data];
-                        signal_names{end+1} = sprintf('%s_%d', name, j);
+                        [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, resampled_data, sprintf('%s_%d', name, j));
+                        if ~success
+                            fprintf('      ⚠️  Failed to add logsout column %s_%d\n', name, j);
+                        end
                     end
                 else
                     % Single-dimensional data
                     resampled_data = resampleSignal(data, time, target_time);
-                    trial_data = [trial_data, resampled_data];
-                    signal_names{end+1} = name;
+                    [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, resampled_data, name);
+                    if ~success
+                        fprintf('      ⚠️  Failed to add logsout column %s\n', name);
+                    end
                 end
                 
             catch ME
+                fprintf('      ⚠️  Error processing logsout element %d: %s\n', i, ME.message);
                 % Continue to next signal
             end
         end
         
     catch ME
+        fprintf('      ⚠️  Error extracting logsout data: %s\n', ME.message);
         % Continue without logsout data
     end
 end
@@ -974,20 +1007,47 @@ function [trial_data, signal_names] = extractSignalLogStructs(simOut, trial_data
                                 % Vector data
                                 name = sprintf('%s_%s', field, subfield);
                                 resampled_data = resampleSignal(val, 1:length(val), target_time);
-                                trial_data = [trial_data, resampled_data];
-                                signal_names{end+1} = name;
+                                [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, resampled_data, name);
+                                if ~success
+                                    fprintf('      ⚠️  Failed to add signal log column %s\n', name);
+                                end
+                            elseif ndims(val) == 3 && size(val, 1) == 3 && size(val, 2) == 3
+                                % 3D rotation matrix (3x3xN array) - extract each component
+                                fprintf('      Found 3D rotation matrix in signal log: %s.%s (size: %s)\n', field, subfield, mat2str(size(val)));
+                                
+                                % Extract each element of the 3x3 matrix as a separate column
+                                for row = 1:3
+                                    for col = 1:3
+                                        % Extract the time series for this matrix element
+                                        element_data = squeeze(val(row, col, :));
+                                        
+                                        % Resample to target time
+                                        resampled_data = resampleSignal(element_data, 1:length(element_data), target_time);
+                                        
+                                        % Create column name for this matrix element
+                                        element_name = sprintf('%s_%s_%d%d', field, subfield, row, col);
+                                        
+                                        [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, resampled_data, element_name);
+                                        if ~success
+                                            fprintf('      ⚠️  Failed to add rotation matrix element %s\n', element_name);
+                                        end
+                                    end
+                                end
                             elseif ismatrix(val) && size(val, 2) > 1 && size(val, 1) > 1
                                 % Matrix data (e.g., rotation matrices) - extract each component
                                 for k = 1:size(val, 2)
                                     component_data = val(:, k);
                                     name = sprintf('%s_%s_%d', field, subfield, k);
                                     resampled_data = resampleSignal(component_data, 1:length(component_data), target_time);
-                                    trial_data = [trial_data, resampled_data];
-                                    signal_names{end+1} = name;
+                                    [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, resampled_data, name);
+                                    if ~success
+                                        fprintf('      ⚠️  Failed to add signal log column %s\n', name);
+                                    end
                                 end
                             end
                         end
-                    catch
+                    catch ME
+                        fprintf('      ⚠️  Error processing signal log field %s.%s: %s\n', field, subfield, ME.message);
                         % Continue to next field
                     end
                 end
@@ -1004,26 +1064,32 @@ function [trial_data, signal_names] = extractSignalLogStructs(simOut, trial_data
                         if isvector(val) && length(val) > 1
                             % Vector data
                             resampled_data = resampleSignal(val, 1:length(val), target_time);
-                            trial_data = [trial_data, resampled_data];
-                            signal_names{end+1} = field;
+                            [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, resampled_data, field);
+                            if ~success
+                                fprintf('      ⚠️  Failed to add simOut column %s\n', field);
+                            end
                         elseif ismatrix(val) && size(val, 2) > 1 && size(val, 1) > 1
                             % Matrix data - extract each component
                             for k = 1:size(val, 2)
                                 component_data = val(:, k);
                                 name = sprintf('%s_%d', field, k);
                                 resampled_data = resampleSignal(component_data, 1:length(component_data), target_time);
-                                trial_data = [trial_data, resampled_data];
-                                signal_names{end+1} = name;
+                                [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, resampled_data, name);
+                                if ~success
+                                    fprintf('      ⚠️  Failed to add simOut column %s\n', name);
+                                end
                             end
                         end
                     end
-                catch
+                catch ME
+                    fprintf('      ⚠️  Error processing simOut field %s: %s\n', field, ME.message);
                     % Continue to next field
                 end
             end
         end
         
     catch ME
+        fprintf('      ⚠️  Error extracting signal log structs: %s\n', ME.message);
         % Continue without signal log data
     end
 end
@@ -1057,29 +1123,59 @@ function [trial_data, signal_names] = extractSimscapeResultsData(simOut, trial_d
                     clean_name = strrep(clean_name, '/', '_');
                     clean_name = strrep(clean_name, '\', '_');
                     
-                    % Handle rotation matrices and other multi-dimensional data
-                    if ismatrix(data) && size(data, 2) > 1
+                    % Handle 3D rotation matrices (3x3xN arrays)
+                    if ndims(data) == 3 && size(data, 1) == 3 && size(data, 2) == 3
+                        % This is a 3D rotation matrix - extract each component
+                        fprintf('      Found 3D rotation matrix: %s (size: %s)\n', clean_name, mat2str(size(data)));
+                        
+                        % Extract each element of the 3x3 matrix as a separate column
+                        for row = 1:3
+                            for col = 1:3
+                                % Extract the time series for this matrix element
+                                element_data = squeeze(data(row, col, :));
+                                
+                                % Resample to target time
+                                resampled_data = resampleSignal(element_data, time, target_time);
+                                
+                                % Create column name for this matrix element
+                                element_name = sprintf('%s_%d%d', clean_name, row, col);
+                                
+                                [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, resampled_data, element_name);
+                                if ~success
+                                    fprintf('      ⚠️  Failed to add rotation matrix element %s\n', element_name);
+                                end
+                            end
+                        end
+                        
+                    % Handle 2D matrices (time x components)
+                    elseif ismatrix(data) && size(data, 2) > 1
                         % Multi-dimensional data - extract each component
                         for j = 1:size(data, 2)
                             component_data = data(:, j);
                             resampled_data = resampleSignal(component_data, time, target_time);
-                            trial_data = [trial_data, resampled_data];
-                            signal_names{end+1} = sprintf('%s_%d', clean_name, j);
+                            [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, resampled_data, sprintf('%s_%d', clean_name, j));
+                            if ~success
+                                fprintf('      ⚠️  Failed to add Simscape column %s_%d\n', clean_name, j);
+                            end
                         end
                     else
                         % Single-dimensional data
                         resampled_data = resampleSignal(data, time, target_time);
-                        trial_data = [trial_data, resampled_data];
-                        signal_names{end+1} = clean_name;
+                        [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, resampled_data, clean_name);
+                        if ~success
+                            fprintf('      ⚠️  Failed to add Simscape column %s\n', clean_name);
+                        end
                     end
                     
                 catch ME
+                    fprintf('      ⚠️  Error processing Simscape signal %d: %s\n', i, ME.message);
                     % Continue to next signal
                 end
             end
         end
         
     catch ME
+        fprintf('      ⚠️  Error extracting Simscape results data: %s\n', ME.message);
         % Continue without Simscape data
     end
 end
@@ -1133,83 +1229,6 @@ function unique_names = makeUniqueColumnNames(names)
             % First occurrence of this name
             seen_names(name) = 1;
         end
-    end
-end
-
-function updatePerformanceLog(log_file, trial_num, trial_time, data_points, columns, status)
-    % Update the performance log with trial results
-    
-    try
-        fid = fopen(log_file, 'a');
-        if fid ~= -1
-            fprintf(fid, '  Trial %d: %s (%.2fs, %d points, %d columns)\n', ...
-                trial_num, status, trial_time, data_points, columns);
-            fclose(fid);
-        end
-    catch ME
-        % Silently fail if log update fails
-    end
-end
-
-function savePerformanceSummary(config, performance_metrics)
-    % Save a comprehensive performance summary
-    
-    try
-        summary_file = fullfile(config.output_folder, 'performance_summary.txt');
-        fid = fopen(summary_file, 'w');
-        if fid == -1
-            return;
-        end
-        
-        fprintf(fid, 'Golf Swing Training Data Generation - Performance Summary\n');
-        fprintf(fid, '==========================================================\n\n');
-        fprintf(fid, 'Generated: %s\n', datestr(now));
-        fprintf(fid, 'Output folder: %s\n', config.output_folder);
-        fprintf(fid, '\n');
-        
-        fprintf(fid, 'Configuration:\n');
-        fprintf(fid, '  Number of trials: %d\n', config.num_simulations);
-        fprintf(fid, '  Simulation duration: %.1f seconds\n', config.simulation_time);
-        fprintf(fid, '  Sample rate: %d Hz\n', config.sample_rate);
-        fprintf(fid, '  Model: %s\n', config.model_name);
-        fprintf(fid, '  Output format: CSV files\n');
-        fprintf(fid, '\n');
-        
-        fprintf(fid, 'Results:\n');
-        fprintf(fid, '  Successful trials: %d\n', getFieldOrDefault(performance_metrics, 'successful_trials', 0));
-        fprintf(fid, '  Failed trials: %d\n', getFieldOrDefault(performance_metrics, 'failed_trials', 0));
-        fprintf(fid, '  Success rate: %.1f%%\n', getFieldOrDefault(performance_metrics, 'success_rate', 0));
-        fprintf(fid, '\n');
-        
-        fprintf(fid, 'Performance Metrics:\n');
-        fprintf(fid, '  Total execution time: %.2f seconds (%.2f minutes)\n', ...
-            getFieldOrDefault(performance_metrics, 'total_time', 0), getFieldOrDefault(performance_metrics, 'total_time', 0)/60);
-        fprintf(fid, '  Average trial time: %.2f seconds\n', getFieldOrDefault(performance_metrics, 'avg_trial_time', 0));
-        fprintf(fid, '  Min trial time: %.2f seconds\n', getFieldOrDefault(performance_metrics, 'min_trial_time', 0));
-        fprintf(fid, '  Max trial time: %.2f seconds\n', getFieldOrDefault(performance_metrics, 'max_trial_time', 0));
-        fprintf(fid, '  Trial time std dev: %.2f seconds\n', getFieldOrDefault(performance_metrics, 'std_trial_time', 0));
-        fprintf(fid, '\n');
-        
-        fprintf(fid, 'Data Generated:\n');
-        fprintf(fid, '  Total data points: %d\n', getFieldOrDefault(performance_metrics, 'total_data_points', 0));
-        fprintf(fid, '  Data columns per trial: %d\n', getFieldOrDefault(performance_metrics, 'total_columns', 0));
-        successful_trials = getFieldOrDefault(performance_metrics, 'successful_trials', 0);
-        total_data_points = getFieldOrDefault(performance_metrics, 'total_data_points', 0);
-        if successful_trials > 0
-            fprintf(fid, '  Average data points per trial: %d\n', total_data_points / successful_trials);
-        end
-        fprintf(fid, '\n');
-        
-        fprintf(fid, 'Files Created:\n');
-        fprintf(fid, '  CSV trial files: %d files\n', successful_trials);
-        fprintf(fid, '  Performance log: performance_log.txt\n');
-        fprintf(fid, '  Performance summary: performance_summary.txt\n');
-        
-        fclose(fid);
-        fprintf('✓ Performance summary saved to: %s\n', summary_file);
-        
-    catch ME
-        fprintf('✗ Error saving performance summary: %s\n', ME.message);
     end
 end
 
