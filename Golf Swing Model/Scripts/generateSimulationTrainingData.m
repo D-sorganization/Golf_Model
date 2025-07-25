@@ -551,6 +551,8 @@ function [trial_data, signal_names, success] = addColumnSafely(trial_data, signa
         else
             fprintf('      ⚠️  Skipping %s: dimension mismatch (expected %d rows, got %d)\n', ...
                 column_name, size(trial_data, 1), size(data_column, 1));
+            fprintf('      ⚠️  trial_data size: %s, data_column size: %s\n', ...
+                mat2str(size(trial_data)), mat2str(size(data_column)));
             success = false;
         end
     catch ME
@@ -564,6 +566,12 @@ function [trial_data, signal_names] = extractModelWorkspaceData(model_name, tria
     % This captures critical data for matching anthropomorphies to motion patterns
     
     try
+        % Validate inputs
+        if isempty(num_time_points) || num_time_points <= 0
+            fprintf('    ⚠️  Invalid num_time_points: %s\n', mat2str(num_time_points));
+            return;
+        end
+        
         % Get model workspace
         model_workspace = get_param(model_name, 'ModelWorkspace');
         workspace_vars = model_workspace.whos;
@@ -655,10 +663,7 @@ function [trial_data, signal_names] = extractModelWorkspaceData(model_name, tria
             end
         end
         
-        % Extract all workspace variables that might be relevant
-        for i = 1:length(workspace_vars)
-            var_info = workspace_vars(i);
-            var_name = var_info.name;
+
             
             % Skip if already processed or if it's a system variable
             if any(strcmp(anthropomorphic_vars, var_name)) || ...
@@ -890,7 +895,7 @@ function [trial_data, signal_names] = extractCompleteTrialData(simOut, sim_idx, 
         signal_names = {'time', 'simulation_id'}; % Start with time and simulation ID
         
         % Add time and simulation ID
-        [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, target_time', 'time');
+        [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, target_time, 'time');
         if ~success
             fprintf('    ⚠️  Failed to add time column\n');
         end
@@ -950,7 +955,16 @@ function [trial_data, signal_names] = extractLogsoutData(simOut, trial_data, sig
         for i = 1:logsout.numElements
             try
                 element = logsout.getElement(i);
-                name = matlab.lang.makeValidName(element.Name);
+                % Use original name but clean it properly (preserve parentheses)
+                original_name = element.Name;
+                name = strrep(original_name, ' ', '_');
+                name = strrep(name, '-', '_');
+                name = strrep(name, '.', '_');
+                % Don't remove parentheses - they're part of the signal names!
+                name = strrep(name, '[', '');
+                name = strrep(name, ']', '');
+                name = strrep(name, '/', '_');
+                name = strrep(name, '\', '_');
                 data = element.Values.Data;
                 time = element.Values.Time;
                 
@@ -1112,12 +1126,13 @@ function [trial_data, signal_names] = extractSimscapeResultsData(simOut, trial_d
                     
                     % Use original signal name, but clean it for table compatibility
                     original_name = sig.Name;
-                    % Replace problematic characters but keep descriptive names
+                    % Replace problematic characters but preserve parentheses (they indicate vector components)
                     clean_name = strrep(original_name, ' ', '_');
                     clean_name = strrep(clean_name, '-', '_');
                     clean_name = strrep(clean_name, '.', '_');
-                    clean_name = strrep(clean_name, '(', '');
-                    clean_name = strrep(clean_name, ')', '');
+                    % Don't remove parentheses - they're part of the signal names!
+                    % clean_name = strrep(clean_name, '(', '');
+                    % clean_name = strrep(clean_name, ')', '');
                     clean_name = strrep(clean_name, '[', '');
                     clean_name = strrep(clean_name, ']', '');
                     clean_name = strrep(clean_name, '/', '_');
