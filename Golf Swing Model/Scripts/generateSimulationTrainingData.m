@@ -5,6 +5,20 @@
 
 fprintf('=== Golf Swing Training Data Generator (CSV Version) ===\n\n');
 
+%% Workspace Cleanup Setup
+% Save current workspace state to restore later
+initial_vars = who;
+initial_vars = setdiff(initial_vars, {'initial_vars'}); % Don't save this variable
+
+% Function to restore workspace
+function restoreWorkspace(initial_vars)
+    current_vars = who;
+    vars_to_clear = setdiff(current_vars, [initial_vars, {'initial_vars'}]);
+    if ~isempty(vars_to_clear)
+        clear(vars_to_clear{:});
+    end
+end
+
 %% Initialize Performance Tracking
 performance_metrics = struct();
 performance_metrics.start_time = tic;
@@ -220,7 +234,7 @@ if use_parallel
         try
             fprintf('Worker: Starting trial %d...\n', sim_idx);
             trial_start_time = tic;
-            trial_results{sim_idx} = runSingleTrialWithCSV(sim_idx, config);
+            [trial_results{sim_idx}, signal_names] = runSingleTrialWithCSV(sim_idx, config);
             trial_time = toc(trial_start_time);
             
             % Store trial time (will be collected after parfor)
@@ -236,7 +250,7 @@ if use_parallel
     
     % Process results and collect metrics
     for sim_idx = 1:config.num_simulations
-        if ~isempty(trial_results{sim_idx})
+        if ~isempty(trial_results{sim_idx}) && isfield(trial_results{sim_idx}, 'success') && trial_results{sim_idx}.success
             performance_metrics.successful_trials = performance_metrics.successful_trials + 1;
             performance_metrics.trial_times = [performance_metrics.trial_times, trial_results{sim_idx}.trial_time];
             performance_metrics.total_data_points = performance_metrics.total_data_points + trial_results{sim_idx}.data_points;
@@ -273,7 +287,7 @@ else
     
     try
         trial_start_time = tic;
-        result = runSingleTrialWithCSV(sim_idx, config);
+        [result, signal_names] = runSingleTrialWithCSV(sim_idx, config);
         trial_time = toc(trial_start_time);
         
         if ~isempty(result)
@@ -354,11 +368,24 @@ fprintf('\n=== Generation Complete ===\n');
 fprintf('All CSV files have been created in: %s\n', config.output_folder);
 fprintf('Each CSV file contains a complete data table with all simulation data.\n');
 
+%% Clean up workspace
+fprintf('\n=== Cleaning up workspace ===\n');
+current_vars = who;
+vars_to_clear = setdiff(current_vars, initial_vars);
+if ~isempty(vars_to_clear)
+    clear(vars_to_clear{:});
+    fprintf('✓ Cleared %d temporary variables\n', length(vars_to_clear));
+else
+    fprintf('✓ No temporary variables to clear\n');
+end
+
+fprintf('✓ Workspace cleanup complete\n');
+
 end
 
 %% Helper Functions
 
-function result = runSingleTrialWithCSV(sim_idx, config)
+function [result, signal_names] = runSingleTrialWithCSV(sim_idx, config)
     % Run a single trial and save as CSV file with complete data
     
     try
@@ -392,17 +419,14 @@ function result = runSingleTrialWithCSV(sim_idx, config)
         
         % Extract all data from this simulation
         fprintf('  Extracting data...\n');
-        trial_data = extractCompleteTrialData(simOut, sim_idx, config);
+        [trial_data, signal_names] = extractCompleteTrialData(simOut, sim_idx, config);
         
         if ~isempty(trial_data)
             % Create comprehensive CSV file
             fprintf('  Creating CSV file...\n');
             
-            % Create column names based on data size (same as compileTrialDataset)
-            column_names = createColumnNames(size(trial_data, 2));
-            
             % Create table with all data
-            data_table = array2table(trial_data, 'VariableNames', column_names);
+            data_table = array2table(trial_data, 'VariableNames', signal_names);
             
             % Save as CSV file
             timestamp = datestr(now, 'yyyymmdd_HHMMSS');
@@ -422,11 +446,13 @@ function result = runSingleTrialWithCSV(sim_idx, config)
             fprintf('  ✓ CSV file created: %s\n', filename);
         else
             result = [];
+            signal_names = {}; % Ensure signal_names is empty if trial_data is empty
         end
         
     catch ME
         fprintf('  Trial %d error: %s\n', sim_idx, ME.message);
         result = [];
+        signal_names = {}; % Ensure signal_names is empty on error
     end
 end
 
@@ -459,15 +485,16 @@ function simInput = setPolynomialVariables(simInput, coeffs)
     end
 end
 
-function trial_data = extractCompleteTrialData(simOut, sim_idx, config)
+function [trial_data, signal_names] = extractCompleteTrialData(simOut, sim_idx, config)
     % Extract all available data from simulation output for a single trial
-    % Returns complete data matrix (no column names needed for CSV)
+    % Uses the same robust extraction methods as test_sim_data_extraction.m
     
     try
         % Get time vector and resample to target sample rate
         time_vector = simOut.tout;
         if isempty(time_vector)
             trial_data = [];
+            signal_names = {};
             return;
         end
         
@@ -475,65 +502,52 @@ function trial_data = extractCompleteTrialData(simOut, sim_idx, config)
         target_time = 0:1/config.sample_rate:config.simulation_time;
         target_time = target_time(target_time <= config.simulation_time);
         
-        % Initialize data matrix
+        % Initialize data matrix and signal names
         num_time_points = length(target_time);
         trial_data = zeros(num_time_points, 0); % Will grow as we add columns
+        signal_names = {'time', 'simulation_id'}; % Start with time and simulation ID
         
         % Add time and simulation ID
         trial_data = [trial_data, target_time', repmat(sim_idx, num_time_points, 1)];
         
-        % Extract logsout data
-        trial_data = extractLogsoutData(simOut, trial_data, target_time);
+        % Extract logsout data (same as test script)
+        [trial_data, signal_names] = extractLogsoutData(simOut, trial_data, signal_names, target_time);
         
-        % Extract signal bus data
-        trial_data = extractSignalBusData(simOut, trial_data, target_time);
+        % Extract signal log structs (same as test script)
+        [trial_data, signal_names] = extractSignalLogStructs(simOut, trial_data, signal_names, target_time);
         
-        % Extract Simscape data
-        trial_data = extractSimscapeData(simOut, trial_data, target_time);
+        % Extract Simscape Results Explorer data (same as test script)
+        [trial_data, signal_names] = extractSimscapeResultsData(simOut, trial_data, signal_names, target_time);
         
-        % Extract model workspace variables
-        trial_data = extractModelWorkspaceData(simOut, trial_data, target_time);
-        
-        % Extract inertia matrices and rotation matrices
-        trial_data = extractMatrixData(simOut, trial_data, target_time);
+        % Ensure unique column names
+        signal_names = makeUniqueColumnNames(signal_names);
         
     catch ME
         fprintf('    Error extracting trial data: %s\n', ME.message);
         trial_data = [];
+        signal_names = {};
     end
 end
 
-function trial_data = extractLogsoutData(simOut, trial_data, target_time)
-    % Extract data from logsout
-    
+function [trial_data, signal_names] = extractLogsoutData(simOut, trial_data, signal_names, target_time)
+    % Extract data from logsout (same as test script)
     try
-        logsout = simOut.logsout;
-        if isempty(logsout)
+        if ~isfield(simOut, 'logsout') || isempty(simOut.logsout)
             return;
         end
         
+        logsout = simOut.logsout;
         for i = 1:logsout.numElements
             try
                 element = logsout.getElement(i);
-                signal_name = element.Name;
-                
-                % Get signal data
-                if isa(element, 'Simulink.SimulationData.Signal')
-                    data = element.Values.Data;
-                    time = element.Values.Time;
-                else
-                    try
-                        [data, time] = element.getData;
-                    catch
-                        continue;
-                    end
-                end
+                name = matlab.lang.makeValidName(element.Name);
+                data = element.Values.Data;
+                time = element.Values.Time;
                 
                 % Resample to target time
                 resampled_data = resampleSignal(data, time, target_time);
-                
-                % Add to dataset
                 trial_data = [trial_data, resampled_data];
+                signal_names{end+1} = name;
                 
             catch ME
                 % Continue to next signal
@@ -545,191 +559,101 @@ function trial_data = extractLogsoutData(simOut, trial_data, target_time)
     end
 end
 
-function trial_data = extractSignalBusData(simOut, trial_data, target_time)
-    % Extract data from signal bus structs
-    
+function [trial_data, signal_names] = extractSignalLogStructs(simOut, trial_data, signal_names, target_time)
+    % Extract data from signal log structs (same as test script)
     try
-        % Define expected signal bus structs
-        expected_structs = {
-            'HipLogs', 'SpineLogs', 'TorsoLogs', ...
-            'LSLogs', 'RSLogs', 'LELogs', 'RELogs', ...
-            'LWLogs', 'RWLogs', 'LScapLogs', 'RScapLogs', ...
-            'LFLogs', 'RFLogs'
-        };
+        fields = fieldnames(simOut);
         
-        for i = 1:length(expected_structs)
-            struct_name = expected_structs{i};
-            
-            try
-                if ~isempty(simOut.(struct_name))
-                    log_struct = simOut.(struct_name);
-                    
-                    if isstruct(log_struct)
-                        fields = fieldnames(log_struct);
-                        
-                        for j = 1:length(fields)
-                            field_name = fields{j};
-                            field_data = log_struct.(field_name);
-                            
-                            % Extract data from field
-                            if isa(field_data, 'timeseries')
-                                data = field_data.Data;
-                                time = field_data.Time;
-                            elseif isstruct(field_data) && isfield(field_data, 'Data') && isfield(field_data, 'Time')
-                                data = field_data.Data;
-                                time = field_data.Time;
-                            elseif isnumeric(field_data)
-                                data = field_data;
-                                time = [];
-                            else
-                                continue;
-                            end
-                            
+        % Look for signal log structs (like RScapLogs, HipLogs, etc.)
+        for i = 1:length(fields)
+            field = fields{i};
+            if endsWith(field, 'Logs') && isstruct(simOut.(field))
+                log_struct = simOut.(field);
+                struct_fields = fieldnames(log_struct);
+                
+                for j = 1:length(struct_fields)
+                    subfield = struct_fields{j};
+                    try
+                        val = log_struct.(subfield);
+                        if isnumeric(val) && isvector(val) && length(val) > 1
+                            name = sprintf('%s_%s', field, subfield);
                             % Resample to target time
-                            if ~isempty(time)
-                                resampled_data = resampleSignal(data, time, target_time);
-                                trial_data = [trial_data, resampled_data];
-                            end
+                            resampled_data = resampleSignal(val, 1:length(val), target_time);
+                            trial_data = [trial_data, resampled_data];
+                            signal_names{end+1} = name;
                         end
+                    catch
+                        % Continue to next field
                     end
                 end
-                
-            catch ME
-                % Continue to next struct
+            end
+        end
+        
+        % Also check for other numeric vectors in simOut (same as test script)
+        for i = 1:length(fields)
+            field = fields{i};
+            if ~endsWith(field, 'Logs') && ~strcmp(field, 'logsout') && ~strcmp(field, 'tout')
+                try
+                    val = simOut.(field);
+                    if isnumeric(val) && isvector(val) && length(val) > 1
+                        % Resample to target time
+                        resampled_data = resampleSignal(val, 1:length(val), target_time);
+                        trial_data = [trial_data, resampled_data];
+                        signal_names{end+1} = field;
+                    end
+                catch
+                    % Continue to next field
+                end
             end
         end
         
     catch ME
-        % Continue without signal bus data
+        % Continue without signal log data
     end
 end
 
-function trial_data = extractSimscapeData(simOut, trial_data, target_time)
-    % Extract data from Simscape Results Explorer
-    
+function [trial_data, signal_names] = extractSimscapeResultsData(simOut, trial_data, signal_names, target_time)
+    % Extract data from Simscape Results Explorer (same as test script)
     try
-        simlog = simOut.simlog;
-        if isempty(simlog) || ~isa(simlog, 'simscape.logging.Node')
-            return;
-        end
-        
-        % Try to access child nodes
-        try
-            child_nodes = simlog.Children;
-        catch
-            try
-                child_nodes = simlog.children;
-            catch
+        runIDs = Simulink.sdi.getAllRunIDs;
+        if ~isempty(runIDs)
+            latest_run_id = runIDs(end);
+            run_obj = Simulink.sdi.getRun(latest_run_id);
+            all_signals = run_obj.getAllSignals;
+            
+            for i = 1:length(all_signals)
+                sig = all_signals(i);
                 try
-                    child_nodes = simlog.Nodes;
-                catch
-                    return;
-                end
-            end
-        end
-        
-        if ~isempty(child_nodes)
-            for i = 1:length(child_nodes)
-                child_node = child_nodes(i);
-                node_name = child_node.Name;
-                
-                % Look for joint-related nodes
-                if contains(lower(node_name), {'joint', 'actuator', 'motor', 'drive'})
-                    try
-                        signals = child_node.Children;
-                        
-                        for j = 1:length(signals)
-                            signal = signals(j);
-                            signal_name = signal.Name;
-                            
-                            if hasData(signal)
-                                [data, time] = getData(signal);
-                                resampled_data = resampleSignal(data, time, target_time);
-                                trial_data = [trial_data, resampled_data];
-                            end
-                        end
-                        
-                    catch ME
-                        % Continue to next node
-                    end
+                    % Get signal data using the correct method
+                    data = sig.Values.Data;
+                    time = sig.Values.Time;
+                    
+                    % Use original signal name, but clean it for table compatibility
+                    original_name = sig.Name;
+                    % Replace problematic characters but keep descriptive names
+                    clean_name = strrep(original_name, ' ', '_');
+                    clean_name = strrep(clean_name, '-', '_');
+                    clean_name = strrep(clean_name, '.', '_');
+                    clean_name = strrep(clean_name, '(', '');
+                    clean_name = strrep(clean_name, ')', '');
+                    clean_name = strrep(clean_name, '[', '');
+                    clean_name = strrep(clean_name, ']', '');
+                    clean_name = strrep(clean_name, '/', '_');
+                    clean_name = strrep(clean_name, '\', '_');
+                    
+                    % Resample to target time
+                    resampled_data = resampleSignal(data, time, target_time);
+                    trial_data = [trial_data, resampled_data];
+                    signal_names{end+1} = clean_name;
+                    
+                catch ME
+                    % Continue to next signal
                 end
             end
         end
         
     catch ME
         % Continue without Simscape data
-    end
-end
-
-function trial_data = extractModelWorkspaceData(simOut, trial_data, target_time)
-    % Extract model workspace variables (constant values)
-    
-    try
-        % Get model workspace variables
-        model_workspace = get_param(simOut.SimulationMetadata.ModelInfo.ModelName, 'ModelWorkspace');
-        variables = model_workspace.getVariableNames;
-        
-        for i = 1:length(variables)
-            var_name = variables{i};
-            
-            try
-                var_value = model_workspace.getVariable(var_name);
-                
-                % Only include numeric variables
-                if isnumeric(var_value)
-                    % Create constant column for all time points
-                    constant_data = repmat(var_value, length(target_time), 1);
-                    trial_data = [trial_data, constant_data];
-                end
-                
-            catch ME
-                % Continue to next variable
-            end
-        end
-        
-    catch ME
-        % Continue without model workspace data
-    end
-end
-
-function trial_data = extractMatrixData(simOut, trial_data, target_time)
-    % Extract inertia matrices and rotation matrices
-    
-    try
-        % Look for rotation matrices in signal buses
-        rotation_fields = {'Rotation_Transform'};
-        
-        for i = 1:length(rotation_fields)
-            field_name = rotation_fields{i};
-            
-            % Check in each signal bus struct
-            expected_structs = {'HipLogs', 'SpineLogs', 'TorsoLogs', 'LSLogs', 'RSLogs', 'LELogs', 'RELogs', 'LWLogs', 'RWLogs', 'LScapLogs', 'RScapLogs', 'LFLogs', 'RFLogs'};
-            
-            for j = 1:length(expected_structs)
-                struct_name = expected_structs{j};
-                
-                try
-                    if ~isempty(simOut.(struct_name)) && isfield(simOut.(struct_name), field_name)
-                        matrix_data = simOut.(struct_name).(field_name);
-                        
-                        if isnumeric(matrix_data)
-                            % Flatten 3x3xN matrix to Nx9
-                            if ndims(matrix_data) == 3
-                                [~, ~, n_frames] = size(matrix_data);
-                                flattened = reshape(matrix_data, [], n_frames)';
-                                resampled_data = resampleSignal(flattened, 1:n_frames, target_time);
-                                trial_data = [trial_data, resampled_data];
-                            end
-                        end
-                    end
-                catch ME
-                    % Continue to next struct
-                end
-            end
-        end
-        
-    catch ME
-        % Continue without matrix data
     end
 end
 
@@ -765,6 +689,26 @@ function resampled_data = resampleSignal(data, time, target_time)
     end
 end
 
+function unique_names = makeUniqueColumnNames(names)
+    % Make column names unique by appending numbers to duplicates
+    
+    unique_names = names;
+    seen_names = containers.Map('KeyType', 'char', 'ValueType', 'any');
+    
+    for i = 1:length(names)
+        name = names{i};
+        if isKey(seen_names, name)
+            % Name already exists, append counter
+            count = seen_names(name) + 1;
+            seen_names(name) = count;
+            unique_names{i} = sprintf('%s_%d', name, count);
+        else
+            % First occurrence of this name
+            seen_names(name) = 1;
+        end
+    end
+end
+
 function updatePerformanceLog(log_file, trial_num, trial_time, data_points, columns, status)
     % Update the performance log with trial results
     
@@ -777,66 +721,6 @@ function updatePerformanceLog(log_file, trial_num, trial_time, data_points, colu
         end
     catch ME
         % Silently fail if log update fails
-    end
-end
-
-function column_names = createColumnNames(num_columns)
-    % Create column names for the dataset (same as compileTrialDataset)
-    
-    column_names = {'time', 'simulation_id'};
-    
-    % Add logsout signal names
-    logsout_names = {'CHS', 'CHPathUnitVector', 'Face', 'Path', 'CHGlobalPosition', 'CHy', 'MaximumCHS', 'HipGlobalPosition', 'HipGlobalVelocity', 'HUBGlobalPosition', 'GolferMass', 'GolferCOM', 'KillswitchState', 'ButtPosition', 'LeftHandSpeed', 'LHAVGlobal', 'LeftHandPostion', 'LHGlobalVelocity', 'LHGlobalAngularVelocity', 'LHGlobalPosition', 'MidHandSpeed', 'MPGlobalPosition', 'MPGlobalVelocity', 'RightHandSpeed', 'RHAVGlobal', 'RHGlobalVelocity', 'RHGlobalAngularVelocity', 'RHGlobalPosition'};
-    
-    % Add torque signal names
-    torque_names = {'ForceAlongHandPath', 'LHForceAlongHandPath', 'RHForceAlongHandPath', 'SumofMomentsLHonClub', 'SumofMomentsRHonClub', 'TotalHandForceGlobal', 'TotalHandTorqueGlobal', 'LHonClubForceLocal', 'LHonClubTorqueLocal', 'RHonClubForceLocal', 'RHonClubTorqueLocal', 'HipTorqueXInput', 'HipTorqueYInput', 'HipTorqueZInput', 'TranslationForceXInput', 'TranslationForceYInput', 'TranslationForceZInput', 'LSTorqueXInput', 'SumofMomentsonClubLocal', 'BaseonHipForceHipBase'};
-    
-    % Add signal bus field names (positions, velocities, accelerations, torques)
-    signal_bus_names = {};
-    joints = {'Hip', 'Spine', 'Torso', 'LS', 'RS', 'LE', 'RE', 'LW', 'RW', 'LScap', 'RScap', 'LF', 'RF'};
-    
-    for i = 1:length(joints)
-        joint = joints{i};
-        signal_bus_names = [signal_bus_names, {
-            [joint '_PositionX'], [joint '_PositionY'], [joint '_PositionZ'], ...
-            [joint '_VelocityX'], [joint '_VelocityY'], [joint '_VelocityZ'], ...
-            [joint '_AccelerationX'], [joint '_AccelerationY'], [joint '_AccelerationZ'], ...
-            [joint '_AngularPositionX'], [joint '_AngularPositionY'], [joint '_AngularPositionZ'], ...
-            [joint '_AngularVelocityX'], [joint '_AngularVelocityY'], [joint '_AngularVelocityZ'], ...
-            [joint '_AngularAccelerationX'], [joint '_AngularAccelerationY'], [joint '_AngularAccelerationZ'], ...
-            [joint '_ConstraintForceLocal'], [joint '_ConstraintTorqueLocal'], ...
-            [joint '_ActuatorTorqueX'], [joint '_ActuatorTorqueY'], [joint '_ActuatorTorqueZ'], ...
-            [joint '_ForceLocal'], [joint '_TorqueLocal'], ...
-            [joint '_GlobalPosition'], [joint '_GlobalVelocity'], [joint '_GlobalAcceleration'], ...
-            [joint '_GlobalAngularVelocity'], [joint '_Rotation_Transform']
-        }];
-    end
-    
-    % Add rotation matrix components (9 components per joint)
-    rotation_names = {};
-    for i = 1:length(joints)
-        joint = joints{i};
-        for row = 1:3
-            for col = 1:3
-                rotation_names{end+1} = sprintf('%s_Rotation_%d%d', joint, row, col);
-            end
-        end
-    end
-    
-    % Combine all column names
-    column_names = [column_names, logsout_names, torque_names, signal_bus_names, rotation_names];
-    
-    % Ensure unique names
-    column_names = unique(column_names, 'stable');
-    
-    % If we have more columns than names, add generic names
-    if length(column_names) < num_columns
-        for i = length(column_names) + 1:num_columns
-            column_names{i} = sprintf('Column_%d', i);
-        end
-    elseif length(column_names) > num_columns
-        % Truncate to match actual column count
-        column_names = column_names(1:num_columns);
     end
 end
 
