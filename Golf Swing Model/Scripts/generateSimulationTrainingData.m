@@ -10,15 +10,6 @@ fprintf('=== Golf Swing Training Data Generator (CSV Version) ===\n\n');
 initial_vars = who;
 initial_vars = setdiff(initial_vars, {'initial_vars'}); % Don't save this variable
 
-% Function to restore workspace
-function restoreWorkspace(initial_vars)
-    current_vars = who;
-    vars_to_clear = setdiff(current_vars, [initial_vars, {'initial_vars'}]);
-    if ~isempty(vars_to_clear)
-        clear(vars_to_clear{:});
-    end
-end
-
 %% Initialize Performance Tracking
 performance_metrics = struct();
 performance_metrics.start_time = tic;
@@ -370,15 +361,13 @@ fprintf('Each CSV file contains a complete data table with all simulation data.\
 
 %% Clean up workspace
 fprintf('\n=== Cleaning up workspace ===\n');
-current_vars = who;
-vars_to_clear = setdiff(current_vars, initial_vars);
-if ~isempty(vars_to_clear)
-    clear(vars_to_clear{:});
-    fprintf('✓ Cleared %d temporary variables\n', length(vars_to_clear));
+if evalin('base', 'exist(''initial_vars'', ''var'')')
+    % Clean up base workspace, keeping only variables that existed before the script
+    evalin('base', ['clearvars -except ', strjoin(initial_vars, ' ')]);
+    fprintf('✓ Cleared all temporary variables from base workspace\n');
 else
-    fprintf('✓ No temporary variables to clear\n');
+    fprintf('No initial_vars found in base workspace. No cleanup performed.\n');
 end
-
 fprintf('✓ Workspace cleanup complete\n');
 
 end

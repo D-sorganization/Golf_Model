@@ -15,4 +15,17 @@
 **/.MATLABDriveTag
 
 # Simulation output data (large files, don't track in git)
-**/SimulationOutputData/ 
+**/SimulationOutputData/
+
+# Data files (CSV, MAT, etc.) - don't track in git
+**/*.csv
+**/test_*.mat
+**/test_*.csv
+**/extracted_*.mat
+**/extracted_*.csv
+**/dataset_*.mat
+**/dataset_*.csv
+**/training_data_*.mat
+**/training_data_*.csv
+**/golf_swing_dataset_*.mat
+**/golf_swing_dataset_*.csv 
