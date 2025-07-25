@@ -1,13 +1,25 @@
-% test_sim_data_extraction.m
-% Run a single simulation and save logsout, signal logs, and Simscape Results Explorer data as CSV and table .mat files
-% No code from old scripts. Clean, modern, and robust.
-
-clear; clc;
-
-model_name = 'GolfSwing3D_Kinetic';
-sim_time = 0.3;
+% Test script to extract simulation data from different sources
+% This script helps diagnose what data is available and where it's stored
 
 fprintf('=== Running test simulation for data extraction ===\n');
+
+%% Workspace Cleanup Setup
+% Save current workspace state to restore later
+initial_vars = who;
+initial_vars = setdiff(initial_vars, {'initial_vars'}); % Don't save this variable
+
+% Function to restore workspace
+function restoreWorkspace(initial_vars)
+    current_vars = who;
+    vars_to_clear = setdiff(current_vars, [initial_vars, {'initial_vars'}]);
+    if ~isempty(vars_to_clear)
+        clear(vars_to_clear{:});
+    end
+end
+
+%% Configuration
+model_name = 'GolfSwing3D_Kinetic';
+sim_time = 0.3;
 
 % Check if 'out' exists in workspace (from manual run)
 if exist('out', 'var')
@@ -206,13 +218,26 @@ try
                 % Get signal data using the correct method
                 data = sig.Values.Data;
                 time = sig.Values.Time;
-                name = matlab.lang.makeValidName(sig.Name);
-                all_names{end+1} = name;
+                
+                % Use original signal name, but clean it for table compatibility
+                original_name = sig.Name;
+                % Replace problematic characters but keep descriptive names
+                clean_name = strrep(original_name, ' ', '_');
+                clean_name = strrep(clean_name, '-', '_');
+                clean_name = strrep(clean_name, '.', '_');
+                clean_name = strrep(clean_name, '(', '');
+                clean_name = strrep(clean_name, ')', '');
+                clean_name = strrep(clean_name, '[', '');
+                clean_name = strrep(clean_name, ']', '');
+                clean_name = strrep(clean_name, '/', '_');
+                clean_name = strrep(clean_name, '\', '_');
+                
+                all_names{end+1} = clean_name;
                 all_data{end+1} = data(:);
                 if isempty(all_time)
                     all_time = time(:);
                 end
-                fprintf('  ✓ %s (%d points)\n', name, length(data));
+                fprintf('  ✓ %s (%d points)\n', original_name, length(data));
             catch ME
                 fprintf('  ✗ Error extracting signal %s: %s\n', sig.Name, ME.message);
             end
@@ -245,4 +270,7 @@ fprintf('\n=== Test data extraction complete ===\n');
 fprintf('Files created (if data present):\n');
 fprintf('  test_logsout.csv, test_logsout.mat\n');
 fprintf('  test_signal_logs.csv, test_signal_logs.mat\n');
-fprintf('  test_simscape_data.csv, test_simscape_data.mat\n'); 
+fprintf('  test_simscape_data.csv, test_simscape_data.mat\n');
+
+%% Restore workspace
+restoreWorkspace(initial_vars); 
