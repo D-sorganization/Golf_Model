@@ -9,3 +9,5 @@ Configuration:
   Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\SimulationData
 
 Trial Results:
+  Trial 1: success (53.01s, 4 points, 228 columns)
+  Trial 2: success (13.40s, 4 points, 228 columns)
