@@ -415,23 +415,28 @@ function run_generation(config, handles)
             end
         end
         
-        % Run trials sequentially (parallel execution disabled for now)
-        update_log('Running trials sequentially...', handles);
-        for sim_idx = 1:config.num_simulations
-            if handles.should_stop
-                update_log('Generation stopped by user', handles);
-                break;
+        % Run trials based on execution mode
+        if strcmp(config.execution_mode, 'parallel')
+            update_log('Running trials in parallel...', handles);
+            
+            % Use parfor for parallel execution
+            parfor sim_idx = 1:config.num_simulations
+                try
+                    result = runSingleTrial(sim_idx, config);
+                    results{sim_idx} = result;
+                catch ME
+                    results{sim_idx} = struct('success', false, 'error', ME.message);
+                end
             end
             
-            % Update progress
-            progress = (sim_idx - 1) / config.num_simulations * 100;
-            update_progress(sprintf('Trial %d/%d (%.1f%%)', sim_idx, config.num_simulations, progress), handles);
-            update_status(sprintf('Processing trial %d...', sim_idx), handles);
-            
-            try
-                result = run_single_trial(sim_idx, config);
-                results{sim_idx} = result;
+            % Process results after parallel execution
+            for sim_idx = 1:config.num_simulations
+                if handles.should_stop
+                    update_log('Generation stopped by user', handles);
+                    break;
+                end
                 
+                result = results{sim_idx};
                 if result.success
                     successful_trials = successful_trials + 1;
                     update_log(sprintf('Trial %d: Success (%d rows, %d columns)', ...
@@ -441,10 +446,42 @@ function run_generation(config, handles)
                     update_log(sprintf('Trial %d: Failed - %s', sim_idx, result.error), handles);
                 end
                 
-            catch ME
-                failed_trials = failed_trials + 1;
-                results{sim_idx} = struct('success', false, 'error', ME.message);
-                update_log(sprintf('Trial %d: Error - %s', sim_idx, ME.message), handles);
+                % Update progress
+                progress = sim_idx / config.num_simulations * 100;
+                update_progress(sprintf('Trial %d/%d (%.1f%%)', sim_idx, config.num_simulations, progress), handles);
+                update_status(sprintf('Processing trial %d...', sim_idx), handles);
+            end
+        else
+            update_log('Running trials sequentially...', handles);
+            for sim_idx = 1:config.num_simulations
+                if handles.should_stop
+                    update_log('Generation stopped by user', handles);
+                    break;
+                end
+                
+                % Update progress
+                progress = (sim_idx - 1) / config.num_simulations * 100;
+                update_progress(sprintf('Trial %d/%d (%.1f%%)', sim_idx, config.num_simulations, progress), handles);
+                update_status(sprintf('Processing trial %d...', sim_idx), handles);
+                
+                try
+                    result = runSingleTrial(sim_idx, config);
+                    results{sim_idx} = result;
+                    
+                    if result.success
+                        successful_trials = successful_trials + 1;
+                        update_log(sprintf('Trial %d: Success (%d rows, %d columns)', ...
+                            sim_idx, result.data_points, result.columns), handles);
+                    else
+                        failed_trials = failed_trials + 1;
+                        update_log(sprintf('Trial %d: Failed - %s', sim_idx, result.error), handles);
+                    end
+                    
+                catch ME
+                    failed_trials = failed_trials + 1;
+                    results{sim_idx} = struct('success', false, 'error', ME.message);
+                    update_log(sprintf('Trial %d: Error - %s', sim_idx, ME.message), handles);
+                end
             end
         end
         
@@ -470,183 +507,12 @@ function run_generation(config, handles)
     guidata(fig, handles);
 end
 
-function result = run_single_trial(sim_idx, config)
-    % Generate polynomial coefficients based on scenario
-    polynomial_coeffs = generatePolynomialCoefficients(config);
-    
-    % Create simulation input
-    simInput = Simulink.SimulationInput(config.model_name);
-    simInput = simInput.setModelParameter('StopTime', num2str(config.simulation_time));
-    
-    % Set modeling mode to 3 (hex polynomial)
-    simInput = simInput.setVariable('ModelingMode', Simulink.Parameter(config.modeling_mode));
-    
-    % Set polynomial coefficients
-    simInput = setPolynomialVariables(simInput, polynomial_coeffs);
-    
-    % Configure logging
-    simInput = simInput.setModelParameter('SignalLogging', 'on');
-    simInput = simInput.setModelParameter('SignalLoggingName', 'out');
-    simInput = simInput.setModelParameter('SignalLoggingSaveFormat', 'Dataset');
-    
-    % Run simulation
-    simOut = sim(simInput);
-    
-    % Extract data based on selected sources
-    [trial_data, signal_names] = extractCompleteTrialData(simOut, sim_idx, config);
-    
-    if ~isempty(trial_data)
-        % Create CSV file
-        data_table = array2table(trial_data, 'VariableNames', signal_names);
-        timestamp = datestr(now, 'yyyymmdd_HHMMSS');
-        filename = sprintf('trial_%03d_%s.csv', sim_idx, timestamp);
-        filepath = fullfile(config.output_folder, filename);
-        writetable(data_table, filepath);
-        
-        result = struct();
-        result.success = true;
-        result.filename = filename;
-        result.data_points = size(trial_data, 1);
-        result.columns = size(trial_data, 2);
-    else
-        result = struct();
-        result.success = false;
-        result.error = 'No data extracted';
-    end
-end
-
-function coeffs = generatePolynomialCoefficients(config)
-    % Define all joint coefficient names based on the model
-    joint_coeffs = {
-        % Hip torques
-        {'HipInputXA', 'HipInputXB', 'HipInputXC', 'HipInputXD', 'HipInputXE', 'HipInputXF', 'HipInputXG'};
-        {'HipInputYA', 'HipInputYB', 'HipInputYC', 'HipInputYD', 'HipInputYE', 'HipInputYF', 'HipInputYG'};
-        {'HipInputZA', 'HipInputZB', 'HipInputZC', 'HipInputZD', 'HipInputZE', 'HipInputZF', 'HipInputZG'};
-        % Spine torques
-        {'SpineInputXA', 'SpineInputXB', 'SpineInputXC', 'SpineInputXD', 'SpineInputXE', 'SpineInputXF', 'SpineInputXG'};
-        {'SpineInputYA', 'SpineInputYB', 'SpineInputYC', 'SpineInputYD', 'SpineInputYE', 'SpineInputYF', 'SpineInputYG'};
-        % Left shoulder
-        {'LScapInputXA', 'LScapInputXB', 'LScapInputXC', 'LScapInputXD', 'LScapInputXE', 'LScapInputXF', 'LScapInputXG'};
-        {'LScapInputYA', 'LScapInputYB', 'LScapInputYC', 'LScapInputYD', 'LScapInputYE', 'LScapInputYF', 'LScapInputYG'};
-        % Left arm
-        {'LSInputXA', 'LSInputXB', 'LSInputXC', 'LSInputXD', 'LSInputXE', 'LSInputXF', 'LSInputXG'};
-        {'LSInputYA', 'LSInputYB', 'LSInputYC', 'LSInputYD', 'LSInputYE', 'LSInputYF', 'LSInputYG'};
-        {'LSInputZA', 'LSInputZB', 'LSInputZC', 'LSInputZD', 'LSInputZE', 'LSInputZF', 'LSInputZG'};
-        % Right shoulder
-        {'RScapInputXA', 'RScapInputXB', 'RScapInputXC', 'RScapInputXD', 'RScapInputXE', 'RScapInputXF', 'RScapInputXG'};
-        {'RScapInputYA', 'RScapInputYB', 'RScapInputYC', 'RScapInputYD', 'RScapInputYE', 'RScapInputYF', 'RScapInputYG'};
-        % Right arm
-        {'RSInputXA', 'RSInputXB', 'RSInputXC', 'RSInputXD', 'RSInputXE', 'RSInputXF', 'RSInputXG'};
-        {'RSInputYA', 'RSInputYB', 'RSInputYC', 'RSInputYD', 'RSInputYE', 'RSInputYF', 'RSInputYG'};
-        {'RSInputZA', 'RSInputZB', 'RSInputZC', 'RSInputZD', 'RSInputZE', 'RSInputZF', 'RSInputZG'};
-        % Left elbow
-        {'LEInputA', 'LEInputB', 'LEInputC', 'LEInputD', 'LEInputE', 'LEInputF', 'LEInputG'};
-        % Right elbow
-        {'REInputA', 'REInputB', 'REInputC', 'REInputD', 'REInputE', 'REInputF', 'REInputG'};
-        % Left wrist
-        {'LWInputXA', 'LWInputXB', 'LWInputXC', 'LWInputXD', 'LWInputXE', 'LWInputXF', 'LWInputXG'};
-        {'LWInputYA', 'LWInputYB', 'LWInputYC', 'LWInputYD', 'LWInputYE', 'LWInputYF', 'LWInputYG'};
-        % Right wrist
-        {'RWInputXA', 'RWInputXB', 'RWInputXC', 'RWInputXD', 'RWInputXE', 'RWInputXF', 'RWInputXG'};
-        {'RWInputYA', 'RWInputYB', 'RWInputYC', 'RWInputYD', 'RWInputYE', 'RWInputYF', 'RWInputYG'};
-        % Left leg
-        {'LEInputA', 'LEInputB', 'LEInputC', 'LEInputD', 'LEInputE', 'LEInputF', 'LEInputG'};
-        % Right leg
-        {'REInputA', 'REInputB', 'REInputC', 'REInputD', 'REInputE', 'REInputF', 'REInputG'};
-        % Left foot
-        {'LFInputA', 'LFInputB', 'LFInputC', 'LFInputD', 'LFInputE', 'LFInputF', 'LFInputG'};
-        % Right foot
-        {'RFInputA', 'RFInputB', 'RFInputC', 'RFInputD', 'RFInputE', 'RFInputF', 'RFInputG'};
-    };
-    
-    coeffs = struct();
-    
-    for i = 1:length(joint_coeffs)
-        joint_set = joint_coeffs{i};
-        for j = 1:length(joint_set)
-            coeff_name = joint_set{j};
-            
-            switch config.torque_scenario
-                case 1 % Variable torques (A-G varied)
-                    coeffs.(coeff_name) = (rand(1) - 0.5) * 2 * config.coeff_range;
-                case 2 % Zero torque (all = 0)
-                    coeffs.(coeff_name) = 0;
-                case 3 % Constant torque (A-F=0, G=const)
-                    if j == 7 % G coefficient
-                        coeffs.(coeff_name) = config.constant_value;
-                    else % A-F coefficients
-                        coeffs.(coeff_name) = 0;
-                    end
-            end
-        end
-    end
-end
-
-function simInput = setPolynomialVariables(simInput, coeffs)
-    fields = fieldnames(coeffs);
-    for i = 1:length(fields)
-        field_name = fields{i};
-        coeff_values = coeffs.(field_name);
-        simInput = simInput.setVariable(field_name, Simulink.Parameter(coeff_values));
-    end
-end
-
-function [trial_data, signal_names] = extractCompleteTrialData(simOut, sim_idx, config)
-    try
-        % Get time vector and resample to target sample rate
-        time_vector = simOut.tout;
-        if isempty(time_vector)
-            trial_data = [];
-            signal_names = {};
-            return;
-        end
-        
-        % Resample to target sample rate
-        target_time = 0:1/config.sample_rate:config.simulation_time;
-        target_time = target_time(target_time <= config.simulation_time);
-        
-        % Initialize data matrix and signal names
-        num_time_points = length(target_time);
-        trial_data = zeros(num_time_points, 0);
-        signal_names = {'time', 'simulation_id'};
-        
-        % Add time and simulation ID
-        [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, target_time, 'time');
-        [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, repmat(sim_idx, num_time_points, 1), 'simulation_id');
-        
-        % Extract data based on selected sources
-        if config.use_model_workspace
-            [trial_data, signal_names] = extractModelWorkspaceData(config.model_name, trial_data, signal_names, num_time_points);
-        end
-        
-        if config.use_logsout
-            [trial_data, signal_names] = extractLogsoutData(simOut, trial_data, signal_names, target_time);
-        end
-        
-        if config.use_signal_bus
-            [trial_data, signal_names] = extractSignalLogStructs(simOut, trial_data, signal_names, target_time);
-        end
-        
-        if config.use_simscape
-            [trial_data, signal_names] = extractSimscapeResultsData(simOut, trial_data, signal_names, target_time);
-        end
-        
-        % Filter and clean up
-        [trial_data, signal_names] = filterDiscreteVariables(trial_data, signal_names);
-        signal_names = makeUniqueColumnNames(signal_names);
-        
-        % Final validation
-        if size(trial_data, 2) ~= length(signal_names)
-            min_length = min(size(trial_data, 2), length(signal_names));
-            trial_data = trial_data(:, 1:min_length);
-            signal_names = signal_names(1:min_length);
-        end
-        
-    catch ME
-        trial_data = [];
-        signal_names = {};
-    end
-end
+% Note: The following functions have been moved to standalone files to enable parallel execution:
+% - runSingleTrial.m
+% - generatePolynomialCoefficients.m  
+% - setPolynomialVariables.m
+% - extractCompleteTrialData.m
+% - GolfSwingDataGeneratorHelpers.m (contains all helper functions)
 
 % Include helper functions from GolfSwingDataGeneratorHelpers.m
 % These functions are defined in the separate helper file
