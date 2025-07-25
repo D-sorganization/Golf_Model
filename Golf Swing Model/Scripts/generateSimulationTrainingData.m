@@ -1,3 +1,4 @@
+function generateSimulationTrainingData()
 % generateSimulationTrainingData.m
 % Comprehensive golf swing simulation training data generator
 % Generates individual CSV files for each trial with complete data tables
@@ -241,37 +242,38 @@ if use_parallel
         try
             fprintf('Worker: Starting trial %d...\n', sim_idx);
             trial_start_time = tic;
-            [trial_results{sim_idx}, signal_names] = runSingleTrialWithCSV(sim_idx, config);
+            [trial_result, ~] = runSingleTrialWithCSV(sim_idx, config); % Don't capture signal_names in parfor
             trial_time = toc(trial_start_time);
             
-            % Store trial time (will be collected after parfor)
-            trial_results{sim_idx}.trial_time = trial_time;
+            % Store trial result in cell array - ensure it's properly structured
+            if ~isempty(trial_result)
+                trial_result.trial_time = trial_time;
+                trial_results{sim_idx} = trial_result;
+            else
+                trial_results{sim_idx} = struct('success', false, 'trial_time', trial_time);
+            end
             
             fprintf('Worker: Trial %d completed in %.2f seconds\n', sim_idx, trial_time);
             
-            % Clear local variables to prevent memory buildup in parallel workers
-            clear trial_start_time signal_names
-            
         catch ME
             fprintf('Worker: Simulation %d failed: %s\n', sim_idx, ME.message);
-            trial_results{sim_idx} = [];
-            
-            % Clear local variables even on error
-            clear trial_start_time signal_names ME
+            % Store failed result
+            trial_results{sim_idx} = struct('success', false, 'trial_time', 0);
         end
     end
     
     % Process results and collect metrics
     for sim_idx = 1:config.num_simulations
-        if ~isempty(trial_results{sim_idx}) && isfield(trial_results{sim_idx}, 'success') && trial_results{sim_idx}.success
+        result = trial_results{sim_idx};
+        if ~isempty(result) && isfield(result, 'success') && result.success
             performance_metrics.successful_trials = performance_metrics.successful_trials + 1;
-            performance_metrics.trial_times = [performance_metrics.trial_times, trial_results{sim_idx}.trial_time];
-            performance_metrics.total_data_points = performance_metrics.total_data_points + trial_results{sim_idx}.data_points;
-            performance_metrics.total_columns = trial_results{sim_idx}.columns;
+            performance_metrics.trial_times = [performance_metrics.trial_times, result.trial_time];
+            performance_metrics.total_data_points = performance_metrics.total_data_points + result.data_points;
+            performance_metrics.total_columns = result.columns;
             
-            fprintf('✓ Trial %d completed successfully (%.2f seconds)\n', sim_idx, trial_results{sim_idx}.trial_time);
-            fprintf('  CSV file: %s\n', trial_results{sim_idx}.filename);
-            fprintf('  Data points: %d, Columns: %d\n', trial_results{sim_idx}.data_points, trial_results{sim_idx}.columns);
+            fprintf('✓ Trial %d completed successfully (%.2f seconds)\n', sim_idx, result.trial_time);
+            fprintf('  CSV file: %s\n', result.filename);
+            fprintf('  Data points: %d, Columns: %d\n', result.data_points, result.columns);
         else
             performance_metrics.failed_trials = performance_metrics.failed_trials + 1;
             fprintf('✗ Trial %d failed\n', sim_idx);
@@ -327,11 +329,18 @@ else
         fprintf('✗ Simulation %d failed: %s\n', sim_idx, ME.message);
         updatePerformanceLog(config.performance_log, sim_idx, trial_time, 0, 0, 'error');
     end
-end
+    end % End of sequential for loop
+end % End of if use_parallel
 
 %% Calculate Final Performance Metrics
 performance_metrics.total_time = toc(performance_metrics.start_time);
-performance_metrics.success_rate = (performance_metrics.successful_trials / config.num_simulations) * 100;
+
+% Ensure success_rate is always calculated even if no trials completed
+if isfield(performance_metrics, 'successful_trials') && config.num_simulations > 0
+    performance_metrics.success_rate = (performance_metrics.successful_trials / config.num_simulations) * 100;
+else
+    performance_metrics.success_rate = 0;
+end
 
 if ~isempty(performance_metrics.trial_times)
     performance_metrics.avg_trial_time = mean(performance_metrics.trial_times);
@@ -393,6 +402,17 @@ catch ME_main
     % Try to save any partial performance data
     try
         if exist('config', 'var') && exist('performance_metrics', 'var')
+            % Ensure required fields exist before saving
+            if ~isfield(performance_metrics, 'success_rate')
+                if isfield(performance_metrics, 'successful_trials') && exist('config', 'var')
+                    performance_metrics.success_rate = (performance_metrics.successful_trials / config.num_simulations) * 100;
+                else
+                    performance_metrics.success_rate = 0;
+                end
+            end
+            if ~isfield(performance_metrics, 'total_time')
+                performance_metrics.total_time = 0;
+            end
             savePerformanceSummary(config, performance_metrics);
         end
     catch
@@ -911,31 +931,32 @@ function savePerformanceSummary(config, performance_metrics)
         fprintf(fid, '\n');
         
         fprintf(fid, 'Results:\n');
-        fprintf(fid, '  Successful trials: %d\n', performance_metrics.successful_trials);
-        fprintf(fid, '  Failed trials: %d\n', performance_metrics.failed_trials);
-        fprintf(fid, '  Success rate: %.1f%%\n', performance_metrics.success_rate);
+        fprintf(fid, '  Successful trials: %d\n', getFieldOrDefault(performance_metrics, 'successful_trials', 0));
+        fprintf(fid, '  Failed trials: %d\n', getFieldOrDefault(performance_metrics, 'failed_trials', 0));
+        fprintf(fid, '  Success rate: %.1f%%\n', getFieldOrDefault(performance_metrics, 'success_rate', 0));
         fprintf(fid, '\n');
         
         fprintf(fid, 'Performance Metrics:\n');
         fprintf(fid, '  Total execution time: %.2f seconds (%.2f minutes)\n', ...
-            performance_metrics.total_time, performance_metrics.total_time/60);
-        fprintf(fid, '  Average trial time: %.2f seconds\n', performance_metrics.avg_trial_time);
-        fprintf(fid, '  Min trial time: %.2f seconds\n', performance_metrics.min_trial_time);
-        fprintf(fid, '  Max trial time: %.2f seconds\n', performance_metrics.max_trial_time);
-        fprintf(fid, '  Trial time std dev: %.2f seconds\n', performance_metrics.std_trial_time);
+            getFieldOrDefault(performance_metrics, 'total_time', 0), getFieldOrDefault(performance_metrics, 'total_time', 0)/60);
+        fprintf(fid, '  Average trial time: %.2f seconds\n', getFieldOrDefault(performance_metrics, 'avg_trial_time', 0));
+        fprintf(fid, '  Min trial time: %.2f seconds\n', getFieldOrDefault(performance_metrics, 'min_trial_time', 0));
+        fprintf(fid, '  Max trial time: %.2f seconds\n', getFieldOrDefault(performance_metrics, 'max_trial_time', 0));
+        fprintf(fid, '  Trial time std dev: %.2f seconds\n', getFieldOrDefault(performance_metrics, 'std_trial_time', 0));
         fprintf(fid, '\n');
         
         fprintf(fid, 'Data Generated:\n');
-        fprintf(fid, '  Total data points: %d\n', performance_metrics.total_data_points);
-        fprintf(fid, '  Data columns per trial: %d\n', performance_metrics.total_columns);
-        if performance_metrics.successful_trials > 0
-            fprintf(fid, '  Average data points per trial: %d\n', ...
-                performance_metrics.total_data_points / performance_metrics.successful_trials);
+        fprintf(fid, '  Total data points: %d\n', getFieldOrDefault(performance_metrics, 'total_data_points', 0));
+        fprintf(fid, '  Data columns per trial: %d\n', getFieldOrDefault(performance_metrics, 'total_columns', 0));
+        successful_trials = getFieldOrDefault(performance_metrics, 'successful_trials', 0);
+        total_data_points = getFieldOrDefault(performance_metrics, 'total_data_points', 0);
+        if successful_trials > 0
+            fprintf(fid, '  Average data points per trial: %d\n', total_data_points / successful_trials);
         end
         fprintf(fid, '\n');
         
         fprintf(fid, 'Files Created:\n');
-        fprintf(fid, '  CSV trial files: %d files\n', performance_metrics.successful_trials);
+        fprintf(fid, '  CSV trial files: %d files\n', successful_trials);
         fprintf(fid, '  Performance log: performance_log.txt\n');
         fprintf(fid, '  Performance summary: performance_summary.txt\n');
         
@@ -944,6 +965,15 @@ function savePerformanceSummary(config, performance_metrics)
         
     catch ME
         fprintf('✗ Error saving performance summary: %s\n', ME.message);
+    end
+end
+
+function value = getFieldOrDefault(struct_var, field_name, default_value)
+    % Helper function to safely get field value or return default
+    if isfield(struct_var, field_name)
+        value = struct_var.(field_name);
+    else
+        value = default_value;
     end
 end
 
