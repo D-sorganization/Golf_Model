@@ -27,7 +27,10 @@ function GolfSwingDataGeneratorGUI_rev2()
     
     % Create scrollable main layout
     createScrollableLayout(fig, handles);
-    
+
+    % Capture original positions for dynamic resizing
+    initializeResizeData(fig, handles);
+
     % Store handles in figure
     guidata(fig, handles);
     
@@ -87,6 +90,25 @@ function createScrollableLayout(fig, handles)
     handles.left_column = left_column;
     handles.right_column = right_column;
     handles.content_panel = content_panel;
+end
+
+function initializeResizeData(fig, handles)
+    % Capture initial positions of pixel-based controls for resizing
+    handles.origFigPos = get(fig, 'Position');
+    allWithPos = findall(fig, '-property', 'Position');
+    allWithPos(allWithPos == fig) = [];
+    units = get(allWithPos, 'Units');
+    if ischar(units)
+        units = {units};
+    end
+    pixelIdx = strcmp(units, 'pixels');
+    handles.resizableControls = allWithPos(pixelIdx);
+    origPos = get(handles.resizableControls, 'Position');
+    if ~iscell(origPos)
+        origPos = {origPos};
+    end
+    handles.origPositions = origPos;
+    guidata(fig, handles);
 end
 
 function createTrialSettingsPanel(parent, handles)
@@ -571,11 +593,21 @@ end
 
 % Enhanced Callback Functions
 function figureResizeCallback(fig, ~)
-    % Handle figure resizing to maintain layout
+    % Dynamically scale pixel-based controls when the figure size changes
     handles = guidata(fig);
-    if isfield(handles, 'main_scroll')
-        % Adjust scroll panel if needed
-        % This could be enhanced with actual scrolling logic
+    if isfield(handles, 'origFigPos') && isfield(handles, 'resizableControls')
+        newPos = get(fig, 'Position');
+        wScale = newPos(3) / handles.origFigPos(3);
+        hScale = newPos(4) / handles.origFigPos(4);
+        for idx = 1:numel(handles.resizableControls)
+            h = handles.resizableControls(idx);
+            if ~isvalid(h)
+                continue;
+            end
+            origPos = handles.origPositions{idx};
+            newControlPos = [origPos(1)*wScale, origPos(2)*hScale, origPos(3)*wScale, origPos(4)*hScale];
+            set(h, 'Position', newControlPos);
+        end
     end
 end
 
