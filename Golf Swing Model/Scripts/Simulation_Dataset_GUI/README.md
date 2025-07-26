@@ -11,17 +11,6 @@ This package provides a graphical user interface for:
 - Optimizing simulation performance
 - Generating training datasets for machine learning
 
-## Files
-
-### Core GUI Files
-- `GolfSwingDataGeneratorGUI.m` - Main GUI application
-- `GolfSwingDataGeneratorHelpers.m` - Helper functions for the GUI
-- `launch_gui.m` - Launcher script to start the GUI
-
-### Performance Optimization
-- `performance_options.m` - Performance settings dialog and script generator
-- `test_signal_bus_compatibility.m` - Test script for signal bus compatibility
-
 ## Quick Start
 
 1. **Launch the GUI:**
@@ -39,16 +28,33 @@ This package provides a graphical user interface for:
    settings = performance_options();
    ```
 
+## Files
+
+### Core GUI Files
+- `GolfSwingDataGeneratorGUI.m` - Main GUI application
+- `GolfSwingDataGeneratorHelpers.m` - Helper functions for the GUI
+- `launch_gui.m` - Launcher script to start the GUI
+
+### Performance & Testing
+- `performance_options.m` - Performance settings dialog and script generator
+- `test_signal_bus_compatibility.m` - Test script for signal bus compatibility
+- `run_tests.m` - Complete test suite
+
+### Documentation
+- `README.md` - This documentation
+- `SETUP_COMPLETE.md` - Setup summary
+- `FINAL_STATUS.md` - Final status report
+
 ## Signal Bus Integration
 
 The GUI is designed to work with your updated signal bus logging system:
 
-### ✅ **What's Working**
+### What's Working
 - **Signal Bus Logging**: Your signal bus is configured and working
-- **Performance Gain**: Disabling Simscape Results Explorer provides **5.1% speed improvement**
+- **Performance Gain**: Disabling Simscape Results Explorer provides 5.1% speed improvement
 - **Data Format**: GUI expects table or numeric array format (compatible with your current setup)
 
-### 🔧 **Key Features**
+### Key Features
 - **Performance Optimization**: Toggle Simscape Results Explorer for speed improvement
 - **Signal Bus Support**: Extract data from signal buses and ToWorkspace blocks
 - **Multiple Data Sources**: Support for logsout, signal buses, and Simscape data
@@ -126,4 +132,4 @@ For issues or questions:
 
 - **v1.0**: Initial release with signal bus support
 - **v1.1**: Added performance optimization features
-- **v1.2**: Enhanced compatibility testing and documentation 
+- **v1.2**: Enhanced compatibility testing and documentation
