@@ -17,17 +17,17 @@ function GolfSwingDataGeneratorGUI()
     handles.should_stop = false;
     handles.trial_table_data = [];
     
-    % Create main layout with panels
-    createMainLayout(fig, handles);
+    % Create main layout with panels and get updated handles
+    handles = createMainLayout(fig, handles);
     
     % Store handles in figure
     guidata(fig, handles);
     
-    % Initialize preview - commented out to avoid errors
+    % Initialize preview
     % updatePreview([], [], handles);
 end
 
-function createMainLayout(fig, handles)
+function handles = createMainLayout(fig, handles)
     % Create the main layout with all panels and controls
     
     % Title panel with gradient effect
@@ -71,16 +71,16 @@ function createMainLayout(fig, handles)
                           'Position', [690, 10, 670, 750], ...
                           'BackgroundColor', [0.96, 0.96, 0.98]);
     
-    % Create panels in left column
-    createTrialSettingsPanel(left_column, handles);
-    createDataSourcesPanel(left_column, handles);
-    createModelingPanel(left_column, handles);
-    createHelpPanel(left_column, handles);
+    % Create panels in left column and get updated handles
+    handles = createTrialSettingsPanel(left_column, handles);
+    handles = createDataSourcesPanel(left_column, handles);
+    handles = createModelingPanel(left_column, handles);
+    handles = createHelpPanel(left_column, handles);
     
-    % Create panels in right column
-    createOutputSettingsPanel(right_column, handles);
-    createTrialTablePanel(right_column, handles);
-    createProgressPanel(right_column, handles);
+    % Create panels in right column and get updated handles
+    handles = createOutputSettingsPanel(right_column, handles);
+    handles = createTrialTablePanel(right_column, handles);
+    handles = createProgressPanel(right_column, handles);
     
     % Store panel references
     handles.left_column = left_column;
@@ -88,7 +88,7 @@ function createMainLayout(fig, handles)
     handles.main_panel = main_panel;
 end
 
-function createTrialSettingsPanel(parent, handles)
+function handles = createTrialSettingsPanel(parent, handles)
     % Trial Settings Panel with enhanced explanations
     trial_panel = uipanel('Parent', parent, ...
                          'Title', 'Trial Settings', ...
@@ -202,7 +202,7 @@ function createTrialSettingsPanel(parent, handles)
     handles.trial_panel = trial_panel;
 end
 
-function createDataSourcesPanel(parent, handles)
+function handles = createDataSourcesPanel(parent, handles)
     % Data Sources Panel with detailed explanations
     data_panel = uipanel('Parent', parent, ...
                         'Title', 'Data Sources', ...
@@ -311,7 +311,7 @@ function createDataSourcesPanel(parent, handles)
     handles.data_panel = data_panel;
 end
 
-function createModelingPanel(parent, handles)
+function handles = createModelingPanel(parent, handles)
     % Modeling Mode & Torque Scenarios Panel with detailed explanations
     modeling_panel = uipanel('Parent', parent, ...
                             'Title', 'Modeling Mode & Torque Scenarios', ...
@@ -407,7 +407,7 @@ function createModelingPanel(parent, handles)
     handles.modeling_panel = modeling_panel;
 end
 
-function createOutputSettingsPanel(parent, handles)
+function handles = createOutputSettingsPanel(parent, handles)
     % Output Settings Panel with enhanced styling
     output_panel = uipanel('Parent', parent, ...
                           'Title', 'Output Settings', ...
@@ -503,7 +503,7 @@ function createOutputSettingsPanel(parent, handles)
     handles.output_panel = output_panel;
 end
 
-function createTrialTablePanel(parent, handles)
+function handles = createTrialTablePanel(parent, handles)
     % Trial Table Panel with pre-generated trial data
     trial_table_panel = uipanel('Parent', parent, ...
                                 'Title', 'Generated Trials & Pre-Generated Parameters', ...
@@ -559,7 +559,7 @@ function createTrialTablePanel(parent, handles)
     handles.trial_table_panel = trial_table_panel;
 end
 
-function createProgressPanel(parent, handles)
+function handles = createProgressPanel(parent, handles)
     % Progress Panel with enhanced styling and features
     progress_panel = uipanel('Parent', parent, ...
                             'Title', 'Progress & Log', ...
@@ -644,7 +644,7 @@ function clearLog(hObject, ~)
     set(handles.log_text, 'Value', 1);
 end
 
-function createHelpPanel(parent, handles)
+function handles = createHelpPanel(parent, handles)
     % Help Panel
     help_panel = uipanel('Parent', parent, ...
                          'Title', 'Help', ...
