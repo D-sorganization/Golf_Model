@@ -1,11 +1,11 @@
-function MATLAB_ONLY_GUI()
-    % 100% MATLAB-ONLY Golf Swing Data Generator GUI
+function GolfSwingDataGeneratorGUI()
+    % Golf Swing Data Generator GUI - Enhanced GUI for generating golf swing training data
     % NO Java components - uses only native MATLAB GUI elements
     
-    fprintf('Launching 100%% MATLAB-ONLY Golf Swing Data Generator GUI...\n');
+    fprintf('Launching Golf Swing Training Data Generator GUI...\n');
     
     % Create main figure - basic settings only
-    fig = figure('Name', 'Golf Swing Data Generator - MATLAB ONLY', ...
+    fig = figure('Name', 'Golf Swing Data Generator - Enhanced', ...
                  'Position', [100, 100, 1000, 700], ...
                  'Color', [0.95, 0.95, 0.95], ...
                  'MenuBar', 'none', ...
@@ -19,7 +19,7 @@ function MATLAB_ONLY_GUI()
     % === TITLE ===
     uicontrol('Parent', fig, ...
               'Style', 'text', ...
-              'String', 'Golf Swing Data Generator - 100% MATLAB ONLY', ...
+              'String', 'Golf Swing Data Generator - Enhanced', ...
               'Position', [50, 650, 900, 30], ...
               'FontSize', 16, ...
               'FontWeight', 'bold', ...
@@ -68,7 +68,7 @@ function MATLAB_ONLY_GUI()
                                       'String', 'output_data', ...
                                       'Position', [140, 180, 200, 20]);
     
-    % Data source checkboxes (MATLAB-only)
+    % Data source checkboxes
     uicontrol('Parent', settings_panel, ...
               'Style', 'text', ...
               'String', 'Data Sources:', ...
@@ -146,7 +146,7 @@ function MATLAB_ONLY_GUI()
                                       'HorizontalAlignment', 'left', ...
                                       'FontWeight', 'bold');
     
-    % Results display (listbox - MATLAB-only!)
+    % Results display (listbox - NO Java components!)
     uicontrol('Parent', results_panel, ...
               'Style', 'text', ...
               'String', 'Trial Results:', ...
@@ -169,12 +169,12 @@ function MATLAB_ONLY_GUI()
     
     handles.log_text = uicontrol('Parent', log_panel, ...
                                  'Style', 'text', ...
-                                 'String', sprintf(['100%% MATLAB-ONLY GUI Initialized Successfully!\n\n' ...
-                                                   'This version uses NO Java components:\n' ...
-                                                   '- NO uitable (replaced with listbox)\n' ...
-                                                   '- NO Java-dependent UI elements\n' ...
-                                                   '- Only native MATLAB uicontrols\n\n' ...
-                                                   'Ready to generate golf swing simulation datasets...']), ...
+                                 'String', sprintf(['Golf Swing Data Generator Initialized Successfully!\n\n' ...
+                                                   'This version uses reliable MATLAB components:\n' ...
+                                                   '- Native uicontrol elements\n' ...
+                                                   '- Listbox for data display\n' ...
+                                                   '- NO Java dependencies\n\n' ...
+                                                   'Ready to generate golf swing simulation datasets for machine learning...']), ...
                                  'Position', [10, 10, 940, 280], ...
                                  'HorizontalAlignment', 'left', ...
                                  'BackgroundColor', [1, 1, 1], ...
@@ -183,67 +183,5 @@ function MATLAB_ONLY_GUI()
     % Store handles
     guidata(fig, handles);
     
-    fprintf('100%% MATLAB-ONLY GUI launched successfully!\n');
-end
-
-function generateData(handles)
-    % Generate simulation data (mock implementation)
-    handles = guidata(gcf);
-    
-    % Update UI
-    set(handles.generate_btn, 'Enable', 'off');
-    set(handles.stop_btn, 'Enable', 'on');
-    set(handles.progress_text, 'String', 'Progress: Starting generation...');
-    
-    % Get settings
-    num_trials = str2double(get(handles.num_trials, 'String'));
-    sim_time = str2double(get(handles.sim_time, 'String'));
-    
-    % Update status
-    status_msg = sprintf('Generating %d trials with %.1fs simulation time...', num_trials, sim_time);
-    set(handles.status_text, 'String', status_msg);
-    
-    % Mock generation process
-    results = {};
-    for i = 1:num_trials
-        if handles.should_stop
-            break;
-        end
-        
-        % Simulate work
-        pause(0.2);
-        
-        % Mock results
-        data_points = 100 + randi(50);
-        trial_info = sprintf('Trial %d: Complete | %d data points | %.2fs', i, data_points, sim_time);
-        results{end+1} = trial_info;
-        
-        % Update display
-        set(handles.results_list, 'String', results);
-        set(handles.progress_text, 'String', sprintf('Progress: %d/%d trials completed', i, num_trials));
-        drawnow;
-    end
-    
-    % Finish
-    set(handles.progress_text, 'String', sprintf('Completed %d trials', length(results)));
-    set(handles.generate_btn, 'Enable', 'on');
-    set(handles.stop_btn, 'Enable', 'off');
-    set(handles.status_text, 'String', 'Dataset generation completed successfully!');
-    
-    handles.should_stop = false;
-    guidata(gcf, handles);
-end
-
-function stopGeneration(handles)
-    handles = guidata(gcf);
-    handles.should_stop = true;
-    guidata(gcf, handles);
-    set(handles.status_text, 'String', 'Stopping generation...');
-end
-
-function clearResults(handles)
-    handles = guidata(gcf);
-    set(handles.results_list, 'String', {'Results cleared'});
-    set(handles.progress_text, 'String', 'Progress: Ready');
-    set(handles.status_text, 'String', 'Ready to generate simulation data');
+    fprintf('GUI launched successfully!\n');
 end 
