@@ -33,6 +33,7 @@ function GolfSwingDataGeneratorGUI_rev2()
     
     % Initialize preview now that all handles are properly set up
     updatePreview([], [], handles);
+    updateCoefficientsPreview([], [], handles);
 end
 
 function handles = createScrollableLayout(fig, handles)
@@ -62,9 +63,9 @@ function handles = createScrollableLayout(fig, handles)
     
     % Create left and right columns with proper spacing
     left_column = uipanel('Parent', content_panel, ...
-                         'Position', [0.01, 0.01, 0.48, 0.98], ...
-                         'BackgroundColor', [0.94, 0.94, 0.94], ...
-                         'BorderType', 'none');
+                             'Position', [0.01, 0.01, 0.48, 0.98], ...
+                             'BackgroundColor', [0.94, 0.94, 0.94], ...
+                             'BorderType', 'none');
     
     right_column = uipanel('Parent', content_panel, ...
                           'Position', [0.51, 0.01, 0.48, 0.98], ...
@@ -75,6 +76,7 @@ function handles = createScrollableLayout(fig, handles)
     handles = createTrialSettingsPanel(left_column, handles);
     handles = createDataSourcesPanel(left_column, handles);
     handles = createModelingPanel(left_column, handles);
+    handles = createCoefficientsPreviewPanel(left_column, handles);
     handles = createOutputSettingsPanel(left_column, handles);
     
     % Create panels in right column and collect updated handles
@@ -96,7 +98,7 @@ function handles = createTrialSettingsPanel(parent, handles)
                          'TitlePosition', 'centertop', ...
                          'FontSize', 12, ...
                          'FontWeight', 'bold', ...
-                         'Position', [0.02, 0.78, 0.96, 0.20], ...
+                         'Position', [0.02, 0.82, 0.96, 0.16], ...
                          'BackgroundColor', [0.97, 0.97, 0.97]);
     
     % Create grid layout for better organization
@@ -116,7 +118,8 @@ function handles = createTrialSettingsPanel(parent, handles)
                                        'String', '10', ...
                                        'Position', [170, y_positions(1)*100, 80, 25], ...
                                        'FontSize', 10, ...
-                                       'BackgroundColor', 'white');
+                                       'BackgroundColor', 'white', ...
+                                       'Callback', @(src,evt) updateCoefficientsPreview(src, evt, handles));
     
     % Simulation duration
     uicontrol('Parent', trial_panel, ...
@@ -177,7 +180,7 @@ function handles = createDataSourcesPanel(parent, handles)
                         'TitlePosition', 'centertop', ...
                         'FontSize', 12, ...
                         'FontWeight', 'bold', ...
-                        'Position', [0.02, 0.56, 0.96, 0.20], ...
+                        'Position', [0.02, 0.66, 0.96, 0.14], ...
                         'BackgroundColor', [0.97, 0.97, 0.97]);
     
     % Checkboxes with descriptions
@@ -185,7 +188,7 @@ function handles = createDataSourcesPanel(parent, handles)
     
     handles.use_model_workspace = uicontrol('Parent', data_panel, ...
                                            'Style', 'checkbox', ...
-                                           'String', 'Model Workspace (Input Parameters)', ...
+                                           'String', 'Model Workspace - Input Parameters', ...
                                            'Position', [20, y_positions(1)*100, 300, 20], ...
                                            'Value', 1, ...
                                            'FontSize', 10, ...
@@ -193,7 +196,7 @@ function handles = createDataSourcesPanel(parent, handles)
     
     handles.use_logsout = uicontrol('Parent', data_panel, ...
                                    'Style', 'checkbox', ...
-                                   'String', 'Logsout (Standard Signal Logging)', ...
+                                   'String', 'Logsout - Standard Signal Logging', ...
                                    'Position', [20, y_positions(2)*100, 300, 20], ...
                                    'Value', 1, ...
                                    'FontSize', 10, ...
@@ -201,7 +204,7 @@ function handles = createDataSourcesPanel(parent, handles)
     
     handles.use_signal_bus = uicontrol('Parent', data_panel, ...
                                       'Style', 'checkbox', ...
-                                      'String', 'Signal Bus (ToWorkspace Blocks)', ...
+                                      'String', 'Signal Bus - ToWorkspace Blocks', ...
                                       'Position', [20, y_positions(3)*100, 300, 20], ...
                                       'Value', 1, ...
                                       'FontSize', 10, ...
@@ -209,7 +212,7 @@ function handles = createDataSourcesPanel(parent, handles)
     
     handles.use_simscape = uicontrol('Parent', data_panel, ...
                                     'Style', 'checkbox', ...
-                                    'String', 'Simscape Results (Primary Kinematic Data)', ...
+                                    'String', 'Simscape Results - Primary Kinematic Data', ...
                                     'Position', [20, y_positions(4)*100, 300, 20], ...
                                     'Value', 1, ...
                                     'FontSize', 10, ...
@@ -226,7 +229,7 @@ function handles = createModelingPanel(parent, handles)
                             'TitlePosition', 'centertop', ...
                             'FontSize', 12, ...
                             'FontWeight', 'bold', ...
-                            'Position', [0.02, 0.25, 0.96, 0.29], ...
+                            'Position', [0.02, 0.34, 0.96, 0.30], ...
                             'BackgroundColor', [0.97, 0.97, 0.97]);
     
     % Modeling mode explanation
@@ -271,7 +274,8 @@ function handles = createModelingPanel(parent, handles)
                                         'String', '50', ...
                                         'Position', [170, 145, 80, 25], ...
                                         'FontSize', 10, ...
-                                        'BackgroundColor', 'white');
+                                        'BackgroundColor', 'white', ...
+                                        'Callback', @(src,evt) updateCoefficientsPreview(src, evt, handles));
     
     % Constant value (for constant torque)
     uicontrol('Parent', modeling_panel, ...
@@ -287,7 +291,8 @@ function handles = createModelingPanel(parent, handles)
                                            'String', '10', ...
                                            'Position', [390, 145, 80, 25], ...
                                            'FontSize', 10, ...
-                                           'BackgroundColor', 'white');
+                                           'BackgroundColor', 'white', ...
+                                           'Callback', @(src,evt) updateCoefficientsPreview(src, evt, handles));
     
     % Model selection
     uicontrol('Parent', modeling_panel, ...
@@ -323,11 +328,44 @@ function handles = createModelingPanel(parent, handles)
               'String', explanation_text, ...
               'Position', [20, 5, 600, 100], ...
               'HorizontalAlignment', 'left', ...
-              'FontSize', 9, ...
+                                         'FontSize', 9, ...
               'BackgroundColor', [0.95, 0.95, 0.95]);
     
     % Store panel reference
     handles.modeling_panel = modeling_panel;
+end
+
+function handles = createCoefficientsPreviewPanel(parent, handles)
+    % New panel to show actual coefficient values for trials
+    coeff_panel = uipanel('Parent', parent, ...
+                         'Title', 'Polynomial Coefficients Preview', ...
+                         'TitlePosition', 'centertop', ...
+                         'FontSize', 12, ...
+                         'FontWeight', 'bold', ...
+                         'Position', [0.02, 0.15, 0.96, 0.18], ...
+                         'BackgroundColor', [0.97, 0.97, 0.97]);
+    
+    % Instructions
+    uicontrol('Parent', coeff_panel, ...
+              'Style', 'text', ...
+              'String', 'Preview of coefficient values that will be used in trials:', ...
+              'Position', [20, 135, 500, 20], ...
+              'HorizontalAlignment', 'left', ...
+              'FontSize', 10, ...
+              'FontWeight', 'bold');
+    
+    % Coefficients table
+    handles.coefficients_table = uitable('Parent', coeff_panel, ...
+                                         'Position', [20, 15, 600, 115], ...
+                                         'ColumnName', {'Trial', 'A', 'B', 'C', 'D', 'E', 'F', 'G'}, ...
+                                         'ColumnWidth', {50, 70, 70, 70, 70, 70, 70, 70}, ...
+                                         'FontSize', 9, ...
+                                         'BackgroundColor', [1, 1, 1; 0.95, 0.95, 0.95], ...
+                                         'RowStriping', 'on', ...
+                                         'ColumnEditable', false(1,8));
+    
+    % Store panel reference
+    handles.coeff_panel = coeff_panel;
 end
 
 function handles = createOutputSettingsPanel(parent, handles)
@@ -337,7 +375,7 @@ function handles = createOutputSettingsPanel(parent, handles)
                           'TitlePosition', 'centertop', ...
                           'FontSize', 12, ...
                           'FontWeight', 'bold', ...
-                          'Position', [0.02, 0.02, 0.96, 0.21], ...
+                          'Position', [0.02, 0.02, 0.96, 0.11], ...
                           'BackgroundColor', [0.97, 0.97, 0.97]);
     
     % Output folder selection
@@ -599,12 +637,15 @@ function handles = torqueScenarioCallback(src, ~, handles)
     % Update preview automatically
     handles = updatePreview([], [], handles);
     
+    % Update coefficients preview
+    handles = updateCoefficientsPreview([], [], handles);
+    
     % Log the change
     scenarios = {'Variable Torques', 'Zero Torque', 'Constant Torque'};
     handles = updateLog(sprintf('Torque scenario changed to: %s', scenarios{scenario_idx}), handles);
     
     % Save updated handles
-    guidata(src, handles);
+    guidata(handles.fig, handles);
 end
 
 function handles = browseOutputFolder(src, ~, handles)
@@ -617,7 +658,7 @@ function handles = browseOutputFolder(src, ~, handles)
         handles = updatePreview([], [], handles);
         
         % Save updated handles
-        guidata(src, handles);
+        guidata(handles.fig, handles);
     end
 end
 
@@ -732,7 +773,7 @@ function handles = startGeneration(src, ~, handles)
         
         % Store config and update handles
         handles.config = config;
-        guidata(src, handles);
+        guidata(handles.fig, handles);
         
         % Log start
         handles = updateLog('=== STARTING DATA GENERATION ===', handles);
@@ -743,14 +784,14 @@ function handles = startGeneration(src, ~, handles)
         handles = runGeneration(handles);
         
         % Save final handles
-        guidata(src, handles);
+        guidata(handles.fig, handles);
         
     catch ME
         handles = updateLog(sprintf('Error starting generation: %s', ME.message), handles);
         set(handles.start_button, 'Enable', 'on');
         set(handles.stop_button, 'Enable', 'off');
         errordlg(ME.message, 'Generation Error');
-        guidata(src, handles);
+        guidata(handles.fig, handles);
     end
 end
 
@@ -766,7 +807,7 @@ function handles = stopGeneration(src, ~, handles)
     set(handles.stop_button, 'Enable', 'off');
     
     % Save updated handles
-    guidata(src, handles);
+    guidata(handles.fig, handles);
 end
 
 function handles = validateSettings(src, ~, handles)
@@ -779,11 +820,11 @@ function handles = validateSettings(src, ~, handles)
         else
             handles = updateLog('Settings validation: FAILED', handles);
         end
-        guidata(src, handles);
+        guidata(handles.fig, handles);
     catch ME
         errordlg(sprintf('Validation error: %s', ME.message), 'Validation Failed');
         handles = updateLog(sprintf('Validation error: %s', ME.message), handles);
-        guidata(src, handles);
+        guidata(handles.fig, handles);
     end
 end
 
@@ -797,7 +838,7 @@ function handles = saveConfiguration(src, ~, handles)
                 save(fullfile(pathname, filename), 'config');
                 handles = updateLog(sprintf('Configuration saved to: %s', filename), handles);
                 msgbox('Configuration saved successfully!', 'Save Success');
-                guidata(src, handles);
+                guidata(handles.fig, handles);
             end
         end
     catch ME
@@ -816,7 +857,7 @@ function handles = loadConfiguration(src, ~, handles)
                 handles = updatePreview([], [], handles);
                 handles = updateLog(sprintf('Configuration loaded from: %s', filename), handles);
                 msgbox('Configuration loaded successfully!', 'Load Success');
-                guidata(src, handles);
+                guidata(handles.fig, handles);
             else
                 errordlg('Invalid configuration file format.', 'Load Failed');
             end
@@ -830,7 +871,7 @@ function handles = clearLog(src, ~, handles)
     % Clear the activity log
     set(handles.log_text, 'String', {'Activity log cleared...'});
     handles = updateLog('Log cleared by user', handles);
-    guidata(src, handles);
+    guidata(handles.fig, handles);
 end
 
 % Helper Functions
@@ -1023,6 +1064,79 @@ function handles = updateStatus(message, handles)
     % Update status display
     set(handles.status_text, 'String', ['Status: ' message]);
     drawnow;
+end
+
+function handles = updateCoefficientsPreview(~, ~, handles)
+    % Update the coefficients preview table based on current settings
+    try
+        % Get current settings
+        num_trials = str2double(get(handles.num_trials_edit, 'String'));
+        scenario_idx = get(handles.torque_scenario_popup, 'Value');
+        coeff_range = str2double(get(handles.coeff_range_edit, 'String'));
+        constant_value = str2double(get(handles.constant_value_edit, 'String'));
+        
+        % Validate inputs
+        if isnan(num_trials) || num_trials <= 0
+            num_trials = 5; % Default for preview
+        end
+        num_trials = min(num_trials, 10); % Limit preview to 10 trials
+        
+        % Generate coefficient values based on scenario
+        coeff_data = cell(num_trials, 8);
+        
+        for i = 1:num_trials
+            coeff_data{i, 1} = i; % Trial number
+            
+            switch scenario_idx
+                case 1 % Variable Torques
+                    if ~isnan(coeff_range) && coeff_range > 0
+                        % Random coefficients within range
+                        for j = 2:8 % A through G
+                            coeff_data{i, j} = sprintf('%.2f', (rand - 0.5) * 2 * coeff_range);
+                        end
+                    else
+                        % Default range if invalid
+                        for j = 2:8
+                            coeff_data{i, j} = sprintf('%.2f', (rand - 0.5) * 100);
+                        end
+                    end
+                    
+                case 2 % Zero Torque
+                    % All coefficients are zero
+                    for j = 2:8
+                        coeff_data{i, j} = '0.00';
+                    end
+                    
+                case 3 % Constant Torque
+                    % A-F are zero, G is constant
+                    for j = 2:7 % A through F
+                        coeff_data{i, j} = '0.00';
+                    end
+                    if ~isnan(constant_value)
+                        coeff_data{i, 8} = sprintf('%.2f', constant_value); % G
+                    else
+                        coeff_data{i, 8} = '10.00'; % Default
+                    end
+            end
+        end
+        
+        % Update table
+        set(handles.coefficients_table, 'Data', coeff_data);
+        
+        % Update log
+        scenarios = {'Variable Torques', 'Zero Torque', 'Constant Torque'};
+        handles = updateLog(sprintf('Coefficients preview updated for %s scenario (%d trials)', ...
+            scenarios{scenario_idx}, num_trials), handles);
+        
+    catch ME
+        % Handle errors gracefully
+        error_data = {'Error', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A'};
+        set(handles.coefficients_table, 'Data', {error_data});
+        handles = updateLog(sprintf('Coefficients preview error: %s', ME.message), handles);
+    end
+    
+    % Save updated handles
+    guidata(handles.fig, handles);
 end
 
 % Dummy function for trial execution (replace with your actual implementation)
