@@ -77,6 +77,7 @@ function handles = createScrollableLayout(fig, handles)
     handles = createDataSourcesPanel(left_column, handles);
     handles = createModelingPanel(left_column, handles);
     handles = createCoefficientsPreviewPanel(left_column, handles);
+    handles = createJointSelectorPanel(left_column, handles);
     handles = createOutputSettingsPanel(left_column, handles);
     
     % Create panels in right column and collect updated handles
@@ -336,36 +337,208 @@ function handles = createModelingPanel(parent, handles)
 end
 
 function handles = createCoefficientsPreviewPanel(parent, handles)
-    % New panel to show actual coefficient values for trials
+    % Enhanced panel to show and edit polynomial coefficient values for trials
+    % Get parameter information first for title
+    param_info = getPolynomialParameterInfo();
+    
     coeff_panel = uipanel('Parent', parent, ...
-                         'Title', 'Polynomial Coefficients Preview', ...
+                         'Title', sprintf('Polynomial Coefficients Preview (EDITABLE) - %d Joints × %d Parameters', ...
+                                 length(param_info.joint_names), param_info.total_params), ...
                          'TitlePosition', 'centertop', ...
                          'FontSize', 12, ...
                          'FontWeight', 'bold', ...
-                         'Position', [0.02, 0.15, 0.96, 0.18], ...
+                         'Position', [0.02, 0.18, 0.96, 0.30], ...
                          'BackgroundColor', [0.97, 0.97, 0.97]);
     
-    % Instructions
+    % Instructions with editing info
     uicontrol('Parent', coeff_panel, ...
               'Style', 'text', ...
-              'String', 'Preview of coefficient values that will be used in trials:', ...
-              'Position', [20, 135, 500, 20], ...
+              'String', sprintf(['Preview and EDIT all %d joint polynomial coefficients (%d total). Scroll horizontally to view all joints.', newline, ...
+                        'Joints have varying coefficients (A-C, A-E, or A-G). Modified cells highlighted in yellow. Use controls below to manage edits.'], ...
+                        length(param_info.joint_names), param_info.total_params), ...
+              'Position', [20, 240, 600, 35], ...
+              'HorizontalAlignment', 'left', ...
+              'FontSize', 9, ...
+              'FontWeight', 'bold', ...
+              'BackgroundColor', [0.9, 0.95, 1.0]);
+    
+    % Control buttons row 1
+    handles.reset_coeffs_button = uicontrol('Parent', coeff_panel, ...
+                                           'Style', 'pushbutton', ...
+                                           'String', 'Reset to Generated', ...
+                                           'Position', [20, 210, 130, 25], ...
+                                           'FontSize', 9, ...
+                                           'FontWeight', 'bold', ...
+                                           'BackgroundColor', [0.8, 0.8, 0.8], ...
+                                           'Callback', @(src,evt) resetCoefficientsToGenerated(src, evt, handles));
+    
+    handles.apply_to_all_button = uicontrol('Parent', coeff_panel, ...
+                                           'Style', 'pushbutton', ...
+                                           'String', 'Apply Row to All', ...
+                                           'Position', [160, 210, 120, 25], ...
+                                           'FontSize', 9, ...
+                                           'FontWeight', 'bold', ...
+                                           'BackgroundColor', [0.7, 0.85, 0.95], ...
+                                           'Callback', @(src,evt) applyRowToAll(src, evt, handles));
+    
+    % Control buttons row 2
+    handles.export_coeffs_button = uicontrol('Parent', coeff_panel, ...
+                                            'Style', 'pushbutton', ...
+                                            'String', 'Export to CSV', ...
+                                            'Position', [290, 210, 100, 25], ...
+                                            'FontSize', 9, ...
+                                            'FontWeight', 'bold', ...
+                                            'BackgroundColor', [0.9, 0.7, 0.5], ...
+                                            'Callback', @(src,evt) exportCoefficientsToCSV(src, evt, handles));
+    
+    handles.import_coeffs_button = uicontrol('Parent', coeff_panel, ...
+                                            'Style', 'pushbutton', ...
+                                            'String', 'Import from CSV', ...
+                                            'Position', [400, 210, 110, 25], ...
+                                            'FontSize', 9, ...
+                                            'FontWeight', 'bold', ...
+                                            'BackgroundColor', [0.5, 0.9, 0.7], ...
+                                            'Callback', @(src,evt) importCoefficientsFromCSV(src, evt, handles));
+    
+    % Status indicator
+    handles.edit_status_text = uicontrol('Parent', coeff_panel, ...
+                                        'Style', 'text', ...
+                                        'String', sprintf('Status: Using generated values (%d coefficients)', param_info.total_params), ...
+                                        'Position', [20, 185, 500, 20], ...
+                                        'HorizontalAlignment', 'left', ...
+                                        'FontSize', 9, ...
+                                        'BackgroundColor', [0.9, 0.9, 0.9]);
+    
+    % Enhanced coefficients table with editing capability - Get actual parameter structure
+    param_info = getPolynomialParameterInfo();
+    col_names = {'Trial'};
+    col_widths = {50};
+    col_editable = false;
+    
+    % Create column names for all joints and their actual coefficients
+    for i = 1:length(param_info.joint_names)
+        joint_name = param_info.joint_names{i};
+        coeffs = param_info.joint_coeffs{i};
+        
+        % Shorten joint names for better display
+        short_name = strrep(joint_name, 'TorqueInput', 'T');
+        short_name = strrep(short_name, 'Input', '');
+        
+        for j = 1:length(coeffs)
+            coeff = coeffs(j);
+            col_names{end+1} = sprintf('%s_%s', short_name, coeff);
+            col_widths{end+1} = 55;
+            col_editable(end+1) = true;
+        end
+    end
+    
+    % Store parameter info in handles for later use
+    handles.param_info = param_info;
+    
+    handles.coefficients_table = uitable('Parent', coeff_panel, ...
+                                         'Position', [20, 15, 600, 165], ...
+                                         'ColumnName', col_names, ...
+                                         'ColumnWidth', col_widths, ...
+                                         'FontSize', 8, ...
+                                         'BackgroundColor', [1, 1, 1; 0.95, 0.95, 0.95], ...
+                                         'RowStriping', 'on', ...
+                                         'ColumnEditable', col_editable, ...
+                                         'CellEditCallback', @(src,evt) coefficientCellEditCallback(src, evt, handles));
+    
+    % Initialize storage for edited values tracking
+    handles.edited_coefficients = [];
+    handles.original_coefficients = [];
+    handles.edited_cells = {}; % Track which cells have been manually edited
+    
+    % Store panel reference
+    handles.coeff_panel = coeff_panel;
+end
+
+function handles = createJointSelectorPanel(parent, handles)
+    % Panel for selecting and editing individual joint coefficients
+    param_info = getPolynomialParameterInfo();
+    
+    joint_panel = uipanel('Parent', parent, ...
+                         'Title', 'Individual Joint Editor - Focus on Single Joint Coefficients', ...
+                         'TitlePosition', 'centertop', ...
+                         'FontSize', 12, ...
+                         'FontWeight', 'bold', ...
+                         'Position', [0.02, 0.50, 0.96, 0.16], ...
+                         'BackgroundColor', [0.95, 0.98, 0.95]);
+    
+    % Joint selection dropdown
+    uicontrol('Parent', joint_panel, ...
+              'Style', 'text', ...
+              'String', 'Select Joint:', ...
+              'Position', [20, 85, 100, 20], ...
               'HorizontalAlignment', 'left', ...
               'FontSize', 10, ...
               'FontWeight', 'bold');
     
-    % Coefficients table
-    handles.coefficients_table = uitable('Parent', coeff_panel, ...
-                                         'Position', [20, 15, 600, 115], ...
-                                         'ColumnName', {'Trial', 'A', 'B', 'C', 'D', 'E', 'F', 'G'}, ...
-                                         'ColumnWidth', {50, 70, 70, 70, 70, 70, 70, 70}, ...
+    handles.joint_selector = uicontrol('Parent', joint_panel, ...
+                                      'Style', 'popupmenu', ...
+                                      'String', param_info.joint_names, ...
+                                      'Position', [130, 85, 200, 25], ...
+                                      'FontSize', 10, ...
+                                      'Value', 1, ...
+                                      'Callback', @(src,evt) updateJointCoefficients(src, evt, handles));
+    
+    % Coefficient labels and edit boxes for A-G
+    coeff_labels = {'A', 'B', 'C', 'D', 'E', 'F', 'G'};
+    handles.joint_coeff_edits = [];
+    
+    start_x = 20;
+    for i = 1:7
+        % Label
+        uicontrol('Parent', joint_panel, ...
+                  'Style', 'text', ...
+                  'String', coeff_labels{i}, ...
+                  'Position', [start_x + (i-1)*80, 50, 15, 20], ...
+                  'HorizontalAlignment', 'center', ...
+                  'FontSize', 10, ...
+                  'FontWeight', 'bold');
+        
+        % Edit box
+        handles.joint_coeff_edits(i) = uicontrol('Parent', joint_panel, ...
+                                                'Style', 'edit', ...
+                                                'String', '0.00', ...
+                                                'Position', [start_x + (i-1)*80 + 20, 50, 50, 25], ...
+                                                'FontSize', 9, ...
+                                                'HorizontalAlignment', 'center', ...
+                                                'Callback', @(src,evt) validateCoefficientInput(src, evt, handles));
+    end
+    
+    % Apply buttons
+    handles.apply_joint_to_table = uicontrol('Parent', joint_panel, ...
+                                            'Style', 'pushbutton', ...
+                                            'String', 'Apply to Table', ...
+                                            'Position', [20, 15, 120, 25], ...
+                                            'FontSize', 9, ...
+                                            'FontWeight', 'bold', ...
+                                            'BackgroundColor', [0.7, 0.9, 0.7], ...
+                                            'Callback', @(src,evt) applyJointToTable(src, evt, handles));
+    
+    handles.load_from_table = uicontrol('Parent', joint_panel, ...
+                                       'Style', 'pushbutton', ...
+                                       'String', 'Load from Table', ...
+                                       'Position', [150, 15, 120, 25], ...
+                                       'FontSize', 9, ...
+                                       'FontWeight', 'bold', ...
+                                       'BackgroundColor', [0.9, 0.9, 0.7], ...
+                                       'Callback', @(src,evt) loadJointFromTable(src, evt, handles));
+    
+    % Status text
+    handles.joint_edit_status = uicontrol('Parent', joint_panel, ...
+                                         'Style', 'text', ...
+                                         'String', sprintf('Editing: %s', param_info.joint_names{1}), ...
+                                         'Position', [350, 85, 200, 20], ...
+                                         'HorizontalAlignment', 'left', ...
                                          'FontSize', 9, ...
-                                         'BackgroundColor', [1, 1, 1; 0.95, 0.95, 0.95], ...
-                                         'RowStriping', 'on', ...
-                                         'ColumnEditable', false(1,8));
+                                         'BackgroundColor', [0.9, 0.9, 0.9]);
     
     % Store panel reference
-    handles.coeff_panel = coeff_panel;
+    handles.joint_panel = joint_panel;
+    handles.param_info = param_info;
 end
 
 function handles = createOutputSettingsPanel(parent, handles)
@@ -375,7 +548,7 @@ function handles = createOutputSettingsPanel(parent, handles)
                           'TitlePosition', 'centertop', ...
                           'FontSize', 12, ...
                           'FontWeight', 'bold', ...
-                          'Position', [0.02, 0.02, 0.96, 0.11], ...
+                          'Position', [0.02, 0.02, 0.96, 0.14], ...
                           'BackgroundColor', [0.97, 0.97, 0.97]);
     
     % Output folder selection
@@ -975,12 +1148,19 @@ function handles = runGeneration(handles)
     try
         config = handles.config;
         
+        % Extract coefficient values from the editable table
+        config.coefficient_values = extractCoefficientsFromTable(handles);
+        if isempty(config.coefficient_values)
+            error('No coefficient values available. Please generate or edit coefficients first.');
+        end
+        
         % Create output directory
         if ~exist(config.output_folder, 'dir')
             mkdir(config.output_folder);
         end
         
         updateLog(sprintf('Output directory created: %s', config.output_folder), handles);
+        updateLog(sprintf('Using %d coefficient sets from table', size(config.coefficient_values, 1)), handles);
         updateStatus('Starting trial generation...', handles);
         
         % Initialize tracking
@@ -997,12 +1177,21 @@ function handles = runGeneration(handles)
             updateProgress(sprintf('Processing trial %d/%d...', trial, config.num_simulations), handles);
             
             try
-                % Run single trial (this would call your existing runSingleTrial function)
-                result = runSingleTrialWithSignalBus(trial, config);
+                % Get coefficients for this specific trial
+                if trial <= size(config.coefficient_values, 1)
+                    trial_coefficients = config.coefficient_values(trial, :);
+                else
+                    % If we don't have enough coefficient sets, use the last one
+                    trial_coefficients = config.coefficient_values(end, :);
+                end
+                
+                % Run single trial with specific coefficients
+                result = runSingleTrialWithSignalBus(trial, config, trial_coefficients);
                 
                 if result.success
                     successful_trials = successful_trials + 1;
-                    updateLog(sprintf('Trial %d completed: %s', trial, result.filename), handles);
+                    coeff_str = sprintf('[%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f]', trial_coefficients);
+                    updateLog(sprintf('Trial %d completed: %s (coeffs: %s)', trial, result.filename, coeff_str), handles);
                 else
                     failed_trials = failed_trials + 1;
                     updateLog(sprintf('Trial %d failed: %s', trial, result.error), handles);
@@ -1081,42 +1270,51 @@ function handles = updateCoefficientsPreview(~, ~, handles)
         end
         num_trials = min(num_trials, 10); % Limit preview to 10 trials
         
+        % Get joint information from actual model parameters
+        param_info = getPolynomialParameterInfo();
+        total_columns = 1 + param_info.total_params; % Trial + all coefficients
+        
         % Generate coefficient values based on scenario
-        coeff_data = cell(num_trials, 8);
+        coeff_data = cell(num_trials, total_columns);
         
         for i = 1:num_trials
             coeff_data{i, 1} = i; % Trial number
             
-            switch scenario_idx
-                case 1 % Variable Torques
-                    if ~isnan(coeff_range) && coeff_range > 0
-                        % Random coefficients within range
-                        for j = 2:8 % A through G
-                            coeff_data{i, j} = sprintf('%.2f', (rand - 0.5) * 2 * coeff_range);
-                        end
-                    else
-                        % Default range if invalid
-                        for j = 2:8
-                            coeff_data{i, j} = sprintf('%.2f', (rand - 0.5) * 100);
-                        end
-                    end
+            % Generate coefficients for all joints
+            col_idx = 2; % Start after trial column
+            for joint_idx = 1:length(param_info.joint_names)
+                coeffs = param_info.joint_coeffs{joint_idx};
+                for coeff_idx = 1:length(coeffs)
+                    coeff_letter = coeffs(coeff_idx);
                     
-                case 2 % Zero Torque
-                    % All coefficients are zero
-                    for j = 2:8
-                        coeff_data{i, j} = '0.00';
+                    switch scenario_idx
+                        case 1 % Variable Torques
+                            if ~isnan(coeff_range) && coeff_range > 0
+                                % Random coefficients within range
+                                coeff_data{i, col_idx} = sprintf('%.2f', (rand - 0.5) * 2 * coeff_range);
+                            else
+                                % Default range if invalid
+                                coeff_data{i, col_idx} = sprintf('%.2f', (rand - 0.5) * 100);
+                            end
+                            
+                        case 2 % Zero Torque
+                            % All coefficients are zero
+                            coeff_data{i, col_idx} = '0.00';
+                            
+                        case 3 % Constant Torque
+                            % Only G coefficient gets constant value, others are zero
+                            if coeff_letter == 'G'
+                                if ~isnan(constant_value)
+                                    coeff_data{i, col_idx} = sprintf('%.2f', constant_value);
+                                else
+                                    coeff_data{i, col_idx} = '10.00'; % Default
+                                end
+                            else
+                                coeff_data{i, col_idx} = '0.00';
+                            end
                     end
-                    
-                case 3 % Constant Torque
-                    % A-F are zero, G is constant
-                    for j = 2:7 % A through F
-                        coeff_data{i, j} = '0.00';
-                    end
-                    if ~isnan(constant_value)
-                        coeff_data{i, 8} = sprintf('%.2f', constant_value); % G
-                    else
-                        coeff_data{i, 8} = '10.00'; % Default
-                    end
+                    col_idx = col_idx + 1;
+                end
             end
         end
         
@@ -1125,27 +1323,668 @@ function handles = updateCoefficientsPreview(~, ~, handles)
         
         % Update log
         scenarios = {'Variable Torques', 'Zero Torque', 'Constant Torque'};
-        handles = updateLog(sprintf('Coefficients preview updated for %s scenario (%d trials)', ...
-            scenarios{scenario_idx}, num_trials), handles);
+        handles = updateLog(sprintf('Coefficients preview updated for %s scenario (%d trials, %d coefficients)', ...
+            scenarios{scenario_idx}, num_trials, param_info.total_params), handles);
+        
+        % Clear edit tracking since we regenerated
+        handles.edited_cells = {};
         
     catch ME
         % Handle errors gracefully
-        error_data = {'Error', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A', 'N/A'};
-        set(handles.coefficients_table, 'Data', {error_data});
-        handles = updateLog(sprintf('Coefficients preview error: %s', ME.message), handles);
+        error_msg = sprintf('Error generating coefficients: %s', ME.message);
+        handles = updateLog(error_msg, handles);
+        fprintf('Error in updateCoefficientsPreview: %s\n', ME.message);
     end
     
     % Save updated handles
     guidata(handles.fig, handles);
 end
 
+function coefficientCellEditCallback(src, eventdata, handles)
+    % Handle cell editing in the coefficients table
+    try
+        % Get updated handles to ensure we have the latest state
+        handles = guidata(handles.fig);
+        
+        % Get edit information
+        row = eventdata.Indices(1);
+        col = eventdata.Indices(2);
+        new_value = eventdata.NewData;
+        old_value = eventdata.PreviousData;
+        
+        % Validate the new value (must be numeric)
+        if ischar(new_value)
+            num_value = str2double(new_value);
+            if isnan(num_value)
+                % Invalid input - revert to old value
+                current_data = get(src, 'Data');
+                current_data{row, col} = old_value;
+                set(src, 'Data', current_data);
+                errordlg(sprintf('Invalid input "%s". Please enter a numeric value.', new_value), 'Invalid Input');
+                return;
+            end
+        else
+            num_value = new_value;
+        end
+        
+        % Format the value consistently
+        formatted_value = sprintf('%.2f', num_value);
+        current_data = get(src, 'Data');
+        current_data{row, col} = formatted_value;
+        set(src, 'Data', current_data);
+        
+        % Track the edited cell
+        cell_key = sprintf('%d_%d', row, col);
+        if ~any(strcmp(handles.edited_cells, cell_key))
+            handles.edited_cells{end+1} = cell_key;
+        end
+        
+        % Update status
+        num_edited = length(handles.edited_cells);
+        status_msg = sprintf('Status: %d cells manually edited (modified values highlighted)', num_edited);
+        set(handles.edit_status_text, 'String', status_msg);
+        
+        % Highlight edited cells by changing background color
+        highlightEditedCells(handles);
+        
+        % Log the change
+        col_names = get(handles.coefficients_table, 'ColumnName');
+        if col <= length(col_names)
+            col_name = col_names{col};
+        else
+            col_name = sprintf('Col%d', col);
+        end
+        handles = updateLog(sprintf('Coefficient %s[%d] changed from %s to %s', ...
+            col_name, row, old_value, formatted_value), handles);
+        
+        % Save updated handles
+        guidata(handles.fig, handles);
+        
+    catch ME
+        errordlg(sprintf('Error editing cell: %s', ME.message), 'Edit Error');
+    end
+end
+
+function highlightEditedCells(handles)
+    % Highlight cells that have been manually edited
+    try
+        current_data = get(handles.coefficients_table, 'Data');
+        if isempty(current_data)
+            return;
+        end
+        
+        [num_rows, num_cols] = size(current_data);
+        
+        % Create background color matrix (default colors)
+        bg_colors = repmat([1, 1, 1], num_rows * num_cols, 1); % White background
+        
+        % Highlight edited cells in light yellow
+        for i = 1:length(handles.edited_cells)
+            cell_key = handles.edited_cells{i};
+            parts = split(cell_key, '_');
+            row = str2double(parts{1});
+            col = str2double(parts{2});
+            
+            if row <= num_rows && col <= num_cols
+                linear_idx = (col-1) * num_rows + row;
+                if linear_idx <= size(bg_colors, 1)
+                    bg_colors(linear_idx, :) = [1, 1, 0.8]; % Light yellow
+                end
+            end
+        end
+        
+        % Apply the background colors
+        set(handles.coefficients_table, 'BackgroundColor', bg_colors);
+        
+    catch ME
+        % If highlighting fails, just continue without it
+        fprintf('Warning: Cell highlighting failed: %s\n', ME.message);
+    end
+end
+
+function resetCoefficientsToGenerated(src, evt, handles)
+    % Reset coefficients table to the originally generated values
+    try
+        % Get updated handles
+        handles = guidata(handles.fig);
+        
+        % Regenerate the coefficients using the current settings
+        handles = updateCoefficientsPreview([], [], handles);
+        
+        % Clear edit tracking
+        handles.edited_cells = {};
+        
+        % Reset status
+        set(handles.edit_status_text, 'String', 'Status: Reset to generated values');
+        
+        % Remove highlighting by resetting background colors
+        current_data = get(handles.coefficients_table, 'Data');
+        if ~isempty(current_data)
+            [num_rows, num_cols] = size(current_data);
+            bg_colors = repmat([1, 1, 1], num_rows * num_cols, 1); % White background
+            set(handles.coefficients_table, 'BackgroundColor', bg_colors);
+        end
+        
+        % Log the action
+        handles = updateLog('Coefficients reset to generated values', handles);
+        
+        % Save updated handles
+        guidata(handles.fig, handles);
+        
+    catch ME
+        errordlg(sprintf('Error resetting coefficients: %s', ME.message), 'Reset Error');
+    end
+end
+
+function applyRowToAll(src, evt, handles)
+    % Apply the selected row's coefficients to all rows
+    try
+        % Get updated handles
+        handles = guidata(handles.fig);
+        
+        current_data = get(handles.coefficients_table, 'Data');
+        if isempty(current_data)
+            errordlg('No data in coefficients table', 'No Data');
+            return;
+        end
+        
+        % Ask user which row to use as template
+        prompt = sprintf('Enter row number (1-%d) to apply to all rows:', size(current_data, 1));
+        answer = inputdlg(prompt, 'Select Template Row', 1, {'1'});
+        
+        if isempty(answer)
+            return; % User cancelled
+        end
+        
+        template_row = str2double(answer{1});
+        if isnan(template_row) || template_row < 1 || template_row > size(current_data, 1)
+            errordlg(sprintf('Invalid row number. Must be between 1 and %d', size(current_data, 1)), 'Invalid Row');
+            return;
+        end
+        
+        % Get template coefficients (columns 2 to end: all joint coefficients)
+        template_coeffs = current_data(template_row, 2:end);
+        
+        % Apply to all rows
+        for row = 1:size(current_data, 1)
+            current_data(row, 2:end) = template_coeffs;
+            
+            % Mark these cells as edited
+            for col = 2:size(current_data, 2)
+                cell_key = sprintf('%d_%d', row, col);
+                if ~any(strcmp(handles.edited_cells, cell_key))
+                    handles.edited_cells{end+1} = cell_key;
+                end
+            end
+        end
+        
+        % Update the table
+        set(handles.coefficients_table, 'Data', current_data);
+        
+        % Update status
+        num_edited = length(handles.edited_cells);
+        status_msg = sprintf('Status: Applied row %d to all rows (%d cells edited)', template_row, num_edited);
+        set(handles.edit_status_text, 'String', status_msg);
+        
+        % Highlight edited cells
+        highlightEditedCells(handles);
+        
+        % Log the action
+        handles = updateLog(sprintf('Applied row %d coefficients to all %d rows', template_row, size(current_data, 1)), handles);
+        
+        % Save updated handles
+        guidata(handles.fig, handles);
+        
+    catch ME
+        errordlg(sprintf('Error applying row to all: %s', ME.message), 'Apply Error');
+    end
+end
+
+function coefficient_values = extractCoefficientsFromTable(handles)
+    % Extract coefficient values from the editable table for use in simulations
+    try
+        % Get current table data
+        table_data = get(handles.coefficients_table, 'Data');
+        
+        if isempty(table_data)
+            coefficient_values = [];
+            return;
+        end
+        
+        % Extract all coefficients (columns 2 to end: all joint coefficients)
+        num_trials = size(table_data, 1);
+        num_total_coeffs = size(table_data, 2) - 1; % Subtract 1 for trial column
+        coefficient_values = zeros(num_trials, num_total_coeffs);
+        
+        for row = 1:num_trials
+            for col = 2:(num_total_coeffs + 1) % Start from column 2 (after trial column)
+                value_str = table_data{row, col};
+                if ischar(value_str)
+                    coefficient_values(row, col-1) = str2double(value_str);
+                else
+                    coefficient_values(row, col-1) = value_str;
+                end
+            end
+        end
+        
+        % Validate that all values are numeric
+        if any(isnan(coefficient_values(:)))
+            warning('Some coefficient values are invalid (NaN). Please check the table for non-numeric entries.');
+        end
+        
+    catch ME
+        warning('Error extracting coefficients from table: %s', ME.message);
+        coefficient_values = [];
+    end
+end
+
+function jointNames = getJointNames()
+    % Full list of torque input prefixes extracted from model
+    jointNames = {
+        'BaseTorqueInputX', 'BaseTorqueInputY', 'BaseTorqueInputZ',
+        'HipInputX', 'HipInputY', 'HipInputZ',
+        'LSInputX', 'LSInputY', 'LSInputZ',
+        'LScapInputX', 'LScapInputY', 'LScapInputZ',
+        'LTiltInputX', 'LTiltInputY', 'LTiltInputZ',
+        'NeckInputX', 'NeckInputY', 'NeckInputZ',
+        'RSInputX', 'RSInputY', 'RSInputZ',
+        'RScapInputX', 'RScapInputY', 'RScapInputZ',
+        'RTiltInputX', 'RTiltInputY', 'RTiltInputZ'
+    };
+end
+
+function param_info = getPolynomialParameterInfo()
+    % Get polynomial parameter structure - ONLY 7-coefficient joints (A-G)
+    try
+        % Try to load the polynomial input values from the model
+        model_path = fullfile(fileparts(fileparts(pwd)), 'Model', 'PolynomialInputValues.mat');
+        if ~exist(model_path, 'file')
+            % Fallback: try relative path
+            model_path = '../../Model/PolynomialInputValues.mat';
+        end
+        
+        if exist(model_path, 'file')
+            loaded_data = load(model_path);
+            var_names = fieldnames(loaded_data);
+            
+            % Parse the variable names to extract joint and coefficient info
+            joint_map = containers.Map();
+            
+            for i = 1:length(var_names)
+                name = var_names{i};
+                if length(name) > 1
+                    coeff = name(end);
+                    base_name = name(1:end-1);
+                    
+                    if isKey(joint_map, base_name)
+                        joint_map(base_name) = [joint_map(base_name), coeff];
+                    else
+                        joint_map(base_name) = coeff;
+                    end
+                end
+            end
+            
+            % Filter to only include joints with 7 coefficients (A-G)
+            all_joint_names = keys(joint_map);
+            filtered_joint_names = {};
+            filtered_coeffs = {};
+            
+            for i = 1:length(all_joint_names)
+                joint_name = all_joint_names{i};
+                coeffs = sort(joint_map(joint_name));
+                
+                % Only include joints with exactly 7 coefficients (A-G)
+                if length(coeffs) == 7 && strcmp(coeffs, 'ABCDEFG')
+                    filtered_joint_names{end+1} = joint_name;
+                    filtered_coeffs{end+1} = coeffs;
+                end
+            end
+            
+            param_info.joint_names = sort(filtered_joint_names);
+            param_info.joint_coeffs = cell(size(param_info.joint_names));
+            
+            % Reorder coeffs to match sorted joint names
+            for i = 1:length(param_info.joint_names)
+                joint_name = param_info.joint_names{i};
+                idx = find(strcmp(filtered_joint_names, joint_name));
+                param_info.joint_coeffs{i} = filtered_coeffs{idx};
+            end
+            
+            param_info.total_params = length(param_info.joint_names) * 7; % All have 7 coefficients
+            
+        else
+            % Fallback to original simplified structure if mat file not found
+            warning('PolynomialInputValues.mat not found, using simplified joint structure');
+            param_info = getSimplifiedParameterInfo();
+        end
+        
+    catch ME
+        warning('Error loading polynomial parameters: %s. Using simplified structure.', ME.message);
+        param_info = getSimplifiedParameterInfo();
+    end
+end
+
+function param_info = getSimplifiedParameterInfo()
+    % Fallback simplified structure (original 27 joints)
+    joint_names = {
+        'BaseTorqueInputX', 'BaseTorqueInputY', 'BaseTorqueInputZ',
+        'HipInputX', 'HipInputY', 'HipInputZ',
+        'LSInputX', 'LSInputY', 'LSInputZ',
+        'LScapInputX', 'LScapInputY', 'LScapInputZ',
+        'LTiltInputX', 'LTiltInputY', 'LTiltInputZ',
+        'NeckInputX', 'NeckInputY', 'NeckInputZ',
+        'RSInputX', 'RSInputY', 'RSInputZ',
+        'RScapInputX', 'RScapInputY', 'RScapInputZ',
+        'RTiltInputX', 'RTiltInputY', 'RTiltInputZ'
+    };
+    
+    param_info.joint_names = joint_names;
+    param_info.joint_coeffs = cell(size(joint_names));
+    for i = 1:length(joint_names)
+        param_info.joint_coeffs{i} = 'ABCDEFG'; % 7 coefficients each
+    end
+    param_info.total_params = length(joint_names) * 7;
+end
+
+function updateJointCoefficients(src, evt, handles)
+    % Update the joint coefficient editor when a different joint is selected
+    try
+        handles = guidata(handles.fig);
+        selected_idx = get(handles.joint_selector, 'Value');
+        joint_names = get(handles.joint_selector, 'String');
+        selected_joint = joint_names{selected_idx};
+        
+        % Update status text
+        set(handles.joint_edit_status, 'String', sprintf('Editing: %s', selected_joint));
+        
+        % Load default values (zeros) for the new joint
+        for i = 1:7
+            set(handles.joint_coeff_edits(i), 'String', '0.00');
+        end
+        
+        handles = updateLog(sprintf('Selected joint: %s', selected_joint), handles);
+        guidata(handles.fig, handles);
+        
+    catch ME
+        errordlg(sprintf('Error updating joint: %s', ME.message), 'Joint Update Error');
+    end
+end
+
+function validateCoefficientInput(src, evt, handles)
+    % Validate and format coefficient input
+    try
+        current_value = get(src, 'String');
+        num_value = str2double(current_value);
+        
+        if isnan(num_value)
+            set(src, 'String', '0.00');
+            errordlg('Invalid input. Please enter a numeric value.', 'Invalid Input');
+        else
+            % Format to 2 decimal places
+            set(src, 'String', sprintf('%.2f', num_value));
+        end
+        
+    catch ME
+        set(src, 'String', '0.00');
+        errordlg(sprintf('Error validating input: %s', ME.message), 'Validation Error');
+    end
+end
+
+function applyJointToTable(src, evt, handles)
+    % Apply current joint coefficients to all rows in the main table
+    try
+        handles = guidata(handles.fig);
+        
+        % Get current joint selection
+        selected_idx = get(handles.joint_selector, 'Value');
+        joint_names = get(handles.joint_selector, 'String');
+        selected_joint = joint_names{selected_idx};
+        
+        % Get coefficient values from edit boxes
+        coeff_values = zeros(1, 7);
+        for i = 1:7
+            coeff_values(i) = str2double(get(handles.joint_coeff_edits(i), 'String'));
+        end
+        
+        % Find the columns in the main table for this joint
+        table_data = get(handles.coefficients_table, 'Data');
+        col_names = get(handles.coefficients_table, 'ColumnName');
+        
+        if isempty(table_data)
+            errordlg('No data in main table. Generate coefficients first.', 'No Data');
+            return;
+        end
+        
+        % Find columns corresponding to the selected joint
+        joint_columns = [];
+        for i = 1:length(col_names)
+            if contains(col_names{i}, selected_joint)
+                joint_columns(end+1) = i;
+            end
+        end
+        
+        if length(joint_columns) ~= 7
+            errordlg(sprintf('Expected 7 columns for joint %s, found %d', selected_joint, length(joint_columns)), 'Column Mismatch');
+            return;
+        end
+        
+        % Apply coefficients to all rows
+        num_rows = size(table_data, 1);
+        for row = 1:num_rows
+            for i = 1:7
+                col = joint_columns(i);
+                table_data{row, col} = sprintf('%.2f', coeff_values(i));
+                
+                % Mark as edited
+                cell_key = sprintf('%d_%d', row, col);
+                if ~any(strcmp(handles.edited_cells, cell_key))
+                    handles.edited_cells{end+1} = cell_key;
+                end
+            end
+        end
+        
+        % Update table and highlighting
+        set(handles.coefficients_table, 'Data', table_data);
+        highlightEditedCells(handles);
+        
+        % Update status
+        num_edited = length(handles.edited_cells);
+        status_msg = sprintf('Status: Applied %s coefficients to all rows (%d cells edited)', selected_joint, num_edited);
+        set(handles.edit_status_text, 'String', status_msg);
+        
+        handles = updateLog(sprintf('Applied %s coefficients to all %d trials', selected_joint, num_rows), handles);
+        guidata(handles.fig, handles);
+        
+        msgbox(sprintf('Applied %s coefficients to all %d trials', selected_joint, num_rows), 'Success');
+        
+    catch ME
+        errordlg(sprintf('Error applying joint coefficients: %s', ME.message), 'Apply Error');
+    end
+end
+
+function loadJointFromTable(src, evt, handles)
+    % Load joint coefficients from the first row of the main table
+    try
+        handles = guidata(handles.fig);
+        
+        % Get current joint selection
+        selected_idx = get(handles.joint_selector, 'Value');
+        joint_names = get(handles.joint_selector, 'String');
+        selected_joint = joint_names{selected_idx};
+        
+        % Get table data
+        table_data = get(handles.coefficients_table, 'Data');
+        col_names = get(handles.coefficients_table, 'ColumnName');
+        
+        if isempty(table_data)
+            errordlg('No data in main table. Generate coefficients first.', 'No Data');
+            return;
+        end
+        
+        % Find columns corresponding to the selected joint
+        joint_columns = [];
+        for i = 1:length(col_names)
+            if contains(col_names{i}, selected_joint)
+                joint_columns(end+1) = i;
+            end
+        end
+        
+        if length(joint_columns) ~= 7
+            errordlg(sprintf('Expected 7 columns for joint %s, found %d', selected_joint, length(joint_columns)), 'Column Mismatch');
+            return;
+        end
+        
+        % Load coefficients from first row
+        for i = 1:7
+            col = joint_columns(i);
+            value_str = table_data{1, col};
+            if ischar(value_str)
+                set(handles.joint_coeff_edits(i), 'String', value_str);
+            else
+                set(handles.joint_coeff_edits(i), 'String', sprintf('%.2f', value_str));
+            end
+        end
+        
+        handles = updateLog(sprintf('Loaded %s coefficients from table row 1', selected_joint), handles);
+        guidata(handles.fig, handles);
+        
+        msgbox(sprintf('Loaded %s coefficients from table row 1', selected_joint), 'Success');
+        
+    catch ME
+        errordlg(sprintf('Error loading joint coefficients: %s', ME.message), 'Load Error');
+    end
+end
+
+function exportCoefficientsToCSV(src, evt, handles)
+    % Export coefficient table to CSV file
+    try
+        % Get updated handles
+        handles = guidata(handles.fig);
+        
+        % Get table data
+        table_data = get(handles.coefficients_table, 'Data');
+        if isempty(table_data)
+            errordlg('No coefficient data to export', 'Export Error');
+            return;
+        end
+        
+        % Get column names
+        col_names = get(handles.coefficients_table, 'ColumnName');
+        
+        % Ask user for filename
+        [filename, pathname] = uiputfile('*.csv', 'Export Coefficients to CSV');
+        if filename == 0
+            return; % User cancelled
+        end
+        
+        full_path = fullfile(pathname, filename);
+        
+        % Write to CSV
+        writecell([col_names; table_data], full_path);
+        
+        % Log the action
+        handles = updateLog(sprintf('Coefficients exported to: %s', filename), handles);
+        msgbox('Coefficients exported successfully!', 'Export Success');
+        
+        % Save updated handles
+        guidata(handles.fig, handles);
+        
+    catch ME
+        errordlg(sprintf('Error exporting coefficients: %s', ME.message), 'Export Error');
+    end
+end
+
+function importCoefficientsFromCSV(src, evt, handles)
+    % Import coefficient table from CSV file
+    try
+        % Get updated handles
+        handles = guidata(handles.fig);
+        
+        % Ask user for filename
+        [filename, pathname] = uigetfile('*.csv', 'Import Coefficients from CSV');
+        if filename == 0
+            return; % User cancelled
+        end
+        
+        full_path = fullfile(pathname, filename);
+        
+        % Read CSV file
+        imported_data = readcell(full_path);
+        
+        % Validate data structure
+        if size(imported_data, 1) < 2
+            errordlg('Invalid CSV file: Must have header row and at least one data row', 'Import Error');
+            return;
+        end
+        
+        % Extract header and data
+        header = imported_data(1, :);
+        data = imported_data(2:end, :);
+        
+        % Validate column structure
+        expected_cols = get(handles.coefficients_table, 'ColumnName');
+        if length(header) ~= length(expected_cols)
+            errordlg(sprintf('Column count mismatch: Expected %d columns, found %d', ...
+                length(expected_cols), length(header)), 'Import Error');
+            return;
+        end
+        
+        % Update table
+        set(handles.coefficients_table, 'Data', data);
+        
+        % Mark all cells as edited
+        handles.edited_cells = {};
+        [num_rows, num_cols] = size(data);
+        for row = 1:num_rows
+            for col = 2:num_cols % Skip trial column
+                cell_key = sprintf('%d_%d', row, col);
+                handles.edited_cells{end+1} = cell_key;
+            end
+        end
+        
+        % Update status
+        num_edited = length(handles.edited_cells);
+        status_msg = sprintf('Status: Imported from CSV (%d cells loaded)', num_edited);
+        set(handles.edit_status_text, 'String', status_msg);
+        
+        % Highlight imported cells
+        highlightEditedCells(handles);
+        
+        % Log the action
+        handles = updateLog(sprintf('Coefficients imported from: %s (%d trials)', filename, num_rows), handles);
+        msgbox('Coefficients imported successfully!', 'Import Success');
+        
+        % Save updated handles
+        guidata(handles.fig, handles);
+        
+    catch ME
+        errordlg(sprintf('Error importing coefficients: %s', ME.message), 'Import Error');
+    end
+end
+
 % Dummy function for trial execution (replace with your actual implementation)
-function result = runSingleTrialWithSignalBus(trial_num, config)
+function result = runSingleTrialWithSignalBus(trial_num, config, trial_coefficients)
     % This is a placeholder - replace with your actual trial execution code
+    % trial_coefficients: [Joint1_A, Joint1_B, ..., Joint1_G, Joint2_A, Joint2_B, ..., JointN_G] 
+    %                     Array of all coefficients for all joints
+    
     result = struct();
     result.success = true;
     result.filename = sprintf('trial_%03d.csv', trial_num);
     result.error = '';
+    
+    % Log basic info about the coefficients
+    num_joints = length(trial_coefficients) / 7;
+    fprintf('Trial %d using %d coefficients for %d joints (range: %.2f to %.2f)\n', ...
+        trial_num, length(trial_coefficients), num_joints, ...
+        min(trial_coefficients), max(trial_coefficients));
+    
+    % Log first joint's coefficients as example
+    if length(trial_coefficients) >= 7
+        fprintf('  First joint coefficients: A=%.2f, B=%.2f, C=%.2f, D=%.2f, E=%.2f, F=%.2f, G=%.2f\n', ...
+            trial_coefficients(1), trial_coefficients(2), trial_coefficients(3), ...
+            trial_coefficients(4), trial_coefficients(5), trial_coefficients(6), trial_coefficients(7));
+    end
     
     % Simulate some processing time
     pause(0.1);
