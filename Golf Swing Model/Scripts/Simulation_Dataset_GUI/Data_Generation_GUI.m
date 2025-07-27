@@ -277,11 +277,24 @@ function handles = createModelingPanel(parent, handles, yPos, height)
               'Position', [0.02, y3, 0.2, 0.2], ...
               'HorizontalAlignment', 'left');
     
-    handles.model_edit = uicontrol('Parent', panel, ...
-                                  'Style', 'edit', ...
-                                  'String', 'GolfSwing3D_Kinetic', ...
-                                  'Units', 'normalized', ...
-                                  'Position', [0.22, y3, 0.35, 0.2]);
+    handles.model_display = uicontrol('Parent', panel, ...
+                                     'Style', 'text', ...
+                                     'String', 'GolfSwing3D_Kinetic', ...
+                                     'Units', 'normalized', ...
+                                     'Position', [0.22, y3, 0.25, 0.2], ...
+                                     'HorizontalAlignment', 'left', ...
+                                     'BackgroundColor', [1, 1, 1]);
+    
+    handles.model_browse_btn = uicontrol('Parent', panel, ...
+                                        'Style', 'pushbutton', ...
+                                        'String', 'Browse...', ...
+                                        'Units', 'normalized', ...
+                                        'Position', [0.48, y3, 0.09, 0.2], ...
+                                        'Callback', @(src,evt) selectSimulinkModel(src, evt, handles));
+    
+    % Store the current model name in handles
+    handles.model_name = 'GolfSwing3D_Kinetic';
+    handles.model_path = '';  % Initialize empty, will be set when user selects a model
     
     % Remove the Mode 3 comment - no longer needed here
 end
@@ -1132,6 +1145,41 @@ function resetCoefficientsToGenerated(src, evt, handles)
     guidata(handles.fig, handles);
 end
 
+function selectSimulinkModel(src, evt, handles)
+    % Callback function to open a file dialog for selecting Simulink model
+    handles = guidata(handles.fig);
+    
+    % Get the current model name to use as default
+    current_model = handles.model_name;
+    
+    % Open file selection dialog for Simulink models
+    [filename, pathname] = uigetfile({'*.slx;*.mdl', 'Simulink Models (*.slx, *.mdl)'; ...
+                                      '*.slx', 'Simulink Files (*.slx)'; ...
+                                      '*.mdl', 'MDL Files (*.mdl)'; ...
+                                      '*.*', 'All Files (*.*)'}, ...
+                                     'Select Simulink Model', current_model);
+    
+    % Check if user cancelled
+    if isequal(filename, 0) || isequal(pathname, 0)
+        return;
+    end
+    
+    % Extract model name without extension
+    [~, model_name, ~] = fileparts(filename);
+    
+    % Update the display and store the model name
+    set(handles.model_display, 'String', model_name);
+    handles.model_name = model_name;
+    handles.model_path = fullfile(pathname, filename);
+    
+    % Save updated handles
+    guidata(handles.fig, handles);
+    
+    % Optional: Display confirmation
+    fprintf('Selected Simulink model: %s\n', model_name);
+    fprintf('Model path: %s\n', handles.model_path);
+end
+
 function applyRowToAll(src, evt, handles)
     try
         % Get the latest handles structure
@@ -1399,7 +1447,7 @@ function config = validateInputs(handles)
         
         % Create config structure
         config = struct();
-        config.model_name = get(handles.model_edit, 'String');
+        config.model_name = handles.model_name;
         config.num_simulations = num_trials;
         config.simulation_time = sim_time;
         config.sample_rate = sample_rate;
@@ -1431,6 +1479,13 @@ function applyConfiguration(config, handles)
     set(handles.use_logsout, 'Value', config.use_logsout);
     set(handles.use_signal_bus, 'Value', config.use_signal_bus);
     set(handles.use_simscape, 'Value', config.use_simscape);
+    
+    % Update model name if present in config
+    if isfield(config, 'model_name')
+        handles.model_name = config.model_name;
+        set(handles.model_display, 'String', config.model_name);
+        guidata(handles.fig, handles);
+    end
     
     [folder, name] = fileparts(config.output_folder);
     set(handles.output_folder_edit, 'String', folder);
