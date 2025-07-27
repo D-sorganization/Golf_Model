@@ -398,6 +398,18 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                                     'HorizontalAlignment', 'left', ...
                                     'BackgroundColor', [0.98, 0.98, 0.98]);
     
+    % Polynomial equation display
+    handles.equation_display = uicontrol('Parent', panel, ...
+                                       'Style', 'text', ...
+                                       'String', 'τ(t) = A + Bt + Ct² + Dt³ + Et⁴ + Ft⁵ + Gt⁶', ...
+                                       'Units', 'normalized', ...
+                                       'Position', [0.02, 0.02, 0.96, 0.08], ...
+                                       'FontSize', 10, ...
+                                       'FontWeight', 'bold', ...
+                                       'ForegroundColor', [0.2, 0.2, 0.8], ...
+                                       'BackgroundColor', [0.98, 0.98, 0.98], ...
+                                       'HorizontalAlignment', 'center');
+    
     handles.param_info = param_info;
 end
 
@@ -523,10 +535,36 @@ function handles = createCoefficientsPanel(parent, handles, yPos, height)
                    'Position', [0.01, yPos, 0.98, height], ...
                    'BackgroundColor', [0.98, 0.98, 0.98]);
     
+    % Search functionality
+    searchY = 0.90;
+    searchHeight = 0.08;
+    
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Search:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, searchY, 0.08, searchHeight], ...
+              'HorizontalAlignment', 'left');
+    
+    handles.search_edit = uicontrol('Parent', panel, ...
+                                   'Style', 'edit', ...
+                                   'String', '', ...
+                                   'Units', 'normalized', ...
+                                   'Position', [0.10, searchY, 0.20, searchHeight], ...
+                                   'Callback', @(src,evt) searchCoefficients(src, evt, handles), ...
+                                   'KeyPressFcn', @(src,evt) searchCoefficients(src, evt, handles));
+    
+    handles.clear_search_button = uicontrol('Parent', panel, ...
+                                           'Style', 'pushbutton', ...
+                                           'String', 'Clear', ...
+                                           'Units', 'normalized', ...
+                                           'Position', [0.31, searchY, 0.08, searchHeight], ...
+                                           'Callback', @(src,evt) clearSearch(src, evt, handles));
+    
     % Control buttons
-    buttonY = 0.85;
-    buttonHeight = 0.12;
-    buttonWidth = 0.15;
+    buttonY = 0.82;
+    buttonHeight = 0.08;
+    buttonWidth = 0.12;
     
     handles.reset_coeffs_button = uicontrol('Parent', panel, ...
                                            'Style', 'pushbutton', ...
@@ -539,21 +577,21 @@ function handles = createCoefficientsPanel(parent, handles, yPos, height)
                                         'Style', 'pushbutton', ...
                                         'String', 'Apply Row', ...
                                         'Units', 'normalized', ...
-                                        'Position', [0.19, buttonY, buttonWidth, buttonHeight], ...
+                                        'Position', [0.15, buttonY, buttonWidth, buttonHeight], ...
                                         'Callback', @(src,evt) applyRowToAll(src, evt, handles));
     
     handles.export_button = uicontrol('Parent', panel, ...
                                      'Style', 'pushbutton', ...
                                      'String', 'Export CSV', ...
                                      'Units', 'normalized', ...
-                                     'Position', [0.36, buttonY, buttonWidth, buttonHeight], ...
+                                     'Position', [0.28, buttonY, buttonWidth, buttonHeight], ...
                                      'Callback', @(src,evt) exportCoefficientsToCSV(src, evt, handles));
     
     handles.import_button = uicontrol('Parent', panel, ...
                                      'Style', 'pushbutton', ...
                                      'String', 'Import CSV', ...
                                      'Units', 'normalized', ...
-                                     'Position', [0.53, buttonY, buttonWidth, buttonHeight], ...
+                                     'Position', [0.41, buttonY, buttonWidth, buttonHeight], ...
                                      'Callback', @(src,evt) importCoefficientsFromCSV(src, evt, handles));
     
     % Create table with proper column structure
@@ -580,7 +618,7 @@ function handles = createCoefficientsPanel(parent, handles, yPos, height)
     % Coefficients table
     handles.coefficients_table = uitable('Parent', panel, ...
                                         'Units', 'normalized', ...
-                                        'Position', [0.02, 0.05, 0.96, 0.75], ...
+                                        'Position', [0.02, 0.05, 0.96, 0.72], ...
                                         'ColumnName', col_names, ...
                                         'ColumnWidth', col_widths, ...
                                         'RowStriping', 'on', ...
@@ -1096,7 +1134,20 @@ end
 
 function applyRowToAll(src, evt, handles)
     try
-        handles = guidata(handles.fig);
+        % Get the latest handles structure
+        if isfield(handles, 'fig')
+            handles = guidata(handles.fig);
+        else
+            % If handles doesn't have fig, get it from the source
+            fig = ancestor(src, 'figure');
+            handles = guidata(fig);
+        end
+        
+        % Check if coefficients_table exists
+        if ~isfield(handles, 'coefficients_table')
+            errordlg('Coefficients table not found. Please update preview first.', 'Error');
+            return;
+        end
         
         current_data = get(handles.coefficients_table, 'Data');
         if isempty(current_data)
@@ -1441,6 +1492,14 @@ function runGeneration(handles)
         set(handles.status_text, 'String', ['Status: ' final_msg]);
         set(handles.progress_text, 'String', final_msg);
         
+        % Compile all trials into master dataset if successful trials exist
+        if successful_trials > 0
+            set(handles.status_text, 'String', 'Status: Compiling master dataset...');
+            drawnow;
+            compileDataset(config);
+            set(handles.status_text, 'String', ['Status: ' final_msg ' - Dataset compiled']);
+        end
+        
         set(handles.start_button, 'Enable', 'on');
         set(handles.stop_button, 'Enable', 'off');
         
@@ -1584,11 +1643,280 @@ end
 
 % Placeholder for actual trial execution
 function result = runSingleTrialWithSignalBus(trial_num, config, trial_coefficients)
+    % Enhanced trial execution with proper data labeling for ML
     result = struct();
-    result.success = true;
-    result.filename = sprintf('trial_%03d.csv', trial_num);
-    result.error = '';
     
-    % Simulate processing time
-    pause(0.1);
+    try
+        % Run the actual simulation
+        simResult = runSingleTrial(trial_num, config);
+        
+        if simResult.success
+            % Read the generated CSV file
+            csv_path = fullfile(config.output_folder, simResult.filename);
+            if exist(csv_path, 'file')
+                % Read existing data
+                data_table = readtable(csv_path);
+                
+                % Add trial metadata columns for ML labeling
+                num_rows = height(data_table);
+                
+                % Add trial ID column
+                data_table.trial_id = repmat(trial_num, num_rows, 1);
+                
+                % Add coefficient columns as features
+                param_info = getPolynomialParameterInfo();
+                col_idx = 1;
+                for j = 1:length(param_info.joint_names)
+                    joint_name = param_info.joint_names{j};
+                    coeffs = param_info.joint_coeffs{j};
+                    for k = 1:length(coeffs)
+                        coeff_name = sprintf('input_%s_%s', getShortenedJointName(joint_name), coeffs(k));
+                        data_table.(coeff_name) = repmat(trial_coefficients(col_idx), num_rows, 1);
+                        col_idx = col_idx + 1;
+                    end
+                end
+                
+                % Add scenario metadata
+                data_table.torque_scenario = repmat(config.torque_scenario, num_rows, 1);
+                data_table.coeff_range = repmat(config.coeff_range, num_rows, 1);
+                data_table.constant_value = repmat(config.constant_value, num_rows, 1);
+                
+                % Add timestamp for data versioning
+                data_table.generation_timestamp = repmat(datestr(now, 'yyyy-mm-dd HH:MM:SS'), num_rows, 1);
+                
+                % Reorder columns for better organization
+                % Put metadata first, then inputs, then simulation outputs
+                metadata_cols = {'trial_id', 'time', 'simulation_id', 'torque_scenario', ...
+                                'coeff_range', 'constant_value', 'generation_timestamp'};
+                input_cols = data_table.Properties.VariableNames(contains(data_table.Properties.VariableNames, 'input_'));
+                output_cols = setdiff(data_table.Properties.VariableNames, [metadata_cols, input_cols]);
+                
+                ordered_cols = [metadata_cols, input_cols, output_cols];
+                existing_cols = intersect(ordered_cols, data_table.Properties.VariableNames, 'stable');
+                data_table = data_table(:, existing_cols);
+                
+                % Save enhanced CSV with ML-ready format
+                enhanced_filename = sprintf('ml_trial_%03d_%s.csv', trial_num, datestr(now, 'yyyymmdd_HHMMSS'));
+                enhanced_path = fullfile(config.output_folder, enhanced_filename);
+                writetable(data_table, enhanced_path);
+                
+                % Also save a metadata file for this trial
+                metadata = struct();
+                metadata.trial_id = trial_num;
+                metadata.coefficients = trial_coefficients;
+                metadata.joint_names = param_info.joint_names;
+                metadata.joint_coeffs = param_info.joint_coeffs;
+                metadata.config = config;
+                metadata.timestamp = datetime('now');
+                
+                metadata_filename = sprintf('ml_trial_%03d_metadata.mat', trial_num);
+                metadata_path = fullfile(config.output_folder, metadata_filename);
+                save(metadata_path, 'metadata');
+                
+                result.success = true;
+                result.filename = enhanced_filename;
+                result.data_points = num_rows;
+                result.columns = width(data_table);
+                result.metadata_file = metadata_filename;
+            else
+                result.success = false;
+                result.error = 'CSV file not found after simulation';
+            end
+        else
+            result = simResult;
+        end
+        
+    catch ME
+        result.success = false;
+        result.error = ME.message;
+        result.filename = '';
+    end
+end
+
+function searchCoefficients(src, evt, handles)
+    try
+        % Get the latest handles structure
+        if isfield(handles, 'fig')
+            handles = guidata(handles.fig);
+        else
+            fig = ancestor(src, 'figure');
+            handles = guidata(fig);
+        end
+        
+        if ~isfield(handles, 'coefficients_table')
+            return;
+        end
+        
+        search_text = get(handles.search_edit, 'String');
+        if isempty(search_text)
+            % Reset highlighting
+            clearSearch(src, evt, handles);
+            return;
+        end
+        
+        % Get table data and column names
+        table_data = get(handles.coefficients_table, 'Data');
+        col_names = get(handles.coefficients_table, 'ColumnName');
+        
+        % Find matching columns
+        matching_cols = [];
+        for i = 2:length(col_names) % Skip trial number column
+            if contains(col_names{i}, search_text, 'IgnoreCase', true)
+                matching_cols = [matching_cols, i];
+            end
+        end
+        
+        if ~isempty(matching_cols)
+            % Scroll to first matching column
+            jTable = findjobj(handles.coefficients_table);
+            if ~isempty(jTable)
+                jTable = jTable(1).getComponent(0).getComponent(0);
+                jTable.scrollColumnToVisible(matching_cols(1)-1); % Java uses 0-based indexing
+            end
+            
+            % Update status
+            set(handles.joint_status, 'String', sprintf('Found %d matching columns', length(matching_cols)));
+        else
+            set(handles.joint_status, 'String', 'No matching columns found');
+        end
+        
+    catch ME
+        fprintf('Error in searchCoefficients: %s\n', ME.message);
+    end
+end
+
+function clearSearch(src, evt, handles)
+    try
+        % Get the latest handles structure
+        if isfield(handles, 'fig')
+            handles = guidata(handles.fig);
+        else
+            fig = ancestor(src, 'figure');
+            handles = guidata(fig);
+        end
+        
+        % Clear search text
+        if isfield(handles, 'search_edit')
+            set(handles.search_edit, 'String', '');
+        end
+        
+        % Reset status
+        if isfield(handles, 'joint_status')
+            set(handles.joint_status, 'String', 'Search cleared');
+        end
+        
+    catch ME
+        fprintf('Error in clearSearch: %s\n', ME.message);
+    end
+end
+
+function compileDataset(config)
+    % Compile all individual trial CSV files into a master dataset
+    try
+        fprintf('Compiling dataset from trials...\n');
+        
+        % Find all ML trial CSV files
+        csv_files = dir(fullfile(config.output_folder, 'ml_trial_*.csv'));
+        
+        if isempty(csv_files)
+            warning('No ML trial CSV files found in output folder');
+            return;
+        end
+        
+        % Initialize master table
+        master_data = [];
+        
+        for i = 1:length(csv_files)
+            file_path = fullfile(config.output_folder, csv_files(i).name);
+            fprintf('Reading %s...\n', csv_files(i).name);
+            
+            try
+                trial_data = readtable(file_path);
+                
+                if isempty(master_data)
+                    master_data = trial_data;
+                else
+                    % Ensure consistent columns
+                    common_vars = intersect(master_data.Properties.VariableNames, ...
+                                          trial_data.Properties.VariableNames);
+                    master_data = [master_data(:, common_vars); trial_data(:, common_vars)];
+                end
+                
+            catch ME
+                warning('Failed to read %s: %s', csv_files(i).name, ME.message);
+            end
+        end
+        
+        if ~isempty(master_data)
+            % Save master dataset
+            timestamp = datestr(now, 'yyyymmdd_HHMMSS');
+            master_filename = sprintf('master_dataset_%s.csv', timestamp);
+            master_path = fullfile(config.output_folder, master_filename);
+            
+            writetable(master_data, master_path);
+            fprintf('✓ Master dataset saved: %s\n', master_filename);
+            fprintf('  Total rows: %d\n', height(master_data));
+            fprintf('  Total columns: %d\n', width(master_data));
+            
+            % Also save in MAT format for faster loading
+            master_mat_filename = sprintf('master_dataset_%s.mat', timestamp);
+            master_mat_path = fullfile(config.output_folder, master_mat_filename);
+            save(master_mat_path, 'master_data');
+            fprintf('✓ MAT format saved: %s\n', master_mat_filename);
+            
+            % Create summary statistics
+            createDatasetSummary(master_data, config.output_folder, timestamp);
+        end
+        
+    catch ME
+        fprintf('Error compiling dataset: %s\n', ME.message);
+    end
+end
+
+function createDatasetSummary(data, output_folder, timestamp)
+    % Create a summary report of the dataset
+    try
+        summary_filename = sprintf('dataset_summary_%s.txt', timestamp);
+        summary_path = fullfile(output_folder, summary_filename);
+        
+        fid = fopen(summary_path, 'w');
+        if fid == -1
+            warning('Could not create summary file');
+            return;
+        end
+        
+        fprintf(fid, 'Golf Swing Dataset Summary\n');
+        fprintf(fid, '==========================\n\n');
+        fprintf(fid, 'Generated: %s\n\n', datestr(now));
+        
+        fprintf(fid, 'Dataset Statistics:\n');
+        fprintf(fid, '- Total samples: %d\n', height(data));
+        fprintf(fid, '- Total features: %d\n', width(data));
+        fprintf(fid, '- Unique trials: %d\n', length(unique(data.trial_id)));
+        
+        fprintf(fid, '\nColumn Types:\n');
+        metadata_cols = data.Properties.VariableNames(contains(data.Properties.VariableNames, {'trial_', 'time', 'simulation_', 'scenario', 'timestamp'}));
+        input_cols = data.Properties.VariableNames(contains(data.Properties.VariableNames, 'input_'));
+        output_cols = setdiff(data.Properties.VariableNames, [metadata_cols, input_cols]);
+        
+        fprintf(fid, '- Metadata columns: %d\n', length(metadata_cols));
+        fprintf(fid, '- Input features: %d\n', length(input_cols));
+        fprintf(fid, '- Output variables: %d\n', length(output_cols));
+        
+        fprintf(fid, '\nInput Features:\n');
+        for i = 1:length(input_cols)
+            fprintf(fid, '  - %s\n', input_cols{i});
+        end
+        
+        fprintf(fid, '\nOutput Variables (first 20):\n');
+        for i = 1:min(20, length(output_cols))
+            fprintf(fid, '  - %s\n', output_cols{i});
+        end
+        
+        fclose(fid);
+        fprintf('✓ Summary saved: %s\n', summary_filename);
+        
+    catch ME
+        warning('Error creating summary: %s', ME.message);
+    end
 end
