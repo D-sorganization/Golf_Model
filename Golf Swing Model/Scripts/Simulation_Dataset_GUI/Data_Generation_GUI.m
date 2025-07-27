@@ -2148,35 +2148,95 @@ end
 % ==================== MISSING CALLBACK FUNCTIONS ====================
 
 function browseInputFile(~, ~, handles)
-    % Browse for individual input file
-    [filename, pathname] = uigetfile('*.mat', 'Select Starting Point Input File', ...
-                                    fullfile(pwd, 'Input Files'));
+    % Browse for input file
+    [filename, pathname] = uigetfile({'*.mat', 'MAT files'; '*.csv', 'CSV files'}, 'Select Input File');
     if filename ~= 0
-        full_path = fullfile(pathname, filename);
+        handles = guidata(handles.fig);
+        fullPath = fullfile(pathname, filename);
+        set(handles.input_file_edit, 'String', fullPath);
         
-        % Update GUI displays
-        set(handles.input_file_edit, 'String', filename);
-        set(handles.selected_file_text, 'String', full_path, ...
-            'ForegroundColor', [0, 0.6, 0]);
+        % Update the selected file text display
+        set(handles.selected_file_text, 'String', filename, ...
+            'ForegroundColor', [0, 0.5, 0]);  % Green color for selected file
         
-        % Store in handles
-        handles.selected_input_file = full_path;
+        % Store the selected file path
+        handles.selected_input_file = fullPath;
+        
         guidata(handles.fig, handles);
-        
-        % Validate the file
-        validateInputFile(full_path, handles);
+        updateCoefficientsPreview([], [], handles);
     end
 end
 
 function clearInputFile(~, ~, handles)
-    % Clear the selected input file
-    set(handles.input_file_edit, 'String', 'Select a .mat input file...');
-    set(handles.selected_file_text, 'String', 'No file selected', ...
-        'ForegroundColor', [0.5, 0.5, 0.5]);
+    % Clear the input file selection
+    handles = guidata(handles.fig);
+    set(handles.input_file_edit, 'String', '');
     
+    % Update the selected file text display
+    set(handles.selected_file_text, 'String', 'No file selected', ...
+        'ForegroundColor', [0.5, 0.5, 0.5]);  % Gray color for no selection
+    
+    % Clear the selected file path
     handles.selected_input_file = '';
+    
     guidata(handles.fig, handles);
+    updateCoefficientsPreview([], [], handles);
 end
+
+function browseOutputFolder(~, ~, handles)
+    % Browse for output folder
+    folder = uigetdir(pwd, 'Select Output Folder');
+    if folder ~= 0
+        handles = guidata(handles.fig);
+        set(handles.output_folder_edit, 'String', folder);
+        guidata(handles.fig, handles);
+    end
+end
+
+function torqueScenarioCallback(~, ~, handles)
+    % Handle torque scenario change
+    handles = guidata(handles.fig);
+    scenario = get(handles.torque_scenario_popup, 'Value');
+    
+    % Enable/disable relevant controls based on scenario
+    if scenario == 1 % Random
+        set(handles.coeff_range_edit, 'Enable', 'on');
+        set(handles.constant_value_edit, 'Enable', 'off');
+    elseif scenario == 2 % Constant
+        set(handles.coeff_range_edit, 'Enable', 'off');
+        set(handles.constant_value_edit, 'Enable', 'on');
+    else % From file
+        set(handles.coeff_range_edit, 'Enable', 'off');
+        set(handles.constant_value_edit, 'Enable', 'off');
+    end
+    
+    updateCoefficientsPreview([], [], handles);
+end
+
+function coefficientCellEditCallback(~, evt, handles)
+    % Handle cell edit in coefficients table
+    handles = guidata(handles.fig);
+    
+    % Validate the edited value
+    row = evt.Indices(1);
+    col = evt.Indices(2);
+    new_value = evt.NewData;
+    
+    if col > 1 % Only validate coefficient columns
+        if ischar(new_value)
+            numeric_value = str2double(new_value);
+            if isnan(numeric_value)
+                % Revert to old value
+                table_data = get(handles.coefficients_table, 'Data');
+                table_data{row, col} = evt.PreviousData;
+                set(handles.coefficients_table, 'Data', table_data);
+                errordlg('Please enter a valid number', 'Invalid Input');
+            end
+        end
+    end
+end
+
+
 
 function validateInputFile(file_path, handles)
     % Validate the selected input file
@@ -2199,10 +2259,6 @@ function validateInputFile(file_path, handles)
         clearInputFile([], [], handles);
     end
 end
-
-
-
-
 
 function saveScenario(~, ~, handles)
     % Save current torque coefficient scenario
