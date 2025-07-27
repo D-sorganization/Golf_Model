@@ -1,9 +1,84 @@
-% Test script for GolfSwingDataGeneratorGUI
-try
-    fprintf('Starting GUI test...\n');
-    GolfSwingDataGeneratorGUI();
-    fprintf('GUI started successfully!\n');
-catch ME
-    fprintf('Error starting GUI: %s\n', ME.message);
-    fprintf('Error details: %s\n', getReport(ME));
+function working_gui_simplified()
+    % Based on the working debug GUI, gradually add main GUI components
+    fprintf('DEBUG: Starting simplified working GUI\n');
+    
+    try
+        % Use the exact same figure creation as the working debug version
+        fprintf('DEBUG: Creating figure...\n');
+        fig = figure('Name', 'Golf Swing Data Generator - Simplified', ...
+                     'Position', [50, 50, 1400, 900], ...
+                     'MenuBar', 'none', ...
+                     'ToolBar', 'none', ...
+                     'Resize', 'on', ...
+                     'Color', [0.96, 0.96, 0.98], ...
+                     'NumberTitle', 'off');
+        fprintf('DEBUG: Figure created successfully\n');
+        
+        % Initialize handles structure (same as debug version)
+        fprintf('DEBUG: Initializing handles structure...\n');
+        handles = struct();
+        handles.should_stop = false;
+        handles.trial_table_data = [];
+        fprintf('DEBUG: Handles initialized\n');
+        
+        % Store handles in figure BEFORE creating any complex layout
+        fprintf('DEBUG: Storing handles with guidata...\n');
+        guidata(fig, handles);
+        fprintf('DEBUG: guidata successful\n');
+        
+        % NOW try the title panel from main GUI (this might be where it fails)
+        fprintf('DEBUG: Creating title panel (main GUI style)...\n');
+        title_panel = uipanel('Parent', fig, ...
+                             'Title', '', ...
+                             'Position', [20, 830, 1360, 60], ...
+                             'BackgroundColor', [0.2, 0.4, 0.8], ...
+                             'BorderType', 'none');
+        fprintf('DEBUG: Title panel created\n');
+        
+        % Title text (main GUI style)
+        fprintf('DEBUG: Creating title text (main GUI style)...\n');
+        uicontrol('Parent', title_panel, ...
+                  'Style', 'text', ...
+                  'String', 'Golf Swing Data Generator - Enhanced', ...
+                  'Position', [20, 20, 800, 30], ...
+                  'FontSize', 18, ...
+                  'FontWeight', 'bold', ...
+                  'ForegroundColor', 'white', ...
+                  'BackgroundColor', [0.2, 0.4, 0.8], ...
+                  'HorizontalAlignment', 'left');
+        fprintf('DEBUG: Title text created\n');
+        
+        % Subtitle (this is different from debug version)
+        fprintf('DEBUG: Creating subtitle...\n');
+        uicontrol('Parent', title_panel, ...
+                  'Style', 'text', ...
+                  'String', 'Generate comprehensive training datasets with detailed parameter control', ...
+                  'Position', [20, 5, 1000, 15], ...
+                  'FontSize', 10, ...
+                  'ForegroundColor', [0.9, 0.9, 0.9], ...
+                  'BackgroundColor', [0.2, 0.4, 0.8], ...
+                  'HorizontalAlignment', 'left');
+        fprintf('DEBUG: Subtitle created\n');
+        
+        % Main content area (main GUI style)
+        fprintf('DEBUG: Creating main content area...\n');
+        main_panel = uipanel('Parent', fig, ...
+                            'Position', [20, 50, 1360, 770], ...
+                            'BackgroundColor', [0.96, 0.96, 0.98]);
+        fprintf('DEBUG: Main content area created\n');
+        
+        % Stop here for now - if this works, the issue is in the column creation or panel functions
+        fprintf('SUCCESS: Simplified GUI created successfully!\n');
+        
+    catch ME
+        fprintf('\n=== CAUGHT EXCEPTION ===\n');
+        fprintf('Message: %s\n', ME.message);
+        fprintf('Identifier: %s\n', ME.identifier);
+        fprintf('\nStack Trace:\n');
+        for i = 1:length(ME.stack)
+            fprintf('  In %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
+        end
+        fprintf('\nFull Report:\n');
+        disp(getReport(ME, 'extended', 'hyperlinks', 'off'));
+    end
 end 

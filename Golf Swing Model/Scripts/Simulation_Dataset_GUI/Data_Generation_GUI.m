@@ -117,7 +117,7 @@ function handles = createRightColumnContent(parent, handles)
 end
 
 function handles = createTrialAndDataPanel(parent, handles, yPos, height)
-    % Combined Trial Settings and Data Sources Configuration
+    % Combined Trial Settings & Data Sources Configuration
     panel = uipanel('Parent', parent, ...
                    'Title', 'Trial Settings & Data Sources', ...
                    'FontSize', 11, ...
@@ -126,92 +126,192 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                    'Position', [0.01, yPos, 0.98, height], ...
                    'BackgroundColor', [0.98, 0.98, 0.98]);
     
-    % Trial Settings section
-    y1 = 0.75;
-    y2 = 0.45;
-    y3 = 0.15;
+    y1 = 0.82;  % Starting point file
+    y2 = 0.62;  % Trial parameters  
+    y3 = 0.42;  % Data sources
+    y4 = 0.22;  % Model selection
+    y5 = 0.02;  % Selected file display
     
+    % === STARTING POINT FILE SELECTION ===
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
-              'String', 'Number of Trials:', ...
+              'String', 'Starting Point File:', ...
               'Units', 'normalized', ...
-              'Position', [0.02, y1, 0.2, 0.15], ...
-              'HorizontalAlignment', 'left');
+              'Position', [0.02, y1, 0.18, 0.12], ...
+              'HorizontalAlignment', 'left', ...
+              'FontWeight', 'bold');
+    
+    handles.input_file_edit = uicontrol('Parent', panel, ...
+                                       'Style', 'edit', ...
+                                       'String', 'Select a .mat input file...', ...
+                                       'Units', 'normalized', ...
+                                       'Position', [0.21, y1, 0.5, 0.12], ...
+                                       'Enable', 'inactive', ...
+                                       'TooltipString', 'Selected starting point .mat file');
+    
+    handles.browse_input_btn = uicontrol('Parent', panel, ...
+                                        'Style', 'pushbutton', ...
+                                        'String', 'Browse File...', ...
+                                        'Units', 'normalized', ...
+                                        'Position', [0.73, y1, 0.12, 0.12], ...
+                                        'Callback', @(src,evt) browseInputFile(src, evt, handles), ...
+                                        'TooltipString', 'Select starting point .mat file');
+    
+    handles.clear_input_btn = uicontrol('Parent', panel, ...
+                                       'Style', 'pushbutton', ...
+                                       'String', 'Clear', ...
+                                       'Units', 'normalized', ...
+                                       'Position', [0.86, y1, 0.08, 0.12], ...
+                                       'Callback', @(src,evt) clearInputFile(src, evt, handles), ...
+                                       'TooltipString', 'Clear file selection');
+    
+    % === TRIAL PARAMETERS ===
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Trials:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y2, 0.08, 0.12], ...
+              'HorizontalAlignment', 'left', ...
+              'FontWeight', 'bold');
     
     handles.num_trials_edit = uicontrol('Parent', panel, ...
                                        'Style', 'edit', ...
                                        'String', '10', ...
                                        'Units', 'normalized', ...
-                                       'Position', [0.22, y1, 0.1, 0.15], ...
-                                       'Callback', @(src,evt) updateCoefficientsPreview(src, evt, handles));
+                                       'Position', [0.11, y2, 0.08, 0.12], ...
+                                       'Callback', @(src,evt) updateCoefficientsPreview(src, evt, handles), ...
+                                       'TooltipString', 'Number of simulation trials');
     
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
               'String', 'Duration (s):', ...
               'Units', 'normalized', ...
-              'Position', [0.35, y1, 0.15, 0.15], ...
+              'Position', [0.21, y2, 0.12, 0.12], ...
               'HorizontalAlignment', 'left');
     
     handles.sim_time_edit = uicontrol('Parent', panel, ...
                                      'Style', 'edit', ...
                                      'String', '0.3', ...
                                      'Units', 'normalized', ...
-                                     'Position', [0.50, y1, 0.1, 0.15]);
+                                     'Position', [0.34, y2, 0.08, 0.12], ...
+                                     'TooltipString', 'Simulation duration in seconds');
     
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
               'String', 'Sample Rate (Hz):', ...
               'Units', 'normalized', ...
-              'Position', [0.02, y2, 0.2, 0.15], ...
+              'Position', [0.44, y2, 0.14, 0.12], ...
               'HorizontalAlignment', 'left');
     
     handles.sample_rate_edit = uicontrol('Parent', panel, ...
                                         'Style', 'edit', ...
                                         'String', '100', ...
                                         'Units', 'normalized', ...
-                                        'Position', [0.22, y2, 0.1, 0.15]);
+                                        'Position', [0.59, y2, 0.08, 0.12], ...
+                                        'TooltipString', 'Data sampling rate');
     
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
-              'String', 'Execution Mode:', ...
+              'String', 'Mode:', ...
               'Units', 'normalized', ...
-              'Position', [0.35, y2, 0.15, 0.15], ...
+              'Position', [0.69, y2, 0.08, 0.12], ...
               'HorizontalAlignment', 'left');
     
     handles.execution_mode_popup = uicontrol('Parent', panel, ...
                                             'Style', 'popupmenu', ...
                                             'String', {'Sequential', 'Parallel'}, ...
                                             'Units', 'normalized', ...
-                                            'Position', [0.50, y2, 0.2, 0.15]);
+                                            'Position', [0.78, y2, 0.16, 0.12], ...
+                                            'TooltipString', 'Execution mode for trials');
     
-    % Data Sources section
+    % === DATA SOURCES ===
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Data Sources:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y3, 0.15, 0.12], ...
+              'HorizontalAlignment', 'left', ...
+              'FontWeight', 'bold');
+    
     handles.use_model_workspace = uicontrol('Parent', panel, ...
                                            'Style', 'checkbox', ...
                                            'String', 'Model Workspace', ...
                                            'Units', 'normalized', ...
-                                           'Position', [0.02, y3, 0.22, 0.15], ...
-                                           'Value', 1);
+                                           'Position', [0.18, y3, 0.18, 0.12], ...
+                                           'Value', 1, ...
+                                           'TooltipString', 'Extract model parameters and variables');
     
     handles.use_logsout = uicontrol('Parent', panel, ...
                                    'Style', 'checkbox', ...
                                    'String', 'Logsout', ...
                                    'Units', 'normalized', ...
-                                   'Position', [0.25, y3, 0.15, 0.15], ...
-                                   'Value', 1);
+                                   'Position', [0.37, y3, 0.12, 0.12], ...
+                                   'Value', 1, ...
+                                   'TooltipString', 'Extract logged signals');
     
     handles.use_signal_bus = uicontrol('Parent', panel, ...
                                       'Style', 'checkbox', ...
                                       'String', 'Signal Bus', ...
                                       'Units', 'normalized', ...
-                                      'Position', [0.41, y3, 0.18, 0.15], ...
-                                      'Value', 1);
+                                      'Position', [0.50, y3, 0.15, 0.12], ...
+                                      'Value', 1, ...
+                                      'TooltipString', 'Extract ToWorkspace block data');
     
     handles.use_simscape = uicontrol('Parent', panel, ...
                                     'Style', 'checkbox', ...
                                     'String', 'Simscape Results', ...
                                     'Units', 'normalized', ...
-                                    'Position', [0.60, y3, 0.25, 0.15], ...
-                                    'Value', 1);
+                                    'Position', [0.66, y3, 0.18, 0.12], ...
+                                    'Value', 1, ...
+                                    'TooltipString', 'Extract primary simulation data');
+    
+    % === MODEL SELECTION ===
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Simulink Model:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y4, 0.18, 0.12], ...
+              'HorizontalAlignment', 'left', ...
+              'FontWeight', 'bold');
+    
+    handles.model_display = uicontrol('Parent', panel, ...
+                                     'Style', 'text', ...
+                                     'String', 'GolfSwing3D_Kinetic', ...
+                                     'Units', 'normalized', ...
+                                     'Position', [0.21, y4, 0.4, 0.12], ...
+                                     'HorizontalAlignment', 'left', ...
+                                     'BackgroundColor', [1, 1, 1], ...
+                                     'TooltipString', 'Selected Simulink model file');
+    
+    handles.model_browse_btn = uicontrol('Parent', panel, ...
+                                        'Style', 'pushbutton', ...
+                                        'String', 'Browse Model...', ...
+                                        'Units', 'normalized', ...
+                                        'Position', [0.63, y4, 0.15, 0.12], ...
+                                        'Callback', @(src,evt) selectSimulinkModel(src, evt, handles), ...
+                                        'TooltipString', 'Select Simulink model file');
+    
+    % === SELECTED FILE DISPLAY ===
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Selected File:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y5, 0.15, 0.12], ...
+              'HorizontalAlignment', 'left');
+    
+    handles.selected_file_text = uicontrol('Parent', panel, ...
+                                          'Style', 'text', ...
+                                          'String', 'No file selected', ...
+                                          'Units', 'normalized', ...
+                                          'Position', [0.18, y5, 0.76, 0.12], ...
+                                          'HorizontalAlignment', 'left', ...
+                                          'BackgroundColor', [0.95, 0.95, 0.95], ...
+                                          'ForegroundColor', [0.5, 0.5, 0.5]);
+    
+    % Initialize model name
+    handles.model_name = 'GolfSwing3D_Kinetic';
+    handles.model_path = '';
+    handles.selected_input_file = '';
 end
 
 function handles = createModelingPanel(parent, handles, yPos, height)
@@ -607,6 +707,22 @@ function handles = createCoefficientsPanel(parent, handles, yPos, height)
                                      'Position', [0.41, buttonY, buttonWidth, buttonHeight], ...
                                      'Callback', @(src,evt) importCoefficientsFromCSV(src, evt, handles));
     
+    handles.save_scenario_button = uicontrol('Parent', panel, ...
+                                            'Style', 'pushbutton', ...
+                                            'String', 'Save Scenario', ...
+                                            'Units', 'normalized', ...
+                                            'Position', [0.54, buttonY, buttonWidth, buttonHeight], ...
+                                            'Callback', @(src,evt) saveScenario(src, evt, handles), ...
+                                            'TooltipString', 'Save current torque coefficients as an experimental scenario');
+    
+    handles.load_scenario_button = uicontrol('Parent', panel, ...
+                                            'Style', 'pushbutton', ...
+                                            'String', 'Load Scenario', ...
+                                            'Units', 'normalized', ...
+                                            'Position', [0.67, buttonY, buttonWidth, buttonHeight], ...
+                                            'Callback', @(src,evt) loadScenario(src, evt, handles), ...
+                                            'TooltipString', 'Load saved experimental scenario coefficients');
+    
     % Create table with proper column structure
     col_names = {'Trial'};
     col_widths = {60};
@@ -875,6 +991,11 @@ function handles = updateCoefficientsPreview(~, ~, handles)
         set(handles.coefficients_table, 'Data', coeff_data);
         handles.edited_cells = {}; % Clear edit tracking
         
+        % Store original data for search functionality
+        handles.original_coefficients_data = coeff_data;
+        handles.original_coefficients_columns = get(handles.coefficients_table, 'ColumnName');
+        guidata(handles.fig, handles);
+        
     catch ME
         fprintf('Error in updateCoefficientsPreview: %s\n', ME.message);
     end
@@ -1129,6 +1250,25 @@ function coefficientCellEditCallback(src, eventdata, handles)
         cell_key = sprintf('%d_%d', row, col);
         if ~any(strcmp(handles.edited_cells, cell_key))
             handles.edited_cells{end+1} = cell_key;
+        end
+        
+        % Update original data to preserve user edits during search
+        if isfield(handles, 'original_coefficients_data')
+            % Check if we're viewing filtered data or full data
+            current_col_names = get(src, 'ColumnName');
+            original_col_names = handles.original_coefficients_columns;
+            
+            if length(current_col_names) == length(original_col_names)
+                % Full table is displayed, update directly
+                handles.original_coefficients_data{row, col} = formatted_value;
+            else
+                % Filtered table is displayed, find correct column in original data
+                current_col_name = current_col_names{col};
+                original_col_idx = find(strcmp(original_col_names, current_col_name), 1);
+                if ~isempty(original_col_idx)
+                    handles.original_coefficients_data{row, original_col_idx} = formatted_value;
+                end
+            end
         end
         
         guidata(handles.fig, handles);
@@ -1803,15 +1943,23 @@ function searchCoefficients(src, evt, handles)
         end
         
         search_text = get(handles.search_edit, 'String');
+        
+        % Store original data if not already stored
+        if ~isfield(handles, 'original_coefficients_data') || isempty(handles.original_coefficients_data)
+            handles.original_coefficients_data = get(handles.coefficients_table, 'Data');
+            handles.original_coefficients_columns = get(handles.coefficients_table, 'ColumnName');
+            guidata(handles.fig, handles);
+        end
+        
         if isempty(search_text)
-            % Reset highlighting
-            clearSearch(src, evt, handles);
+            % Restore original data without regenerating
+            restoreOriginalTable(handles);
             return;
         end
         
-        % Get table data and column names
-        table_data = get(handles.coefficients_table, 'Data');
-        col_names = get(handles.coefficients_table, 'ColumnName');
+        % Use stored original data for filtering
+        table_data = handles.original_coefficients_data;
+        col_names = handles.original_coefficients_columns;
         
         % Find matching columns
         matching_cols = [];
@@ -1822,21 +1970,44 @@ function searchCoefficients(src, evt, handles)
         end
         
         if ~isempty(matching_cols)
-            % Scroll to first matching column
-            jTable = findjobj(handles.coefficients_table);
-            if ~isempty(jTable)
-                jTable = jTable(1).getComponent(0).getComponent(0);
-                jTable.scrollColumnToVisible(matching_cols(1)-1); % Java uses 0-based indexing
+            % Update status
+            if isfield(handles, 'joint_status')
+                set(handles.joint_status, 'String', sprintf('Found %d matching columns', length(matching_cols)));
             end
             
-            % Update status
-            set(handles.joint_status, 'String', sprintf('Found %d matching columns', length(matching_cols)));
+            % Include trial column and matching columns
+            display_cols = [1, matching_cols]; % Always include trial column (index 1)
+            filtered_data = table_data(:, display_cols);
+            filtered_names = col_names(display_cols);
+            
+            % Update table to show only matching columns
+            set(handles.coefficients_table, 'Data', filtered_data);
+            set(handles.coefficients_table, 'ColumnName', filtered_names);
         else
-            set(handles.joint_status, 'String', 'No matching columns found');
+            if isfield(handles, 'joint_status')
+                set(handles.joint_status, 'String', 'No matching columns found');
+            end
+            
+            % Show only trial column when no matches
+            set(handles.coefficients_table, 'Data', table_data(:,1));
+            set(handles.coefficients_table, 'ColumnName', col_names(1));
         end
         
     catch ME
         fprintf('Error in searchCoefficients: %s\n', ME.message);
+    end
+end
+
+function restoreOriginalTable(handles)
+    % Restore original table data without regenerating coefficients
+    if isfield(handles, 'original_coefficients_data') && ~isempty(handles.original_coefficients_data)
+        set(handles.coefficients_table, 'Data', handles.original_coefficients_data);
+        set(handles.coefficients_table, 'ColumnName', handles.original_coefficients_columns);
+        
+        % Reset status
+        if isfield(handles, 'joint_status')
+            set(handles.joint_status, 'String', 'Showing all coefficients');
+        end
     end
 end
 
@@ -1855,10 +2026,8 @@ function clearSearch(src, evt, handles)
             set(handles.search_edit, 'String', '');
         end
         
-        % Reset status
-        if isfield(handles, 'joint_status')
-            set(handles.joint_status, 'String', 'Search cleared');
-        end
+        % Restore original table data WITHOUT regenerating coefficients
+        restoreOriginalTable(handles);
         
     catch ME
         fprintf('Error in clearSearch: %s\n', ME.message);
@@ -1973,5 +2142,165 @@ function createDatasetSummary(data, output_folder, timestamp)
         
     catch ME
         warning('Error creating summary: %s', ME.message);
+    end
+end
+
+% ==================== MISSING CALLBACK FUNCTIONS ====================
+
+function browseInputFile(~, ~, handles)
+    % Browse for individual input file
+    [filename, pathname] = uigetfile('*.mat', 'Select Starting Point Input File', ...
+                                    fullfile(pwd, 'Input Files'));
+    if filename ~= 0
+        full_path = fullfile(pathname, filename);
+        
+        % Update GUI displays
+        set(handles.input_file_edit, 'String', filename);
+        set(handles.selected_file_text, 'String', full_path, ...
+            'ForegroundColor', [0, 0.6, 0]);
+        
+        % Store in handles
+        handles.selected_input_file = full_path;
+        guidata(handles.fig, handles);
+        
+        % Validate the file
+        validateInputFile(full_path, handles);
+    end
+end
+
+function clearInputFile(~, ~, handles)
+    % Clear the selected input file
+    set(handles.input_file_edit, 'String', 'Select a .mat input file...');
+    set(handles.selected_file_text, 'String', 'No file selected', ...
+        'ForegroundColor', [0.5, 0.5, 0.5]);
+    
+    handles.selected_input_file = '';
+    guidata(handles.fig, handles);
+end
+
+function validateInputFile(file_path, handles)
+    % Validate the selected input file
+    try
+        % Try to load the file to check if it's valid
+        file_info = whos('-file', file_path);
+        
+        if isempty(file_info)
+            warndlg('Selected file appears to be empty or invalid.', 'File Warning');
+        else
+            % Show basic file information
+            [~, name, ~] = fileparts(file_path);
+            var_count = length(file_info);
+            
+            fprintf('✓ Input file loaded: %s (%d variables)\n', name, var_count);
+        end
+        
+    catch ME
+        errordlg(sprintf('Error validating input file: %s', ME.message), 'File Error');
+        clearInputFile([], [], handles);
+    end
+end
+
+
+
+
+
+function saveScenario(~, ~, handles)
+    % Save current torque coefficient scenario
+    try
+        % Get current table data
+        data = get(handles.coefficients_table, 'Data');
+        col_names = get(handles.coefficients_table, 'ColumnName');
+        
+        if isempty(data)
+            errordlg('No coefficient data to save. Please generate coefficients first.', 'Save Error');
+            return;
+        end
+        
+        % Create scenario structure
+        scenario = struct();
+        scenario.name = inputdlg('Enter scenario name:', 'Save Scenario', 1, {datestr(now, 'yyyy-mm-dd_HH-MM-SS')});
+        if isempty(scenario.name) || isempty(scenario.name{1})
+            return; % User cancelled
+        end
+        scenario.name = scenario.name{1};
+        
+        scenario.description = inputdlg('Enter scenario description (optional):', 'Save Scenario', 1, {''});
+        if isempty(scenario.description)
+            scenario.description = {''};
+        end
+        scenario.description = scenario.description{1};
+        
+        scenario.coefficients_data = data;
+        scenario.column_names = col_names;
+        scenario.timestamp = datestr(now);
+        scenario.torque_scenario = get(handles.torque_scenario_popup, 'Value');
+        scenario.coeff_range = str2double(get(handles.coeff_range_edit, 'String'));
+        scenario.constant_value = str2double(get(handles.constant_value_edit, 'String'));
+        
+        % Save to file
+        [filename, pathname] = uiputfile('*.mat', 'Save Scenario', ...
+            sprintf('scenario_%s.mat', regexprep(scenario.name, '[^a-zA-Z0-9_]', '_')));
+        
+        if filename ~= 0
+            save(fullfile(pathname, filename), 'scenario');
+            msgbox(sprintf('Scenario "%s" saved successfully!', scenario.name), 'Save Success');
+        end
+        
+    catch ME
+        errordlg(sprintf('Error saving scenario: %s', ME.message), 'Save Error');
+    end
+end
+
+function loadScenario(~, ~, handles)
+    % Load saved torque coefficient scenario
+    try
+        [filename, pathname] = uigetfile('*.mat', 'Load Scenario');
+        if filename == 0
+            return; % User cancelled
+        end
+        
+        loaded = load(fullfile(pathname, filename));
+        if ~isfield(loaded, 'scenario')
+            errordlg('Invalid scenario file. File must contain a "scenario" structure.', 'Load Error');
+            return;
+        end
+        
+        scenario = loaded.scenario;
+        
+        % Validate scenario structure
+        if ~isfield(scenario, 'coefficients_data') || ~isfield(scenario, 'column_names')
+            errordlg('Invalid scenario file. Missing required fields.', 'Load Error');
+            return;
+        end
+        
+        % Apply scenario to GUI
+        set(handles.coefficients_table, 'Data', scenario.coefficients_data);
+        set(handles.coefficients_table, 'ColumnName', scenario.column_names);
+        
+        % Apply scenario settings if available
+        if isfield(scenario, 'torque_scenario')
+            set(handles.torque_scenario_popup, 'Value', scenario.torque_scenario);
+            torqueScenarioCallback(handles.torque_scenario_popup, [], handles);
+        end
+        if isfield(scenario, 'coeff_range')
+            set(handles.coeff_range_edit, 'String', num2str(scenario.coeff_range));
+        end
+        if isfield(scenario, 'constant_value')
+            set(handles.constant_value_edit, 'String', num2str(scenario.constant_value));
+        end
+        
+        % Store as full data for search functionality
+        handles.coefficients_data_full = scenario.coefficients_data;
+        guidata(handles.fig, handles);
+        
+        % Show success message
+        name_str = '';
+        if isfield(scenario, 'name')
+            name_str = sprintf(' "%s"', scenario.name);
+        end
+        msgbox(sprintf('Scenario%s loaded successfully!', name_str), 'Load Success');
+        
+    catch ME
+        errordlg(sprintf('Error loading scenario: %s', ME.message), 'Load Error');
     end
 end
