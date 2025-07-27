@@ -82,22 +82,25 @@ end
 function handles = createLeftColumnContent(parent, handles)
     % Create all content for the left column
     
-    % Define panel heights with proper spacing
-    panelHeight = 0.22;
+    % Define panel heights with proper spacing - adjusted for better visibility
+    panelHeight1 = 0.22;  % Trial & Data Sources
+    panelHeight2 = 0.22;  % Modeling Configuration  
+    panelHeight3 = 0.27;  % Individual Joint Editor (taller for polynomial)
+    panelHeight4 = 0.23;  % Output Configuration
     spacing = 0.01;
-    yPositions = [0.76, 0.53, 0.30, 0.02];
+    yPositions = [0.76, 0.53, 0.25, 0.01];  % Adjusted positions to prevent overlap
     
     % Trial Settings & Data Sources Panel
-    handles = createTrialAndDataPanel(parent, handles, yPositions(1), panelHeight);
+    handles = createTrialAndDataPanel(parent, handles, yPositions(1), panelHeight1);
     
     % Modeling Configuration Panel
-    handles = createModelingPanel(parent, handles, yPositions(2), panelHeight);
+    handles = createModelingPanel(parent, handles, yPositions(2), panelHeight2);
     
     % Individual Joint Editor Panel
-    handles = createJointEditorPanel(parent, handles, yPositions(3), panelHeight);
+    handles = createJointEditorPanel(parent, handles, yPositions(3), panelHeight3);
     
     % Output Settings Panel
-    handles = createOutputPanel(parent, handles, yPositions(4), 0.26);
+    handles = createOutputPanel(parent, handles, yPositions(4), panelHeight4);
 end
 
 function handles = createRightColumnContent(parent, handles)
@@ -126,11 +129,10 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                    'Position', [0.01, yPos, 0.98, height], ...
                    'BackgroundColor', [0.98, 0.98, 0.98]);
     
-    y1 = 0.82;  % Starting point file
-    y2 = 0.62;  % Trial parameters  
-    y3 = 0.42;  % Data sources
-    y4 = 0.22;  % Model selection
-    y5 = 0.02;  % Selected file display
+    y1 = 0.75;  % Starting point file
+    y2 = 0.58;  % Trial parameters  
+    y3 = 0.38;  % Data sources
+    y4 = 0.18;  % Model selection
     
     % === STARTING POINT FILE SELECTION ===
     uicontrol('Parent', panel, ...
@@ -147,7 +149,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                        'Units', 'normalized', ...
                                        'Position', [0.21, y1, 0.5, 0.12], ...
                                        'Enable', 'inactive', ...
-                                       'TooltipString', 'Selected starting point .mat file');
+                                       'TooltipString', 'Selected starting point .mat file (hover to see full path)');
     
     handles.browse_input_btn = uicontrol('Parent', panel, ...
                                         'Style', 'pushbutton', ...
@@ -291,22 +293,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                         'Callback', @(src,evt) selectSimulinkModel(src, evt, handles), ...
                                         'TooltipString', 'Select Simulink model file');
     
-    % === SELECTED FILE DISPLAY ===
-    uicontrol('Parent', panel, ...
-              'Style', 'text', ...
-              'String', 'Selected File:', ...
-              'Units', 'normalized', ...
-              'Position', [0.02, y5, 0.15, 0.12], ...
-              'HorizontalAlignment', 'left');
-    
-    handles.selected_file_text = uicontrol('Parent', panel, ...
-                                          'Style', 'text', ...
-                                          'String', 'No file selected', ...
-                                          'Units', 'normalized', ...
-                                          'Position', [0.18, y5, 0.76, 0.12], ...
-                                          'HorizontalAlignment', 'left', ...
-                                          'BackgroundColor', [0.95, 0.95, 0.95], ...
-                                          'ForegroundColor', [0.5, 0.5, 0.5]);
+
     
     % Initialize model name
     handles.model_name = 'GolfSwing3D_Kinetic';
@@ -511,16 +498,25 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                                     'HorizontalAlignment', 'left', ...
                                     'BackgroundColor', [0.98, 0.98, 0.98]);
     
-    % Polynomial equation display
+    % Polynomial equation display - more prominent and visible
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Polynomial Equation:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, 0.08, 0.25, 0.06], ...
+              'FontSize', 9, ...
+              'FontWeight', 'bold', ...
+              'HorizontalAlignment', 'left');
+    
     handles.equation_display = uicontrol('Parent', panel, ...
                                        'Style', 'text', ...
                                        'String', 'τ(t) = A + Bt + Ct² + Dt³ + Et⁴ + Ft⁵ + Gt⁶', ...
                                        'Units', 'normalized', ...
                                        'Position', [0.02, 0.02, 0.96, 0.08], ...
-                                       'FontSize', 10, ...
+                                       'FontSize', 11, ...
                                        'FontWeight', 'bold', ...
-                                       'ForegroundColor', [0.2, 0.2, 0.8], ...
-                                       'BackgroundColor', [0.98, 0.98, 0.98], ...
+                                       'ForegroundColor', [0.1, 0.1, 0.7], ...
+                                       'BackgroundColor', [0.95, 0.95, 1], ...
                                        'HorizontalAlignment', 'center');
     
     handles.param_info = param_info;
@@ -940,7 +936,8 @@ function handles = updateCoefficientsPreview(~, ~, handles)
         if isnan(num_trials) || num_trials <= 0
             num_trials = 5;
         end
-        num_trials = min(num_trials, 10); % Limit preview
+        % Remove artificial limit - show all trials
+        num_trials = min(num_trials, 100); % Reasonable limit for display performance
         
         scenario_idx = get(handles.torque_scenario_popup, 'Value');
         coeff_range = str2double(get(handles.coeff_range_edit, 'String'));
@@ -994,6 +991,8 @@ function handles = updateCoefficientsPreview(~, ~, handles)
         % Store original data for search functionality
         handles.original_coefficients_data = coeff_data;
         handles.original_coefficients_columns = get(handles.coefficients_table, 'ColumnName');
+        handles.original_column_widths = get(handles.coefficients_table, 'ColumnWidth');
+        handles.original_column_editable = get(handles.coefficients_table, 'ColumnEditable');
         guidata(handles.fig, handles);
         
     catch ME
@@ -2004,10 +2003,22 @@ function restoreOriginalTable(handles)
         set(handles.coefficients_table, 'Data', handles.original_coefficients_data);
         set(handles.coefficients_table, 'ColumnName', handles.original_coefficients_columns);
         
+        % Restore original table properties if available
+        if isfield(handles, 'original_column_widths') && ~isempty(handles.original_column_widths)
+            set(handles.coefficients_table, 'ColumnWidth', handles.original_column_widths);
+        end
+        if isfield(handles, 'original_column_editable') && ~isempty(handles.original_column_editable)
+            set(handles.coefficients_table, 'ColumnEditable', handles.original_column_editable);
+        end
+        
         % Reset status
         if isfield(handles, 'joint_status')
             set(handles.joint_status, 'String', 'Showing all coefficients');
         end
+    else
+        % If no original data, regenerate the table
+        fprintf('No original data found, regenerating coefficients table...\n');
+        updateCoefficientsPreview([], [], handles);
     end
 end
 
@@ -2154,10 +2165,9 @@ function browseInputFile(~, ~, handles)
     if filename ~= 0
         full_path = fullfile(pathname, filename);
         
-        % Update GUI displays
+        % Update GUI displays - show filename in edit box, store full path
         set(handles.input_file_edit, 'String', filename);
-        set(handles.selected_file_text, 'String', full_path, ...
-            'ForegroundColor', [0, 0.6, 0]);
+        set(handles.input_file_edit, 'TooltipString', sprintf('Full path: %s', full_path));
         
         % Store in handles
         handles.selected_input_file = full_path;
@@ -2171,8 +2181,7 @@ end
 function clearInputFile(~, ~, handles)
     % Clear the selected input file
     set(handles.input_file_edit, 'String', 'Select a .mat input file...');
-    set(handles.selected_file_text, 'String', 'No file selected', ...
-        'ForegroundColor', [0.5, 0.5, 0.5]);
+    set(handles.input_file_edit, 'TooltipString', 'Selected starting point .mat file (hover to see full path)');
     
     handles.selected_input_file = '';
     guidata(handles.fig, handles);
