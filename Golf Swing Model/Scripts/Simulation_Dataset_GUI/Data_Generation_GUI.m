@@ -2152,7 +2152,16 @@ function browseInputFile(~, ~, handles)
     [filename, pathname] = uigetfile({'*.mat', 'MAT files'; '*.csv', 'CSV files'}, 'Select Input File');
     if filename ~= 0
         handles = guidata(handles.fig);
-        set(handles.input_file_edit, 'String', fullfile(pathname, filename));
+        fullPath = fullfile(pathname, filename);
+        set(handles.input_file_edit, 'String', fullPath);
+        
+        % Update the selected file text display
+        set(handles.selected_file_text, 'String', filename, ...
+            'ForegroundColor', [0, 0.5, 0]);  % Green color for selected file
+        
+        % Store the selected file path
+        handles.selected_input_file = fullPath;
+        
         guidata(handles.fig, handles);
         updateCoefficientsPreview([], [], handles);
     end
@@ -2162,6 +2171,14 @@ function clearInputFile(~, ~, handles)
     % Clear the input file selection
     handles = guidata(handles.fig);
     set(handles.input_file_edit, 'String', '');
+    
+    % Update the selected file text display
+    set(handles.selected_file_text, 'String', 'No file selected', ...
+        'ForegroundColor', [0.5, 0.5, 0.5]);  % Gray color for no selection
+    
+    % Clear the selected file path
+    handles.selected_input_file = '';
+    
     guidata(handles.fig, handles);
     updateCoefficientsPreview([], [], handles);
 end
