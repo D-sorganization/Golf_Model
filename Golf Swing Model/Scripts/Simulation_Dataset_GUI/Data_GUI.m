@@ -343,7 +343,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                             'BackgroundColor', 'white');
     
     % Data Sources
-    y = y - 0.20;
+    y = y - 0.25;
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
               'String', 'Data Sources:', ...
@@ -383,6 +383,24 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                     'Position', [0.75, y, 0.19, rowHeight], ...
                                     'Value', 1, ...
                                     'BackgroundColor', colors.panel);
+    
+    % Animation Option
+    y = y - 0.20;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Animation:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, 0.15, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.enable_animation = uicontrol('Parent', panel, ...
+                                        'Style', 'checkbox', ...
+                                        'String', 'Enable Animation (slower)', ...
+                                        'Units', 'normalized', ...
+                                        'Position', [0.18, y, 0.35, rowHeight], ...
+                                        'Value', 0, ...
+                                        'BackgroundColor', colors.panel);
     
     % Model Selection
     y = y - 0.20;
@@ -1745,6 +1763,7 @@ function config = gatherConfiguration(handles)
     config.use_logsout = get(handles.use_logsout, 'Value');
     config.use_signal_bus = get(handles.use_signal_bus, 'Value');
     config.use_simscape = get(handles.use_simscape, 'Value');
+    config.enable_animation = get(handles.enable_animation, 'Value');
     config.output_folder = get(handles.output_folder_edit, 'String');
     config.folder_name = get(handles.folder_name_edit, 'String');
     config.format = get(handles.format_popup, 'Value');
@@ -1786,6 +1805,9 @@ function applyConfiguration(handles, config)
     end
     if isfield(config, 'use_simscape')
         set(handles.use_simscape, 'Value', config.use_simscape);
+    end
+    if isfield(config, 'enable_animation')
+        set(handles.enable_animation, 'Value', config.enable_animation);
     end
     if isfield(config, 'output_folder')
         set(handles.output_folder_edit, 'String', config.output_folder);
@@ -2105,6 +2127,13 @@ function simIn = setModelParameters(simIn, config)
         simIn = simIn.setModelParameter('SignalLogging', 'on');
         simIn = simIn.setModelParameter('SignalLoggingName', 'logsout');
         
+        % Animation settings
+        if isfield(config, 'enable_animation') && config.enable_animation
+            simIn = simIn.setModelParameter('SimulationMode', 'normal');
+        else
+            simIn = simIn.setModelParameter('SimulationMode', 'accelerator');
+        end
+        
         % Note: SaveToWorkspace and SaveScopeDataToWorkspace are not valid parameters
         % in newer versions of Simulink. Data logging is handled through the model's
         % logging configuration and the SaveOutput parameter.
@@ -2193,54 +2222,57 @@ function data_table = extractSimulationData(simOut, config)
             fprintf('Debug: Simulation completed successfully\n');
         end
         
-        % Extract data from different sources based on configuration
-        all_data = {};
-        
-        % Model workspace data
-        if config.use_model_workspace && isfield(simOut, 'yout')
-            fprintf('Debug: Extracting workspace data...\n');
-            workspace_data = extractWorkspaceData(simOut.yout);
-            if ~isempty(workspace_data)
-                all_data{end+1} = workspace_data;
-                fprintf('Debug: Workspace data extracted successfully\n');
+        % The data should be in the 'out' field of the simulation output
+        if isfield(simOut, 'out')
+            fprintf('Debug: Found out field in simulation output\n');
+            out = simOut.out;
+        else
+            fprintf('Debug: No out field found, checking workspace for out variable\n');
+            % Check if 'out' variable exists in workspace
+            if evalin('base', 'exist(''out'', ''var'')')
+                out = evalin('base', 'out');
+                fprintf('Debug: Found out variable in workspace\n');
             else
-                fprintf('Debug: No workspace data extracted\n');
+                fprintf('Debug: No out variable found in workspace\n');
+                return;
             end
         end
         
-        % Logsout data
-        if config.use_logsout && isfield(simOut, 'logsout')
+        fprintf('Debug: out variable type: %s\n', class(out));
+        if isstruct(out)
+            fprintf('Debug: out fields: %s\n', strjoin(fieldnames(out), ', '));
+        end
+        
+        % Extract data from different sources
+        all_data = {};
+        
+        % Extract from logsout (main signals)
+        if config.use_logsout && isfield(out, 'logsout') && ~isempty(out.logsout)
             fprintf('Debug: Extracting logsout data...\n');
-            logsout_data = extractLogsoutData(simOut.logsout);
+            logsout_data = extractLogsoutData(out.logsout);
             if ~isempty(logsout_data)
                 all_data{end+1} = logsout_data;
                 fprintf('Debug: Logsout data extracted successfully\n');
-            else
-                fprintf('Debug: No logsout data extracted\n');
             end
         end
         
-        % Signal bus data
-        if config.use_signal_bus && isfield(simOut, 'yout')
+        % Extract from signal bus structs (HipLogs, SpineLogs, etc.)
+        if config.use_signal_bus
             fprintf('Debug: Extracting signal bus data...\n');
-            signal_data = extractSignalBusData(simOut.yout);
-            if ~isempty(signal_data)
-                all_data{end+1} = signal_data;
+            signal_bus_data = extractSignalBusStructs(out);
+            if ~isempty(signal_bus_data)
+                all_data{end+1} = signal_bus_data;
                 fprintf('Debug: Signal bus data extracted successfully\n');
-            else
-                fprintf('Debug: No signal bus data extracted\n');
             end
         end
         
-        % Simscape data
-        if config.use_simscape && isfield(simOut, 'simscape_logging')
-            fprintf('Debug: Extracting simscape data...\n');
-            simscape_data = extractSimscapeData(simOut.simscape_logging);
+        % Extract from Simscape data
+        if config.use_simscape && isfield(out, 'simlog') && ~isempty(out.simlog)
+            fprintf('Debug: Extracting Simscape data...\n');
+            simscape_data = extractSimscapeData(out.simlog);
             if ~isempty(simscape_data)
                 all_data{end+1} = simscape_data;
                 fprintf('Debug: Simscape data extracted successfully\n');
-            else
-                fprintf('Debug: No simscape data extracted\n');
             end
         end
         
@@ -2263,37 +2295,113 @@ function data_table = extractSimulationData(simOut, config)
     end
 end
 
-function workspace_data = extractWorkspaceData(yout)
-    workspace_data = [];
+function data_table = extractSignalBusStructs(out)
+    data_table = [];
     
     try
-        if ~isempty(yout)
-            % Extract time series data from workspace
-            time = yout.time;
+        % Define expected signal bus structs based on the model
+        expectedLogStructs = {
+            'HipLogs', 'SpineLogs', 'TorsoLogs', ...
+            'LSLogs', 'RSLogs', 'LELogs', 'RELogs', ...
+            'LWLogs', 'RWLogs', 'LScapLogs', 'RScapLogs', ...
+            'LFLogs', 'RFLogs'
+        };
+        
+        all_data = {};
+        found_structs = {};
+        
+        for i = 1:length(expectedLogStructs)
+            structName = expectedLogStructs{i};
             
-            % Get signal names
-            signal_names = yout.signals.name;
-            
-            % Create table
-            data_cells = {time};
-            var_names = {'time'};
-            
-            for i = 1:length(signal_names)
-                if isfield(yout.signals, 'values') && length(yout.signals) >= i
-                    values = yout.signals(i).values;
-                    if isnumeric(values) && length(values) == length(time)
-                        data_cells{end+1} = values;
-                        var_names{end+1} = signal_names{i};
+            if isfield(out, structName) && ~isempty(out.(structName))
+                fprintf('Debug: Found %s\n', structName);
+                found_structs{end+1} = structName;
+                
+                logStruct = out.(structName);
+                if isstruct(logStruct)
+                    struct_data = extractFromLogStruct(logStruct, structName);
+                    if ~isempty(struct_data)
+                        all_data{end+1} = struct_data;
                     end
                 end
             end
-            
-            if length(data_cells) > 1
-                workspace_data = table(data_cells{:}, 'VariableNames', var_names);
+        end
+        
+        fprintf('Debug: Found signal bus structs: %s\n', strjoin(found_structs, ', '));
+        
+        % Combine all signal bus data
+        if ~isempty(all_data)
+            data_table = combineDataSources(all_data);
+        end
+        
+    catch ME
+        fprintf('Error extracting signal bus structs: %s\n', ME.message);
+    end
+end
+
+function data_table = extractFromLogStruct(logStruct, structName)
+    data_table = [];
+    
+    try
+        % Get all fields in this struct
+        structFields = fieldnames(logStruct);
+        
+        % Find time field
+        time_field = '';
+        for i = 1:length(structFields)
+            if contains(lower(structFields{i}), 'time')
+                time_field = structFields{i};
+                break;
             end
         end
+        
+        if isempty(time_field)
+            fprintf('Debug: No time field found in %s\n', structName);
+            return;
+        end
+        
+        time = logStruct.(time_field);
+        data_cells = {time};
+        var_names = {'time'};
+        
+        % Extract each field
+        for j = 1:length(structFields)
+            fieldName = structFields{j};
+            if strcmp(fieldName, time_field)
+                continue; % Skip time field, already added
+            end
+            
+            try
+                fieldData = logStruct.(fieldName);
+                
+                % Handle different data formats
+                if isa(fieldData, 'timeseries')
+                    data = fieldData.Data;
+                elseif isstruct(fieldData) && isfield(fieldData, 'Data')
+                    data = fieldData.Data;
+                elseif isnumeric(fieldData)
+                    data = fieldData;
+                else
+                    continue; % Skip non-numeric data
+                end
+                
+                % Check if data matches time length
+                if isnumeric(data) && length(data) == length(time)
+                    data_cells{end+1} = data;
+                    var_names{end+1} = sprintf('%s_%s', structName, fieldName);
+                end
+                
+            catch ME
+                fprintf('Debug: Error extracting field %s from %s: %s\n', fieldName, structName, ME.message);
+            end
+        end
+        
+        if length(data_cells) > 1
+            data_table = table(data_cells{:}, 'VariableNames', var_names);
+        end
+        
     catch ME
-        fprintf('Error extracting workspace data: %s\n', ME.message);
+        fprintf('Error extracting from log struct %s: %s\n', structName, ME.message);
     end
 end
 
@@ -2303,30 +2411,67 @@ function logsout_data = extractLogsoutData(logsout)
     try
         if ~isempty(logsout)
             % Extract data from logsout structure
-            time = logsout.time;
-            
-            % Get all logged signals
-            signal_names = fieldnames(logsout);
-            signal_names = signal_names(~strcmp(signal_names, 'time'));
-            
-            data_cells = {time};
-            var_names = {'time'};
-            
-            for i = 1:length(signal_names)
-                signal_name = signal_names{i};
-                signal_data = logsout.(signal_name);
+            if isa(logsout, 'Simulink.SimulationData.Dataset')
+                % Handle Dataset format
+                time = logsout.time;
                 
-                if isstruct(signal_data) && isfield(signal_data, 'values')
-                    values = signal_data.values;
-                    if isnumeric(values) && length(values) == length(time)
-                        data_cells{end+1} = values;
-                        var_names{end+1} = signal_name;
+                data_cells = {time};
+                var_names = {'time'};
+                
+                for i = 1:logsout.numElements
+                    try
+                        element = logsout.getElement(i);
+                        signalName = element.Name;
+                        
+                        if isa(element, 'Simulink.SimulationData.Signal')
+                            data = element.Values.Data;
+                        else
+                            try
+                                [data, ~] = element.getData;
+                            catch
+                                data = element.Data;
+                            end
+                        end
+                        
+                        if isnumeric(data) && length(data) == length(time)
+                            data_cells{end+1} = data;
+                            var_names{end+1} = signalName;
+                        end
+                    catch ME
+                        fprintf('Debug: Error extracting logsout signal %d: %s\n', i, ME.message);
                     end
                 end
-            end
-            
-            if length(data_cells) > 1
-                logsout_data = table(data_cells{:}, 'VariableNames', var_names);
+                
+                if length(data_cells) > 1
+                    logsout_data = table(data_cells{:}, 'VariableNames', var_names);
+                end
+            else
+                % Handle regular struct format
+                time = logsout.time;
+                
+                data_cells = {time};
+                var_names = {'time'};
+                
+                % Get all logged signals
+                signal_names = fieldnames(logsout);
+                signal_names = signal_names(~strcmp(signal_names, 'time'));
+                
+                for i = 1:length(signal_names)
+                    signal_name = signal_names{i};
+                    signal_data = logsout.(signal_name);
+                    
+                    if isstruct(signal_data) && isfield(signal_data, 'values')
+                        values = signal_data.values;
+                        if isnumeric(values) && length(values) == length(time)
+                            data_cells{end+1} = values;
+                            var_names{end+1} = signal_name;
+                        end
+                    end
+                end
+                
+                if length(data_cells) > 1
+                    logsout_data = table(data_cells{:}, 'VariableNames', var_names);
+                end
             end
         end
     catch ME
@@ -2334,59 +2479,62 @@ function logsout_data = extractLogsoutData(logsout)
     end
 end
 
-function signal_data = extractSignalBusData(yout)
-    signal_data = [];
+function simscape_data = extractSimscapeData(simlog)
+    simscape_data = [];
     
     try
-        if ~isempty(yout) && isfield(yout, 'signals')
-            % Extract signal bus data
-            time = yout.time;
+        if ~isempty(simlog) && isa(simlog, 'simscape.logging.Node')
+            % Extract Simscape logging data
+            time = simlog.time;
             
             data_cells = {time};
             var_names = {'time'};
             
-            for i = 1:length(yout.signals)
-                signal = yout.signals(i);
-                if isfield(signal, 'values') && isnumeric(signal.values)
-                    values = signal.values;
-                    if length(values) == length(time)
-                        data_cells{end+1} = values;
-                        var_names{end+1} = signal.name;
+            % Get all child nodes (joints, bodies, etc.)
+            try
+                childNodes = simlog.Children;
+            catch
+                try
+                    childNodes = simlog.children;
+                catch
+                    try
+                        childNodes = simlog.Nodes;
+                    catch
+                        fprintf('Debug: Cannot access child nodes from simlog\n');
+                        return;
                     end
                 end
             end
             
-            if length(data_cells) > 1
-                signal_data = table(data_cells{:}, 'VariableNames', var_names);
-            end
-        end
-    catch ME
-        fprintf('Error extracting signal bus data: %s\n', ME.message);
-    end
-end
-
-function simscape_data = extractSimscapeData(simscape_logging)
-    simscape_data = [];
-    
-    try
-        if ~isempty(simscape_logging)
-            % Extract Simscape logging data
-            % This is a simplified extraction - may need customization based on specific model
-            time = simscape_logging.time;
-            
-            data_cells = {time};
-            var_names = {'time'};
-            
-            % Extract common Simscape variables
-            common_vars = {'position', 'velocity', 'force', 'torque', 'energy'};
-            
-            for i = 1:length(common_vars)
-                var_name = common_vars{i};
-                if isfield(simscape_logging, var_name)
-                    values = simscape_logging.(var_name);
-                    if isnumeric(values) && length(values) == length(time)
-                        data_cells{end+1} = values;
-                        var_names{end+1} = var_name;
+            if ~isempty(childNodes)
+                for i = 1:length(childNodes)
+                    childNode = childNodes(i);
+                    nodeName = childNode.Name;
+                    
+                    % Look for joint-related nodes
+                    if contains(lower(nodeName), {'joint', 'actuator', 'motor', 'drive'})
+                        % Get all signals in this node
+                        signals = childNode.Children;
+                        
+                        for j = 1:length(signals)
+                            signal = signals(j);
+                            signalName = signal.Name;
+                            fullSignalName = sprintf('%s_%s', nodeName, signalName);
+                            
+                            try
+                                % Get signal data
+                                if hasData(signal)
+                                    [data, ~] = getData(signal);
+                                    
+                                    if isnumeric(data) && length(data) == length(time)
+                                        data_cells{end+1} = data;
+                                        var_names{end+1} = fullSignalName;
+                                    end
+                                end
+                            catch ME
+                                fprintf('Debug: Error extracting Simscape signal %s: %s\n', signalName, ME.message);
+                            end
+                        end
                     end
                 end
             end
@@ -2515,6 +2663,7 @@ function config = validateInputs(handles)
         config.use_logsout = get(handles.use_logsout, 'Value');
         config.use_signal_bus = get(handles.use_signal_bus, 'Value');
         config.use_simscape = get(handles.use_simscape, 'Value');
+        config.enable_animation = get(handles.enable_animation, 'Value');
         config.output_folder = fullfile(output_folder, folder_name);
         config.file_format = get(handles.format_popup, 'Value');
         
