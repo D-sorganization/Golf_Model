@@ -49,7 +49,7 @@ function Data_GUI()
     
     % Initialize preview
     updatePreview([], [], handles.fig);
-    updateCoefficientsPreview([], [], handles.fig);
+updateCoefficientsPreview([], [], handles.fig);
 end
 
 function handles = createMainLayout(fig, handles)
@@ -2087,6 +2087,9 @@ function simIn = setModelParameters(simIn, config)
         
         % Set solver
         simIn = simIn.setModelParameter('Solver', 'ode23t');
+
+        % Disable Multibody Explorer to prevent multiple windows
+        simIn = simIn.setModelParameter('SimMechanicsOpenEditorOnUpdate', 'off');
         
         % Set tolerances
         simIn = simIn.setModelParameter('RelTol', '1e-3');
@@ -2265,19 +2268,18 @@ end
 
 function workspace_data = extractWorkspaceData(yout)
     workspace_data = [];
-    
+
     try
-        if ~isempty(yout)
-            % Extract time series data from workspace
+        if isa(yout, 'Simulink.SimulationData.Dataset')
+            workspace_data = datasetToTable(yout);
+        elseif ~isempty(yout)
+            % Legacy struct handling
             time = yout.time;
-            
-            % Get signal names
             signal_names = yout.signals.name;
-            
-            % Create table
+
             data_cells = {time};
             var_names = {'time'};
-            
+
             for i = 1:length(signal_names)
                 if isfield(yout.signals, 'values') && length(yout.signals) >= i
                     values = yout.signals(i).values;
@@ -2287,7 +2289,7 @@ function workspace_data = extractWorkspaceData(yout)
                     end
                 end
             end
-            
+
             if length(data_cells) > 1
                 workspace_data = table(data_cells{:}, 'VariableNames', var_names);
             end
@@ -2299,23 +2301,24 @@ end
 
 function logsout_data = extractLogsoutData(logsout)
     logsout_data = [];
-    
+
     try
-        if ~isempty(logsout)
-            % Extract data from logsout structure
+        if isa(logsout, 'Simulink.SimulationData.Dataset')
+            logsout_data = datasetToTable(logsout);
+        elseif ~isempty(logsout)
+            % Legacy struct handling
             time = logsout.time;
-            
-            % Get all logged signals
+
             signal_names = fieldnames(logsout);
             signal_names = signal_names(~strcmp(signal_names, 'time'));
-            
+
             data_cells = {time};
             var_names = {'time'};
-            
+
             for i = 1:length(signal_names)
                 signal_name = signal_names{i};
                 signal_data = logsout.(signal_name);
-                
+
                 if isstruct(signal_data) && isfield(signal_data, 'values')
                     values = signal_data.values;
                     if isnumeric(values) && length(values) == length(time)
@@ -2324,7 +2327,7 @@ function logsout_data = extractLogsoutData(logsout)
                     end
                 end
             end
-            
+
             if length(data_cells) > 1
                 logsout_data = table(data_cells{:}, 'VariableNames', var_names);
             end
@@ -2856,6 +2859,13 @@ function simIn = setSimulationParameters(simIn, config)
     catch
         warning('Could not set Solver parameter');
     end
+
+    % Disable Multibody Explorer to avoid heavy visualization
+    try
+        simIn = simIn.setModelParameter('SimMechanicsOpenEditorOnUpdate', 'off');
+    catch
+        warning('Could not disable Mechanics Explorer');
+    end
     
     try
         simIn = simIn.setModelParameter('RelTol', '1e-3');
@@ -2885,5 +2895,35 @@ function simIn = setSimulationParameters(simIn, config)
         simIn = simIn.setModelParameter('SaveState', 'on');
     catch
         warning('Could not set SaveState parameter');
+    end
+end
+function tbl = datasetToTable(ds)
+    % Convert Simulink.SimulationData.Dataset to a MATLAB table
+    tbl = [];
+    if isa(ds, 'Simulink.SimulationData.Dataset') && ds.numElements > 0
+        try
+            time = ds{1}.Values.Time;
+            data_cells = {time};
+            var_names = {'time'};
+            for i = 1:ds.numElements
+                sig = ds{i};
+                values = sig.Values.Data;
+                name = matlab.lang.makeValidName(sig.Name);
+                if isvector(values) && numel(values) == numel(time)
+                    data_cells{end+1} = values(:);
+                    var_names{end+1} = name;
+                elseif ismatrix(values) && size(values,1) == numel(time)
+                    for j = 1:size(values,2)
+                        data_cells{end+1} = values(:, j);
+                        var_names{end+1} = sprintf('%s_%d', name, j);
+                    end
+                end
+            end
+            if numel(data_cells) > 1
+                tbl = table(data_cells{:}, 'VariableNames', var_names);
+            end
+        catch ME
+            fprintf('Error converting dataset to table: %s\n', ME.message);
+        end
     end
 end
