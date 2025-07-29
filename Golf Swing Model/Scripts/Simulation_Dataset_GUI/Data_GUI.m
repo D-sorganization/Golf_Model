@@ -2089,7 +2089,11 @@ function simIn = setModelParameters(simIn, config)
         simIn = simIn.setModelParameter('Solver', 'ode23t');
 
         % Disable Multibody Explorer to prevent multiple windows
-        simIn = simIn.setModelParameter('SimMechanicsOpenEditorOnUpdate', 'off');
+        try
+            simIn = simIn.setModelParameter('SimMechanicsOpenEditorOnUpdate', 'off');
+        catch
+            warning('Could not disable Mechanics Explorer');
+        end
         
         % Set tolerances
         simIn = simIn.setModelParameter('RelTol', '1e-3');
