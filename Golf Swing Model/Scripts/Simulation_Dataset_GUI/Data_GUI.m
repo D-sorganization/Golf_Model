@@ -1174,10 +1174,14 @@ function startGeneration(src, evt)
         runGeneration(handles);
         
     catch ME
-        set(handles.start_button, 'Enable', 'on');
-        set(handles.stop_button, 'Enable', 'off');
-        set(handles.status_text, 'String', ['Status: Error - ' ME.message]);
-        errordlg(ME.message, 'Generation Error');
+        try
+            set(handles.status_text, 'String', ['Status: Error - ' ME.message]);
+            set(handles.start_button, 'Enable', 'on');
+            set(handles.stop_button, 'Enable', 'off');
+        catch
+            % GUI might be destroyed, ignore the error
+        end
+        errordlg(ME.message, 'Generation Failed');
     end
 end
 
@@ -1849,9 +1853,13 @@ function runGeneration(handles)
         set(handles.stop_button, 'Enable', 'off');
         
     catch ME
-        set(handles.status_text, 'String', ['Status: Error - ' ME.message]);
-        set(handles.start_button, 'Enable', 'on');
-        set(handles.stop_button, 'Enable', 'off');
+        try
+            set(handles.status_text, 'String', ['Status: Error - ' ME.message]);
+            set(handles.start_button, 'Enable', 'on');
+            set(handles.stop_button, 'Enable', 'off');
+        catch
+            % GUI might be destroyed, ignore the error
+        end
         errordlg(ME.message, 'Generation Failed');
     end
 end
@@ -2084,10 +2092,18 @@ function simIn = setModelParameters(simIn, config)
         simIn = simIn.setModelParameter('RelTol', '1e-3');
         simIn = simIn.setModelParameter('AbsTol', '1e-5');
         
-        % Set output options
+        % Set output options - these are crucial for data logging
         simIn = simIn.setModelParameter('SaveOutput', 'on');
         simIn = simIn.setModelParameter('SaveFormat', 'Dataset');
         simIn = simIn.setModelParameter('SaveState', 'on');
+        
+        % Additional logging parameters
+        simIn = simIn.setModelParameter('LoggingToFile', 'off');
+        simIn = simIn.setModelParameter('LoggingToWorkspace', 'on');
+        
+        % Ensure all signals are logged
+        simIn = simIn.setModelParameter('SignalLogging', 'on');
+        simIn = simIn.setModelParameter('SignalLoggingName', 'logsout');
         
         % Note: SaveToWorkspace and SaveScopeDataToWorkspace are not valid parameters
         % in newer versions of Simulink. Data logging is handled through the model's
@@ -2166,6 +2182,16 @@ function data_table = extractSimulationData(simOut, config)
     
     try
         fprintf('Debug: Simulation output fields: %s\n', strjoin(fieldnames(simOut), ', '));
+        
+        % Check for error messages
+        if isfield(simOut, 'ErrorMessage') && ~isempty(simOut.ErrorMessage)
+            fprintf('Debug: Simulation error message: %s\n', simOut.ErrorMessage);
+        end
+        
+        % Check simulation metadata
+        if isfield(simOut, 'SimulationMetadata')
+            fprintf('Debug: Simulation completed successfully\n');
+        end
         
         % Extract data from different sources based on configuration
         all_data = {};
