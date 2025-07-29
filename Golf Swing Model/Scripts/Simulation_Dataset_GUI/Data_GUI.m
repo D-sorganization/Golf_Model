@@ -1178,7 +1178,33 @@ end
 % Browse Input File
 function browseInputFile(src, evt)
     handles = guidata(gcbf);
-    [filename, pathname] = uigetfile({'*.mat', 'MAT Files'; '*.*', 'All Files'}, 'Select Input File');
+    
+    % Determine starting directory - prefer last used or common project locations
+    start_dir = pwd;
+    if isfield(handles, 'preferences') && ~isempty(handles.preferences.last_input_file_path)
+        [last_dir, ~, ~] = fileparts(handles.preferences.last_input_file_path);
+        if exist(last_dir, 'dir')
+            start_dir = last_dir;
+        end
+    else
+        % Try common project locations
+        possible_dirs = {
+            'Input Files',
+            'Model',
+            fullfile(pwd, 'Input Files'),
+            fullfile(pwd, 'Model'),
+            fullfile(pwd, '..', 'Input Files')
+        };
+        
+        for i = 1:length(possible_dirs)
+            if exist(possible_dirs{i}, 'dir')
+                start_dir = possible_dirs{i};
+                break;
+            end
+        end
+    end
+    
+    [filename, pathname] = uigetfile({'*.mat', 'MAT Files'; '*.*', 'All Files'}, 'Select Input File', start_dir);
     
     if filename ~= 0
         full_path = fullfile(pathname, filename);
@@ -1188,8 +1214,10 @@ function browseInputFile(src, evt)
         set(handles.input_file_edit, 'String', filename);
         set(handles.file_status_text, 'String', 'File loaded successfully');
         
-        guidata(handles.fig, handles);
+        % Save preferences with new input file
         saveUserPreferences(handles);
+        
+        guidata(handles.fig, handles);
     end
 end
 
@@ -1199,6 +1227,14 @@ function clearInputFile(src, evt)
     handles.selected_input_file = '';
     set(handles.input_file_edit, 'String', 'No file selected');
     set(handles.file_status_text, 'String', '');
+    
+    % Clear saved preference
+    if isfield(handles, 'preferences')
+        handles.preferences.last_input_file = '';
+        handles.preferences.last_input_file_path = '';
+        saveUserPreferences(handles);
+    end
+    
     guidata(handles.fig, handles);
 end
 
@@ -1913,17 +1949,10 @@ function simInputs = prepareSimulationInputs(config)
         % Create SimulationInput object
         simIn = Simulink.SimulationInput(model_name);
         
-        % Set simulation parameters
-        simIn = simIn.setModelParameter('StopTime', num2str(config.simulation_time));
-        simIn = simIn.setModelParameter('Solver', 'ode23t');
-        simIn = simIn.setModelParameter('RelTol', '1e-3');
-        simIn = simIn.setModelParameter('AbsTol', '1e-5');
-        simIn = simIn.setModelParameter('SaveOutput', 'on');
-        simIn = simIn.setModelParameter('SaveFormat', 'Dataset');
-        simIn = simIn.setModelParameter('SaveState', 'on');
-        simIn = simIn.setModelParameter('SaveToWorkspace', 'on');
+        % Set simulation parameters safely
+        simIn = setSimulationParameters(simIn, config);
         
-        % Set polynomial coefficients as model variables
+        % Set polynomial coefficients
         simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
         
         % Load input file if specified
@@ -2000,7 +2029,6 @@ function result = runSingleTrial(trial_num, config, trial_coefficients)
         simIn = simIn.setModelParameter('SaveOutput', 'on');
         simIn = simIn.setModelParameter('SaveFormat', 'Dataset');
         simIn = simIn.setModelParameter('SaveState', 'on');
-        simIn = simIn.setModelParameter('SaveToWorkspace', 'on');
         
         % Set polynomial coefficients
         simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
@@ -2631,6 +2659,7 @@ function handles = loadUserPreferences(handles)
     % Initialize default preferences
     handles.preferences = struct();
     handles.preferences.last_input_file = '';
+    handles.preferences.last_input_file_path = '';
     handles.preferences.last_output_folder = pwd;
     handles.preferences.default_num_trials = 10;
     handles.preferences.default_sim_time = 0.3;
@@ -2663,6 +2692,16 @@ function applyUserPreferences(handles)
         % Apply last output folder
         if isfield(handles, 'output_folder_edit') && ~isempty(prefs.last_output_folder)
             set(handles.output_folder_edit, 'String', prefs.last_output_folder);
+        end
+        
+        % Apply last input file
+        if isfield(handles, 'input_file_edit') && ~isempty(prefs.last_input_file_path)
+            if exist(prefs.last_input_file_path, 'file')
+                handles.selected_input_file = prefs.last_input_file_path;
+                [~, filename, ext] = fileparts(prefs.last_input_file_path);
+                set(handles.input_file_edit, 'String', [filename ext]);
+                set(handles.file_status_text, 'String', 'File loaded from preferences');
+            end
         end
         
         % Apply default values
@@ -2699,6 +2738,13 @@ function saveUserPreferences(handles)
             end
         end
         
+        % Save input file path if selected
+        if isfield(handles, 'selected_input_file') && ~isempty(handles.selected_input_file)
+            handles.preferences.last_input_file_path = handles.selected_input_file;
+            [~, filename, ext] = fileparts(handles.selected_input_file);
+            handles.preferences.last_input_file = [filename ext];
+        end
+        
         % Save to file
         script_dir = fileparts(mfilename('fullpath'));
         pref_file = fullfile(script_dir, 'user_preferences.mat');
@@ -2724,4 +2770,49 @@ function closeGUICallback(src, evt)
     
     % Close the figure
     delete(src);
+end
+
+function simIn = setSimulationParameters(simIn, config)
+    % Safely set simulation parameters with error handling
+    try
+        simIn = simIn.setModelParameter('StopTime', num2str(config.simulation_time));
+    catch
+        warning('Could not set StopTime parameter');
+    end
+    
+    try
+        simIn = simIn.setModelParameter('Solver', 'ode23t');
+    catch
+        warning('Could not set Solver parameter');
+    end
+    
+    try
+        simIn = simIn.setModelParameter('RelTol', '1e-3');
+    catch
+        warning('Could not set RelTol parameter');
+    end
+    
+    try
+        simIn = simIn.setModelParameter('AbsTol', '1e-5');
+    catch
+        warning('Could not set AbsTol parameter');
+    end
+    
+    try
+        simIn = simIn.setModelParameter('SaveOutput', 'on');
+    catch
+        warning('Could not set SaveOutput parameter');
+    end
+    
+    try
+        simIn = simIn.setModelParameter('SaveFormat', 'Dataset');
+    catch
+        warning('Could not set SaveFormat parameter');
+    end
+    
+    try
+        simIn = simIn.setModelParameter('SaveState', 'on');
+    catch
+        warning('Could not set SaveState parameter');
+    end
 end
