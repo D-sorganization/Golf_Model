@@ -2121,7 +2121,9 @@ function simIn = setModelParameters(simIn, config)
         
         % Additional logging parameters
         simIn = simIn.setModelParameter('LoggingToFile', 'off');
-        simIn = simIn.setModelParameter('LoggingToWorkspace', 'on');
+        % Use ReturnWorkspaceOutputs to return simulation results
+        % directly to the MATLAB workspace.
+        simIn = simIn.setModelParameter('ReturnWorkspaceOutputs', 'on');
         
         % Ensure all signals are logged
         simIn = simIn.setModelParameter('SignalLogging', 'on');
