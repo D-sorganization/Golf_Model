@@ -417,11 +417,26 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
     handles.model_path = '';
     handles.selected_input_file = '';
     
-    % Try to find default model
-    if exist('Model/GolfSwing3D_Kinetic.slx', 'file')
-        handles.model_path = fullfile(pwd, 'Model', 'GolfSwing3D_Kinetic.slx');
-    elseif exist('GolfSwing3D_Kinetic.slx', 'file')
-        handles.model_path = fullfile(pwd, 'GolfSwing3D_Kinetic.slx');
+    % Try to find default model in multiple locations
+    possible_paths = {
+        'Model/GolfSwing3D_Kinetic.slx',
+        'GolfSwing3D_Kinetic.slx',
+        fullfile(pwd, 'Model', 'GolfSwing3D_Kinetic.slx'),
+        fullfile(pwd, 'GolfSwing3D_Kinetic.slx'),
+        which('GolfSwing3D_Kinetic.slx'),
+        which('GolfSwing3D_Kinetic')
+    };
+    
+    for i = 1:length(possible_paths)
+        if ~isempty(possible_paths{i}) && exist(possible_paths{i}, 'file')
+            handles.model_path = possible_paths{i};
+            fprintf('Found model at: %s\n', handles.model_path);
+            break;
+        end
+    end
+    
+    if isempty(handles.model_path)
+        fprintf('Warning: Could not find model file automatically\n');
     end
 end
 
@@ -1969,19 +1984,19 @@ function simIn = setPolynomialCoefficients(simIn, coefficients, config)
     param_info = getPolynomialParameterInfo();
     
     % Set coefficients as model variables
-    coeff_idx = 1;
+    global_coeff_idx = 1;
     for joint_idx = 1:length(param_info.joint_names)
         joint_name = param_info.joint_names{joint_idx};
         coeffs = param_info.joint_coeffs{joint_idx};
         
-        for coeff_idx = 1:length(coeffs)
-            coeff_letter = coeffs(coeff_idx);
+        for local_coeff_idx = 1:length(coeffs)
+            coeff_letter = coeffs(local_coeff_idx);
             var_name = sprintf('%s%s', joint_name, coeff_letter);
             
-            if coeff_idx <= length(coefficients)
-                simIn = simIn.setVariable(var_name, coefficients(coeff_idx));
+            if global_coeff_idx <= length(coefficients)
+                simIn = simIn.setVariable(var_name, coefficients(global_coeff_idx));
             end
-            coeff_idx = coeff_idx + 1;
+            global_coeff_idx = global_coeff_idx + 1;
         end
     end
 end
@@ -2045,6 +2060,35 @@ function result = runSingleTrial(trial_num, config, trial_coefficients)
         result.success = false;
         result.error = ME.message;
         fprintf('Trial %d simulation failed: %s\n', trial_num, ME.message);
+    end
+end
+
+function simIn = setModelParameters(simIn, config)
+    % Set basic simulation parameters
+    try
+        % Set stop time
+        if isfield(config, 'simulation_time') && ~isempty(config.simulation_time)
+            simIn = simIn.setModelParameter('StopTime', num2str(config.simulation_time));
+        end
+        
+        % Set solver
+        simIn = simIn.setModelParameter('Solver', 'ode23t');
+        
+        % Set tolerances
+        simIn = simIn.setModelParameter('RelTol', '1e-3');
+        simIn = simIn.setModelParameter('AbsTol', '1e-5');
+        
+        % Set output options
+        simIn = simIn.setModelParameter('SaveOutput', 'on');
+        simIn = simIn.setModelParameter('SaveFormat', 'Dataset');
+        simIn = simIn.setModelParameter('SaveState', 'on');
+        
+        % Set logging options
+        simIn = simIn.setModelParameter('SaveToWorkspace', 'on');
+        simIn = simIn.setModelParameter('SaveScopeDataToWorkspace', 'on');
+        
+    catch ME
+        fprintf('Warning: Error setting model parameters: %s\n', ME.message);
     end
 end
 
@@ -2368,6 +2412,9 @@ function config = validateInputs(handles)
         model_name = handles.model_name;
         model_path = handles.model_path;
         
+        fprintf('Debug: Model name: %s\n', model_name);
+        fprintf('Debug: Model path: %s\n', model_path);
+        
         if isempty(model_path)
             % Try to find model in current directory or path
             if exist([model_name '.slx'], 'file')
@@ -2378,6 +2425,8 @@ function config = validateInputs(handles)
                 error('Simulink model "%s" not found. Please select a valid model.', model_name);
             end
         end
+        
+        fprintf('Debug: Final model path: %s\n', model_path);
         
         % Validate input file if specified
         input_file = handles.selected_input_file;
