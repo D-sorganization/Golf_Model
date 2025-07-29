@@ -2060,6 +2060,12 @@ function result = runSingleTrial(trial_num, config, trial_coefficients)
         result.success = false;
         result.error = ME.message;
         fprintf('Trial %d simulation failed: %s\n', trial_num, ME.message);
+        
+        % Print stack trace for debugging
+        fprintf('Error details:\n');
+        for i = 1:length(ME.stack)
+            fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
+        end
     end
 end
 
@@ -2096,13 +2102,18 @@ function result = processSimulationOutput(trial_num, config, simOut)
     result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
     
     try
+        fprintf('Processing simulation output for trial %d...\n', trial_num);
+        
         % Extract data based on selected sources
         data_table = extractSimulationData(simOut, config);
         
         if isempty(data_table)
             result.error = 'No data extracted from simulation';
+            fprintf('No data extracted from simulation output\n');
             return;
         end
+        
+        fprintf('Extracted %d rows of data\n', height(data_table));
         
         % Add trial metadata
         num_rows = height(data_table);
@@ -2141,6 +2152,12 @@ function result = processSimulationOutput(trial_num, config, simOut)
         result.success = false;
         result.error = ME.message;
         fprintf('Error processing trial %d output: %s\n', trial_num, ME.message);
+        
+        % Print stack trace for debugging
+        fprintf('Processing error details:\n');
+        for i = 1:length(ME.stack)
+            fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
+        end
     end
 end
 
@@ -2148,48 +2165,75 @@ function data_table = extractSimulationData(simOut, config)
     data_table = [];
     
     try
+        fprintf('Debug: Simulation output fields: %s\n', strjoin(fieldnames(simOut), ', '));
+        
         % Extract data from different sources based on configuration
         all_data = {};
         
         % Model workspace data
         if config.use_model_workspace && isfield(simOut, 'yout')
+            fprintf('Debug: Extracting workspace data...\n');
             workspace_data = extractWorkspaceData(simOut.yout);
             if ~isempty(workspace_data)
                 all_data{end+1} = workspace_data;
+                fprintf('Debug: Workspace data extracted successfully\n');
+            else
+                fprintf('Debug: No workspace data extracted\n');
             end
         end
         
         % Logsout data
         if config.use_logsout && isfield(simOut, 'logsout')
+            fprintf('Debug: Extracting logsout data...\n');
             logsout_data = extractLogsoutData(simOut.logsout);
             if ~isempty(logsout_data)
                 all_data{end+1} = logsout_data;
+                fprintf('Debug: Logsout data extracted successfully\n');
+            else
+                fprintf('Debug: No logsout data extracted\n');
             end
         end
         
         % Signal bus data
         if config.use_signal_bus && isfield(simOut, 'yout')
+            fprintf('Debug: Extracting signal bus data...\n');
             signal_data = extractSignalBusData(simOut.yout);
             if ~isempty(signal_data)
                 all_data{end+1} = signal_data;
+                fprintf('Debug: Signal bus data extracted successfully\n');
+            else
+                fprintf('Debug: No signal bus data extracted\n');
             end
         end
         
         % Simscape data
         if config.use_simscape && isfield(simOut, 'simscape_logging')
+            fprintf('Debug: Extracting simscape data...\n');
             simscape_data = extractSimscapeData(simOut.simscape_logging);
             if ~isempty(simscape_data)
                 all_data{end+1} = simscape_data;
+                fprintf('Debug: Simscape data extracted successfully\n');
+            else
+                fprintf('Debug: No simscape data extracted\n');
             end
         end
+        
+        fprintf('Debug: Found %d data sources\n', length(all_data));
         
         % Combine all data sources
         if ~isempty(all_data)
             data_table = combineDataSources(all_data);
+            fprintf('Debug: Combined data table created with %d rows\n', height(data_table));
+        else
+            fprintf('Debug: No data sources found\n');
         end
         
     catch ME
         fprintf('Error extracting simulation data: %s\n', ME.message);
+        fprintf('Error details:\n');
+        for i = 1:length(ME.stack)
+            fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
+        end
     end
 end
 
