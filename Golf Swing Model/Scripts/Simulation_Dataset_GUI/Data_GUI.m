@@ -348,35 +348,27 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
               'HorizontalAlignment', 'left', ...
               'BackgroundColor', colors.panel);
     
-    handles.use_model_workspace = uicontrol('Parent', panel, ...
-                                           'Style', 'checkbox', ...
-                                           'String', 'Workspace', ...
-                                           'Units', 'normalized', ...
-                                           'Position', [0.18, y, 0.19, rowHeight], ...
-                                           'Value', 1, ...
-                                           'BackgroundColor', colors.panel);
-    
-    handles.use_logsout = uicontrol('Parent', panel, ...
-                                   'Style', 'checkbox', ...
-                                   'String', 'Logsout', ...
-                                   'Units', 'normalized', ...
-                                   'Position', [0.37, y, 0.19, rowHeight], ...
-                                   'Value', 1, ...
-                                   'BackgroundColor', colors.panel);
-    
     handles.use_signal_bus = uicontrol('Parent', panel, ...
                                       'Style', 'checkbox', ...
-                                      'String', 'Signal Bus', ...
+                                      'String', 'CombinedSignalBus', ...
                                       'Units', 'normalized', ...
-                                      'Position', [0.56, y, 0.19, rowHeight], ...
+                                      'Position', [0.18, y, 0.25, rowHeight], ...
                                       'Value', 1, ...
                                       'BackgroundColor', colors.panel);
     
+    handles.use_logsout = uicontrol('Parent', panel, ...
+                                   'Style', 'checkbox', ...
+                                   'String', 'Logsout Dataset', ...
+                                   'Units', 'normalized', ...
+                                   'Position', [0.44, y, 0.25, rowHeight], ...
+                                   'Value', 1, ...
+                                   'BackgroundColor', colors.panel);
+    
     handles.use_simscape = uicontrol('Parent', panel, ...
                                     'Style', 'checkbox', ...
-                                    'String', 'Simscape', ...
+                                    'String', 'Simscape Results', ...
                                     'Units', 'normalized', ...
-                                    'Position', [0.75, y, 0.19, rowHeight], ...
+                                    'Position', [0.70, y, 0.25, rowHeight], ...
                                     'Value', 1, ...
                                     'BackgroundColor', colors.panel);
     
@@ -2099,8 +2091,14 @@ function result = processSimulationOutput(trial_num, config, simOut)
     try
         fprintf('Processing simulation output for trial %d...\n', trial_num);
         
-        % Extract data based on selected sources
-        data_table = extractSimulationData(simOut, config);
+        % Extract data using the enhanced signal extraction system
+        options = struct();
+        options.extract_combined_bus = config.use_signal_bus;
+        options.extract_logsout = config.use_logsout;
+        options.extract_simscape = config.use_simscape;
+        options.verbose = false; % Set to true for debugging
+        
+        [data_table, signal_info] = extractAllSignalsFromBus(simOut, options);
         
         if isempty(data_table)
             result.error = 'No data extracted from simulation';
@@ -2155,544 +2153,8 @@ function result = processSimulationOutput(trial_num, config, simOut)
         end
     end
 end
-function data_table = extractSimulationData(simOut, config)
-    data_table = [];
-    
-    try
-        fprintf('Debug: Simulation output type: %s\n', class(simOut));
-        
-        % Check for simulation errors
-        if isprop(simOut, 'ErrorMessage') && ~isempty(simOut.ErrorMessage)
-            fprintf('Debug: Simulation error: %s\n', simOut.ErrorMessage);
-            return;
-        end
-        
-        fprintf('Debug: Extracting data from simulation output\n');
-        all_data = {};
-        
-        % FIXED: Extract from CombinedSignalBus (this is the key fix!)
-        if config.use_signal_bus && (isprop(simOut, 'CombinedSignalBus') || isfield(simOut, 'CombinedSignalBus'))
-            fprintf('Debug: Extracting CombinedSignalBus data...\n');
-            if isprop(simOut, 'CombinedSignalBus')
-                combinedBus = simOut.CombinedSignalBus;
-            else
-                combinedBus = simOut.CombinedSignalBus;
-            end
-            
-            if ~isempty(combinedBus)
-                signal_bus_data = extractFromCombinedSignalBus(combinedBus);
-                if ~isempty(signal_bus_data)
-                    all_data{end+1} = signal_bus_data;
-                    fprintf('Debug: CombinedSignalBus data extracted successfully (%d columns)\n', width(signal_bus_data));
-                end
-            end
-        end
-        
-        % FIXED: Extract from logsout (improved handling of Signal objects)
-        if config.use_logsout && (isprop(simOut, 'logsout') || isfield(simOut, 'logsout'))
-            fprintf('Debug: Extracting logsout data from simOut...\n');
-            if isprop(simOut, 'logsout')
-                logsout = simOut.logsout;
-            else
-                logsout = simOut.logsout;
-            end
-            
-            logsout_data = extractLogsoutDataFixed(logsout);
-            if ~isempty(logsout_data)
-                all_data{end+1} = logsout_data;
-                fprintf('Debug: Logsout data extracted successfully (%d columns)\n', width(logsout_data));
-            end
-        end
-        
-        % FIXED: Extract from Simscape data (corrected method calls)
-        if config.use_simscape && (isprop(simOut, 'simlog') || isfield(simOut, 'simlog'))
-            fprintf('Debug: Extracting Simscape data from simOut...\n');
-            if isprop(simOut, 'simlog')
-                simlog = simOut.simlog;
-            else
-                simlog = simOut.simlog;
-            end
-            
-            simscape_data = extractSimscapeDataFixed(simlog);
-            if ~isempty(simscape_data)
-                all_data{end+1} = simscape_data;
-                fprintf('Debug: Simscape data extracted successfully (%d columns)\n', width(simscape_data));
-            end
-        end
-        
-        % Extract from workspace outputs (tout, xout, etc.)
-        if config.use_model_workspace
-            fprintf('Debug: Extracting workspace outputs...\n');
-            workspace_data = extractWorkspaceOutputs(simOut);
-            if ~isempty(workspace_data)
-                all_data{end+1} = workspace_data;
-                fprintf('Debug: Workspace data extracted successfully (%d columns)\n', width(workspace_data));
-            end
-        end
-        
-        % Combine all data sources
-        if ~isempty(all_data)
-            data_table = combineDataSources(all_data);
-            fprintf('Debug: Combined data table created with %d rows, %d columns\n', height(data_table), width(data_table));
-        else
-            fprintf('Debug: No data extracted from any source\n');
-        end
-        
-    catch ME
-        fprintf('Error extracting simulation data: %s\n', ME.message);
-        fprintf('Stack trace:\n');
-        for i = 1:length(ME.stack)
-            fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
-        end
-    end
-end
-function workspace_data = extractWorkspaceData(out)
-    workspace_data = [];
-    
-    try
-        fprintf('Debug: Extracting workspace data from out structure\n');
-        
-        % Get all fields from the out structure
-        if isstruct(out)
-            fields = fieldnames(out);
-            fprintf('Debug: Available fields in out: %s\n', strjoin(fields, ', '));
-            
-            % Look for time data first
-            time_field = '';
-            time_data = [];
-            
-            % Common time field names
-            time_field_names = {'time', 'tout', 'Time', 'TIME'};
-            for i = 1:length(time_field_names)
-                if ismember(time_field_names{i}, fields)
-                    time_field = time_field_names{i};
-                    time_data = out.(time_field);
-                    fprintf('Debug: Found time field: %s (length: %d)\n', time_field, length(time_data));
-                    break;
-                end
-            end
-            
-            if isempty(time_data)
-                fprintf('Debug: No time field found, cannot extract workspace data\n');
-                return;
-            end
-            
-            % Extract all numeric data fields
-            data_cells = {time_data};
-            var_names = {'time'};
-            
-            for i = 1:length(fields)
-                field_name = fields{i};
-                
-                % Skip time field and non-numeric fields
-                if strcmp(field_name, time_field) || strcmp(field_name, 'logsout') || strcmp(field_name, 'simlog')
-                    continue;
-                end
-                
-                field_value = out.(field_name);
-                
-                % Handle different data types
-                if isnumeric(field_value)
-                    if length(field_value) == length(time_data)
-                        data_cells{end+1} = field_value(:);  % Ensure column vector
-                        var_names{end+1} = field_name;
-                        fprintf('Debug: Added numeric field %s (length: %d)\n', field_name, length(field_value));
-                    else
-                        fprintf('Debug: Skipping field %s (length mismatch: %d vs %d)\n', field_name, length(field_value), length(time_data));
-                    end
-                elseif isstruct(field_value)
-                    % Handle struct fields (e.g., signal buses)
-                    struct_data = extractFromStructField(field_value, field_name, time_data);
-                    if ~isempty(struct_data)
-                        % Merge the struct data
-                        if isempty(workspace_data)
-                            workspace_data = struct_data;
-                        else
-                            workspace_data = mergeTables(workspace_data, struct_data);
-                        end
-                    end
-                elseif isa(field_value, 'timeseries')
-                    % Handle timeseries objects
-                    if length(field_value.Data) == length(time_data)
-                        data_cells{end+1} = field_value.Data(:);
-                        var_names{end+1} = field_name;
-                        fprintf('Debug: Added timeseries field %s\n', field_name);
-                    end
-                end
-            end
-            
-            % Create table if we have data
-            if length(data_cells) > 1
-                workspace_data = table(data_cells{:}, 'VariableNames', var_names);
-                fprintf('Debug: Created workspace table with %d columns\n', width(workspace_data));
-            else
-                fprintf('Debug: No valid workspace data found\n');
-            end
-        else
-            fprintf('Debug: Out is not a struct, cannot extract workspace data\n');
-        end
-        
-    catch ME
-        fprintf('Error extracting workspace data: %s\n', ME.message);
-    end
-end
-function struct_data = extractFromStructField(struct_value, struct_name, time_data)
-    struct_data = [];
-    
-    try
-        if ~isstruct(struct_value)
-            return;
-        end
-        
-        struct_fields = fieldnames(struct_value);
-        data_cells = {};
-        var_names = {};
-        
-        for i = 1:length(struct_fields)
-            field_name = struct_fields{i};
-            field_value = struct_value.(field_name);
-            
-            if isnumeric(field_value) && length(field_value) == length(time_data)
-                data_cells{end+1} = field_value(:);
-                var_names{end+1} = sprintf('%s_%s', struct_name, field_name);
-            elseif isstruct(field_value)
-                % Recursively extract nested struct data
-                nested_data = extractFromStructField(field_value, sprintf('%s_%s', struct_name, field_name), time_data);
-                if ~isempty(nested_data)
-                    if isempty(struct_data)
-                        struct_data = nested_data;
-                    else
-                        struct_data = mergeTables(struct_data, nested_data);
-                    end
-                end
-            end
-        end
-        
-        if ~isempty(data_cells)
-            struct_data = table(data_cells{:}, 'VariableNames', var_names);
-        end
-        
-    catch ME
-        fprintf('Error extracting from struct field %s: %s\n', struct_name, ME.message);
-    end
-end
-function merged_table = mergeTables(table1, table2)
-    merged_table = table1;
-    
-    try
-        if isempty(table1)
-            merged_table = table2;
-            return;
-        end
-        
-        if isempty(table2)
-            return;
-        end
-        
-        % Find common time column
-        time_col1 = find(contains(lower(table1.Properties.VariableNames), 'time'), 1);
-        time_col2 = find(contains(lower(table2.Properties.VariableNames), 'time'), 1);
-        
-        if ~isempty(time_col1) && ~isempty(time_col2)
-            % Merge on time column
-            merged_table = outerjoin(table1, table2, 'Keys', {table1.Properties.VariableNames{time_col1}, table2.Properties.VariableNames{time_col2}}, 'MergeKeys', true);
-        else
-            % Simple concatenation
-            merged_table = [table1, table2];
-        end
-        
-    catch ME
-        fprintf('Error merging tables: %s\n', ME.message);
-        merged_table = table1;  % Return original if merge fails
-    end
-end
-function data_table = extractSignalBusStructs(out)
-    data_table = [];
-    
-    try
-        % Define expected signal bus structs based on the model
-        % FIXED: More flexible naming patterns
-        expectedLogStructs = {
-            'HipLogs', 'SpineLogs', 'TorsoLogs', ...
-            'LSLogs', 'RSLogs', 'LELogs', 'RELogs', ...
-            'LWLogs', 'RWLogs', 'LScapLogs', 'RScapLogs', ...
-            'LFLogs', 'RFLogs', 'CombinedSignalBus'
-        };
-        
-        % Also check for common variations
-        alternativeNames = {
-            'Hip_Logs', 'Spine_Logs', 'Torso_Logs', ...
-            'LS_Logs', 'RS_Logs', 'LE_Logs', 'RE_Logs', ...
-            'LW_Logs', 'RW_Logs', 'LScap_Logs', 'RScap_Logs', ...
-            'LF_Logs', 'RF_Logs', ...
-            'HipLog', 'SpineLog', 'TorsoLog', ...
-            'LSLog', 'RSLog', 'LELog', 'RELog', ...
-            'LWLog', 'RWLog', 'LScapLog', 'RScapLog', ...
-            'LFLog', 'RFLog', ...
-            'CombinedSignalBus', 'SignalBus', 'BusCreator'
-        };
-        
-        all_data = {};
-        found_structs = {};
-        
-        % Get all available fields in the out structure
-        if isstruct(out)
-            available_fields = fieldnames(out);
-            fprintf('Debug: Available fields in out structure: %s\n', strjoin(available_fields, ', '));
-            
-            % Check for exact matches first
-            for i = 1:length(expectedLogStructs)
-                structName = expectedLogStructs{i};
-                
-                if isfield(out, structName) && ~isempty(out.(structName))
-                    fprintf('Debug: Found exact match %s\n', structName);
-                    found_structs{end+1} = structName;
-                    
-                    logStruct = out.(structName);
-                    if isstruct(logStruct)
-                        struct_data = extractFromLogStruct(logStruct, structName);
-                        if ~isempty(struct_data)
-                            all_data{end+1} = struct_data;
-                        end
-                    elseif isa(logStruct, 'timeseries')
-                        % Handle timeseries directly
-                        fprintf('Debug: Found timeseries %s\n', structName);
-                        time = logStruct.Time;
-                        data = logStruct.Data;
-                        if isnumeric(data) && length(data) == length(time)
-                            struct_data = table(time, data, 'VariableNames', {'time', structName});
-                            all_data{end+1} = struct_data;
-                        end
-                    end
-                end
-            end
-            
-            % Check for alternative names
-            for i = 1:length(alternativeNames)
-                structName = alternativeNames{i};
-                
-                if isfield(out, structName) && ~isempty(out.(structName))
-                    fprintf('Debug: Found alternative match %s\n', structName);
-                    found_structs{end+1} = structName;
-                    
-                    logStruct = out.(structName);
-                    if isstruct(logStruct)
-                        struct_data = extractFromLogStruct(logStruct, structName);
-                        if ~isempty(struct_data)
-                            all_data{end+1} = struct_data;
-                        end
-                    elseif isa(logStruct, 'timeseries')
-                        % Handle timeseries directly
-                        fprintf('Debug: Found timeseries %s\n', structName);
-                        time = logStruct.Time;
-                        data = logStruct.Data;
-                        if isnumeric(data) && length(data) == length(time)
-                            struct_data = table(time, data, 'VariableNames', {'time', structName});
-                            all_data{end+1} = struct_data;
-                        end
-                    end
-                end
-            end
-            
-            % Check for any field ending with 'Logs' or 'Log' or containing 'Bus'
-            for i = 1:length(available_fields)
-                fieldName = available_fields{i};
-                
-                % Skip if already processed
-                if ismember(fieldName, found_structs)
-                    continue;
-                end
-                
-                % Check if field name suggests it's a log structure or bus
-                if ((endsWith(fieldName, 'Logs') || endsWith(fieldName, 'Log') || contains(fieldName, 'Bus')) && ...
-                   ~isempty(out.(fieldName)) && (isstruct(out.(fieldName)) || isa(out.(fieldName), 'timeseries')))
-                    fprintf('Debug: Found log/bus-like field %s\n', fieldName);
-                    found_structs{end+1} = fieldName;
-                    
-                    logStruct = out.(fieldName);
-                    if isstruct(logStruct)
-                        struct_data = extractFromLogStruct(logStruct, fieldName);
-                        if ~isempty(struct_data)
-                            all_data{end+1} = struct_data;
-                        end
-                    elseif isa(logStruct, 'timeseries')
-                        % Handle timeseries directly
-                        fprintf('Debug: Found timeseries %s\n', fieldName);
-                        time = logStruct.Time;
-                        data = logStruct.Data;
-                        if isnumeric(data) && length(data) == length(time)
-                            struct_data = table(time, data, 'VariableNames', {'time', fieldName});
-                            all_data{end+1} = struct_data;
-                        end
-                    end
-                end
-            end
-        end
-        
-        fprintf('Debug: Found signal bus structs: %s\n', strjoin(found_structs, ', '));
-        
-        % Combine all signal bus data
-        if ~isempty(all_data)
-            data_table = combineDataSources(all_data);
-            fprintf('Debug: Combined signal bus data into table with %d columns\n', width(data_table));
-        else
-            fprintf('Debug: No signal bus data found\n');
-        end
-        
-    catch ME
-        fprintf('Error extracting signal bus structs: %s\n', ME.message);
-    end
-end
-function data_table = extractFromLogStruct(logStruct, structName)
-    data_table = [];
-    try
-        % Find time field (existing code is fine, but make robust)
-        structFields = fieldnames(logStruct);
-        time_field = '';
-        for i = 1:length(structFields)
-            if contains(lower(structFields{i}), 'time')
-                time_field = structFields{i};
-                break;
-            end
-        end
-        if isempty(time_field)
-            fprintf('Debug: No time field in %s\n', structName);
-            return;
-        end
-        time = logStruct.(time_field);
-        data_cells = {time};
-        var_names = {'time'};
-        % Special handling for 'signals' struct array (key fix)
-        if isfield(logStruct, 'signals') && isstruct(logStruct.signals)
-            signals = logStruct.signals;
-            fprintf('Debug: Found %d signals in %s\n', length(signals), structName);
-            for k = 1:length(signals)
-                if isfield(signals(k), 'values') && isfield(signals(k), 'label')
-                    data = signals(k).values;
-                    
-                    % Handle multi-dimensional data
-                    if isnumeric(data)
-                        % Check dimensions
-                        data_size = size(data);
-                        if data_size(1) == length(time)
-                            % Data is time x dimensions
-                            if length(data_size) == 2 && data_size(2) > 1
-                                % Multiple columns (e.g., XYZ data)
-                                dim_labels = {'X', 'Y', 'Z', 'W'};
-                                for dim = 1:data_size(2)
-                                    dim_label = '';
-                                    if dim <= length(dim_labels)
-                                        dim_label = ['_' dim_labels{dim}];
-                                    else
-                                        dim_label = sprintf('_dim%d', dim);
-                                    end
-                                    
-                                    name = signals(k).label;
-                                    if isempty(name)
-                                        name = sprintf('signal%d', k);
-                                    end
-                                    full_name = sprintf('%s_%s%s', structName, name, dim_label);
-                                    
-                                    data_cells{end+1} = data(:, dim);
-                                    var_names{end+1} = full_name;
-                                    fprintf('Debug: Added multi-dim signal %s to %s\n', full_name, structName);
-                                end
-                            else
-                                % Single column
-                                name = signals(k).label;
-                                if isempty(name)
-                                    name = sprintf('signal%d', k);
-                                end
-                                full_name = sprintf('%s_%s', structName, name);
-                                data_cells{end+1} = data(:);
-                                var_names{end+1} = full_name;
-                                fprintf('Debug: Added signal %s to %s\n', full_name, structName);
-                            end
-                        else
-                            fprintf('Debug: Skipping signal %d in %s (dimension mismatch: %s vs time: %d)\n', k, structName, mat2str(data_size), length(time));
-                        end
-                    else
-                        fprintf('Debug: Skipping non-numeric signal %d in %s\n', k, structName);
-                    end
-                else
-                    fprintf('Debug: Signal %d in %s missing values or label field\n', k, structName);
-                end
-            end
-        end
-        % Existing loop for other fields (e.g., non-bus data)
-        for i = 1:length(structFields)
-            fieldName = structFields{i};
-            if strcmp(fieldName, time_field) || strcmp(fieldName, 'signals')
-                continue;  % Skip time and signals (already handled)
-            end
-            
-            fieldValue = logStruct.(fieldName);
-            
-            % Handle timeseries objects
-            if isa(fieldValue, 'timeseries')
-                data = fieldValue.Data;
-                if isnumeric(data) && length(data) == length(time)
-                    data_cells{end+1} = data;
-                    var_names{end+1} = sprintf('%s_%s', structName, fieldName);
-                end
-            % Handle structs with .Data field
-            elseif isstruct(fieldValue) && isfield(fieldValue, 'Data')
-                data = fieldValue.Data;
-                if isnumeric(data) && length(data) == length(time)
-                    data_cells{end+1} = data;
-                    var_names{end+1} = sprintf('%s_%s', structName, fieldName);
-                end
-            % Handle numeric arrays
-            elseif isnumeric(fieldValue) && length(fieldValue) == length(time)
-                data_cells{end+1} = fieldValue;
-                var_names{end+1} = sprintf('%s_%s', structName, fieldName);
-            end
-        end
-        if length(data_cells) > 1
-            data_table = table(data_cells{:}, 'VariableNames', var_names);
-            fprintf('Debug: Created table with %d columns from %s\n', width(data_table), structName);
-        else
-            fprintf('Debug: No valid data found in %s (only time column)\n', structName);
-        end
-    catch ME
-        fprintf('Error extracting from %s: %s\n', structName, ME.message);
-    end
-end
-function combined_table = combineDataSources(data_sources)
-    combined_table = [];
-    
-    try
-        if isempty(data_sources)
-            return;
-        end
-        
-        % Start with the first data source
-        combined_table = data_sources{1};
-        
-        % Merge additional data sources
-        for i = 2:length(data_sources)
-            if ~isempty(data_sources{i})
-                % Find common time column
-                if ismember('time', combined_table.Properties.VariableNames) && ...
-                   ismember('time', data_sources{i}.Properties.VariableNames)
-                    
-                    % Merge on time column
-                    combined_table = outerjoin(combined_table, data_sources{i}, 'Keys', 'time', 'MergeKeys', true);
-                else
-                    % Simple concatenation if no common time
-                    common_vars = intersect(combined_table.Properties.VariableNames, ...
-                                          data_sources{i}.Properties.VariableNames);
-                    if ~isempty(common_vars)
-                        combined_table = [combined_table(:, common_vars); data_sources{i}(:, common_vars)];
-                    end
-                end
-            end
-        end
-        
-    catch ME
-        fprintf('Error combining data sources: %s\n', ME.message);
-    end
-end
+
+
 % Validate inputs
 function config = validateInputs(handles)
     try
@@ -2721,9 +2183,8 @@ function config = validateInputs(handles)
             error('Constant value must be numeric for constant torque');
         end
         
-        if ~get(handles.use_model_workspace, 'Value') && ...
+        if ~get(handles.use_signal_bus, 'Value') && ...
            ~get(handles.use_logsout, 'Value') && ...
-           ~get(handles.use_signal_bus, 'Value') && ...
            ~get(handles.use_simscape, 'Value')
             error('Please select at least one data source');
         end
@@ -2768,7 +2229,6 @@ function config = validateInputs(handles)
         config.torque_scenario = scenario_idx;
         config.coeff_range = coeff_range;
         config.constant_value = constant_value;
-        config.use_model_workspace = get(handles.use_model_workspace, 'Value');
         config.use_logsout = get(handles.use_logsout, 'Value');
         config.use_signal_bus = get(handles.use_signal_bus, 'Value');
         config.use_simscape = get(handles.use_simscape, 'Value');
