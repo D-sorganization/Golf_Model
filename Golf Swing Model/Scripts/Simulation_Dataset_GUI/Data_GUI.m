@@ -2083,9 +2083,9 @@ function simIn = setModelParameters(simIn, config)
         simIn = simIn.setModelParameter('SaveFormat', 'Dataset');
         simIn = simIn.setModelParameter('SaveState', 'on');
         
-        % Set logging options
-        simIn = simIn.setModelParameter('SaveToWorkspace', 'on');
-        simIn = simIn.setModelParameter('SaveScopeDataToWorkspace', 'on');
+        % Note: SaveToWorkspace and SaveScopeDataToWorkspace are not valid parameters
+        % in newer versions of Simulink. Data logging is handled through the model's
+        % logging configuration and the SaveOutput parameter.
         
     catch ME
         fprintf('Warning: Error setting model parameters: %s\n', ME.message);
@@ -2412,9 +2412,6 @@ function config = validateInputs(handles)
         model_name = handles.model_name;
         model_path = handles.model_path;
         
-        fprintf('Debug: Model name: %s\n', model_name);
-        fprintf('Debug: Model path: %s\n', model_path);
-        
         if isempty(model_path)
             % Try to find model in current directory or path
             if exist([model_name '.slx'], 'file')
@@ -2425,8 +2422,6 @@ function config = validateInputs(handles)
                 error('Simulink model "%s" not found. Please select a valid model.', model_name);
             end
         end
-        
-        fprintf('Debug: Final model path: %s\n', model_path);
         
         % Validate input file if specified
         input_file = handles.selected_input_file;
