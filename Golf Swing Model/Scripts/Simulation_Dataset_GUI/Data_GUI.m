@@ -2066,22 +2066,21 @@ function result = runSingleTrial(trial_num, config, trial_coefficients)
         % Set polynomial coefficients for this trial
         simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
         
-        % Suppress Bus Creator warnings more comprehensively
-        warning_state = warning('off', 'all');  % Suppress all warnings temporarily
+        % Suppress specific warnings that are not critical
+        warning_state = warning('off', 'Simulink:Bus:EditTimeBusPropNotAllowed');
+        warning_state2 = warning('off', 'Simulink:Engine:BlockOutputNotUpdated');
         
         % Run simulation with progress indicator
         fprintf('Running trial %d simulation...', trial_num);
         simOut = sim(simIn);
         fprintf(' Done.\n');
         
-        % Debug: Check what we got from simulation
-        fprintf('Debug: Simulation output type: %s\n', class(simOut));
-        if isstruct(simOut)
-            fprintf('Debug: Simulation output fields: %s\n', strjoin(fieldnames(simOut), ', '));
-        end
+        % Add inspection for debugging
+        inspectSimulationOutput(simOut);
         
         % Restore warning state
         warning(warning_state);
+        warning(warning_state2);
         
         % Process simulation output
         result = processSimulationOutput(trial_num, config, simOut);
@@ -2120,96 +2119,23 @@ function simIn = setModelParameters(simIn, config)
         simIn = simIn.setModelParameter('RelTol', '1e-3');
         simIn = simIn.setModelParameter('AbsTol', '1e-5');
         
-        % Set output options - these are crucial for data logging
+        % CRITICAL: Set output options for data logging
         simIn = simIn.setModelParameter('SaveOutput', 'on');
-        simIn = simIn.setModelParameter('SaveFormat', 'Dataset');
-        
-        % Use ReturnWorkspaceOutputs to return simulation results
-        % directly to the MATLAB workspace.
+        simIn = simIn.setModelParameter('SaveFormat', 'Dataset'); % or 'Structure' depending on your model
         simIn = simIn.setModelParameter('ReturnWorkspaceOutputs', 'on');
+        
+        % Additional settings that might help
+        simIn = simIn.setModelParameter('SignalLogging', 'on');
+        simIn = simIn.setModelParameter('SaveTime', 'on');
+        
+        % If using To Workspace blocks, ensure they're configured properly
+        simIn = simIn.setModelParameter('LimitDataPoints', 'off');
         
         fprintf('Debug: Model parameters set successfully\n');
         
     catch ME
         fprintf('Error setting model parameters: %s\n', ME.message);
         rethrow(ME);
-    end
-end
-
-function simIn = configureSignalLogging(simIn, config)
-    % Configure signal logging for specific blocks in the model
-    try
-        % Common signal blocks that should be logged
-        signal_blocks = {
-            'HipLogs',
-            'SpineLogs', 
-            'ShoulderLogs',
-            'ElbowLogs',
-            'WristLogs',
-            'ClubLogs',
-            'HandLogs',
-            'ForceLogs',
-            'TorqueLogs',
-            'PositionLogs',
-            'VelocityLogs',
-            'AccelerationLogs'
-        };
-        
-        % Enable logging for each signal block
-        blocks_found = 0;
-        for i = 1:length(signal_blocks)
-            block_name = signal_blocks{i};
-            try
-                % Try to set the block parameter for signal logging
-                simIn = simIn.setBlockParameter(block_name, 'DataLogging', 'on');
-                fprintf('Debug: Enabled logging for block: %s\n', block_name);
-                blocks_found = blocks_found + 1;
-            catch
-                % Block might not exist, which is okay
-                fprintf('Debug: Block %s not found, skipping\n', block_name);
-            end
-        end
-        
-        % Also try to enable logging for scope blocks
-        scope_blocks = {
-            'Scope',
-            'Scope1',
-            'Scope2',
-            'Scope3',
-            'Scope4',
-            'Scope5'
-        };
-        
-        for i = 1:length(scope_blocks)
-            scope_name = scope_blocks{i};
-            try
-                simIn = simIn.setBlockParameter(scope_name, 'SaveToWorkspace', 'on');
-                simIn = simIn.setBlockParameter(scope_name, 'SaveName', scope_name);
-                fprintf('Debug: Enabled workspace saving for scope: %s\n', scope_name);
-            catch
-                fprintf('Debug: Scope %s not found, skipping\n', scope_name);
-            end
-        end
-        
-        % If no specific blocks were found, try to enable logging for all signals
-        if blocks_found == 0
-            fprintf('Debug: No specific logging blocks found, enabling logging for all signals\n');
-            try
-                % Enable logging for all signals in the model
-                simIn = simIn.setModelParameter('SignalLogging', 'on');
-                simIn = simIn.setModelParameter('SignalLoggingName', 'logsout');
-                
-                % Try to enable logging for all blocks that have signals
-                % simIn = simIn.setModelParameter('LoggingMode', 'LogAllSignals');
-                fprintf('Debug: Enabled logging for all signals\n');
-            catch ME
-                fprintf('Debug: Could not enable logging for all signals: %s\n', ME.message);
-            end
-        end
-        
-    catch ME
-        fprintf('Warning: Error configuring signal logging: %s\n', ME.message);
-        % Don't rethrow - this is not critical for simulation to run
     end
 end
 
@@ -2280,50 +2206,51 @@ function data_table = extractSimulationData(simOut, config)
     data_table = [];
     
     try
-        fprintf('Debug: Simulation output fields: %s\n', strjoin(fieldnames(simOut), ', '));
+        fprintf('Debug: Simulation output type: %s\n', class(simOut));
         
-        % Check for error messages
-        if isfield(simOut, 'ErrorMessage') && ~isempty(simOut.ErrorMessage)
-            fprintf('Debug: Simulation error message: %s\n', simOut.ErrorMessage);
-        end
-        
-        % Check simulation metadata
-        if isfield(simOut, 'SimulationMetadata')
-            fprintf('Debug: Simulation completed successfully\n');
-        end
-        
-        % With programmatic simulation, data is returned directly in simOut
-        % Check what data fields are available in simOut
-        out_fields = fieldnames(simOut);
-        data_fields = out_fields(~ismember(out_fields, {'SimulationMetadata', 'ErrorMessage'}));
-        
-        if ~isempty(data_fields)
-            fprintf('Debug: Found data fields in simOut: %s\n', strjoin(data_fields, ', '));
-            out = simOut;
-        else
-            fprintf('Debug: No data fields found in simOut\n');
+        % Check for simulation errors
+        if isprop(simOut, 'ErrorMessage') && ~isempty(simOut.ErrorMessage)
+            fprintf('Debug: Simulation error: %s\n', simOut.ErrorMessage);
             return;
         end
         
-        fprintf('Debug: out variable type: %s\n', class(out));
-        if isstruct(out)
-            fprintf('Debug: out fields: %s\n', strjoin(fieldnames(out), ', '));
-        end
-        
-        % Extract data from different sources
-        all_data = {};
-        
-        % Extract from logsout (main signals)
-        if config.use_logsout && isfield(out, 'logsout') && ~isempty(out.logsout)
-            fprintf('Debug: Extracting logsout data...\n');
-            logsout_data = extractLogsoutData(out.logsout);
-            if ~isempty(logsout_data)
-                all_data{end+1} = logsout_data;
-                fprintf('Debug: Logsout data extracted successfully\n');
+        % CRITICAL FIX: Check if 'out' exists in simOut (from To Workspace blocks)
+        if isprop(simOut, 'out') || isfield(simOut, 'out')
+            fprintf('Debug: Found ''out'' field in simOut\n');
+            out = simOut.out;
+        else
+            % If no 'out' field, check other possible locations
+            fprintf('Debug: No ''out'' field found, checking for direct data fields\n');
+            
+            % Get all properties/fields from simOut
+            if isa(simOut, 'Simulink.SimulationOutput')
+                prop_names = simOut.who;
+                fprintf('Debug: SimulationOutput contains: %s\n', strjoin(prop_names, ', '));
+                
+                % Look for common output variable names
+                possible_names = {'out', 'yout', 'logsout', 'xout', 'tout'};
+                for i = 1:length(possible_names)
+                    if ismember(possible_names{i}, prop_names)
+                        fprintf('Debug: Found %s in simulation output\n', possible_names{i});
+                        if strcmp(possible_names{i}, 'out')
+                            out = simOut.get('out');
+                            break;
+                        end
+                    end
+                end
+            end
+            
+            % If still no 'out', use simOut directly
+            if ~exist('out', 'var')
+                out = simOut;
             end
         end
         
-        % Extract from signal bus structs (HipLogs, SpineLogs, etc.)
+        % Now extract data from the 'out' structure
+        fprintf('Debug: Extracting data from out structure\n');
+        all_data = {};
+        
+        % Extract from signal bus structs
         if config.use_signal_bus
             fprintf('Debug: Extracting signal bus data...\n');
             signal_bus_data = extractSignalBusStructs(out);
@@ -2333,17 +2260,40 @@ function data_table = extractSimulationData(simOut, config)
             end
         end
         
-        % Extract from Simscape data
-        if config.use_simscape && isfield(out, 'simlog') && ~isempty(out.simlog)
-            fprintf('Debug: Extracting Simscape data...\n');
-            simscape_data = extractSimscapeData(out.simlog);
-            if ~isempty(simscape_data)
-                all_data{end+1} = simscape_data;
-                fprintf('Debug: Simscape data extracted successfully\n');
+        % Extract from logsout if it exists
+        if config.use_logsout
+            % Check in simOut first
+            if isprop(simOut, 'logsout') || isfield(simOut, 'logsout')
+                fprintf('Debug: Extracting logsout data from simOut...\n');
+                logsout_data = extractLogsoutData(simOut.logsout);
+                if ~isempty(logsout_data)
+                    all_data{end+1} = logsout_data;
+                end
+            elseif isfield(out, 'logsout')
+                fprintf('Debug: Extracting logsout data from out...\n');
+                logsout_data = extractLogsoutData(out.logsout);
+                if ~isempty(logsout_data)
+                    all_data{end+1} = logsout_data;
+                end
             end
         end
         
-        fprintf('Debug: Found %d data sources\n', length(all_data));
+        % Extract from Simscape data
+        if config.use_simscape
+            if isprop(simOut, 'simlog') || isfield(simOut, 'simlog')
+                fprintf('Debug: Extracting Simscape data from simOut...\n');
+                simscape_data = extractSimscapeData(simOut.simlog);
+                if ~isempty(simscape_data)
+                    all_data{end+1} = simscape_data;
+                end
+            elseif isfield(out, 'simlog')
+                fprintf('Debug: Extracting Simscape data from out...\n');
+                simscape_data = extractSimscapeData(out.simlog);
+                if ~isempty(simscape_data)
+                    all_data{end+1} = simscape_data;
+                end
+            end
+        end
         
         % Combine all data sources
         if ~isempty(all_data)
@@ -2408,12 +2358,9 @@ end
 
 function data_table = extractFromLogStruct(logStruct, structName)
     data_table = [];
-    
     try
-        % Get all fields in this struct
+        % Find time field (existing code is fine, but make robust)
         structFields = fieldnames(logStruct);
-        
-        % Find time field
         time_field = '';
         for i = 1:length(structFields)
             if contains(lower(structFields{i}), 'time')
@@ -2421,54 +2368,78 @@ function data_table = extractFromLogStruct(logStruct, structName)
                 break;
             end
         end
-        
         if isempty(time_field)
-            fprintf('Debug: No time field found in %s\n', structName);
+            fprintf('Debug: No time field in %s\n', structName);
             return;
         end
-        
         time = logStruct.(time_field);
         data_cells = {time};
         var_names = {'time'};
-        
-        % Extract each field
-        for j = 1:length(structFields)
-            fieldName = structFields{j};
-            if strcmp(fieldName, time_field)
-                continue; % Skip time field, already added
+
+        % Special handling for 'signals' struct array (key fix)
+        if isfield(logStruct, 'signals') && isstruct(logStruct.signals)
+            signals = logStruct.signals;
+            fprintf('Debug: Found %d signals in %s\n', length(signals), structName);
+            for k = 1:length(signals)
+                if isfield(signals(k), 'values') && isfield(signals(k), 'label')
+                    data = signals(k).values;
+                    if isnumeric(data) && length(data) == length(time)
+                        % Assume 1D for now; flatten if needed: data = data(:);
+                        name = signals(k).label;
+                        if isempty(name)
+                            name = sprintf('signal%d', k);
+                        end
+                        full_name = sprintf('%s_%s', structName, name);
+                        data_cells{end+1} = data;
+                        var_names{end+1} = full_name;
+                        fprintf('Debug: Added signal %s to %s\n', full_name, structName);
+                    else
+                        fprintf('Debug: Skipping mismatched/multidim signal %d in %s (length: %d vs time: %d)\n', k, structName, length(data), length(time));
+                    end
+                else
+                    fprintf('Debug: Signal %d in %s missing values or label field\n', k, structName);
+                end
+            end
+        end
+
+        % Existing loop for other fields (e.g., non-bus data)
+        for i = 1:length(structFields)
+            fieldName = structFields{i};
+            if strcmp(fieldName, time_field) || strcmp(fieldName, 'signals')
+                continue;  % Skip time and signals (already handled)
             end
             
-            try
-                fieldData = logStruct.(fieldName);
-                
-                % Handle different data formats
-                if isa(fieldData, 'timeseries')
-                    data = fieldData.Data;
-                elseif isstruct(fieldData) && isfield(fieldData, 'Data')
-                    data = fieldData.Data;
-                elseif isnumeric(fieldData)
-                    data = fieldData;
-                else
-                    continue; % Skip non-numeric data
-                end
-                
-                % Check if data matches time length
+            fieldValue = logStruct.(fieldName);
+            
+            % Handle timeseries objects
+            if isa(fieldValue, 'timeseries')
+                data = fieldValue.Data;
                 if isnumeric(data) && length(data) == length(time)
                     data_cells{end+1} = data;
                     var_names{end+1} = sprintf('%s_%s', structName, fieldName);
                 end
-                
-            catch ME
-                fprintf('Debug: Error extracting field %s from %s: %s\n', fieldName, structName, ME.message);
+            % Handle structs with .Data field
+            elseif isstruct(fieldValue) && isfield(fieldValue, 'Data')
+                data = fieldValue.Data;
+                if isnumeric(data) && length(data) == length(time)
+                    data_cells{end+1} = data;
+                    var_names{end+1} = sprintf('%s_%s', structName, fieldName);
+                end
+            % Handle numeric arrays
+            elseif isnumeric(fieldValue) && length(fieldValue) == length(time)
+                data_cells{end+1} = fieldValue;
+                var_names{end+1} = sprintf('%s_%s', structName, fieldName);
             end
         end
-        
+
         if length(data_cells) > 1
             data_table = table(data_cells{:}, 'VariableNames', var_names);
+            fprintf('Debug: Created table with %d columns from %s\n', width(data_table), structName);
+        else
+            fprintf('Debug: No valid data found in %s (only time column)\n', structName);
         end
-        
     catch ME
-        fprintf('Error extracting from log struct %s: %s\n', structName, ME.message);
+        fprintf('Error extracting from %s: %s\n', structName, ME.message);
     end
 end
 
@@ -2476,73 +2447,96 @@ function logsout_data = extractLogsoutData(logsout)
     logsout_data = [];
     
     try
-        if ~isempty(logsout)
-            % Extract data from logsout structure
-            if isa(logsout, 'Simulink.SimulationData.Dataset')
-                % Handle Dataset format
-                time = logsout.time;
-                
-                data_cells = {time};
-                var_names = {'time'};
-                
-                for i = 1:logsout.numElements
-                    try
-                        element = logsout.getElement(i);
-                        signalName = element.Name;
-                        
-                        if isa(element, 'Simulink.SimulationData.Signal')
-                            data = element.Values.Data;
-                        else
-                            try
-                                [data, ~] = element.getData;
-                            catch
-                                data = element.Data;
-                            end
-                        end
-                        
-                        if isnumeric(data) && length(data) == length(time)
-                            data_cells{end+1} = data;
-                            var_names{end+1} = signalName;
-                        end
-                    catch ME
-                        fprintf('Debug: Error extracting logsout signal %d: %s\n', i, ME.message);
-                    end
-                end
-                
-                if length(data_cells) > 1
-                    logsout_data = table(data_cells{:}, 'VariableNames', var_names);
-                end
+        fprintf('Debug: Extracting logsout data, type: %s\n', class(logsout));
+        
+        % Handle modern Simulink.SimulationData.Dataset format
+        if isa(logsout, 'Simulink.SimulationData.Dataset')
+            fprintf('Debug: Processing Dataset format with %d elements\n', logsout.numElements);
+            
+            if logsout.numElements == 0
+                fprintf('Debug: Dataset is empty\n');
+                return;
+            end
+            
+            % Get time from first element
+            first_element = logsout{1};
+            if isa(first_element, 'timeseries')
+                time = first_element.Time;
+                fprintf('Debug: Using time from first element, length: %d\n', length(time));
             else
-                % Handle regular struct format
-                time = logsout.time;
-                
-                data_cells = {time};
-                var_names = {'time'};
-                
-                % Get all logged signals
-                signal_names = fieldnames(logsout);
-                signal_names = signal_names(~strcmp(signal_names, 'time'));
-                
-                for i = 1:length(signal_names)
-                    signal_name = signal_names{i};
-                    signal_data = logsout.(signal_name);
-                    
-                    if isstruct(signal_data) && isfield(signal_data, 'values')
-                        values = signal_data.values;
-                        if isnumeric(values) && length(values) == length(time)
-                            data_cells{end+1} = values;
-                            var_names{end+1} = signal_name;
-                        end
+                fprintf('Debug: First element is not timeseries, type: %s\n', class(first_element));
+                return;
+            end
+            
+            data_cells = {time};
+            var_names = {'time'};
+            
+            % Process each element in the dataset
+            for i = 1:logsout.numElements
+                element = logsout{i};  % {i} returns timeseries
+                if isa(element, 'timeseries')
+                    signalName = element.Name;
+                    data = element.Data;
+                    if isnumeric(data) && length(data) == length(time)
+                        data_cells{end+1} = data(:);  % Flatten to column
+                        var_names{end+1} = signalName;
+                        fprintf('Debug: Added signal %s (length: %d)\n', signalName, length(data));
+                    else
+                        fprintf('Debug: Skipping signal %s (length mismatch: %d vs %d)\n', signalName, length(data), length(time));
                     end
-                end
-                
-                if length(data_cells) > 1
-                    logsout_data = table(data_cells{:}, 'VariableNames', var_names);
+                else
+                    fprintf('Debug: Element %d is not timeseries, type: %s\n', i, class(element));
                 end
             end
+            
+            % Create table if we have data
+            if length(data_cells) > 1
+                logsout_data = table(data_cells{:}, 'VariableNames', var_names);
+                fprintf('Debug: Created logsout table with %d columns\n', width(logsout_data));
+            else
+                fprintf('Debug: No valid data found in logsout Dataset\n');
+            end
+            
+        % Handle legacy struct format (for older models)
+        elseif isstruct(logsout) && isfield(logsout, 'time')
+            fprintf('Debug: Processing legacy struct format\n');
+            
+            time = logsout.time;
+            data_cells = {time};
+            var_names = {'time'};
+            
+            % Get all fields except time
+            fields = fieldnames(logsout);
+            for i = 1:length(fields)
+                fieldName = fields{i};
+                if strcmp(fieldName, 'time')
+                    continue;
+                end
+                
+                fieldData = logsout.(fieldName);
+                if isstruct(fieldData) && isfield(fieldData, 'values')
+                    data = fieldData.values;
+                    if isnumeric(data) && length(data) == length(time)
+                        data_cells{end+1} = data;
+                        var_names{end+1} = fieldName;
+                    end
+                end
+            end
+            
+            if length(data_cells) > 1
+                logsout_data = table(data_cells{:}, 'VariableNames', var_names);
+                fprintf('Debug: Created logsout table with %d columns (legacy format)\n', width(logsout_data));
+            end
+        else
+            fprintf('Debug: Unknown logsout format: %s\n', class(logsout));
         end
+        
     catch ME
         fprintf('Error extracting logsout data: %s\n', ME.message);
+        fprintf('Stack trace:\n');
+        for i = 1:length(ME.stack)
+            fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
+        end
     end
 end
 
@@ -3102,4 +3096,31 @@ function simIn = setSimulationParameters(simIn, config)
     catch
         warning('Could not set SaveState parameter');
     end
+end
+
+function inspectSimulationOutput(simOut)
+    fprintf('\n=== Simulation Output Inspection ===\n');
+    fprintf('Type: %s\n', class(simOut));
+    
+    if isa(simOut, 'Simulink.SimulationOutput')
+        fprintf('Available data:\n');
+        available = simOut.who;
+        for i = 1:length(available)
+            fprintf('  - %s\n', available{i});
+        end
+        
+        % Check for 'out' specifically
+        if ismember('out', available)
+            out = simOut.get('out');
+            fprintf('\n''out'' structure fields:\n');
+            if isstruct(out)
+                fields = fieldnames(out);
+                for i = 1:length(fields)
+                    fprintf('  - %s (type: %s, size: %s)\n', fields{i}, ...
+                            class(out.(fields{i})), mat2str(size(out.(fields{i}))));
+                end
+            end
+        end
+    end
+    fprintf('=================================\n\n');
 end
