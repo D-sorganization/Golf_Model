@@ -2167,101 +2167,73 @@ function data_table = extractSimulationData(simOut, config)
             return;
         end
         
-        % CRITICAL FIX: Check if 'out' exists in simOut (from To Workspace blocks)
-        if isprop(simOut, 'out') || isfield(simOut, 'out')
-            fprintf('Debug: Found ''out'' field in simOut\n');
-            out = simOut.out;
-        else
-            % If no 'out' field, check other possible locations
-            fprintf('Debug: No ''out'' field found, checking for direct data fields\n');
-            
-            % Get all properties/fields from simOut
-            if isa(simOut, 'Simulink.SimulationOutput')
-                prop_names = simOut.who;
-                fprintf('Debug: SimulationOutput contains: %s\n', strjoin(prop_names, ', '));
-                
-                % Look for common output variable names
-                possible_names = {'out', 'yout', 'logsout', 'xout', 'tout'};
-                for i = 1:length(possible_names)
-                    if ismember(possible_names{i}, prop_names)
-                        fprintf('Debug: Found %s in simulation output\n', possible_names{i});
-                        if strcmp(possible_names{i}, 'out')
-                            out = simOut.get('out');
-                            break;
-                        end
-                    end
-                end
-            end
-            
-            % If still no 'out', use simOut directly
-            if ~exist('out', 'var')
-                out = simOut;
-            end
-        end
-        
-        % Now extract data from the 'out' structure
-        fprintf('Debug: Extracting data from out structure\n');
+        fprintf('Debug: Extracting data from simulation output\n');
         all_data = {};
         
-        % FIXED: Extract from workspace data (To Workspace blocks)
+        % FIXED: Extract from CombinedSignalBus (this is the key fix!)
+        if config.use_signal_bus && (isprop(simOut, 'CombinedSignalBus') || isfield(simOut, 'CombinedSignalBus'))
+            fprintf('Debug: Extracting CombinedSignalBus data...\n');
+            if isprop(simOut, 'CombinedSignalBus')
+                combinedBus = simOut.CombinedSignalBus;
+            else
+                combinedBus = simOut.CombinedSignalBus;
+            end
+            
+            if ~isempty(combinedBus)
+                signal_bus_data = extractFromCombinedSignalBus(combinedBus);
+                if ~isempty(signal_bus_data)
+                    all_data{end+1} = signal_bus_data;
+                    fprintf('Debug: CombinedSignalBus data extracted successfully (%d columns)\n', width(signal_bus_data));
+                end
+            end
+        end
+        
+        % FIXED: Extract from logsout (improved handling of Signal objects)
+        if config.use_logsout && (isprop(simOut, 'logsout') || isfield(simOut, 'logsout'))
+            fprintf('Debug: Extracting logsout data from simOut...\n');
+            if isprop(simOut, 'logsout')
+                logsout = simOut.logsout;
+            else
+                logsout = simOut.logsout;
+            end
+            
+            logsout_data = extractLogsoutDataFixed(logsout);
+            if ~isempty(logsout_data)
+                all_data{end+1} = logsout_data;
+                fprintf('Debug: Logsout data extracted successfully (%d columns)\n', width(logsout_data));
+            end
+        end
+        
+        % FIXED: Extract from Simscape data (corrected method calls)
+        if config.use_simscape && (isprop(simOut, 'simlog') || isfield(simOut, 'simlog'))
+            fprintf('Debug: Extracting Simscape data from simOut...\n');
+            if isprop(simOut, 'simlog')
+                simlog = simOut.simlog;
+            else
+                simlog = simOut.simlog;
+            end
+            
+            simscape_data = extractSimscapeDataFixed(simlog);
+            if ~isempty(simscape_data)
+                all_data{end+1} = simscape_data;
+                fprintf('Debug: Simscape data extracted successfully (%d columns)\n', width(simscape_data));
+            end
+        end
+        
+        % Extract from workspace outputs (tout, xout, etc.)
         if config.use_model_workspace
-            fprintf('Debug: Extracting workspace data...\n');
-            workspace_data = extractWorkspaceData(out);
+            fprintf('Debug: Extracting workspace outputs...\n');
+            workspace_data = extractWorkspaceOutputs(simOut);
             if ~isempty(workspace_data)
                 all_data{end+1} = workspace_data;
-                fprintf('Debug: Workspace data extracted successfully\n');
-            end
-        end
-        
-        % Extract from signal bus structs
-        if config.use_signal_bus
-            fprintf('Debug: Extracting signal bus data...\n');
-            signal_bus_data = extractSignalBusStructs(out);
-            if ~isempty(signal_bus_data)
-                all_data{end+1} = signal_bus_data;
-                fprintf('Debug: Signal bus data extracted successfully\n');
-            end
-        end
-        
-        % Extract from logsout if it exists
-        if config.use_logsout
-            % Check in simOut first
-            if isprop(simOut, 'logsout') || isfield(simOut, 'logsout')
-                fprintf('Debug: Extracting logsout data from simOut...\n');
-                logsout_data = extractLogsoutData(simOut.logsout);
-                if ~isempty(logsout_data)
-                    all_data{end+1} = logsout_data;
-                end
-            elseif isfield(out, 'logsout')
-                fprintf('Debug: Extracting logsout data from out...\n');
-                logsout_data = extractLogsoutData(out.logsout);
-                if ~isempty(logsout_data)
-                    all_data{end+1} = logsout_data;
-                end
-            end
-        end
-        
-        % Extract from Simscape data
-        if config.use_simscape
-            if isprop(simOut, 'simlog') || isfield(simOut, 'simlog')
-                fprintf('Debug: Extracting Simscape data from simOut...\n');
-                simscape_data = extractSimscapeData(simOut.simlog);
-                if ~isempty(simscape_data)
-                    all_data{end+1} = simscape_data;
-                end
-            elseif isfield(out, 'simlog')
-                fprintf('Debug: Extracting Simscape data from out...\n');
-                simscape_data = extractSimscapeData(out.simlog);
-                if ~isempty(simscape_data)
-                    all_data{end+1} = simscape_data;
-                end
+                fprintf('Debug: Workspace data extracted successfully (%d columns)\n', width(workspace_data));
             end
         end
         
         % Combine all data sources
         if ~isempty(all_data)
             data_table = combineDataSources(all_data);
-            fprintf('Debug: Combined data table created with %d rows\n', height(data_table));
+            fprintf('Debug: Combined data table created with %d rows, %d columns\n', height(data_table), width(data_table));
         else
             fprintf('Debug: No data extracted from any source\n');
         end
@@ -2444,7 +2416,7 @@ function data_table = extractSignalBusStructs(out)
             'HipLogs', 'SpineLogs', 'TorsoLogs', ...
             'LSLogs', 'RSLogs', 'LELogs', 'RELogs', ...
             'LWLogs', 'RWLogs', 'LScapLogs', 'RScapLogs', ...
-            'LFLogs', 'RFLogs'
+            'LFLogs', 'RFLogs', 'CombinedSignalBus'
         };
         
         % Also check for common variations
@@ -2456,7 +2428,8 @@ function data_table = extractSignalBusStructs(out)
             'HipLog', 'SpineLog', 'TorsoLog', ...
             'LSLog', 'RSLog', 'LELog', 'RELog', ...
             'LWLog', 'RWLog', 'LScapLog', 'RScapLog', ...
-            'LFLog', 'RFLog'
+            'LFLog', 'RFLog', ...
+            'CombinedSignalBus', 'SignalBus', 'BusCreator'
         };
         
         all_data = {};
@@ -2481,6 +2454,15 @@ function data_table = extractSignalBusStructs(out)
                         if ~isempty(struct_data)
                             all_data{end+1} = struct_data;
                         end
+                    elseif isa(logStruct, 'timeseries')
+                        % Handle timeseries directly
+                        fprintf('Debug: Found timeseries %s\n', structName);
+                        time = logStruct.Time;
+                        data = logStruct.Data;
+                        if isnumeric(data) && length(data) == length(time)
+                            struct_data = table(time, data, 'VariableNames', {'time', structName});
+                            all_data{end+1} = struct_data;
+                        end
                     end
                 end
             end
@@ -2499,11 +2481,20 @@ function data_table = extractSignalBusStructs(out)
                         if ~isempty(struct_data)
                             all_data{end+1} = struct_data;
                         end
+                    elseif isa(logStruct, 'timeseries')
+                        % Handle timeseries directly
+                        fprintf('Debug: Found timeseries %s\n', structName);
+                        time = logStruct.Time;
+                        data = logStruct.Data;
+                        if isnumeric(data) && length(data) == length(time)
+                            struct_data = table(time, data, 'VariableNames', {'time', structName});
+                            all_data{end+1} = struct_data;
+                        end
                     end
                 end
             end
             
-            % Check for any field ending with 'Logs' or 'Log'
+            % Check for any field ending with 'Logs' or 'Log' or containing 'Bus'
             for i = 1:length(available_fields)
                 fieldName = available_fields{i};
                 
@@ -2512,16 +2503,27 @@ function data_table = extractSignalBusStructs(out)
                     continue;
                 end
                 
-                % Check if field name suggests it's a log structure
-                if (endsWith(fieldName, 'Logs') || endsWith(fieldName, 'Log')) && ...
-                   ~isempty(out.(fieldName)) && isstruct(out.(fieldName))
-                    fprintf('Debug: Found log-like field %s\n', fieldName);
+                % Check if field name suggests it's a log structure or bus
+                if ((endsWith(fieldName, 'Logs') || endsWith(fieldName, 'Log') || contains(fieldName, 'Bus')) && ...
+                   ~isempty(out.(fieldName)) && (isstruct(out.(fieldName)) || isa(out.(fieldName), 'timeseries')))
+                    fprintf('Debug: Found log/bus-like field %s\n', fieldName);
                     found_structs{end+1} = fieldName;
                     
                     logStruct = out.(fieldName);
-                    struct_data = extractFromLogStruct(logStruct, fieldName);
-                    if ~isempty(struct_data)
-                        all_data{end+1} = struct_data;
+                    if isstruct(logStruct)
+                        struct_data = extractFromLogStruct(logStruct, fieldName);
+                        if ~isempty(struct_data)
+                            all_data{end+1} = struct_data;
+                        end
+                    elseif isa(logStruct, 'timeseries')
+                        % Handle timeseries directly
+                        fprintf('Debug: Found timeseries %s\n', fieldName);
+                        time = logStruct.Time;
+                        data = logStruct.Data;
+                        if isnumeric(data) && length(data) == length(time)
+                            struct_data = table(time, data, 'VariableNames', {'time', fieldName});
+                            all_data{end+1} = struct_data;
+                        end
                     end
                 end
             end
@@ -2678,7 +2680,19 @@ function logsout_data = extractLogsoutData(logsout)
                 fprintf('Debug: Using time from first element, length: %d\n', length(time));
             else
                 fprintf('Debug: First element is not timeseries, type: %s\n', class(first_element));
-                return;
+                % Try to get time from the element itself
+                try
+                    if isprop(first_element, 'Time')
+                        time = first_element.Time;
+                        fprintf('Debug: Got time from first element property, length: %d\n', length(time));
+                    else
+                        fprintf('Debug: Cannot get time from first element\n');
+                        return;
+                    end
+                catch
+                    fprintf('Debug: Cannot access time from first element\n');
+                    return;
+                end
             end
             
             data_cells = {time};
@@ -2686,19 +2700,54 @@ function logsout_data = extractLogsoutData(logsout)
             
             % Process each element in the dataset
             for i = 1:logsout.numElements
-                element = logsout{i};  % {i} returns timeseries
-                if isa(element, 'timeseries')
-                    signalName = element.Name;
-                    data = element.Data;
-                    if isnumeric(data) && length(data) == length(time)
-                        data_cells{end+1} = data(:);  % Flatten to column
-                        var_names{end+1} = signalName;
-                        fprintf('Debug: Added signal %s (length: %d)\n', signalName, length(data));
+                try
+                    element = logsout{i};  % {i} returns timeseries
+                    if isa(element, 'timeseries')
+                        signalName = element.Name;
+                        if isempty(signalName)
+                            signalName = sprintf('signal_%d', i);
+                        end
+                        data = element.Data;
+                        if isnumeric(data) && length(data) == length(time)
+                            data_cells{end+1} = data(:);  % Flatten to column
+                            var_names{end+1} = signalName;
+                            fprintf('Debug: Added signal %s (length: %d)\n', signalName, length(data));
+                        else
+                            fprintf('Debug: Skipping signal %s (length mismatch: %d vs %d)\n', signalName, length(data), length(time));
+                        end
+                    elseif isa(element, 'Simulink.SimulationData.Signal')
+                        % Handle Signal objects
+                        signalName = element.Name;
+                        if isempty(signalName)
+                            signalName = sprintf('signal_%d', i);
+                        end
+                        
+                        % Try to get values from the signal
+                        try
+                            if isprop(element, 'Values')
+                                values = element.Values;
+                                if isa(values, 'timeseries')
+                                    data = values.Data;
+                                else
+                                    data = values;
+                                end
+                                
+                                if isnumeric(data) && length(data) == length(time)
+                                    data_cells{end+1} = data(:);
+                                    var_names{end+1} = signalName;
+                                    fprintf('Debug: Added Signal object %s (length: %d)\n', signalName, length(data));
+                                else
+                                    fprintf('Debug: Skipping Signal object %s (length mismatch: %d vs %d)\n', signalName, length(data), length(time));
+                                end
+                            end
+                        catch ME
+                            fprintf('Debug: Error extracting Signal object %s: %s\n', signalName, ME.message);
+                        end
                     else
-                        fprintf('Debug: Skipping signal %s (length mismatch: %d vs %d)\n', signalName, length(data), length(time));
+                        fprintf('Debug: Element %d is not timeseries or Signal, type: %s\n', i, class(element));
                     end
-                else
-                    fprintf('Debug: Element %d is not timeseries, type: %s\n', i, class(element));
+                catch ME
+                    fprintf('Debug: Error processing element %d: %s\n', i, ME.message);
                 end
             end
             
@@ -2757,67 +2806,164 @@ function simscape_data = extractSimscapeData(simlog)
     
     try
         if ~isempty(simlog) && isa(simlog, 'simscape.logging.Node')
-            % Extract Simscape logging data
-            time = simlog.time;
+            fprintf('Debug: Extracting Simscape data from simlog\n');
+            
+            % Try to get time from simlog
+            try
+                % Try different methods to get time
+                if isprop(simlog, 'time')
+                    time = simlog.time;
+                elseif ismethod(simlog, 'time')
+                    time = simlog.time();
+                else
+                    % Try to get time from child nodes
+                    fprintf('Debug: No direct time access, trying child nodes\n');
+                    time = [];
+                end
+                
+                if isempty(time)
+                    fprintf('Debug: Could not get time from simlog, skipping Simscape data\n');
+                    return;
+                end
+                
+                fprintf('Debug: Got Simscape time, length: %d\n', length(time));
+            catch ME
+                fprintf('Debug: Error getting Simscape time: %s\n', ME.message);
+                return;
+            end
             
             data_cells = {time};
             var_names = {'time'};
             
             % Get all child nodes (joints, bodies, etc.)
             try
-                childNodes = simlog.Children;
-            catch
-                try
+                if ismethod(simlog, 'Children')
+                    childNodes = simlog.Children();
+                elseif isprop(simlog, 'Children')
+                    childNodes = simlog.Children;
+                elseif ismethod(simlog, 'children')
+                    childNodes = simlog.children();
+                elseif isprop(simlog, 'children')
                     childNodes = simlog.children;
-                catch
-                    try
-                        childNodes = simlog.Nodes;
-                    catch
-                        fprintf('Debug: Cannot access child nodes from simlog\n');
-                        return;
-                    end
+                elseif ismethod(simlog, 'Nodes')
+                    childNodes = simlog.Nodes();
+                elseif isprop(simlog, 'Nodes')
+                    childNodes = simlog.Nodes;
+                else
+                    fprintf('Debug: Cannot access child nodes from simlog\n');
+                    return;
                 end
+            catch ME
+                fprintf('Debug: Error accessing child nodes: %s\n', ME.message);
+                return;
             end
             
             if ~isempty(childNodes)
+                fprintf('Debug: Found %d child nodes in simlog\n', length(childNodes));
+                
                 for i = 1:length(childNodes)
-                    childNode = childNodes(i);
-                    nodeName = childNode.Name;
-                    
-                    % Look for joint-related nodes
-                    if contains(lower(nodeName), {'joint', 'actuator', 'motor', 'drive'})
-                        % Get all signals in this node
-                        signals = childNode.Children;
+                    try
+                        childNode = childNodes(i);
                         
-                        for j = 1:length(signals)
-                            signal = signals(j);
-                            signalName = signal.Name;
-                            fullSignalName = sprintf('%s_%s', nodeName, signalName);
-                            
+                        % Try to get node name
+                        if isprop(childNode, 'Name')
+                            nodeName = childNode.Name;
+                        elseif ismethod(childNode, 'Name')
+                            nodeName = childNode.Name();
+                        else
+                            nodeName = sprintf('node_%d', i);
+                        end
+                        
+                        fprintf('Debug: Processing child node: %s\n', nodeName);
+                        
+                        % Look for joint-related nodes or any nodes with data
+                        if contains(lower(nodeName), {'joint', 'actuator', 'motor', 'drive'}) || true
+                            % Get all signals in this node
                             try
-                                % Get signal data
-                                if hasData(signal)
-                                    [data, ~] = getData(signal);
-                                    
-                                    if isnumeric(data) && length(data) == length(time)
-                                        data_cells{end+1} = data;
-                                        var_names{end+1} = fullSignalName;
+                                if ismethod(childNode, 'Children')
+                                    signals = childNode.Children();
+                                elseif isprop(childNode, 'Children')
+                                    signals = childNode.Children;
+                                else
+                                    signals = [];
+                                end
+                            catch
+                                signals = [];
+                            end
+                            
+                            if ~isempty(signals)
+                                fprintf('Debug: Found %d signals in node %s\n', length(signals), nodeName);
+                                
+                                for j = 1:length(signals)
+                                    try
+                                        signal = signals(j);
+                                        
+                                        % Try to get signal name
+                                        if isprop(signal, 'Name')
+                                            signalName = signal.Name;
+                                        elseif ismethod(signal, 'Name')
+                                            signalName = signal.Name();
+                                        else
+                                            signalName = sprintf('signal_%d', j);
+                                        end
+                                        
+                                        fullSignalName = sprintf('%s_%s', nodeName, signalName);
+                                        
+                                        try
+                                            % Try to get signal data
+                                            if ismethod(signal, 'hasData') && signal.hasData()
+                                                if ismethod(signal, 'getData')
+                                                    [data, ~] = signal.getData();
+                                                else
+                                                    data = [];
+                                                end
+                                            elseif isprop(signal, 'Data')
+                                                data = signal.Data;
+                                            else
+                                                data = [];
+                                            end
+                                            
+                                            if isnumeric(data) && length(data) == length(time)
+                                                data_cells{end+1} = data;
+                                                var_names{end+1} = fullSignalName;
+                                                fprintf('Debug: Added Simscape signal %s (length: %d)\n', fullSignalName, length(data));
+                                            else
+                                                fprintf('Debug: Skipping Simscape signal %s (length mismatch: %d vs %d)\n', fullSignalName, length(data), length(time));
+                                            end
+                                        catch ME
+                                            fprintf('Debug: Error extracting Simscape signal %s: %s\n', signalName, ME.message);
+                                        end
+                                    catch ME
+                                        fprintf('Debug: Error processing signal %d in node %s: %s\n', j, nodeName, ME.message);
                                     end
                                 end
-                            catch ME
-                                fprintf('Debug: Error extracting Simscape signal %s: %s\n', signalName, ME.message);
+                            else
+                                fprintf('Debug: No signals found in node %s\n', nodeName);
                             end
                         end
+                    catch ME
+                        fprintf('Debug: Error processing child node %d: %s\n', i, ME.message);
                     end
                 end
+            else
+                fprintf('Debug: No child nodes found in simlog\n');
             end
             
             if length(data_cells) > 1
                 simscape_data = table(data_cells{:}, 'VariableNames', var_names);
+                fprintf('Debug: Created Simscape table with %d columns\n', width(simscape_data));
+            else
+                fprintf('Debug: No valid Simscape data extracted\n');
             end
+        else
+            fprintf('Debug: simlog is empty or not a simscape.logging.Node\n');
         end
     catch ME
         fprintf('Error extracting Simscape data: %s\n', ME.message);
+        fprintf('Stack trace:\n');
+        for i = 1:length(ME.stack)
+            fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
+        end
     end
 end
 function combined_table = combineDataSources(data_sources)
@@ -3334,5 +3480,394 @@ function data_array = extractDataFromField(field_value, expected_length)
         end
     catch
         data_array = [];
+    end
+end
+
+% FIXED: Extract from CombinedSignalBus
+function data_table = extractFromCombinedSignalBus(combinedBus)
+    data_table = [];
+    
+    try
+        fprintf('Debug: Processing CombinedSignalBus\n');
+        
+        % CombinedSignalBus should be a struct with time and signals
+        if ~isstruct(combinedBus)
+            fprintf('Debug: CombinedSignalBus is not a struct\n');
+            return;
+        end
+        
+        % Look for time field
+        bus_fields = fieldnames(combinedBus);
+        fprintf('Debug: CombinedSignalBus fields: %s\n', strjoin(bus_fields, ', '));
+        
+        time_field = '';
+        time_data = [];
+        
+        % Find time data
+        for i = 1:length(bus_fields)
+            field_name = bus_fields{i};
+            field_value = combinedBus.(field_name);
+            
+            if contains(lower(field_name), 'time') && isnumeric(field_value)
+                time_field = field_name;
+                time_data = field_value(:);  % Ensure column vector
+                fprintf('Debug: Found time field: %s (length: %d)\n', field_name, length(time_data));
+                break;
+            end
+        end
+        
+        if isempty(time_data)
+            fprintf('Debug: No time field found in CombinedSignalBus\n');
+            return;
+        end
+        
+        % Extract all other numeric fields
+        data_cells = {time_data};
+        var_names = {'time'};
+        
+        for i = 1:length(bus_fields)
+            field_name = bus_fields{i};
+            
+            % Skip time field
+            if strcmp(field_name, time_field)
+                continue;
+            end
+            
+            field_value = combinedBus.(field_name);
+            
+            % Handle different data types
+            if isnumeric(field_value)
+                % Check if it's the right length
+                if length(field_value) == length(time_data)
+                    data_cells{end+1} = field_value(:);  % Ensure column vector
+                    var_names{end+1} = field_name;
+                    fprintf('Debug: Added field %s\n', field_name);
+                elseif numel(field_value) > 1 && size(field_value, 1) == length(time_data)
+                    % Multi-dimensional data
+                    for col = 1:size(field_value, 2)
+                        data_cells{end+1} = field_value(:, col);
+                        var_names{end+1} = sprintf('%s_%d', field_name, col);
+                        fprintf('Debug: Added multi-dim field %s_%d\n', field_name, col);
+                    end
+                else
+                    fprintf('Debug: Skipping field %s (length mismatch: %d vs %d)\n', field_name, length(field_value), length(time_data));
+                end
+            elseif isstruct(field_value)
+                % Handle nested structs
+                nested_data = extractFromNestedStruct(field_value, field_name, time_data);
+                if ~isempty(nested_data)
+                    % Add nested data
+                    nested_vars = nested_data.Properties.VariableNames;
+                    for j = 1:length(nested_vars)
+                        if ~strcmp(nested_vars{j}, 'time')  % Don't duplicate time
+                            data_cells{end+1} = nested_data.(nested_vars{j});
+                            var_names{end+1} = nested_vars{j};
+                        end
+                    end
+                end
+            end
+        end
+        
+        % Create table if we have data
+        if length(data_cells) > 1
+            data_table = table(data_cells{:}, 'VariableNames', var_names);
+            fprintf('Debug: Created CombinedSignalBus table with %d columns\n', width(data_table));
+        else
+            fprintf('Debug: No valid data found in CombinedSignalBus\n');
+        end
+        
+    catch ME
+        fprintf('Error extracting CombinedSignalBus data: %s\n', ME.message);
+    end
+end
+
+% FIXED: Extract from nested struct
+function data_table = extractFromNestedStruct(nested_struct, struct_name, time_data)
+    data_table = [];
+    
+    try
+        if ~isstruct(nested_struct)
+            return;
+        end
+        
+        nested_fields = fieldnames(nested_struct);
+        data_cells = {};
+        var_names = {};
+        
+        for i = 1:length(nested_fields)
+            field_name = nested_fields{i};
+            field_value = nested_struct.(field_name);
+            
+            if isnumeric(field_value) && length(field_value) == length(time_data)
+                data_cells{end+1} = field_value(:);
+                var_names{end+1} = sprintf('%s_%s', struct_name, field_name);
+            elseif isstruct(field_value)
+                % Recursively handle deeper nesting
+                deeper_data = extractFromNestedStruct(field_value, sprintf('%s_%s', struct_name, field_name), time_data);
+                if ~isempty(deeper_data)
+                    deeper_vars = deeper_data.Properties.VariableNames;
+                    for j = 1:length(deeper_vars)
+                        data_cells{end+1} = deeper_data.(deeper_vars{j});
+                        var_names{end+1} = deeper_vars{j};
+                    end
+                end
+            end
+        end
+        
+        if ~isempty(data_cells)
+            % Add time column
+            data_cells = [{time_data}, data_cells];
+            var_names = [{'time'}, var_names];
+            data_table = table(data_cells{:}, 'VariableNames', var_names);
+        end
+        
+    catch ME
+        fprintf('Error extracting nested struct %s: %s\n', struct_name, ME.message);
+    end
+end
+
+% FIXED: Extract from logsout with proper Signal handling
+function logsout_data = extractLogsoutDataFixed(logsout)
+    logsout_data = [];
+    
+    try
+        fprintf('Debug: Extracting logsout data, type: %s\n', class(logsout));
+        
+        % Handle modern Simulink.SimulationData.Dataset format
+        if isa(logsout, 'Simulink.SimulationData.Dataset')
+            fprintf('Debug: Processing Dataset format with %d elements\n', logsout.numElements);
+            
+            if logsout.numElements == 0
+                fprintf('Debug: Dataset is empty\n');
+                return;
+            end
+            
+            % Get time from first element
+            first_element = logsout.getElement(1);  % Use getElement instead of {}
+            
+            % Handle Signal objects properly
+            if isa(first_element, 'Simulink.SimulationData.Signal')
+                time = first_element.Values.Time;
+                fprintf('Debug: Using time from Signal object, length: %d\n', length(time));
+            elseif isa(first_element, 'timeseries')
+                time = first_element.Time;
+                fprintf('Debug: Using time from timeseries, length: %d\n', length(time));
+            else
+                fprintf('Debug: Unknown first element type: %s\n', class(first_element));
+                return;
+            end
+            
+            data_cells = {time};
+            var_names = {'time'};
+            
+            % Process each element in the dataset
+            for i = 1:logsout.numElements
+                element = logsout.getElement(i);  % Use getElement
+                
+                if isa(element, 'Simulink.SimulationData.Signal')
+                    signalName = element.Name;
+                    if isempty(signalName)
+                        signalName = sprintf('Signal_%d', i);
+                    end
+                    
+                    % Extract data from Signal object
+                    data = element.Values.Data;
+                    signal_time = element.Values.Time;
+                    
+                    % Ensure data matches time length
+                    if isnumeric(data) && length(signal_time) == length(time)
+                        if size(data, 2) > 1
+                            % Multi-dimensional signal
+                            for col = 1:size(data, 2)
+                                data_cells{end+1} = data(:, col);
+                                var_names{end+1} = sprintf('%s_%d', signalName, col);
+                                fprintf('Debug: Added multi-dim signal %s_%d\n', signalName, col);
+                            end
+                        else
+                            data_cells{end+1} = data(:);  % Flatten to column
+                            var_names{end+1} = signalName;
+                            fprintf('Debug: Added signal %s (length: %d)\n', signalName, length(data));
+                        end
+                    else
+                        fprintf('Debug: Skipping signal %s (time length mismatch: %d vs %d)\n', signalName, length(signal_time), length(time));
+                    end
+                    
+                elseif isa(element, 'timeseries')
+                    signalName = element.Name;
+                    data = element.Data;
+                    if isnumeric(data) && length(data) == length(time)
+                        data_cells{end+1} = data(:);
+                        var_names{end+1} = signalName;
+                        fprintf('Debug: Added timeseries %s\n', signalName);
+                    end
+                else
+                    fprintf('Debug: Element %d is type: %s\n', i, class(element));
+                end
+            end
+            
+            % Create table if we have data
+            if length(data_cells) > 1
+                logsout_data = table(data_cells{:}, 'VariableNames', var_names);
+                fprintf('Debug: Created logsout table with %d columns\n', width(logsout_data));
+            else
+                fprintf('Debug: No valid data found in logsout Dataset\n');
+            end
+            
+        else
+            fprintf('Debug: Logsout format not supported: %s\n', class(logsout));
+        end
+        
+    catch ME
+        fprintf('Error extracting logsout data: %s\n', ME.message);
+        fprintf('Stack trace:\n');
+        for i = 1:length(ME.stack)
+            fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
+        end
+    end
+end
+
+% FIXED: Extract from Simscape with corrected API calls
+function simscape_data = extractSimscapeDataFixed(simlog)
+    simscape_data = [];
+    
+    try
+        fprintf('Debug: Extracting Simscape data\n');
+        
+        if ~isempty(simlog) && isa(simlog, 'simscape.logging.Node')
+            % Get series data - this is the correct way to access Simscape data
+            try
+                series_info = simlog.series();
+                if ~isempty(series_info)
+                    time = series_info.time;
+                    fprintf('Debug: Found Simscape time series, length: %d\n', length(time));
+                    
+                    data_cells = {time};
+                    var_names = {'time'};
+                    
+                    % Get all logged variables
+                    logged_vars = simlog.listVariables('-all');
+                    fprintf('Debug: Found %d Simscape variables\n', length(logged_vars));
+                    
+                    for i = 1:length(logged_vars)
+                        var_name = logged_vars{i};
+                        try
+                            var_data = simlog.find(var_name);
+                            if ~isempty(var_data) && isprop(var_data, 'series')
+                                var_series = var_data.series();
+                                if ~isempty(var_series) && length(var_series.values) == length(time)
+                                    data_cells{end+1} = var_series.values;
+                                    var_names{end+1} = strrep(var_name, '.', '_');
+                                    fprintf('Debug: Added Simscape variable %s\n', var_name);
+                                end
+                            end
+                        catch
+                            % Skip variables that can't be accessed
+                            continue;
+                        end
+                    end
+                    
+                    if length(data_cells) > 1
+                        simscape_data = table(data_cells{:}, 'VariableNames', var_names);
+                        fprintf('Debug: Created Simscape table with %d columns\n', width(simscape_data));
+                    end
+                end
+            catch ME2
+                fprintf('Debug: Could not access Simscape series data: %s\n', ME2.message);
+            end
+        else
+            fprintf('Debug: Simlog is not a valid Simscape logging node\n');
+        end
+        
+    catch ME
+        fprintf('Error extracting Simscape data: %s\n', ME.message);
+    end
+end
+
+% FIXED: Extract workspace outputs (tout, xout, etc.)
+function workspace_data = extractWorkspaceOutputs(simOut)
+    workspace_data = [];
+    
+    try
+        fprintf('Debug: Extracting workspace outputs\n');
+        
+        % Get available properties
+        if isa(simOut, 'Simulink.SimulationOutput')
+            available = simOut.who;
+        else
+            available = fieldnames(simOut);
+        end
+        
+        fprintf('Debug: Available outputs: %s\n', strjoin(available, ', '));
+        
+        % Look for tout (time output)
+        time_data = [];
+        if ismember('tout', available)
+            if isa(simOut, 'Simulink.SimulationOutput')
+                time_data = simOut.get('tout');
+            else
+                time_data = simOut.tout;
+            end
+            fprintf('Debug: Found tout with length: %d\n', length(time_data));
+        end
+        
+        if isempty(time_data)
+            fprintf('Debug: No time output found\n');
+            return;
+        end
+        
+        data_cells = {time_data(:)};
+        var_names = {'time'};
+        
+        % Look for xout (state output)
+        if ismember('xout', available)
+            if isa(simOut, 'Simulink.SimulationOutput')
+                xout = simOut.get('xout');
+            else
+                xout = simOut.xout;
+            end
+            
+            if ~isempty(xout) && size(xout, 1) == length(time_data)
+                for i = 1:size(xout, 2)
+                    data_cells{end+1} = xout(:, i);
+                    var_names{end+1} = sprintf('x%d', i);
+                end
+                fprintf('Debug: Added xout with %d states\n', size(xout, 2));
+            end
+        end
+        
+        % Look for other numeric outputs
+        for i = 1:length(available)
+            var_name = available{i};
+            
+            % Skip already processed variables
+            if ismember(var_name, {'tout', 'xout', 'logsout', 'simlog', 'CombinedSignalBus'})
+                continue;
+            end
+            
+            try
+                if isa(simOut, 'Simulink.SimulationOutput')
+                    var_data = simOut.get(var_name);
+                else
+                    var_data = simOut.(var_name);
+                end
+                
+                if isnumeric(var_data) && length(var_data) == length(time_data)
+                    data_cells{end+1} = var_data(:);
+                    var_names{end+1} = var_name;
+                    fprintf('Debug: Added workspace output %s\n', var_name);
+                end
+            catch
+                % Skip variables that can't be accessed
+                continue;
+            end
+        end
+        
+        if length(data_cells) > 1
+            workspace_data = table(data_cells{:}, 'VariableNames', var_names);
+            fprintf('Debug: Created workspace outputs table with %d columns\n', width(workspace_data));
+        end
+        
+    catch ME
+        fprintf('Error extracting workspace outputs: %s\n', ME.message);
     end
 end
