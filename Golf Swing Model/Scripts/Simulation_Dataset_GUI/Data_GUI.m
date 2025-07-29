@@ -1878,10 +1878,13 @@ function successful_trials = runParallelSimulations(handles, config)
                     result = processSimulationOutput(i, config, simOuts(i));
                     if result.success
                         successful_trials = successful_trials + 1;
+                        fprintf('✓ Trial %d completed successfully\n', i);
                     end
                 catch ME
                     fprintf('Error processing trial %d: %s\n', i, ME.message);
                 end
+            else
+                fprintf('✗ Trial %d simulation failed\n', i);
             end
         end
         
@@ -2024,8 +2027,7 @@ function result = runSingleTrial(trial_num, config, trial_coefficients)
         simOut = sim(simIn);
         fprintf(' Done.\n');
         
-        % Add inspection for debugging
-        inspectSimulationOutput(simOut);
+
         
         % Restore warning state
         warning(warning_state);
@@ -2084,14 +2086,14 @@ function simIn = setModelParameters(simIn, config)
         
         % FIXED: Ensure To Workspace blocks save to 'out' variable
         
-        % Apply animation setting
-        if isfield(config, 'enable_animation')
-            if config.enable_animation
-                simIn = simIn.setModelParameter('SimMechanicsOpenGL', 'on');
-                fprintf('Animation enabled for simulation\n');
-            else
-                simIn = simIn.setModelParameter('SimMechanicsOpenGL', 'off');
-            end
+        % Apply animation setting (disable by default to avoid graphics issues)
+        if isfield(config, 'enable_animation') && config.enable_animation
+            simIn = simIn.setModelParameter('SimMechanicsOpenGL', 'on');
+            fprintf('Animation enabled for simulation\n');
+        else
+            simIn = simIn.setModelParameter('SimMechanicsOpenGL', 'off');
+            simIn = simIn.setModelParameter('UnconnectedInputMsg', 'warning');
+            simIn = simIn.setModelParameter('UnconnectedOutputMsg', 'warning');
         end
         
     catch ME
@@ -2402,6 +2404,8 @@ function validateCoefficientBounds(handles, coeff_range)
         fprintf('Warning: Could not validate coefficient bounds: %s\n', ME.message);
     end
 end
+
+
 
 function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
     % Extract model workspace variables and add as constant columns
@@ -2864,59 +2868,6 @@ function closeGUICallback(src, evt)
     
     % Close the figure
     delete(src);
-end
-function inspectSimulationOutput(simOut)
-    fprintf('\n=== Simulation Output Inspection ===\n');
-    fprintf('Type: %s\n', class(simOut));
-    
-    if isa(simOut, 'Simulink.SimulationOutput')
-        fprintf('Available data:\n');
-        available = simOut.who;
-        for i = 1:length(available)
-            fprintf('  - %s\n', available{i});
-        end
-        
-        % Check for 'out' specifically
-        if ismember('out', available)
-            out = simOut.get('out');
-            fprintf('\n''out'' structure type: %s\n', class(out));
-            
-            if isstruct(out)
-                fields = fieldnames(out);
-                fprintf('Number of fields: %d\n', length(fields));
-                
-                for i = 1:min(10, length(fields))  % Show first 10 fields
-                    field_data = out.(fields{i});
-                    fprintf('  - %s (type: %s, size: %s', fields{i}, ...
-                            class(field_data), mat2str(size(field_data)));
-                    
-                    % Additional info for specific types
-                    if isstruct(field_data) && isfield(field_data, 'signals')
-                        fprintf(', has signals: %d', length(field_data.signals));
-                    end
-                    fprintf(')\n');
-                end
-                
-                if length(fields) > 10
-                    fprintf('  ... and %d more fields\n', length(fields) - 10);
-                end
-            end
-        end
-        
-        % Check for logsout
-        if ismember('logsout', available)
-            logsout = simOut.get('logsout');
-            if isa(logsout, 'Simulink.SimulationData.Dataset')
-                fprintf('\nLogsout Dataset with %d elements\n', logsout.numElements);
-            end
-        end
-        
-        % Check for simlog (Simscape)
-        if ismember('simlog', available)
-            fprintf('\nSimscape logging data available\n');
-        end
-    end
-    fprintf('=================================\n\n');
 end
 function data_array = extractDataFromField(field_value, expected_length)
     % Extract numeric data from various field formats

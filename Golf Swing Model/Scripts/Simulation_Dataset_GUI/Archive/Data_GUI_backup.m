@@ -2868,6 +2868,8 @@ function simscape_data = extractSimscapeDataFixed(simlog)
     end
 end
 
+
+
 function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
     % Extract model workspace variables and add as constant columns
     % These include segment lengths, masses, inertias, and other model parameters
