@@ -2198,47 +2198,65 @@ function browseInputFile(~, ~, handles)
     if filename ~= 0
         handles = guidata(handles.fig);
         fullPath = fullfile(pathname, filename);
+        set(handles.input_file_edit, 'String', fullPath);
         
-        % Update GUI displays - show filename in edit box, store full path
-        set(handles.input_file_edit, 'String', filename);
-        set(handles.input_file_edit, 'TooltipString', sprintf('Full path: %s', fullPath));
+        % Update the selected file text display
+        set(handles.selected_file_text, 'String', filename, ...
+            'ForegroundColor', [0, 0.5, 0]);  % Green color for selected file
         
         % Store the selected file path
         handles.selected_input_file = fullPath;
         
-        % Clear status message since user manually selected a new file
-        if isfield(handles, 'file_status_text')
-            set(handles.file_status_text, 'String', '');
-        end
-        
         guidata(handles.fig, handles);
-        
-        % Save preferences automatically
-        saveUserPreferences(handles);
-        
-        % Validate the file
-        validateInputFile(fullPath, handles);
+        updateCoefficientsPreview([], [], handles);
     end
 end
 
 function clearInputFile(~, ~, handles)
-    % Clear the selected input file
+    % Clear the input file selection
     handles = guidata(handles.fig);
-    set(handles.input_file_edit, 'String', 'Select a .mat input file...');
-    set(handles.input_file_edit, 'TooltipString', 'Selected starting point .mat file (hover to see full path)');
+    set(handles.input_file_edit, 'String', '');
+    
+    % Update the selected file text display
+    set(handles.selected_file_text, 'String', 'No file selected', ...
+        'ForegroundColor', [0.5, 0.5, 0.5]);  % Gray color for no selection
     
     % Clear the selected file path
     handles.selected_input_file = '';
+    
     guidata(handles.fig, handles);
+    updateCoefficientsPreview([], [], handles);
 end
 
+function browseOutputFolder(~, ~, handles)
+    % Browse for output folder
+    folder = uigetdir(pwd, 'Select Output Folder');
+    if folder ~= 0
+        handles = guidata(handles.fig);
+        set(handles.output_folder_edit, 'String', folder);
+        guidata(handles.fig, handles);
+    end
+end
 
-
-
-
-
-
-
+function torqueScenarioCallback(~, ~, handles)
+    % Handle torque scenario change
+    handles = guidata(handles.fig);
+    scenario = get(handles.torque_scenario_popup, 'Value');
+    
+    % Enable/disable relevant controls based on scenario
+    if scenario == 1 % Random
+        set(handles.coeff_range_edit, 'Enable', 'on');
+        set(handles.constant_value_edit, 'Enable', 'off');
+    elseif scenario == 2 % Constant
+        set(handles.coeff_range_edit, 'Enable', 'off');
+        set(handles.constant_value_edit, 'Enable', 'on');
+    else % From file
+        set(handles.coeff_range_edit, 'Enable', 'off');
+        set(handles.constant_value_edit, 'Enable', 'off');
+    end
+    
+    guidata(handles.fig, handles);
+end
 
 function validateInputFile(file_path, handles)
     % Validate the selected input file
