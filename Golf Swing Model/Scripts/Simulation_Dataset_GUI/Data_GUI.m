@@ -2123,33 +2123,100 @@ function simIn = setModelParameters(simIn, config)
         % Set output options - these are crucial for data logging
         simIn = simIn.setModelParameter('SaveOutput', 'on');
         simIn = simIn.setModelParameter('SaveFormat', 'Dataset');
-        simIn = simIn.setModelParameter('SaveState', 'on');
         
-        % Additional logging parameters
-        simIn = simIn.setModelParameter('LoggingToFile', 'off');
         % Use ReturnWorkspaceOutputs to return simulation results
         % directly to the MATLAB workspace.
         simIn = simIn.setModelParameter('ReturnWorkspaceOutputs', 'on');
         
-        % Ensure all signals are logged
+        % Set data logging parameters
         simIn = simIn.setModelParameter('SignalLogging', 'on');
         simIn = simIn.setModelParameter('SignalLoggingName', 'logsout');
         
-        % Additional parameters to ensure data is captured
-        simIn = simIn.setModelParameter('SaveToWorkspace', 'on');
-        simIn = simIn.setModelParameter('SaveScopeDataToWorkspace', 'on');
-        
-        % Animation settings
-        if isfield(config, 'enable_animation') && config.enable_animation
-            simIn = simIn.setModelParameter('SimulationMode', 'normal');
-        else
-            simIn = simIn.setModelParameter('SimulationMode', 'accelerator');
-        end
+        % Configure signal logging for specific blocks
+        simIn = configureSignalLogging(simIn, config);
         
         fprintf('Debug: Model parameters set successfully\n');
         
     catch ME
-        fprintf('Warning: Error setting model parameters: %s\n', ME.message);
+        fprintf('Error setting model parameters: %s\n', ME.message);
+        rethrow(ME);
+    end
+end
+
+function simIn = configureSignalLogging(simIn, config)
+    % Configure signal logging for specific blocks in the model
+    try
+        % Common signal blocks that should be logged
+        signal_blocks = {
+            'HipLogs',
+            'SpineLogs', 
+            'ShoulderLogs',
+            'ElbowLogs',
+            'WristLogs',
+            'ClubLogs',
+            'HandLogs',
+            'ForceLogs',
+            'TorqueLogs',
+            'PositionLogs',
+            'VelocityLogs',
+            'AccelerationLogs'
+        };
+        
+        % Enable logging for each signal block
+        blocks_found = 0;
+        for i = 1:length(signal_blocks)
+            block_name = signal_blocks{i};
+            try
+                % Try to set the block parameter for signal logging
+                simIn = simIn.setBlockParameter(block_name, 'DataLogging', 'on');
+                fprintf('Debug: Enabled logging for block: %s\n', block_name);
+                blocks_found = blocks_found + 1;
+            catch
+                % Block might not exist, which is okay
+                fprintf('Debug: Block %s not found, skipping\n', block_name);
+            end
+        end
+        
+        % Also try to enable logging for scope blocks
+        scope_blocks = {
+            'Scope',
+            'Scope1',
+            'Scope2',
+            'Scope3',
+            'Scope4',
+            'Scope5'
+        };
+        
+        for i = 1:length(scope_blocks)
+            scope_name = scope_blocks{i};
+            try
+                simIn = simIn.setBlockParameter(scope_name, 'SaveToWorkspace', 'on');
+                simIn = simIn.setBlockParameter(scope_name, 'SaveName', scope_name);
+                fprintf('Debug: Enabled workspace saving for scope: %s\n', scope_name);
+            catch
+                fprintf('Debug: Scope %s not found, skipping\n', scope_name);
+            end
+        end
+        
+        % If no specific blocks were found, try to enable logging for all signals
+        if blocks_found == 0
+            fprintf('Debug: No specific logging blocks found, enabling logging for all signals\n');
+            try
+                % Enable logging for all signals in the model
+                simIn = simIn.setModelParameter('SignalLogging', 'on');
+                simIn = simIn.setModelParameter('SignalLoggingName', 'logsout');
+                
+                % Try to enable logging for all blocks that have signals
+                simIn = simIn.setModelParameter('LoggingMode', 'LogAllSignals');
+                fprintf('Debug: Enabled logging for all signals\n');
+            catch ME
+                fprintf('Debug: Could not enable logging for all signals: %s\n', ME.message);
+            end
+        end
+        
+    catch ME
+        fprintf('Warning: Error configuring signal logging: %s\n', ME.message);
+        % Don't rethrow - this is not critical for simulation to run
     end
 end
 
@@ -2232,38 +2299,17 @@ function data_table = extractSimulationData(simOut, config)
             fprintf('Debug: Simulation completed successfully\n');
         end
         
-        % With ReturnWorkspaceOutputs enabled, data should be directly in simOut
-        % Check if simOut contains the expected data fields directly
-        if isfield(simOut, 'logsout') || isfield(simOut, 'simlog') || ...
-           any(contains(fieldnames(simOut), 'Logs'))
-            fprintf('Debug: Found data fields directly in simulation output\n');
+        % With programmatic simulation, data is returned directly in simOut
+        % Check what data fields are available in simOut
+        out_fields = fieldnames(simOut);
+        data_fields = out_fields(~ismember(out_fields, {'SimulationMetadata', 'ErrorMessage'}));
+        
+        if ~isempty(data_fields)
+            fprintf('Debug: Found data fields in simOut: %s\n', strjoin(data_fields, ', '));
             out = simOut;
-        elseif isfield(simOut, 'out')
-            fprintf('Debug: Found out field in simulation output\n');
-            out = simOut.out;
         else
-            fprintf('Debug: No data fields found, checking workspace for out variable\n');
-            % Check if 'out' variable exists in workspace
-            if evalin('base', 'exist(''out'', ''var'')')
-                out = evalin('base', 'out');
-                fprintf('Debug: Found out variable in workspace\n');
-            else
-                fprintf('Debug: No out variable found in workspace\n');
-                % Try to find any logged data in the workspace
-                workspace_vars = evalin('base', 'who');
-                logged_vars = workspace_vars(contains(workspace_vars, {'logsout', 'simlog', 'Logs'}));
-                if ~isempty(logged_vars)
-                    fprintf('Debug: Found logged variables in workspace: %s\n', strjoin(logged_vars, ', '));
-                    % Create a structure with the logged data
-                    out = struct();
-                    for i = 1:length(logged_vars)
-                        out.(logged_vars{i}) = evalin('base', logged_vars{i});
-                    end
-                else
-                    fprintf('Debug: No logged data found in workspace\n');
-                    return;
-                end
-            end
+            fprintf('Debug: No data fields found in simOut\n');
+            return;
         end
         
         fprintf('Debug: out variable type: %s\n', class(out));
@@ -2311,12 +2357,12 @@ function data_table = extractSimulationData(simOut, config)
             data_table = combineDataSources(all_data);
             fprintf('Debug: Combined data table created with %d rows\n', height(data_table));
         else
-            fprintf('Debug: No data sources found\n');
+            fprintf('Debug: No data extracted from any source\n');
         end
         
     catch ME
         fprintf('Error extracting simulation data: %s\n', ME.message);
-        fprintf('Error details:\n');
+        fprintf('Stack trace:\n');
         for i = 1:length(ME.stack)
             fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
         end
