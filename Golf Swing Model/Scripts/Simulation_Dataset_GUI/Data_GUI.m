@@ -2128,13 +2128,6 @@ function simIn = setModelParameters(simIn, config)
         % directly to the MATLAB workspace.
         simIn = simIn.setModelParameter('ReturnWorkspaceOutputs', 'on');
         
-        % Set data logging parameters
-        simIn = simIn.setModelParameter('SignalLogging', 'on');
-        simIn = simIn.setModelParameter('SignalLoggingName', 'logsout');
-        
-        % Configure signal logging for specific blocks
-        simIn = configureSignalLogging(simIn, config);
-        
         fprintf('Debug: Model parameters set successfully\n');
         
     catch ME
@@ -2207,7 +2200,7 @@ function simIn = configureSignalLogging(simIn, config)
                 simIn = simIn.setModelParameter('SignalLoggingName', 'logsout');
                 
                 % Try to enable logging for all blocks that have signals
-                simIn = simIn.setModelParameter('LoggingMode', 'LogAllSignals');
+                % simIn = simIn.setModelParameter('LoggingMode', 'LogAllSignals');
                 fprintf('Debug: Enabled logging for all signals\n');
             catch ME
                 fprintf('Debug: Could not enable logging for all signals: %s\n', ME.message);
