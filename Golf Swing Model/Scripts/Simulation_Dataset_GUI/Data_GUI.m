@@ -2009,43 +2009,39 @@ end
 
 % Real Simulation Function - Replaces Mock
 function result = runSingleTrial(trial_num, config, trial_coefficients)
-    result = struct('success', false, 'filename', '', 'error', '');
+    result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
     
     try
-        % Load the Simulink model
-        model_name = config.model_name;
-        if ~bdIsLoaded(model_name)
-            load_system(model_name);
-        end
+        % Create simulation input
+        simIn = Simulink.SimulationInput(config.model_path);
         
-        % Create SimulationInput object
-        simIn = Simulink.SimulationInput(model_name);
+        % Set model parameters
+        simIn = setModelParameters(simIn, config);
         
-        % Set simulation parameters
-        simIn = simIn.setModelParameter('StopTime', num2str(config.simulation_time));
-        simIn = simIn.setModelParameter('Solver', 'ode23t');
-        simIn = simIn.setModelParameter('RelTol', '1e-3');
-        simIn = simIn.setModelParameter('AbsTol', '1e-5');
-        simIn = simIn.setModelParameter('SaveOutput', 'on');
-        simIn = simIn.setModelParameter('SaveFormat', 'Dataset');
-        simIn = simIn.setModelParameter('SaveState', 'on');
-        
-        % Set polynomial coefficients
+        % Set polynomial coefficients for this trial
         simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
         
-        % Load input file if specified
-        if ~isempty(config.input_file) && exist(config.input_file, 'file')
-            simIn = loadInputFile(simIn, config.input_file);
-        end
+        % Suppress Bus Creator warnings more comprehensively
+        warning_state = warning('off', 'all');  % Suppress all warnings temporarily
         
-        % Run simulation
-        fprintf('Running trial %d simulation...\n', trial_num);
+        % Run simulation with progress indicator
+        fprintf('Running trial %d simulation...', trial_num);
         simOut = sim(simIn);
+        fprintf(' Done.\n');
+        
+        % Restore warning state
+        warning(warning_state);
         
         % Process simulation output
         result = processSimulationOutput(trial_num, config, simOut);
         
     catch ME
+        % Restore warning state in case of error
+        if exist('warning_state', 'var')
+            warning(warning_state);
+        end
+        
+        fprintf(' Failed.\n');
         result.success = false;
         result.error = ME.message;
         fprintf('Trial %d simulation failed: %s\n', trial_num, ME.message);
@@ -2325,45 +2321,6 @@ function combined_table = combineDataSources(data_sources)
         fprintf('Error combining data sources: %s\n', ME.message);
     end
 end
-
-% Remove the old mock function - it's no longer needed
-% function simResult = runSingleTrial(trial_num, config, trial_coefficients)
-%     % --- MOCK FUNCTION ---
-%     % Replace this with your actual Simulink simulation
-%     
-%     fprintf('--- MOCK RUN: Simulating trial %d ---\n', trial_num);
-%     simResult = struct('success', false, 'filename', '');
-%     
-%     try
-%         % Simulate some work
-%         pause(0.1); 
-%         
-%         % Create dummy data
-%         num_points = round(config.simulation_time * config.sample_rate);
-%         time_vector = linspace(0, config.simulation_time, num_points)';
-%         
-%         % Generate fake output signals
-%         output_signal_1 = sin(time_vector * trial_coefficients(1)/10) + randn(num_points, 1)*0.1;
-%         output_signal_2 = cos(time_vector * trial_coefficients(2)/10) + randn(num_points, 1)*0.1;
-%         
-%         T = table(time_vector, output_signal_1, output_signal_2);
-%         T.Properties.VariableNames = {'time', 'Joint1_Angle', 'Joint2_Velocity'};
-%         
-%         % Save to temporary file
-%         temp_filename = sprintf('raw_trial_%04d_temp.csv', trial_num);
-%         temp_filepath = fullfile(config.output_folder, temp_filename);
-%         writetable(T, temp_filepath);
-%         
-%         % Report success
-%         simResult.success = true;
-%         simResult.filename = temp_filename;
-%         
-%     catch ME
-%         simResult.success = false;
-%         simResult.error = ME.message;
-%         fprintf('--- MOCK RUN FAILED for trial %d: %s ---\n', trial_num, ME.message);
-%     end
-% end
 
 % Validate inputs
 function config = validateInputs(handles)
