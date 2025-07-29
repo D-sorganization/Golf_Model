@@ -138,10 +138,10 @@ function handles = createLeftColumnContent(parent, handles)
     totalSpacing = panelPadding + (numPanels-1)*panelSpacing + panelPadding;
     availableHeight = 1 - totalSpacing;
     
-    h1 = 0.22 * availableHeight;
+    h1 = 0.28 * availableHeight;  % Increased from 0.22 to provide more space for Simulink model selection
     h2 = 0.20 * availableHeight;
     h3 = 0.33 * availableHeight;
-    h4 = 0.25 * availableHeight;
+    h4 = 0.19 * availableHeight;  % Reduced from 0.25 to compensate for h1 increase
     
     % Calculate positions
     y4 = panelPadding;
@@ -238,16 +238,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                        'ForegroundColor', 'white', ...
                                        'Callback', @clearInputFile);
     
-    % File status
-    handles.file_status_text = uicontrol('Parent', panel, ...
-                                       'Style', 'text', ...
-                                       'String', '', ...
-                                       'Units', 'normalized', ...
-                                       'Position', [0.02, y-0.12, 0.48, 0.08], ...
-                                       'FontSize', 8, ...
-                                       'ForegroundColor', colors.success, ...
-                                       'HorizontalAlignment', 'left', ...
-                                       'BackgroundColor', colors.panel);
+
     
     % Trial Parameters
     y = y - 0.20;
@@ -1228,7 +1219,6 @@ function browseInputFile(src, evt)
         
         % Update display
         set(handles.input_file_edit, 'String', filename);
-        set(handles.file_status_text, 'String', 'File loaded successfully');
         
         % Save preferences with new input file
         saveUserPreferences(handles);
@@ -1241,7 +1231,6 @@ function clearInputFile(src, evt)
     handles = guidata(gcbf);
     handles.selected_input_file = '';
     set(handles.input_file_edit, 'String', 'No file selected');
-    set(handles.file_status_text, 'String', '');
     
     % Clear saved preference
     if isfield(handles, 'preferences')
@@ -2497,7 +2486,6 @@ function applyUserPreferences(handles)
                 handles.selected_input_file = prefs.last_input_file_path;
                 [~, filename, ext] = fileparts(prefs.last_input_file_path);
                 set(handles.input_file_edit, 'String', [filename ext]);
-                set(handles.file_status_text, 'String', 'File loaded from preferences');
             end
         end
         
