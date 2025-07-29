@@ -2024,6 +2024,10 @@ function result = runSingleTrial(trial_num, config, trial_coefficients)
         % Suppress specific warnings that are not critical
         warning_state = warning('off', 'Simulink:Bus:EditTimeBusPropNotAllowed');
         warning_state2 = warning('off', 'Simulink:Engine:BlockOutputNotUpdated');
+        warning_state3 = warning('off', 'Simulink:Engine:OutputNotConnected');
+        warning_state4 = warning('off', 'Simulink:Engine:InputNotConnected');
+        warning_state5 = warning('off', 'Simulink:Blocks:UnconnectedOutputPort');
+        warning_state6 = warning('off', 'Simulink:Blocks:UnconnectedInputPort');
         
         % Run simulation with progress indicator
         fprintf('Running trial %d simulation...', trial_num);
@@ -2036,6 +2040,10 @@ function result = runSingleTrial(trial_num, config, trial_coefficients)
         % Restore warning state
         warning(warning_state);
         warning(warning_state2);
+        warning(warning_state3);
+        warning(warning_state4);
+        warning(warning_state5);
+        warning(warning_state6);
         
         % Process simulation output
         result = processSimulationOutput(trial_num, config, simOut);
@@ -2044,6 +2052,21 @@ function result = runSingleTrial(trial_num, config, trial_coefficients)
         % Restore warning state in case of error
         if exist('warning_state', 'var')
             warning(warning_state);
+        end
+        if exist('warning_state2', 'var')
+            warning(warning_state2);
+        end
+        if exist('warning_state3', 'var')
+            warning(warning_state3);
+        end
+        if exist('warning_state4', 'var')
+            warning(warning_state4);
+        end
+        if exist('warning_state5', 'var')
+            warning(warning_state5);
+        end
+        if exist('warning_state6', 'var')
+            warning(warning_state6);
         end
         
         fprintf(' Failed.\n');
@@ -2087,15 +2110,8 @@ function simIn = setModelParameters(simIn, config)
         
         % FIXED: Ensure To Workspace blocks save to 'out' variable
         
-        % Apply animation setting
-        if isfield(config, 'enable_animation')
-            if config.enable_animation
-                simIn = simIn.setModelParameter('SimMechanicsOpenGL', 'on');
-                fprintf('Animation enabled for simulation\n');
-            else
-                simIn = simIn.setModelParameter('SimMechanicsOpenGL', 'off');
-            end
-        end
+        % Skip animation settings entirely for this model type
+        % SimMechanicsOpenGL parameter doesn't exist in this golf swing model
         
         % Debug messages removed to clean up output
         

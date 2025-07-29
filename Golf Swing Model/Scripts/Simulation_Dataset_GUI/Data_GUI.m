@@ -2106,6 +2106,10 @@ function result = runSingleTrial(trial_num, config, trial_coefficients)
         % Suppress specific warnings that are not critical
         warning_state = warning('off', 'Simulink:Bus:EditTimeBusPropNotAllowed');
         warning_state2 = warning('off', 'Simulink:Engine:BlockOutputNotUpdated');
+        warning_state3 = warning('off', 'Simulink:Engine:OutputNotConnected');
+        warning_state4 = warning('off', 'Simulink:Engine:InputNotConnected');
+        warning_state5 = warning('off', 'Simulink:Blocks:UnconnectedOutputPort');
+        warning_state6 = warning('off', 'Simulink:Blocks:UnconnectedInputPort');
         
         % Run simulation with progress indicator
         fprintf('Running trial %d simulation...', trial_num);
@@ -2117,6 +2121,10 @@ function result = runSingleTrial(trial_num, config, trial_coefficients)
         % Restore warning state
         warning(warning_state);
         warning(warning_state2);
+        warning(warning_state3);
+        warning(warning_state4);
+        warning(warning_state5);
+        warning(warning_state6);
         
         % Process simulation output
         result = processSimulationOutput(trial_num, config, simOut);
@@ -2125,6 +2133,21 @@ function result = runSingleTrial(trial_num, config, trial_coefficients)
         % Restore warning state in case of error
         if exist('warning_state', 'var')
             warning(warning_state);
+        end
+        if exist('warning_state2', 'var')
+            warning(warning_state2);
+        end
+        if exist('warning_state3', 'var')
+            warning(warning_state3);
+        end
+        if exist('warning_state4', 'var')
+            warning(warning_state4);
+        end
+        if exist('warning_state5', 'var')
+            warning(warning_state5);
+        end
+        if exist('warning_state6', 'var')
+            warning(warning_state6);
         end
         
         fprintf(' Failed.\n');
@@ -2140,51 +2163,64 @@ function result = runSingleTrial(trial_num, config, trial_coefficients)
     end
 end
 function simIn = setModelParameters(simIn, config)
-    % Set basic simulation parameters
-    try
-        % Set stop time
-        if isfield(config, 'simulation_time') && ~isempty(config.simulation_time)
-            simIn = simIn.setModelParameter('StopTime', num2str(config.simulation_time));
+            % Set basic simulation parameters with careful error handling
+        try
+            % Set stop time
+            if isfield(config, 'simulation_time') && ~isempty(config.simulation_time)
+                simIn = simIn.setModelParameter('StopTime', num2str(config.simulation_time));
+            end
+            
+            % Set solver carefully
+            try
+                simIn = simIn.setModelParameter('Solver', 'ode23t');
+            catch
+                fprintf('Warning: Could not set solver to ode23t\n');
+            end
+            
+            % Set tolerances carefully
+            try
+                simIn = simIn.setModelParameter('RelTol', '1e-3');
+                simIn = simIn.setModelParameter('AbsTol', '1e-5');
+            catch
+                fprintf('Warning: Could not set solver tolerances\n');
+            end
+            
+            % CRITICAL: Set output options for data logging
+            try
+                simIn = simIn.setModelParameter('SaveOutput', 'on');
+                simIn = simIn.setModelParameter('SaveFormat', 'Structure');
+                simIn = simIn.setModelParameter('ReturnWorkspaceOutputs', 'on');
+            catch ME
+                fprintf('Warning: Could not set output options: %s\n', ME.message);
+            end
+            
+            % Additional logging settings
+            try
+                simIn = simIn.setModelParameter('SignalLogging', 'on');
+                simIn = simIn.setModelParameter('SaveTime', 'on');
+            catch
+                fprintf('Warning: Could not set logging options\n');
+            end
+            
+            % To Workspace block settings
+            try
+                simIn = simIn.setModelParameter('LimitDataPoints', 'off');
+            catch
+                fprintf('Warning: Could not set LimitDataPoints\n');
+            end
+            
+            % Set other model parameters to suppress unconnected port warnings
+            try
+                simIn = simIn.setModelParameter('UnconnectedInputMsg', 'none');
+                simIn = simIn.setModelParameter('UnconnectedOutputMsg', 'none');
+            catch
+                % These parameters might not exist in all model types
+            end
+            
+        catch ME
+            fprintf('Error setting model parameters: %s\n', ME.message);
+            rethrow(ME);
         end
-        
-        % Set solver
-        simIn = simIn.setModelParameter('Solver', 'ode23t');
-        
-        % Set tolerances
-        simIn = simIn.setModelParameter('RelTol', '1e-3');
-        simIn = simIn.setModelParameter('AbsTol', '1e-5');
-        
-        % Let simulation run at optimal step size for accuracy
-        % We'll resample the output data later to control file size
-        
-        % CRITICAL: Set output options for data logging
-        simIn = simIn.setModelParameter('SaveOutput', 'on');
-        simIn = simIn.setModelParameter('SaveFormat', 'Structure'); % Changed to Structure for To Workspace blocks
-        simIn = simIn.setModelParameter('ReturnWorkspaceOutputs', 'on');
-        
-        % Additional settings that might help
-        simIn = simIn.setModelParameter('SignalLogging', 'on');
-        simIn = simIn.setModelParameter('SaveTime', 'on');
-        
-        % If using To Workspace blocks, ensure they're configured properly
-        simIn = simIn.setModelParameter('LimitDataPoints', 'off');
-        
-        % FIXED: Ensure To Workspace blocks save to 'out' variable
-        
-        % Apply animation setting (disable by default to avoid graphics issues)
-        if isfield(config, 'enable_animation') && config.enable_animation
-            simIn = simIn.setModelParameter('SimMechanicsOpenGL', 'on');
-            fprintf('Animation enabled for simulation\n');
-        else
-            simIn = simIn.setModelParameter('SimMechanicsOpenGL', 'off');
-            simIn = simIn.setModelParameter('UnconnectedInputMsg', 'warning');
-            simIn = simIn.setModelParameter('UnconnectedOutputMsg', 'warning');
-        end
-        
-    catch ME
-        fprintf('Error setting model parameters: %s\n', ME.message);
-        rethrow(ME);
-    end
 end
 function result = processSimulationOutput(trial_num, config, simOut)
     result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
@@ -2981,12 +3017,23 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
         time_field = '';
         time_data = [];
         
-        % Find time data
+        % Find time data - check common time field patterns
         for i = 1:length(bus_fields)
             field_name = bus_fields{i};
             field_value = combinedBus.(field_name);
             
-            if contains(lower(field_name), 'time') && isnumeric(field_value)
+            % Check if this field contains time data
+            if isstruct(field_value) && isfield(field_value, 'time')
+                time_field = field_name;
+                time_data = field_value.time(:);  % Extract time from struct
+                fprintf('Debug: Found time in %s.time (length: %d)\n', field_name, length(time_data));
+                break;
+            elseif isstruct(field_value) && isfield(field_value, 'Time')
+                time_field = field_name;
+                time_data = field_value.Time(:);  % Extract Time from struct
+                fprintf('Debug: Found time in %s.Time (length: %d)\n', field_name, length(time_data));
+                break;
+            elseif contains(lower(field_name), 'time') && isnumeric(field_value)
                 time_field = field_name;
                 time_data = field_value(:);  % Ensure column vector
                 fprintf('Debug: Found time field: %s (length: %d)\n', field_name, length(time_data));
@@ -2994,9 +3041,60 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
             end
         end
         
+        % If still no time found, try the first field that looks like it has time data
+        if isempty(time_data)
+            for i = 1:length(bus_fields)
+                field_name = bus_fields{i};
+                field_value = combinedBus.(field_name);
+                
+                if isstruct(field_value)
+                    sub_fields = fieldnames(field_value);
+                    for j = 1:length(sub_fields)
+                        if contains(lower(sub_fields{j}), 'time')
+                            time_field = field_name;
+                            time_data = field_value.(sub_fields{j})(:);
+                            fprintf('Debug: Found time in %s.%s (length: %d)\n', field_name, sub_fields{j}, length(time_data));
+                            break;
+                        end
+                    end
+                    if ~isempty(time_data)
+                        break;
+                    end
+                end
+            end
+        end
+        
         if isempty(time_data)
             fprintf('Debug: No time field found in CombinedSignalBus\n');
-            return;
+            fprintf('Debug: Available fields: %s\n', strjoin(bus_fields, ', '));
+            
+            % Try to use the first field as a fallback and extract its time
+            if ~isempty(bus_fields)
+                first_field = bus_fields{1};
+                first_value = combinedBus.(first_field);
+                fprintf('Debug: Examining first field %s (type: %s)\n', first_field, class(first_value));
+                
+                if isstruct(first_value)
+                    sub_fields = fieldnames(first_value);
+                    fprintf('Debug: Subfields: %s\n', strjoin(sub_fields, ', '));
+                    
+                    % Look for any numeric array that could be time
+                    for k = 1:length(sub_fields)
+                        sub_val = first_value.(sub_fields{k});
+                        if isnumeric(sub_val) && length(sub_val) > 1
+                            time_data = sub_val(:);
+                            time_field = first_field;
+                            fprintf('Debug: Using %s.%s as time (length: %d)\n', first_field, sub_fields{k}, length(time_data));
+                            break;
+                        end
+                    end
+                end
+            end
+            
+            if isempty(time_data)
+                fprintf('Debug: Could not find any usable time data\n');
+                return;
+            end
         end
         
         % Extract all other numeric fields
@@ -3265,9 +3363,20 @@ function simscape_data = extractSimscapeDataFixed(simlog)
                     data_cells = {time};
                     var_names = {'time'};
                     
-                    % Get all logged variables
-                    logged_vars = simlog.listVariables('-all');
-                    fprintf('Debug: Found %d Simscape variables\n', length(logged_vars));
+                    % Get all logged variables using correct method
+                    try
+                        logged_vars = simlog.getElementNames();
+                        fprintf('Debug: Found %d Simscape variables\n', length(logged_vars));
+                    catch
+                        % Alternative method for different MATLAB versions
+                        try
+                            logged_vars = fieldnames(simlog);
+                            fprintf('Debug: Using fieldnames, found %d Simscape variables\n', length(logged_vars));
+                        catch
+                            fprintf('Debug: Could not get Simscape variable list\n');
+                            logged_vars = {};
+                        end
+                    end
                     
                     for i = 1:length(logged_vars)
                         var_name = logged_vars{i};
