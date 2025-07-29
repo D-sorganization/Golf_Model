@@ -51,7 +51,6 @@ function Data_GUI()
     updatePreview([], [], handles.fig);
     updateCoefficientsPreview([], [], handles.fig);
 end
-
 function handles = createMainLayout(fig, handles)
     % Create main layout with professional design
     colors = handles.colors;
@@ -129,7 +128,6 @@ function handles = createMainLayout(fig, handles)
     handles = createLeftColumnContent(leftPanel, handles);
     handles = createRightColumnContent(rightPanel, handles);
 end
-
 function handles = createLeftColumnContent(parent, handles)
     % Create left column panels
     panelSpacing = 0.015;
@@ -157,7 +155,6 @@ function handles = createLeftColumnContent(parent, handles)
     handles = createJointEditorPanel(parent, handles, y3, h3);
     handles = createOutputPanel(parent, handles, y4, h4);
 end
-
 function handles = createRightColumnContent(parent, handles)
     % Create right column panels
     panelSpacing = 0.015;
@@ -185,7 +182,6 @@ function handles = createRightColumnContent(parent, handles)
     handles = createProgressPanel(parent, handles, y3, h3);
     handles = createControlPanel(parent, handles, y4, h4);
 end
-
 function handles = createTrialAndDataPanel(parent, handles, yPos, height)
     % Configuration panel
     colors = handles.colors;
@@ -457,7 +453,6 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
         fprintf('Warning: Could not find model file automatically\n');
     end
 end
-
 function handles = createModelingPanel(parent, handles, yPos, height)
     % Torque Modeling Panel
     colors = handles.colors;
@@ -529,7 +524,6 @@ function handles = createModelingPanel(parent, handles, yPos, height)
                                            'Enable', 'off', ...
                                            'Callback', @updateCoefficientsPreview);
 end
-
 function handles = createJointEditorPanel(parent, handles, yPos, height)
     % Joint Editor Panel
     colors = handles.colors;
@@ -685,7 +679,6 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
     
     handles.param_info = param_info;
 end
-
 function handles = createOutputPanel(parent, handles, yPos, height)
     % Output Settings Panel
     colors = handles.colors;
@@ -761,7 +754,6 @@ function handles = createOutputPanel(parent, handles, yPos, height)
                                     'Position', [0.65, y, 0.31, rowHeight], ...
                                     'BackgroundColor', 'white');
 end
-
 function handles = createPreviewPanel(parent, handles, yPos, height)
     % Parameters Preview Panel
     colors = handles.colors;
@@ -794,7 +786,6 @@ function handles = createPreviewPanel(parent, handles, yPos, height)
                                    'RowStriping', 'on', ...
                                    'FontSize', 9);
 end
-
 function handles = createCoefficientsPanel(parent, handles, yPos, height)
     % Coefficients Table Panel
     colors = handles.colors;
@@ -898,7 +889,6 @@ function handles = createCoefficientsPanel(parent, handles, yPos, height)
     handles.edited_cells = {};
     handles.param_info = param_info;
 end
-
 function handles = createProgressPanel(parent, handles, yPos, height)
     % Progress Panel
     colors = handles.colors;
@@ -934,7 +924,6 @@ function handles = createProgressPanel(parent, handles, yPos, height)
                                    'ForegroundColor', colors.success, ...
                                    'FontSize', 9);
 end
-
 function handles = createControlPanel(parent, handles, yPos, height)
     % Control Buttons Panel
     colors = handles.colors;
@@ -1001,9 +990,7 @@ function handles = createControlPanel(parent, handles, yPos, height)
                                           'ForegroundColor', 'white', ...
                                           'Callback', @loadConfiguration);
 end
-
 % ==================== CALLBACK FUNCTIONS ====================
-
 function torqueScenarioCallback(src, ~)
     handles = guidata(gcbf);
     scenario_idx = get(src, 'Value');
@@ -1025,7 +1012,6 @@ function torqueScenarioCallback(src, ~)
     updateCoefficientsPreview([], [], gcbf);
     guidata(handles.fig, handles);
 end
-
 function browseOutputFolder(src, ~)
     handles = guidata(gcbf);
     folder = uigetdir(get(handles.output_folder_edit, 'String'), 'Select Output Folder');
@@ -1036,7 +1022,6 @@ function browseOutputFolder(src, ~)
         saveUserPreferences(handles);
     end
 end
-
 function updatePreview(~, ~, fig)
     if nargin < 3 || isempty(fig)
         fig = gcbf;
@@ -1087,7 +1072,6 @@ function updatePreview(~, ~, fig)
         set(handles.preview_table, 'Data', error_data);
     end
 end
-
 function updateCoefficientsPreview(~, ~, fig)
     if nargin < 3 || isempty(fig)
         fig = gcbf;
@@ -1161,7 +1145,6 @@ function updateCoefficientsPreview(~, ~, fig)
         fprintf('Error in updateCoefficientsPreview: %s\n', ME.message);
     end
 end
-
 % [All other callback functions remain the same as in the original code...]
 % Start Generation
 function startGeneration(src, evt)
@@ -1202,7 +1185,6 @@ function startGeneration(src, evt)
         errordlg(ME.message, 'Generation Failed');
     end
 end
-
 % Stop Generation
 function stopGeneration(src, evt)
     handles = guidata(gcbf);
@@ -1211,7 +1193,6 @@ function stopGeneration(src, evt)
     set(handles.status_text, 'String', 'Status: Stopping...');
     set(handles.progress_text, 'String', 'Generation stopped by user');
 end
-
 % Browse Input File
 function browseInputFile(src, evt)
     handles = guidata(gcbf);
@@ -1257,7 +1238,6 @@ function browseInputFile(src, evt)
         guidata(handles.fig, handles);
     end
 end
-
 % Clear Input File
 function clearInputFile(src, evt)
     handles = guidata(gcbf);
@@ -1274,7 +1254,6 @@ function clearInputFile(src, evt)
     
     guidata(handles.fig, handles);
 end
-
 % Select Simulink Model
 function selectSimulinkModel(src, evt)
     handles = guidata(gcbf);
@@ -1347,7 +1326,6 @@ function selectSimulinkModel(src, evt)
         end
     end
 end
-
 % Update Joint Coefficients
 function updateJointCoefficients(src, evt)
     handles = guidata(gcbf);
@@ -1361,7 +1339,6 @@ function updateJointCoefficients(src, evt)
     set(handles.joint_status, 'String', sprintf('Ready - %s selected', joint_names{selected_idx}));
     guidata(handles.fig, handles);
 end
-
 % Update Trial Selection Mode
 function updateTrialSelectionMode(src, evt)
     handles = guidata(gcbf);
@@ -1375,7 +1352,6 @@ function updateTrialSelectionMode(src, evt)
     
     guidata(handles.fig, handles);
 end
-
 % Validate Coefficient Input
 function validateCoefficientInput(src, evt)
     value = get(src, 'String');
@@ -1388,7 +1364,6 @@ function validateCoefficientInput(src, evt)
         set(src, 'String', sprintf('%.2f', num_value));
     end
 end
-
 % Apply Joint to Table
 function applyJointToTable(src, evt)
     handles = guidata(gcbf);
@@ -1445,7 +1420,6 @@ function applyJointToTable(src, evt)
         msgbox(['Error applying coefficients: ' ME.message], 'Error', 'error');
     end
 end
-
 % Load Joint from Table
 function loadJointFromTable(src, evt, fig)
     if nargin < 3
@@ -1496,7 +1470,6 @@ function loadJointFromTable(src, evt, fig)
         end
     end
 end
-
 % Reset Coefficients
 function resetCoefficientsToGenerated(src, evt)
     handles = guidata(gcbf);
@@ -1510,7 +1483,6 @@ function resetCoefficientsToGenerated(src, evt)
         updateCoefficientsPreview([], [], gcbf);
     end
 end
-
 % Coefficient Cell Edit Callback
 function coefficientCellEditCallback(src, evt)
     handles = guidata(gcbf);
@@ -1545,7 +1517,6 @@ function coefficientCellEditCallback(src, evt)
         end
     end
 end
-
 % Apply Row to All
 function applyRowToAll(src, evt)
     handles = guidata(gcbf);
@@ -1576,7 +1547,6 @@ function applyRowToAll(src, evt)
         end
     end
 end
-
 % Export Coefficients to CSV
 function exportCoefficientsToCSV(src, evt)
     handles = guidata(gcbf);
@@ -1599,7 +1569,6 @@ function exportCoefficientsToCSV(src, evt)
         end
     end
 end
-
 % Import Coefficients from CSV
 function importCoefficientsFromCSV(src, evt)
     handles = guidata(gcbf);
@@ -1621,7 +1590,6 @@ function importCoefficientsFromCSV(src, evt)
         end
     end
 end
-
 % Save/Load Scenario
 function saveScenario(src, evt)
     handles = guidata(gcbf);
@@ -1647,7 +1615,6 @@ function saveScenario(src, evt)
         end
     end
 end
-
 function loadScenario(src, evt)
     handles = guidata(gcbf);
     
@@ -1672,7 +1639,6 @@ function loadScenario(src, evt)
         end
     end
 end
-
 % Search/Clear Search
 function searchCoefficients(src, evt)
     handles = guidata(gcbf);
@@ -1700,12 +1666,10 @@ function searchCoefficients(src, evt)
         msgbox('No matching columns found', 'Search Results');
     end
 end
-
 function clearSearch(src, evt)
     handles = guidata(gcbf);
     set(handles.search_edit, 'String', '');
 end
-
 % Validate Settings
 function validateSettings(src, evt)
     handles = guidata(gcbf);
@@ -1715,7 +1679,6 @@ function validateSettings(src, evt)
         msgbox('All settings are valid!', 'Validation Successful', 'help');
     end
 end
-
 % Save/Load Configuration
 function saveConfiguration(src, evt)
     handles = guidata(gcbf);
@@ -1731,7 +1694,6 @@ function saveConfiguration(src, evt)
         end
     end
 end
-
 function loadConfiguration(src, evt)
     handles = guidata(gcbf);
     
@@ -1746,7 +1708,6 @@ function loadConfiguration(src, evt)
         end
     end
 end
-
 % Helper function to gather configuration
 function config = gatherConfiguration(handles)
     config = struct();
@@ -1769,7 +1730,6 @@ function config = gatherConfiguration(handles)
     config.format = get(handles.format_popup, 'Value');
     config.coefficients_data = get(handles.coefficients_table, 'Data');
 end
-
 % Helper function to apply configuration
 function applyConfiguration(handles, config)
     % Apply all UI values
@@ -1826,7 +1786,6 @@ function applyConfiguration(handles, config)
     torqueScenarioCallback(handles.torque_scenario_popup, []);
     updatePreview([], [], handles.fig);
 end
-
 % [Previous helper functions remain the same...]
 % Run Generation Process
 function runGeneration(handles)
@@ -1885,7 +1844,6 @@ function runGeneration(handles)
         errordlg(ME.message, 'Generation Failed');
     end
 end
-
 function successful_trials = runParallelSimulations(handles, config)
     % Initialize parallel pool
     try
@@ -1936,7 +1894,6 @@ function successful_trials = runParallelSimulations(handles, config)
         successful_trials = 0;
     end
 end
-
 function successful_trials = runSequentialSimulations(handles, config)
     successful_trials = 0;
     
@@ -1968,7 +1925,6 @@ function successful_trials = runSequentialSimulations(handles, config)
         end
     end
 end
-
 function simInputs = prepareSimulationInputs(config)
     % Load the Simulink model
     model_name = config.model_name;
@@ -1995,7 +1951,7 @@ function simInputs = prepareSimulationInputs(config)
         simIn = Simulink.SimulationInput(model_name);
         
         % Set simulation parameters safely
-        simIn = setSimulationParameters(simIn, config);
+        simIn = setModelParameters(simIn, config);
         
         % Set polynomial coefficients
         simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
@@ -2008,7 +1964,6 @@ function simInputs = prepareSimulationInputs(config)
         simInputs(trial) = simIn;
     end
 end
-
 function simIn = setPolynomialCoefficients(simIn, coefficients, config)
     % Get parameter info for coefficient mapping
     param_info = getPolynomialParameterInfo();
@@ -2030,7 +1985,6 @@ function simIn = setPolynomialCoefficients(simIn, coefficients, config)
         end
     end
 end
-
 function simIn = loadInputFile(simIn, input_file)
     try
         % Load input data
@@ -2051,7 +2005,6 @@ function simIn = loadInputFile(simIn, input_file)
         warning('Could not load input file %s: %s', input_file, ME.message);
     end
 end
-
 % Real Simulation Function - Replaces Mock
 function result = runSingleTrial(trial_num, config, trial_coefficients)
     result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
@@ -2103,7 +2056,6 @@ function result = runSingleTrial(trial_num, config, trial_coefficients)
         end
     end
 end
-
 function simIn = setModelParameters(simIn, config)
     % Set basic simulation parameters
     try
@@ -2132,7 +2084,6 @@ function simIn = setModelParameters(simIn, config)
         simIn = simIn.setModelParameter('LimitDataPoints', 'off');
         
         % FIXED: Ensure To Workspace blocks save to 'out' variable
-        simIn = simIn.setModelParameter('SaveToWorkspace', 'on');
         
         fprintf('Debug: Model parameters set successfully\n');
         fprintf('Debug: SaveFormat = Structure, ReturnWorkspaceOutputs = on\n');
@@ -2142,7 +2093,6 @@ function simIn = setModelParameters(simIn, config)
         rethrow(ME);
     end
 end
-
 function result = processSimulationOutput(trial_num, config, simOut)
     result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
     
@@ -2205,7 +2155,6 @@ function result = processSimulationOutput(trial_num, config, simOut)
         end
     end
 end
-
 function data_table = extractSimulationData(simOut, config)
     data_table = [];
     
@@ -2325,7 +2274,6 @@ function data_table = extractSimulationData(simOut, config)
         end
     end
 end
-
 function workspace_data = extractWorkspaceData(out)
     workspace_data = [];
     
@@ -2416,7 +2364,6 @@ function workspace_data = extractWorkspaceData(out)
         fprintf('Error extracting workspace data: %s\n', ME.message);
     end
 end
-
 function struct_data = extractFromStructField(struct_value, struct_name, time_data)
     struct_data = [];
     
@@ -2457,7 +2404,6 @@ function struct_data = extractFromStructField(struct_value, struct_name, time_da
         fprintf('Error extracting from struct field %s: %s\n', struct_name, ME.message);
     end
 end
-
 function merged_table = mergeTables(table1, table2)
     merged_table = table1;
     
@@ -2488,7 +2434,6 @@ function merged_table = mergeTables(table1, table2)
         merged_table = table1;  % Return original if merge fails
     end
 end
-
 function data_table = extractSignalBusStructs(out)
     data_table = [];
     
@@ -2596,7 +2541,6 @@ function data_table = extractSignalBusStructs(out)
         fprintf('Error extracting signal bus structs: %s\n', ME.message);
     end
 end
-
 function data_table = extractFromLogStruct(logStruct, structName)
     data_table = [];
     try
@@ -2616,7 +2560,6 @@ function data_table = extractFromLogStruct(logStruct, structName)
         time = logStruct.(time_field);
         data_cells = {time};
         var_names = {'time'};
-
         % Special handling for 'signals' struct array (key fix)
         if isfield(logStruct, 'signals') && isstruct(logStruct.signals)
             signals = logStruct.signals;
@@ -2674,7 +2617,6 @@ function data_table = extractFromLogStruct(logStruct, structName)
                 end
             end
         end
-
         % Existing loop for other fields (e.g., non-bus data)
         for i = 1:length(structFields)
             fieldName = structFields{i};
@@ -2704,7 +2646,6 @@ function data_table = extractFromLogStruct(logStruct, structName)
                 var_names{end+1} = sprintf('%s_%s', structName, fieldName);
             end
         end
-
         if length(data_cells) > 1
             data_table = table(data_cells{:}, 'VariableNames', var_names);
             fprintf('Debug: Created table with %d columns from %s\n', width(data_table), structName);
@@ -2715,7 +2656,6 @@ function data_table = extractFromLogStruct(logStruct, structName)
         fprintf('Error extracting from %s: %s\n', structName, ME.message);
     end
 end
-
 function logsout_data = extractLogsoutData(logsout)
     logsout_data = [];
     
@@ -2812,7 +2752,6 @@ function logsout_data = extractLogsoutData(logsout)
         end
     end
 end
-
 function simscape_data = extractSimscapeData(simlog)
     simscape_data = [];
     
@@ -2881,7 +2820,6 @@ function simscape_data = extractSimscapeData(simlog)
         fprintf('Error extracting Simscape data: %s\n', ME.message);
     end
 end
-
 function combined_table = combineDataSources(data_sources)
     combined_table = [];
     
@@ -2917,7 +2855,6 @@ function combined_table = combineDataSources(data_sources)
         fprintf('Error combining data sources: %s\n', ME.message);
     end
 end
-
 % Validate inputs
 function config = validateInputs(handles)
     try
@@ -3006,7 +2943,6 @@ function config = validateInputs(handles)
         config = [];
     end
 end
-
 % Extract coefficients from table
 function coefficient_values = extractCoefficientsFromTable(handles)
     try
@@ -3041,7 +2977,6 @@ function coefficient_values = extractCoefficientsFromTable(handles)
         coefficient_values = [];
     end
 end
-
 % Helper functions
 function param_info = getPolynomialParameterInfo()
     % Get polynomial parameter structure with dynamic path resolution
@@ -3117,7 +3052,6 @@ function param_info = getPolynomialParameterInfo()
         param_info = getSimplifiedParameterInfo();
     end
 end
-
 function param_info = getSimplifiedParameterInfo()
     % Fallback structure
     joint_names = {
@@ -3133,13 +3067,11 @@ function param_info = getSimplifiedParameterInfo()
     end
     param_info.total_params = length(joint_names) * 7;
 end
-
 function short_name = getShortenedJointName(joint_name)
     % Create shortened joint names for display
     short_name = strrep(joint_name, 'TorqueInput', 'T');
     short_name = strrep(short_name, 'Input', '');
 end
-
 % Compile dataset
 function compileDataset(config)
     try
@@ -3203,7 +3135,6 @@ function compileDataset(config)
         fprintf('Error compiling dataset: %s\n', ME.message);
     end
 end
-
 % Preferences functions
 function handles = loadUserPreferences(handles)
     % Load user preferences with safe defaults
@@ -3237,7 +3168,6 @@ function handles = loadUserPreferences(handles)
         end
     end
 end
-
 function applyUserPreferences(handles)
     % Apply preferences to UI
     try
@@ -3275,7 +3205,6 @@ function applyUserPreferences(handles)
         % Silently fail if preferences can't be applied
     end
 end
-
 function saveUserPreferences(handles)
     % Save current settings as preferences
     try
@@ -3309,7 +3238,6 @@ function saveUserPreferences(handles)
         % Silently fail if can't save
     end
 end
-
 % GUI callbacks
 function closeGUICallback(src, evt)
     % Handle GUI close
@@ -3325,52 +3253,6 @@ function closeGUICallback(src, evt)
     % Close the figure
     delete(src);
 end
-
-function simIn = setSimulationParameters(simIn, config)
-    % Safely set simulation parameters with error handling
-    try
-        simIn = simIn.setModelParameter('StopTime', num2str(config.simulation_time));
-    catch
-        warning('Could not set StopTime parameter');
-    end
-    
-    try
-        simIn = simIn.setModelParameter('Solver', 'ode23t');
-    catch
-        warning('Could not set Solver parameter');
-    end
-    
-    try
-        simIn = simIn.setModelParameter('RelTol', '1e-3');
-    catch
-        warning('Could not set RelTol parameter');
-    end
-    
-    try
-        simIn = simIn.setModelParameter('AbsTol', '1e-5');
-    catch
-        warning('Could not set AbsTol parameter');
-    end
-    
-    try
-        simIn = simIn.setModelParameter('SaveOutput', 'on');
-    catch
-        warning('Could not set SaveOutput parameter');
-    end
-    
-    try
-        simIn = simIn.setModelParameter('SaveFormat', 'Structure'); % Changed to Structure for To Workspace blocks
-    catch
-        warning('Could not set SaveFormat parameter');
-    end
-    
-    try
-        simIn = simIn.setModelParameter('SaveState', 'on');
-    catch
-        warning('Could not set SaveState parameter');
-    end
-end
-
 function inspectSimulationOutput(simOut)
     fprintf('\n=== Simulation Output Inspection ===\n');
     fprintf('Type: %s\n', class(simOut));
@@ -3424,7 +3306,6 @@ function inspectSimulationOutput(simOut)
     end
     fprintf('=================================\n\n');
 end
-
 function data_array = extractDataFromField(field_value, expected_length)
     % Extract numeric data from various field formats
     data_array = [];
@@ -3454,58 +3335,4 @@ function data_array = extractDataFromField(field_value, expected_length)
     catch
         data_array = [];
     end
-end
-
-function inspectSimulationOutput(simOut)
-    fprintf('\n=== Simulation Output Inspection ===\n');
-    fprintf('Type: %s\n', class(simOut));
-    
-    if isa(simOut, 'Simulink.SimulationOutput')
-        fprintf('Available data:\n');
-        available = simOut.who;
-        for i = 1:length(available)
-            fprintf('  - %s\n', available{i});
-        end
-        
-        % Check for 'out' specifically
-        if ismember('out', available)
-            out = simOut.get('out');
-            fprintf('\n''out'' structure type: %s\n', class(out));
-            
-            if isstruct(out)
-                fields = fieldnames(out);
-                fprintf('Number of fields: %d\n', length(fields));
-                
-                for i = 1:min(10, length(fields))  % Show first 10 fields
-                    field_data = out.(fields{i});
-                    fprintf('  - %s (type: %s, size: %s', fields{i}, ...
-                            class(field_data), mat2str(size(field_data)));
-                    
-                    % Additional info for specific types
-                    if isstruct(field_data) && isfield(field_data, 'signals')
-                        fprintf(', has signals: %d', length(field_data.signals));
-                    end
-                    fprintf(')\n');
-                end
-                
-                if length(fields) > 10
-                    fprintf('  ... and %d more fields\n', length(fields) - 10);
-                end
-            end
-        end
-        
-        % Check for logsout
-        if ismember('logsout', available)
-            logsout = simOut.get('logsout');
-            if isa(logsout, 'Simulink.SimulationData.Dataset')
-                fprintf('\nLogsout Dataset with %d elements\n', logsout.numElements);
-            end
-        end
-        
-        % Check for simlog (Simscape)
-        if ismember('simlog', available)
-            fprintf('\nSimscape logging data available\n');
-        end
-    end
-    fprintf('=================================\n\n');
 end
