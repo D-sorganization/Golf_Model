@@ -2074,6 +2074,12 @@ function result = runSingleTrial(trial_num, config, trial_coefficients)
         simOut = sim(simIn);
         fprintf(' Done.\n');
         
+        % Debug: Check what we got from simulation
+        fprintf('Debug: Simulation output type: %s\n', class(simOut));
+        if isstruct(simOut)
+            fprintf('Debug: Simulation output fields: %s\n', strjoin(fieldnames(simOut), ', '));
+        end
+        
         % Restore warning state
         warning(warning_state);
         
@@ -2129,6 +2135,10 @@ function simIn = setModelParameters(simIn, config)
         simIn = simIn.setModelParameter('SignalLogging', 'on');
         simIn = simIn.setModelParameter('SignalLoggingName', 'logsout');
         
+        % Additional parameters to ensure data is captured
+        simIn = simIn.setModelParameter('SaveToWorkspace', 'on');
+        simIn = simIn.setModelParameter('SaveScopeDataToWorkspace', 'on');
+        
         % Animation settings
         if isfield(config, 'enable_animation') && config.enable_animation
             simIn = simIn.setModelParameter('SimulationMode', 'normal');
@@ -2136,9 +2146,7 @@ function simIn = setModelParameters(simIn, config)
             simIn = simIn.setModelParameter('SimulationMode', 'accelerator');
         end
         
-        % Note: SaveToWorkspace and SaveScopeDataToWorkspace are not valid parameters
-        % in newer versions of Simulink. Data logging is handled through the model's
-        % logging configuration and the SaveOutput parameter.
+        fprintf('Debug: Model parameters set successfully\n');
         
     catch ME
         fprintf('Warning: Error setting model parameters: %s\n', ME.message);
@@ -2224,19 +2232,37 @@ function data_table = extractSimulationData(simOut, config)
             fprintf('Debug: Simulation completed successfully\n');
         end
         
-        % The data should be in the 'out' field of the simulation output
-        if isfield(simOut, 'out')
+        % With ReturnWorkspaceOutputs enabled, data should be directly in simOut
+        % Check if simOut contains the expected data fields directly
+        if isfield(simOut, 'logsout') || isfield(simOut, 'simlog') || ...
+           any(contains(fieldnames(simOut), 'Logs'))
+            fprintf('Debug: Found data fields directly in simulation output\n');
+            out = simOut;
+        elseif isfield(simOut, 'out')
             fprintf('Debug: Found out field in simulation output\n');
             out = simOut.out;
         else
-            fprintf('Debug: No out field found, checking workspace for out variable\n');
+            fprintf('Debug: No data fields found, checking workspace for out variable\n');
             % Check if 'out' variable exists in workspace
             if evalin('base', 'exist(''out'', ''var'')')
                 out = evalin('base', 'out');
                 fprintf('Debug: Found out variable in workspace\n');
             else
                 fprintf('Debug: No out variable found in workspace\n');
-                return;
+                % Try to find any logged data in the workspace
+                workspace_vars = evalin('base', 'who');
+                logged_vars = workspace_vars(contains(workspace_vars, {'logsout', 'simlog', 'Logs'}));
+                if ~isempty(logged_vars)
+                    fprintf('Debug: Found logged variables in workspace: %s\n', strjoin(logged_vars, ', '));
+                    % Create a structure with the logged data
+                    out = struct();
+                    for i = 1:length(logged_vars)
+                        out.(logged_vars{i}) = evalin('base', logged_vars{i});
+                    end
+                else
+                    fprintf('Debug: No logged data found in workspace\n');
+                    return;
+                end
             end
         end
         
