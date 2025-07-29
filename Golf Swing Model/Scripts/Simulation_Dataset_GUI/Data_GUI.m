@@ -328,9 +328,16 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
               'HorizontalAlignment', 'left', ...
               'BackgroundColor', colors.panel);
     
+    % Check if parallel computing toolbox is available
+    if license('test', 'Distrib_Computing_Toolbox')
+        mode_options = {'Sequential', 'Parallel'};
+    else
+        mode_options = {'Sequential', 'Parallel (Toolbox Required)'};
+    end
+    
     handles.execution_mode_popup = uicontrol('Parent', panel, ...
                                             'Style', 'popupmenu', ...
-                                            'String', {'Sequential', 'Parallel'}, ...
+                                            'String', mode_options, ...
                                             'Units', 'normalized', ...
                                             'Position', [0.75, y, 0.18, rowHeight], ...
                                             'BackgroundColor', 'white');
@@ -409,6 +416,13 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
     handles.model_name = 'GolfSwing3D_Kinetic';
     handles.model_path = '';
     handles.selected_input_file = '';
+    
+    % Try to find default model
+    if exist('Model/GolfSwing3D_Kinetic.slx', 'file')
+        handles.model_path = fullfile(pwd, 'Model', 'GolfSwing3D_Kinetic.slx');
+    elseif exist('GolfSwing3D_Kinetic.slx', 'file')
+        handles.model_path = fullfile(pwd, 'GolfSwing3D_Kinetic.slx');
+    end
 end
 
 function handles = createModelingPanel(parent, handles, yPos, height)
@@ -693,7 +707,7 @@ function handles = createOutputPanel(parent, handles, yPos, height)
     
     handles.folder_name_edit = uicontrol('Parent', panel, ...
                                         'Style', 'edit', ...
-                                        'String', 'training_data_csv', ...
+                                        'String', sprintf('golf_swing_dataset_%s', datestr(now, 'yyyymmdd')), ...
                                         'Units', 'normalized', ...
                                         'Position', [0.18, y, 0.35, rowHeight], ...
                                         'BackgroundColor', 'white', ...
@@ -1196,21 +1210,68 @@ function selectSimulinkModel(src, evt)
     open_models = find_system('type', 'block_diagram');
     
     if isempty(open_models)
-        msgbox('No Simulink models are currently open. Please open a model first.', 'No Models Found', 'warn');
-        return;
-    end
-    
-    % Let user select from open models
-    [selection, ok] = listdlg('ListString', open_models, ...
-                              'SelectionMode', 'single', ...
-                              'Name', 'Select Model', ...
-                              'PromptString', 'Select a Simulink model:');
-    
-    if ok
-        handles.model_name = open_models{selection};
-        handles.model_path = which(handles.model_name);
-        set(handles.model_display, 'String', handles.model_name);
-        guidata(handles.fig, handles);
+        % No models open, try to find models in the project
+        possible_models = {};
+        possible_paths = {};
+        
+        % Check common locations
+        search_paths = {
+            'Model',
+            '.',
+            fullfile(pwd, 'Model'),
+            fullfile(pwd, '..', 'Model')
+        };
+        
+        for i = 1:length(search_paths)
+            if exist(search_paths{i}, 'dir')
+                slx_files = dir(fullfile(search_paths{i}, '*.slx'));
+                mdl_files = dir(fullfile(search_paths{i}, '*.mdl'));
+                
+                for j = 1:length(slx_files)
+                    model_name = slx_files(j).name(1:end-4); % Remove .slx
+                    possible_models{end+1} = model_name;
+                    possible_paths{end+1} = fullfile(search_paths{i}, slx_files(j).name);
+                end
+                
+                for j = 1:length(mdl_files)
+                    model_name = mdl_files(j).name(1:end-4); % Remove .mdl
+                    possible_models{end+1} = model_name;
+                    possible_paths{end+1} = fullfile(search_paths{i}, mdl_files(j).name);
+                end
+            end
+        end
+        
+        if isempty(possible_models)
+            msgbox('No Simulink models found. Please ensure you have .slx or .mdl files in the Model directory or current directory.', 'No Models Found', 'warn');
+            return;
+        end
+        
+        % Let user select from found models
+        [selection, ok] = listdlg('ListString', possible_models, ...
+                                  'SelectionMode', 'single', ...
+                                  'Name', 'Select Model', ...
+                                  'PromptString', 'Select a Simulink model:');
+        
+        if ok
+            handles.model_name = possible_models{selection};
+            handles.model_path = possible_paths{selection};
+            set(handles.model_display, 'String', handles.model_name);
+            guidata(handles.fig, handles);
+        end
+        
+    else
+        % Models are open, let user select from open models
+        [selection, ok] = listdlg('ListString', open_models, ...
+                                  'SelectionMode', 'single', ...
+                                  'Name', 'Select Model', ...
+                                  'PromptString', 'Select a Simulink model:');
+        
+        if ok
+            handles.model_name = open_models{selection};
+            handles.model_path = which(handles.model_name);
+            set(handles.model_display, 'String', handles.model_name);
+            guidata(handles.fig, handles);
+        end
     end
 end
 
@@ -1708,41 +1769,19 @@ function runGeneration(handles)
         
         set(handles.status_text, 'String', 'Status: Running trials...');
         
-        successful_trials = 0;
-        failed_trials = 0;
+        % Check execution mode and implement parallel processing
+        execution_mode = get(handles.execution_mode_popup, 'Value');
         
-        for trial = 1:config.num_simulations
-            handles = guidata(handles.fig); % Refresh handles
-            if handles.should_stop
-                break;
-            end
-            
-            progress_msg = sprintf('Processing trial %d/%d...', trial, config.num_simulations);
-            set(handles.progress_text, 'String', progress_msg);
-            drawnow;
-            
-            try
-                if trial <= size(config.coefficient_values, 1)
-                    trial_coefficients = config.coefficient_values(trial, :);
-                else
-                    trial_coefficients = config.coefficient_values(end, :);
-                end
-                
-                result = runSingleTrialWithSignalBus(trial, config, trial_coefficients);
-                
-                if result.success
-                    successful_trials = successful_trials + 1;
-                else
-                    failed_trials = failed_trials + 1;
-                end
-                
-            catch ME
-                failed_trials = failed_trials + 1;
-                fprintf('Trial %d error: %s\n', trial, ME.message);
-            end
+        if execution_mode == 2 && license('test', 'Distrib_Computing_Toolbox')
+            % Parallel execution
+            successful_trials = runParallelSimulations(handles, config);
+        else
+            % Sequential execution
+            successful_trials = runSequentialSimulations(handles, config);
         end
         
         % Final status
+        failed_trials = config.num_simulations - successful_trials;
         final_msg = sprintf('Complete: %d successful, %d failed', successful_trials, failed_trials);
         set(handles.status_text, 'String', ['Status: ' final_msg]);
         set(handles.progress_text, 'String', final_msg);
@@ -1766,138 +1805,537 @@ function runGeneration(handles)
     end
 end
 
-% Run Single Trial with Mock Simulation
-function result = runSingleTrialWithSignalBus(trial_num, config, trial_coefficients)
-    result = struct();
+function successful_trials = runParallelSimulations(handles, config)
+    % Initialize parallel pool
+    try
+        if isempty(gcp('nocreate'))
+            % Auto-detect optimal number of workers
+            max_cores = feature('numcores');
+            num_workers = min(max_cores, 8); % Limit to 8 workers to avoid overwhelming system
+            parpool('local', num_workers);
+            fprintf('Started parallel pool with %d workers\n', num_workers);
+        else
+            current_pool = gcp;
+            fprintf('Using existing parallel pool with %d workers\n', current_pool.NumWorkers);
+        end
+    catch ME
+        warning('Failed to start parallel pool: %s. Falling back to sequential execution.', ME.message);
+        successful_trials = runSequentialSimulations(handles, config);
+        return;
+    end
+    
+    % Prepare simulation inputs
+    simInputs = prepareSimulationInputs(config);
+    
+    % Run parallel simulations
+    set(handles.progress_text, 'String', 'Running parallel simulations...');
+    drawnow;
     
     try
-        % Run the simulation (mock version)
-        simResult = runSingleTrial(trial_num, config, trial_coefficients);
+        % Use parsim for parallel simulation
+        simOuts = parsim(simInputs, 'ShowProgress', 'on', 'ShowSimulationManager', 'off');
         
-        if simResult.success
-            % Read the generated CSV file
-            csv_path = fullfile(config.output_folder, simResult.filename);
-            if exist(csv_path, 'file')
-                % Read existing data
-                data_table = readtable(csv_path);
-                
-                % Add trial metadata
-                num_rows = height(data_table);
-                data_table.trial_id = repmat(trial_num, num_rows, 1);
-                
-                % Add coefficient columns
-                param_info = getPolynomialParameterInfo();
-                col_idx = 1;
-                for j = 1:length(param_info.joint_names)
-                    joint_name = param_info.joint_names{j};
-                    coeffs = param_info.joint_coeffs{j};
-                    for k = 1:length(coeffs)
-                        coeff_name = sprintf('input_%s_%s', getShortenedJointName(joint_name), coeffs(k));
-                        data_table.(coeff_name) = repmat(trial_coefficients(col_idx), num_rows, 1);
-                        col_idx = col_idx + 1;
+        % Process results
+        successful_trials = 0;
+        for i = 1:length(simOuts)
+            if ~isempty(simOuts(i)) && simOuts(i).SimulationMetadata.ExecutionInfo.StopEvent == 'CompletedNormally'
+                try
+                    result = processSimulationOutput(i, config, simOuts(i));
+                    if result.success
+                        successful_trials = successful_trials + 1;
                     end
+                catch ME
+                    fprintf('Error processing trial %d: %s\n', i, ME.message);
                 end
-                
-                % Save enhanced CSV
-                enhanced_filename = sprintf('ml_trial_%03d_%s.csv', trial_num, datestr(now, 'yyyymmdd_HHMMSS'));
-                enhanced_path = fullfile(config.output_folder, enhanced_filename);
-                writetable(data_table, enhanced_path);
-                
-                % Delete temporary file
-                delete(csv_path);
-                
-                result.success = true;
-                result.filename = enhanced_filename;
-                result.data_points = num_rows;
-                result.columns = width(data_table);
-            else
-                result.success = false;
-                result.error = 'CSV file not found after simulation';
             end
-        else
-            result = simResult;
         end
+        
+    catch ME
+        fprintf('Parallel simulation failed: %s\n', ME.message);
+        successful_trials = 0;
+    end
+end
+
+function successful_trials = runSequentialSimulations(handles, config)
+    successful_trials = 0;
+    
+    for trial = 1:config.num_simulations
+        handles = guidata(handles.fig); % Refresh handles
+        if handles.should_stop
+            break;
+        end
+        
+        progress_msg = sprintf('Processing trial %d/%d...', trial, config.num_simulations);
+        set(handles.progress_text, 'String', progress_msg);
+        drawnow;
+        
+        try
+            if trial <= size(config.coefficient_values, 1)
+                trial_coefficients = config.coefficient_values(trial, :);
+            else
+                trial_coefficients = config.coefficient_values(end, :);
+            end
+            
+            result = runSingleTrial(trial, config, trial_coefficients);
+            
+            if result.success
+                successful_trials = successful_trials + 1;
+            end
+            
+        catch ME
+            fprintf('Trial %d error: %s\n', trial, ME.message);
+        end
+    end
+end
+
+function simInputs = prepareSimulationInputs(config)
+    % Load the Simulink model
+    model_name = config.model_name;
+    if ~bdIsLoaded(model_name)
+        try
+            load_system(model_name);
+        catch ME
+            error('Could not load Simulink model "%s": %s', model_name, ME.message);
+        end
+    end
+    
+    % Create array of SimulationInput objects
+    simInputs = Simulink.SimulationInput.empty(0, config.num_simulations);
+    
+    for trial = 1:config.num_simulations
+        % Get coefficients for this trial
+        if trial <= size(config.coefficient_values, 1)
+            trial_coefficients = config.coefficient_values(trial, :);
+        else
+            trial_coefficients = config.coefficient_values(end, :);
+        end
+        
+        % Create SimulationInput object
+        simIn = Simulink.SimulationInput(model_name);
+        
+        % Set simulation parameters
+        simIn = simIn.setModelParameter('StopTime', num2str(config.simulation_time));
+        simIn = simIn.setModelParameter('Solver', 'ode23t');
+        simIn = simIn.setModelParameter('RelTol', '1e-3');
+        simIn = simIn.setModelParameter('AbsTol', '1e-5');
+        simIn = simIn.setModelParameter('SaveOutput', 'on');
+        simIn = simIn.setModelParameter('SaveFormat', 'Dataset');
+        simIn = simIn.setModelParameter('SaveState', 'on');
+        simIn = simIn.setModelParameter('SaveToWorkspace', 'on');
+        
+        % Set polynomial coefficients as model variables
+        simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
+        
+        % Load input file if specified
+        if ~isempty(config.input_file) && exist(config.input_file, 'file')
+            simIn = loadInputFile(simIn, config.input_file);
+        end
+        
+        simInputs(trial) = simIn;
+    end
+end
+
+function simIn = setPolynomialCoefficients(simIn, coefficients, config)
+    % Get parameter info for coefficient mapping
+    param_info = getPolynomialParameterInfo();
+    
+    % Set coefficients as model variables
+    coeff_idx = 1;
+    for joint_idx = 1:length(param_info.joint_names)
+        joint_name = param_info.joint_names{joint_idx};
+        coeffs = param_info.joint_coeffs{joint_idx};
+        
+        for coeff_idx = 1:length(coeffs)
+            coeff_letter = coeffs(coeff_idx);
+            var_name = sprintf('%s%s', joint_name, coeff_letter);
+            
+            if coeff_idx <= length(coefficients)
+                simIn = simIn.setVariable(var_name, coefficients(coeff_idx));
+            end
+            coeff_idx = coeff_idx + 1;
+        end
+    end
+end
+
+function simIn = loadInputFile(simIn, input_file)
+    try
+        % Load input data
+        input_data = load(input_file);
+        
+        % Get field names and set as model variables
+        field_names = fieldnames(input_data);
+        for i = 1:length(field_names)
+            field_name = field_names{i};
+            field_value = input_data.(field_name);
+            
+            % Only set scalar values or small arrays
+            if isscalar(field_value) || (isnumeric(field_value) && numel(field_value) <= 100)
+                simIn = simIn.setVariable(field_name, field_value);
+            end
+        end
+    catch ME
+        warning('Could not load input file %s: %s', input_file, ME.message);
+    end
+end
+
+% Real Simulation Function - Replaces Mock
+function result = runSingleTrial(trial_num, config, trial_coefficients)
+    result = struct('success', false, 'filename', '', 'error', '');
+    
+    try
+        % Load the Simulink model
+        model_name = config.model_name;
+        if ~bdIsLoaded(model_name)
+            load_system(model_name);
+        end
+        
+        % Create SimulationInput object
+        simIn = Simulink.SimulationInput(model_name);
+        
+        % Set simulation parameters
+        simIn = simIn.setModelParameter('StopTime', num2str(config.simulation_time));
+        simIn = simIn.setModelParameter('Solver', 'ode23t');
+        simIn = simIn.setModelParameter('RelTol', '1e-3');
+        simIn = simIn.setModelParameter('AbsTol', '1e-5');
+        simIn = simIn.setModelParameter('SaveOutput', 'on');
+        simIn = simIn.setModelParameter('SaveFormat', 'Dataset');
+        simIn = simIn.setModelParameter('SaveState', 'on');
+        simIn = simIn.setModelParameter('SaveToWorkspace', 'on');
+        
+        % Set polynomial coefficients
+        simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
+        
+        % Load input file if specified
+        if ~isempty(config.input_file) && exist(config.input_file, 'file')
+            simIn = loadInputFile(simIn, config.input_file);
+        end
+        
+        % Run simulation
+        fprintf('Running trial %d simulation...\n', trial_num);
+        simOut = sim(simIn);
+        
+        % Process simulation output
+        result = processSimulationOutput(trial_num, config, simOut);
         
     catch ME
         result.success = false;
         result.error = ME.message;
-        result.filename = '';
+        fprintf('Trial %d simulation failed: %s\n', trial_num, ME.message);
     end
 end
 
-% MOCK SIMULATION FUNCTION
-function simResult = runSingleTrial(trial_num, config, trial_coefficients)
-    % --- MOCK FUNCTION ---
-    % Replace this with your actual Simulink simulation
-    
-    fprintf('--- MOCK RUN: Simulating trial %d ---\n', trial_num);
-    simResult = struct('success', false, 'filename', '');
+function result = processSimulationOutput(trial_num, config, simOut)
+    result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
     
     try
-        % Simulate some work
-        pause(0.1); 
+        % Extract data based on selected sources
+        data_table = extractSimulationData(simOut, config);
         
-        % Create dummy data
-        num_points = round(config.simulation_time * config.sample_rate);
-        time_vector = linspace(0, config.simulation_time, num_points)';
-        
-        % Generate fake output signals
-        output_signal_1 = sin(time_vector * trial_coefficients(1)/10) + randn(num_points, 1)*0.1;
-        output_signal_2 = cos(time_vector * trial_coefficients(2)/10) + randn(num_points, 1)*0.1;
-        
-        T = table(time_vector, output_signal_1, output_signal_2);
-        T.Properties.VariableNames = {'time', 'Joint1_Angle', 'Joint2_Velocity'};
-        
-        % Save to temporary file
-        temp_filename = sprintf('raw_trial_%04d_temp.csv', trial_num);
-        temp_filepath = fullfile(config.output_folder, temp_filename);
-        writetable(T, temp_filepath);
-        
-        % Report success
-        simResult.success = true;
-        simResult.filename = temp_filename;
-        
-    catch ME
-        simResult.success = false;
-        simResult.error = ME.message;
-        fprintf('--- MOCK RUN FAILED for trial %d: %s ---\n', trial_num, ME.message);
-    end
-end
-
-% Extract coefficients from table
-function coefficient_values = extractCoefficientsFromTable(handles)
-    try
-        table_data = get(handles.coefficients_table, 'Data');
-        
-        if isempty(table_data)
-            coefficient_values = [];
+        if isempty(data_table)
+            result.error = 'No data extracted from simulation';
             return;
         end
         
-        num_trials = size(table_data, 1);
-        num_total_coeffs = size(table_data, 2) - 1;
-        coefficient_values = zeros(num_trials, num_total_coeffs);
+        % Add trial metadata
+        num_rows = height(data_table);
+        data_table.trial_id = repmat(trial_num, num_rows, 1);
         
-        for row = 1:num_trials
-            for col = 2:(num_total_coeffs + 1)
-                value_str = table_data{row, col};
-                if ischar(value_str)
-                    coefficient_values(row, col-1) = str2double(value_str);
+        % Add coefficient columns
+        param_info = getPolynomialParameterInfo();
+        coeff_idx = 1;
+        for j = 1:length(param_info.joint_names)
+            joint_name = param_info.joint_names{j};
+            coeffs = param_info.joint_coeffs{j};
+            for k = 1:length(coeffs)
+                coeff_name = sprintf('input_%s_%s', getShortenedJointName(joint_name), coeffs(k));
+                if coeff_idx <= size(config.coefficient_values, 2)
+                    data_table.(coeff_name) = repmat(config.coefficient_values(trial_num, coeff_idx), num_rows, 1);
+                end
+                coeff_idx = coeff_idx + 1;
+            end
+        end
+        
+        % Save to file
+        timestamp = datestr(now, 'yyyymmdd_HHMMSS');
+        filename = sprintf('trial_%03d_%s.csv', trial_num, timestamp);
+        filepath = fullfile(config.output_folder, filename);
+        
+        writetable(data_table, filepath);
+        
+        result.success = true;
+        result.filename = filename;
+        result.data_points = num_rows;
+        result.columns = width(data_table);
+        
+        fprintf('Trial %d completed: %d data points, %d columns\n', trial_num, num_rows, width(data_table));
+        
+    catch ME
+        result.success = false;
+        result.error = ME.message;
+        fprintf('Error processing trial %d output: %s\n', trial_num, ME.message);
+    end
+end
+
+function data_table = extractSimulationData(simOut, config)
+    data_table = [];
+    
+    try
+        % Extract data from different sources based on configuration
+        all_data = {};
+        
+        % Model workspace data
+        if config.use_model_workspace && isfield(simOut, 'yout')
+            workspace_data = extractWorkspaceData(simOut.yout);
+            if ~isempty(workspace_data)
+                all_data{end+1} = workspace_data;
+            end
+        end
+        
+        % Logsout data
+        if config.use_logsout && isfield(simOut, 'logsout')
+            logsout_data = extractLogsoutData(simOut.logsout);
+            if ~isempty(logsout_data)
+                all_data{end+1} = logsout_data;
+            end
+        end
+        
+        % Signal bus data
+        if config.use_signal_bus && isfield(simOut, 'yout')
+            signal_data = extractSignalBusData(simOut.yout);
+            if ~isempty(signal_data)
+                all_data{end+1} = signal_data;
+            end
+        end
+        
+        % Simscape data
+        if config.use_simscape && isfield(simOut, 'simscape_logging')
+            simscape_data = extractSimscapeData(simOut.simscape_logging);
+            if ~isempty(simscape_data)
+                all_data{end+1} = simscape_data;
+            end
+        end
+        
+        % Combine all data sources
+        if ~isempty(all_data)
+            data_table = combineDataSources(all_data);
+        end
+        
+    catch ME
+        fprintf('Error extracting simulation data: %s\n', ME.message);
+    end
+end
+
+function workspace_data = extractWorkspaceData(yout)
+    workspace_data = [];
+    
+    try
+        if ~isempty(yout)
+            % Extract time series data from workspace
+            time = yout.time;
+            
+            % Get signal names
+            signal_names = yout.signals.name;
+            
+            % Create table
+            data_cells = {time};
+            var_names = {'time'};
+            
+            for i = 1:length(signal_names)
+                if isfield(yout.signals, 'values') && length(yout.signals) >= i
+                    values = yout.signals(i).values;
+                    if isnumeric(values) && length(values) == length(time)
+                        data_cells{end+1} = values;
+                        var_names{end+1} = signal_names{i};
+                    end
+                end
+            end
+            
+            if length(data_cells) > 1
+                workspace_data = table(data_cells{:}, 'VariableNames', var_names);
+            end
+        end
+    catch ME
+        fprintf('Error extracting workspace data: %s\n', ME.message);
+    end
+end
+
+function logsout_data = extractLogsoutData(logsout)
+    logsout_data = [];
+    
+    try
+        if ~isempty(logsout)
+            % Extract data from logsout structure
+            time = logsout.time;
+            
+            % Get all logged signals
+            signal_names = fieldnames(logsout);
+            signal_names = signal_names(~strcmp(signal_names, 'time'));
+            
+            data_cells = {time};
+            var_names = {'time'};
+            
+            for i = 1:length(signal_names)
+                signal_name = signal_names{i};
+                signal_data = logsout.(signal_name);
+                
+                if isstruct(signal_data) && isfield(signal_data, 'values')
+                    values = signal_data.values;
+                    if isnumeric(values) && length(values) == length(time)
+                        data_cells{end+1} = values;
+                        var_names{end+1} = signal_name;
+                    end
+                end
+            end
+            
+            if length(data_cells) > 1
+                logsout_data = table(data_cells{:}, 'VariableNames', var_names);
+            end
+        end
+    catch ME
+        fprintf('Error extracting logsout data: %s\n', ME.message);
+    end
+end
+
+function signal_data = extractSignalBusData(yout)
+    signal_data = [];
+    
+    try
+        if ~isempty(yout) && isfield(yout, 'signals')
+            % Extract signal bus data
+            time = yout.time;
+            
+            data_cells = {time};
+            var_names = {'time'};
+            
+            for i = 1:length(yout.signals)
+                signal = yout.signals(i);
+                if isfield(signal, 'values') && isnumeric(signal.values)
+                    values = signal.values;
+                    if length(values) == length(time)
+                        data_cells{end+1} = values;
+                        var_names{end+1} = signal.name;
+                    end
+                end
+            end
+            
+            if length(data_cells) > 1
+                signal_data = table(data_cells{:}, 'VariableNames', var_names);
+            end
+        end
+    catch ME
+        fprintf('Error extracting signal bus data: %s\n', ME.message);
+    end
+end
+
+function simscape_data = extractSimscapeData(simscape_logging)
+    simscape_data = [];
+    
+    try
+        if ~isempty(simscape_logging)
+            % Extract Simscape logging data
+            % This is a simplified extraction - may need customization based on specific model
+            time = simscape_logging.time;
+            
+            data_cells = {time};
+            var_names = {'time'};
+            
+            % Extract common Simscape variables
+            common_vars = {'position', 'velocity', 'force', 'torque', 'energy'};
+            
+            for i = 1:length(common_vars)
+                var_name = common_vars{i};
+                if isfield(simscape_logging, var_name)
+                    values = simscape_logging.(var_name);
+                    if isnumeric(values) && length(values) == length(time)
+                        data_cells{end+1} = values;
+                        var_names{end+1} = var_name;
+                    end
+                end
+            end
+            
+            if length(data_cells) > 1
+                simscape_data = table(data_cells{:}, 'VariableNames', var_names);
+            end
+        end
+    catch ME
+        fprintf('Error extracting Simscape data: %s\n', ME.message);
+    end
+end
+
+function combined_table = combineDataSources(data_sources)
+    combined_table = [];
+    
+    try
+        if isempty(data_sources)
+            return;
+        end
+        
+        % Start with the first data source
+        combined_table = data_sources{1};
+        
+        % Merge additional data sources
+        for i = 2:length(data_sources)
+            if ~isempty(data_sources{i})
+                % Find common time column
+                if ismember('time', combined_table.Properties.VariableNames) && ...
+                   ismember('time', data_sources{i}.Properties.VariableNames)
+                    
+                    % Merge on time column
+                    combined_table = outerjoin(combined_table, data_sources{i}, 'Keys', 'time', 'MergeKeys', true);
                 else
-                    coefficient_values(row, col-1) = value_str;
+                    % Simple concatenation if no common time
+                    common_vars = intersect(combined_table.Properties.VariableNames, ...
+                                          data_sources{i}.Properties.VariableNames);
+                    if ~isempty(common_vars)
+                        combined_table = [combined_table(:, common_vars); data_sources{i}(:, common_vars)];
+                    end
                 end
             end
         end
         
-        if any(isnan(coefficient_values(:)))
-            warning('Some coefficient values are invalid (NaN)');
-        end
-        
     catch ME
-        warning('Error extracting coefficients: %s', ME.message);
-        coefficient_values = [];
+        fprintf('Error combining data sources: %s\n', ME.message);
     end
 end
+
+% Remove the old mock function - it's no longer needed
+% function simResult = runSingleTrial(trial_num, config, trial_coefficients)
+%     % --- MOCK FUNCTION ---
+%     % Replace this with your actual Simulink simulation
+%     
+%     fprintf('--- MOCK RUN: Simulating trial %d ---\n', trial_num);
+%     simResult = struct('success', false, 'filename', '');
+%     
+%     try
+%         % Simulate some work
+%         pause(0.1); 
+%         
+%         % Create dummy data
+%         num_points = round(config.simulation_time * config.sample_rate);
+%         time_vector = linspace(0, config.simulation_time, num_points)';
+%         
+%         % Generate fake output signals
+%         output_signal_1 = sin(time_vector * trial_coefficients(1)/10) + randn(num_points, 1)*0.1;
+%         output_signal_2 = cos(time_vector * trial_coefficients(2)/10) + randn(num_points, 1)*0.1;
+%         
+%         T = table(time_vector, output_signal_1, output_signal_2);
+%         T.Properties.VariableNames = {'time', 'Joint1_Angle', 'Joint2_Velocity'};
+%         
+%         % Save to temporary file
+%         temp_filename = sprintf('raw_trial_%04d_temp.csv', trial_num);
+%         temp_filepath = fullfile(config.output_folder, temp_filename);
+%         writetable(T, temp_filepath);
+%         
+%         % Report success
+%         simResult.success = true;
+%         simResult.filename = temp_filename;
+%         
+%     catch ME
+%         simResult.success = false;
+%         simResult.error = ME.message;
+%         fprintf('--- MOCK RUN FAILED for trial %d: %s ---\n', trial_num, ME.message);
+%     end
+% end
 
 % Validate inputs
 function config = validateInputs(handles)
@@ -1941,9 +2379,32 @@ function config = validateInputs(handles)
             error('Please specify output folder and dataset name');
         end
         
+        % Validate model exists
+        model_name = handles.model_name;
+        model_path = handles.model_path;
+        
+        if isempty(model_path)
+            % Try to find model in current directory or path
+            if exist([model_name '.slx'], 'file')
+                model_path = which([model_name '.slx']);
+            elseif exist([model_name '.mdl'], 'file')
+                model_path = which([model_name '.mdl']);
+            else
+                error('Simulink model "%s" not found. Please select a valid model.', model_name);
+            end
+        end
+        
+        % Validate input file if specified
+        input_file = handles.selected_input_file;
+        if ~isempty(input_file) && ~exist(input_file, 'file')
+            error('Input file "%s" not found', input_file);
+        end
+        
         % Create config structure
         config = struct();
-        config.model_name = handles.model_name;
+        config.model_name = model_name;
+        config.model_path = model_path;
+        config.input_file = input_file;
         config.num_simulations = num_trials;
         config.simulation_time = sim_time;
         config.sample_rate = sample_rate;
@@ -1964,14 +2425,62 @@ function config = validateInputs(handles)
     end
 end
 
+% Extract coefficients from table
+function coefficient_values = extractCoefficientsFromTable(handles)
+    try
+        table_data = get(handles.coefficients_table, 'Data');
+        
+        if isempty(table_data)
+            coefficient_values = [];
+            return;
+        end
+        
+        num_trials = size(table_data, 1);
+        num_total_coeffs = size(table_data, 2) - 1;
+        coefficient_values = zeros(num_trials, num_total_coeffs);
+        
+        for row = 1:num_trials
+            for col = 2:(num_total_coeffs + 1)
+                value_str = table_data{row, col};
+                if ischar(value_str)
+                    coefficient_values(row, col-1) = str2double(value_str);
+                else
+                    coefficient_values(row, col-1) = value_str;
+                end
+            end
+        end
+        
+        if any(isnan(coefficient_values(:)))
+            warning('Some coefficient values are invalid (NaN)');
+        end
+        
+    catch ME
+        warning('Error extracting coefficients: %s', ME.message);
+        coefficient_values = [];
+    end
+end
+
 % Helper functions
 function param_info = getPolynomialParameterInfo()
-    % Get polynomial parameter structure
+    % Get polynomial parameter structure with dynamic path resolution
     try
-        % Try to load from model folder - simplified path
-        model_path = 'PolynomialInputValues.mat';
+        % Try multiple possible locations for the parameter file
+        possible_paths = {
+            'Model/PolynomialInputValues.mat',
+            'PolynomialInputValues.mat',
+            fullfile(pwd, 'Model', 'PolynomialInputValues.mat'),
+            fullfile(pwd, 'PolynomialInputValues.mat')
+        };
         
-        if exist(model_path, 'file')
+        model_path = '';
+        for i = 1:length(possible_paths)
+            if exist(possible_paths{i}, 'file')
+                model_path = possible_paths{i};
+                break;
+            end
+        end
+        
+        if ~isempty(model_path)
             loaded_data = load(model_path);
             var_names = fieldnames(loaded_data);
             
@@ -2054,11 +2563,11 @@ function compileDataset(config)
     try
         fprintf('Compiling dataset from trials...\n');
         
-        % Find all ML trial CSV files
-        csv_files = dir(fullfile(config.output_folder, 'ml_trial_*.csv'));
+        % Find all trial CSV files
+        csv_files = dir(fullfile(config.output_folder, 'trial_*.csv'));
         
         if isempty(csv_files)
-            warning('No ML trial CSV files found in output folder');
+            warning('No trial CSV files found in output folder');
             return;
         end
         
@@ -2078,7 +2587,9 @@ function compileDataset(config)
                     % Ensure consistent columns
                     common_vars = intersect(master_data.Properties.VariableNames, ...
                                           trial_data.Properties.VariableNames);
-                    master_data = [master_data(:, common_vars); trial_data(:, common_vars)];
+                    if ~isempty(common_vars)
+                        master_data = [master_data(:, common_vars); trial_data(:, common_vars)];
+                    end
                 end
                 
             catch ME
@@ -2096,6 +2607,14 @@ function compileDataset(config)
             fprintf('Master dataset saved: %s\n', master_filename);
             fprintf('  Total rows: %d\n', height(master_data));
             fprintf('  Total columns: %d\n', width(master_data));
+            
+            % Also save as MAT file if requested
+            if config.file_format == 2 || config.file_format == 3
+                mat_filename = sprintf('master_dataset_%s.mat', timestamp);
+                mat_path = fullfile(config.output_folder, mat_filename);
+                save(mat_path, 'master_data', 'config');
+                fprintf('Master dataset saved as MAT: %s\n', mat_filename);
+            end
         end
         
     catch ME
@@ -2106,7 +2625,8 @@ end
 % Preferences functions
 function handles = loadUserPreferences(handles)
     % Load user preferences with safe defaults
-    pref_file = 'user_preferences.mat';
+    script_dir = fileparts(mfilename('fullpath'));
+    pref_file = fullfile(script_dir, 'user_preferences.mat');
     
     % Initialize default preferences
     handles.preferences = struct();
@@ -2180,8 +2700,10 @@ function saveUserPreferences(handles)
         end
         
         % Save to file
+        script_dir = fileparts(mfilename('fullpath'));
+        pref_file = fullfile(script_dir, 'user_preferences.mat');
         preferences = handles.preferences;
-        save('user_preferences.mat', 'preferences');
+        save(pref_file, 'preferences');
         
     catch
         % Silently fail if can't save
