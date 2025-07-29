@@ -1871,8 +1871,10 @@ function successful_trials = runParallelSimulations(handles, config)
     drawnow;
     
     try
-        % Use parsim for parallel simulation
-        simOuts = parsim(simInputs, 'ShowProgress', true, 'ShowSimulationManager', 'off');
+        % Use parsim for parallel simulation with model transfer
+        simOuts = parsim(simInputs, 'ShowProgress', true, 'ShowSimulationManager', 'off', ...
+                        'TransferBaseWorkspaceVariables', 'on', ...
+                        'AttachedFiles', {config.model_path});
         
         % Process results
         successful_trials = 0;

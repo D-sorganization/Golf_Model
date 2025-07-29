@@ -1855,13 +1855,34 @@ function successful_trials = runParallelSimulations(handles, config)
     % Prepare simulation inputs
     simInputs = prepareSimulationInputs(config);
     
+    % Validate simulation inputs before running
+    if isempty(simInputs)
+        error('No simulation inputs prepared');
+    end
+    fprintf('Prepared %d simulation inputs\n', length(simInputs));
+    
+    % Ensure model is available on all parallel workers
+    try
+        fprintf('Loading model on parallel workers...\n');
+        spmd
+            if ~bdIsLoaded(config.model_name)
+                load_system(config.model_path);
+            end
+        end
+        fprintf('Model loaded on all workers\n');
+    catch ME
+        fprintf('Warning: Could not preload model on workers: %s\n', ME.message);
+    end
+    
     % Run parallel simulations
     set(handles.progress_text, 'String', 'Running parallel simulations...');
     drawnow;
     
     try
-        % Use parsim for parallel simulation
-        simOuts = parsim(simInputs, 'ShowProgress', true, 'ShowSimulationManager', 'off');
+        % Use parsim for parallel simulation with model transfer
+        simOuts = parsim(simInputs, 'ShowProgress', true, 'ShowSimulationManager', 'off', ...
+                        'TransferBaseWorkspaceVariables', 'on', ...
+                        'AttachedFiles', {config.model_path});
         
         % Process results
         successful_trials = 0;
@@ -1885,11 +1906,43 @@ function successful_trials = runParallelSimulations(handles, config)
                 end
             else
                 fprintf('✗ Trial %d simulation failed\n', i);
+                
+                % Extract basic error information
+                if ~isempty(simOuts(i)) && isfield(simOuts(i), 'ErrorMessage') && ~isempty(simOuts(i).ErrorMessage)
+                    fprintf('  Error: %s\n', simOuts(i).ErrorMessage);
+                end
+                
+                if ~isempty(simOuts(i)) && isfield(simOuts(i), 'SimulationMetadata') && ...
+                   isfield(simOuts(i).SimulationMetadata, 'ExecutionInfo') && ...
+                   isfield(simOuts(i).SimulationMetadata.ExecutionInfo, 'ErrorDiagnostic') && ...
+                   ~isempty(simOuts(i).SimulationMetadata.ExecutionInfo.ErrorDiagnostic)
+                    diag = simOuts(i).SimulationMetadata.ExecutionInfo.ErrorDiagnostic;
+                    fprintf('  Details: %s\n', diag.message);
+                end
             end
         end
         
     catch ME
         fprintf('Parallel simulation failed: %s\n', ME.message);
+        
+        % Try running one simulation sequentially to get detailed error
+        fprintf('\nTrying one simulation sequentially for debugging...\n');
+        try
+            if ~isempty(simInputs) && length(simInputs) >= 1
+                fprintf('Running single simulation to diagnose issue...\n');
+                single_simOut = sim(simInputs(1));
+                fprintf('Single simulation succeeded - issue may be parallel-specific\n');
+            end
+        catch singleME
+            fprintf('Single simulation also failed: %s\n', singleME.message);
+            if ~isempty(singleME.stack)
+                fprintf('Stack trace:\n');
+                for i = 1:min(3, length(singleME.stack))
+                    fprintf('  %s (line %d)\n', singleME.stack(i).name, singleME.stack(i).line);
+                end
+            end
+        end
+        
         successful_trials = 0;
     end
 end
@@ -1935,6 +1988,13 @@ function simInputs = prepareSimulationInputs(config)
         end
     end
     
+    % Add model directory to path for parallel workers
+    [model_dir, ~, ~] = fileparts(config.model_path);
+    if ~isempty(model_dir)
+        addpath(model_dir);
+        fprintf('Added model directory to path: %s\n', model_dir);
+    end
+    
     % Create array of SimulationInput objects
     simInputs = Simulink.SimulationInput.empty(0, config.num_simulations);
     
@@ -1967,8 +2027,17 @@ function simIn = setPolynomialCoefficients(simIn, coefficients, config)
     % Get parameter info for coefficient mapping
     param_info = getPolynomialParameterInfo();
     
+    % Basic validation
+    if isempty(param_info.joint_names)
+        error('No joint names found in polynomial parameter info');
+    end
+    
+    fprintf('Setting %d coefficients for %d joints\n', length(coefficients), length(param_info.joint_names));
+    
     % Set coefficients as model variables
     global_coeff_idx = 1;
+    variables_set = 0;
+    
     for joint_idx = 1:length(param_info.joint_names)
         joint_name = param_info.joint_names{joint_idx};
         coeffs = param_info.joint_coeffs{joint_idx};
@@ -1978,11 +2047,27 @@ function simIn = setPolynomialCoefficients(simIn, coefficients, config)
             var_name = sprintf('%s%s', joint_name, coeff_letter);
             
             if global_coeff_idx <= length(coefficients)
-                simIn = simIn.setVariable(var_name, coefficients(global_coeff_idx));
+                try
+                    simIn = simIn.setVariable(var_name, coefficients(global_coeff_idx));
+                    variables_set = variables_set + 1;
+                    
+                    % Show first few for debugging (but not too verbose)
+                    if global_coeff_idx <= 3
+                        fprintf('  Set %s = %.3f\n', var_name, coefficients(global_coeff_idx));
+                    elseif global_coeff_idx == 4
+                        fprintf('  ... (and %d more variables)\n', length(coefficients) - 3);
+                    end
+                catch ME
+                    fprintf('  Warning: Failed to set %s: %s\n', var_name, ME.message);
+                end
+            else
+                fprintf('  Warning: Not enough coefficients for %s (need %d, have %d)\n', var_name, global_coeff_idx, length(coefficients));
             end
             global_coeff_idx = global_coeff_idx + 1;
         end
     end
+    
+    fprintf('Successfully set %d model variables\n', variables_set);
 end
 function simIn = loadInputFile(simIn, input_file)
     try
@@ -2251,7 +2336,7 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                 fprintf('Extracting from logsout...\n');
             end
             
-            logsout_data = extractFromLogsout(simOut.logsout);
+            logsout_data = extractLogsoutDataFixed(simOut.logsout);
             if ~isempty(logsout_data)
                 all_data{end+1} = logsout_data;
                 if options.verbose
@@ -2266,7 +2351,7 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                 fprintf('Extracting from Simscape simlog...\n');
             end
             
-            simscape_data = extractFromSimscape(simOut.simlog);
+            simscape_data = extractSimscapeDataFixed(simOut.simlog);
             if ~isempty(simscape_data)
                 all_data{end+1} = simscape_data;
                 if options.verbose
@@ -2333,43 +2418,7 @@ function combined_table = combineDataSources(data_sources)
     end
 end
 
-function data_table = extractFromLogsout(logsout)
-    % Extract data from Simulink logsout 
-    % This is a simplified version - can be enhanced later
-    data_table = [];
-    
-    try
-        if isempty(logsout)
-            return;
-        end
-        
-        % Basic extraction logic - this can be expanded
-        % For now, return empty to avoid errors
-        fprintf('Logsout extraction not yet implemented\n');
-        
-    catch ME
-        fprintf('Error extracting from logsout: %s\n', ME.message);
-    end
-end
 
-function data_table = extractFromSimscape(simlog)
-    % Extract data from Simscape simlog
-    % This is a simplified version - can be enhanced later
-    data_table = [];
-    
-    try
-        if isempty(simlog)
-            return;
-        end
-        
-        % Basic extraction logic - this can be expanded
-        % For now, return empty to avoid errors  
-        fprintf('Simscape extraction not yet implemented\n');
-        
-    catch ME
-        fprintf('Error extracting from Simscape: %s\n', ME.message);
-    end
-end
 
 function validateCoefficientBounds(handles, coeff_range)
     % Validate that coefficient table values are within specified bounds
@@ -2414,10 +2463,22 @@ function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
     try
         % Get model workspace from simulation output
         model_name = simOut.SimulationMetadata.ModelInfo.ModelName;
+        
+        % Check if model is loaded
+        if ~bdIsLoaded(model_name)
+            fprintf('Warning: Model %s not loaded, skipping workspace data\n', model_name);
+            return;
+        end
+        
         model_workspace = get_param(model_name, 'ModelWorkspace');
         variables = model_workspace.getVariableNames;
         
-        fprintf('Adding %d model workspace variables to CSV...\n', length(variables));
+        if length(variables) > 0
+            fprintf('Adding %d model workspace variables to CSV...\n', length(variables));
+        else
+            fprintf('No model workspace variables found\n');
+            return;
+        end
         
         for i = 1:length(variables)
             var_name = variables{i};
