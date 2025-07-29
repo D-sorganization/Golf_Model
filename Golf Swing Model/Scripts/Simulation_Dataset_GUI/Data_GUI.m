@@ -1098,7 +1098,11 @@ function updateCoefficientsPreview(~, ~, fig)
                     switch scenario_idx
                         case 1 % Variable Torques
                             if ~isnan(coeff_range) && coeff_range > 0
-                                coeff_data{i, col_idx} = sprintf('%.2f', (rand - 0.5) * 2 * coeff_range);
+                                % Generate random coefficient within specified range with bounds validation
+                                random_value = (rand - 0.5) * 2 * coeff_range;
+                                % Ensure value is within bounds [-coeff_range, +coeff_range]
+                                random_value = max(-coeff_range, min(coeff_range, random_value));
+                                coeff_data{i, col_idx} = sprintf('%.2f', random_value);
                             else
                                 coeff_data{i, col_idx} = sprintf('%.2f', (rand - 0.5) * 100);
                             end
@@ -1707,14 +1711,13 @@ function config = gatherConfiguration(handles)
     config.torque_scenario = get(handles.torque_scenario_popup, 'Value');
     config.coeff_range = get(handles.coeff_range_edit, 'String');
     config.constant_value = get(handles.constant_value_edit, 'String');
-    config.use_model_workspace = get(handles.use_model_workspace, 'Value');
     config.use_logsout = get(handles.use_logsout, 'Value');
     config.use_signal_bus = get(handles.use_signal_bus, 'Value');
     config.use_simscape = get(handles.use_simscape, 'Value');
     config.enable_animation = get(handles.enable_animation, 'Value');
     config.output_folder = get(handles.output_folder_edit, 'String');
     config.folder_name = get(handles.folder_name_edit, 'String');
-    config.format = get(handles.format_popup, 'Value');
+    config.file_format = get(handles.format_popup, 'Value');
     config.coefficients_data = get(handles.coefficients_table, 'Data');
 end
 % Helper function to apply configuration
@@ -1741,9 +1744,6 @@ function applyConfiguration(handles, config)
     if isfield(config, 'constant_value')
         set(handles.constant_value_edit, 'String', config.constant_value);
     end
-    if isfield(config, 'use_model_workspace')
-        set(handles.use_model_workspace, 'Value', config.use_model_workspace);
-    end
     if isfield(config, 'use_logsout')
         set(handles.use_logsout, 'Value', config.use_logsout);
     end
@@ -1762,7 +1762,9 @@ function applyConfiguration(handles, config)
     if isfield(config, 'folder_name')
         set(handles.folder_name_edit, 'String', config.folder_name);
     end
-    if isfield(config, 'format')
+    if isfield(config, 'file_format')
+        set(handles.format_popup, 'Value', config.file_format);
+    elseif isfield(config, 'format')
         set(handles.format_popup, 'Value', config.format);
     end
     if isfield(config, 'coefficients_data')
@@ -1837,7 +1839,7 @@ function successful_trials = runParallelSimulations(handles, config)
         if isempty(gcp('nocreate'))
             % Auto-detect optimal number of workers
             max_cores = feature('numcores');
-            num_workers = min(max_cores, 8); % Limit to 8 workers to avoid overwhelming system
+            num_workers = min(max_cores, 6); % Limit to 6 workers to match MATLAB cluster configuration
             parpool('local', num_workers);
             fprintf('Started parallel pool with %d workers\n', num_workers);
         else
@@ -1859,12 +1861,19 @@ function successful_trials = runParallelSimulations(handles, config)
     
     try
         % Use parsim for parallel simulation
-        simOuts = parsim(simInputs, 'ShowProgress', 'on', 'ShowSimulationManager', 'off');
+        simOuts = parsim(simInputs, 'ShowProgress', true, 'ShowSimulationManager', 'off');
         
         % Process results
         successful_trials = 0;
+        
+        % Check if parsim succeeded
+        if isempty(simOuts)
+            error('Parallel simulation failed - no results returned');
+        end
+        
         for i = 1:length(simOuts)
-            if ~isempty(simOuts(i)) && simOuts(i).SimulationMetadata.ExecutionInfo.StopEvent == 'CompletedNormally'
+            if ~isempty(simOuts(i)) && isfield(simOuts(i), 'SimulationMetadata') && ...
+               simOuts(i).SimulationMetadata.ExecutionInfo.StopEvent == "CompletedNormally"
                 try
                     result = processSimulationOutput(i, config, simOuts(i));
                     if result.success
@@ -2075,8 +2084,15 @@ function simIn = setModelParameters(simIn, config)
         
         % FIXED: Ensure To Workspace blocks save to 'out' variable
         
-        fprintf('Debug: Model parameters set successfully\n');
-        fprintf('Debug: SaveFormat = Structure, ReturnWorkspaceOutputs = on\n');
+        % Apply animation setting
+        if isfield(config, 'enable_animation')
+            if config.enable_animation
+                simIn = simIn.setModelParameter('SimMechanicsOpenGL', 'on');
+                fprintf('Animation enabled for simulation\n');
+            else
+                simIn = simIn.setModelParameter('SimMechanicsOpenGL', 'off');
+            end
+        end
         
     catch ME
         fprintf('Error setting model parameters: %s\n', ME.message);
@@ -2096,7 +2112,7 @@ function result = processSimulationOutput(trial_num, config, simOut)
         options.extract_simscape = config.use_simscape;
         options.verbose = false; % Set to true for debugging
         
-        [data_table, signal_info] = extractAllSignalsFromBus(simOut, options);
+        [data_table, signal_info] = extractSignalsFromSimOut(simOut, options);
         
         if isempty(data_table)
             result.error = 'No data extracted from simulation';
@@ -2131,12 +2147,52 @@ function result = processSimulationOutput(trial_num, config, simOut)
             end
         end
         
-        % Save to file
-        timestamp = datestr(now, 'yyyymmdd_HHMMSS');
-        filename = sprintf('trial_%03d_%s.csv', trial_num, timestamp);
-        filepath = fullfile(config.output_folder, filename);
+        % Add model workspace variables (segment lengths, masses, inertias, etc.)
+        % Note: Model workspace data is always captured as it contains essential model parameters
+        data_table = addModelWorkspaceData(data_table, simOut, num_rows);
         
-        writetable(data_table, filepath);
+        % Save to file in selected format(s)
+        timestamp = datestr(now, 'yyyymmdd_HHMMSS');
+        saved_files = {};
+        
+        % Determine file format from config (handle both field names for compatibility)
+        file_format = 1; % Default to CSV
+        if isfield(config, 'file_format')
+            file_format = config.file_format;
+        elseif isfield(config, 'format')
+            file_format = config.format;
+        end
+        
+        % Save based on selected format
+        switch file_format
+            case 1 % CSV Files
+                filename = sprintf('trial_%03d_%s.csv', trial_num, timestamp);
+                filepath = fullfile(config.output_folder, filename);
+                writetable(data_table, filepath);
+                saved_files{end+1} = filename;
+                
+            case 2 % MAT Files
+                filename = sprintf('trial_%03d_%s.mat', trial_num, timestamp);
+                filepath = fullfile(config.output_folder, filename);
+                save(filepath, 'data_table', 'config');
+                saved_files{end+1} = filename;
+                
+            case 3 % Both CSV and MAT
+                % Save CSV
+                csv_filename = sprintf('trial_%03d_%s.csv', trial_num, timestamp);
+                csv_filepath = fullfile(config.output_folder, csv_filename);
+                writetable(data_table, csv_filepath);
+                saved_files{end+1} = csv_filename;
+                
+                % Save MAT
+                mat_filename = sprintf('trial_%03d_%s.mat', trial_num, timestamp);
+                mat_filepath = fullfile(config.output_folder, mat_filename);
+                save(mat_filepath, 'data_table', 'config');
+                saved_files{end+1} = mat_filename;
+        end
+        
+        % Update result with primary filename
+        filename = saved_files{1};
         
         result.success = true;
         result.filename = filename;
@@ -2155,6 +2211,256 @@ function result = processSimulationOutput(trial_num, config, simOut)
         for i = 1:length(ME.stack)
             fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
         end
+    end
+end
+
+function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
+    % Extract signals from simulation output based on specified options
+    % This replaces the missing extractAllSignalsFromBus function
+    
+    data_table = [];
+    signal_info = struct();
+    
+    try
+        % Initialize data collection
+        all_data = {};
+        
+        % Extract from CombinedSignalBus if enabled and available
+        if options.extract_combined_bus && (isprop(simOut, 'CombinedSignalBus') || isfield(simOut, 'CombinedSignalBus'))
+            if options.verbose
+                fprintf('Extracting from CombinedSignalBus...\n');
+            end
+            
+            combinedBus = simOut.CombinedSignalBus;
+            if ~isempty(combinedBus)
+                signal_bus_data = extractFromCombinedSignalBus(combinedBus);
+                if ~isempty(signal_bus_data)
+                    all_data{end+1} = signal_bus_data;
+                    if options.verbose
+                        fprintf('CombinedSignalBus: %d columns extracted\n', width(signal_bus_data));
+                    end
+                end
+            end
+        end
+        
+        % Extract from logsout if enabled and available
+        if options.extract_logsout && (isprop(simOut, 'logsout') || isfield(simOut, 'logsout'))
+            if options.verbose
+                fprintf('Extracting from logsout...\n');
+            end
+            
+            logsout_data = extractFromLogsout(simOut.logsout);
+            if ~isempty(logsout_data)
+                all_data{end+1} = logsout_data;
+                if options.verbose
+                    fprintf('Logsout: %d columns extracted\n', width(logsout_data));
+                end
+            end
+        end
+        
+        % Extract from Simscape if enabled and available
+        if options.extract_simscape && (isprop(simOut, 'simlog') || isfield(simOut, 'simlog'))
+            if options.verbose
+                fprintf('Extracting from Simscape simlog...\n');
+            end
+            
+            simscape_data = extractFromSimscape(simOut.simlog);
+            if ~isempty(simscape_data)
+                all_data{end+1} = simscape_data;
+                if options.verbose
+                    fprintf('Simscape: %d columns extracted\n', width(simscape_data));
+                end
+            end
+        end
+        
+        % Combine all data sources
+        if ~isempty(all_data)
+            data_table = combineDataSources(all_data);
+            signal_info.sources_found = length(all_data);
+            signal_info.total_columns = width(data_table);
+        else
+            if options.verbose
+                fprintf('Warning: No data extracted from any source\n');
+            end
+        end
+        
+    catch ME
+        if options.verbose
+            fprintf('Error in extractSignalsFromSimOut: %s\n', ME.message);
+        end
+        % Return empty results on error
+        data_table = [];
+        signal_info = struct();
+    end
+end
+
+function combined_table = combineDataSources(data_sources)
+    % Combine multiple data tables into one
+    combined_table = [];
+    
+    try
+        if isempty(data_sources)
+            return;
+        end
+        
+        % Start with the first data source
+        combined_table = data_sources{1};
+        
+        % Merge additional data sources
+        for i = 2:length(data_sources)
+            if ~isempty(data_sources{i})
+                % Find common time column
+                if ismember('time', combined_table.Properties.VariableNames) && ...
+                   ismember('time', data_sources{i}.Properties.VariableNames)
+                    
+                    % Merge on time column
+                    combined_table = outerjoin(combined_table, data_sources{i}, 'Keys', 'time', 'MergeKeys', true);
+                else
+                    % Simple concatenation if no common time
+                    common_vars = intersect(combined_table.Properties.VariableNames, ...
+                                          data_sources{i}.Properties.VariableNames);
+                    if ~isempty(common_vars)
+                        combined_table = [combined_table(:, common_vars); data_sources{i}(:, common_vars)];
+                    end
+                end
+            end
+        end
+        
+    catch ME
+        fprintf('Error combining data sources: %s\n', ME.message);
+    end
+end
+
+function data_table = extractFromLogsout(logsout)
+    % Extract data from Simulink logsout 
+    % This is a simplified version - can be enhanced later
+    data_table = [];
+    
+    try
+        if isempty(logsout)
+            return;
+        end
+        
+        % Basic extraction logic - this can be expanded
+        % For now, return empty to avoid errors
+        fprintf('Logsout extraction not yet implemented\n');
+        
+    catch ME
+        fprintf('Error extracting from logsout: %s\n', ME.message);
+    end
+end
+
+function data_table = extractFromSimscape(simlog)
+    % Extract data from Simscape simlog
+    % This is a simplified version - can be enhanced later
+    data_table = [];
+    
+    try
+        if isempty(simlog)
+            return;
+        end
+        
+        % Basic extraction logic - this can be expanded
+        % For now, return empty to avoid errors  
+        fprintf('Simscape extraction not yet implemented\n');
+        
+    catch ME
+        fprintf('Error extracting from Simscape: %s\n', ME.message);
+    end
+end
+
+function validateCoefficientBounds(handles, coeff_range)
+    % Validate that coefficient table values are within specified bounds
+    try
+        coeff_data = get(handles.coefficients_table, 'Data');
+        if isempty(coeff_data)
+            return;
+        end
+        
+        % Check each coefficient value
+        out_of_bounds_count = 0;
+        for i = 1:size(coeff_data, 1)
+            for j = 1:size(coeff_data, 2)
+                cell_value = coeff_data{i, j};
+                if ischar(cell_value) || isstring(cell_value)
+                    numeric_value = str2double(cell_value);
+                    if ~isnan(numeric_value)
+                        if abs(numeric_value) > coeff_range
+                            out_of_bounds_count = out_of_bounds_count + 1;
+                        end
+                    end
+                end
+            end
+        end
+        
+        if out_of_bounds_count > 0
+            warning('Found %d coefficient values outside the specified range [±%.2f]. Consider regenerating coefficients.', ...
+                out_of_bounds_count, coeff_range);
+        end
+        
+    catch ME
+        fprintf('Warning: Could not validate coefficient bounds: %s\n', ME.message);
+    end
+end
+
+function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
+    % Extract model workspace variables and add as constant columns
+    % These include segment lengths, masses, inertias, and other model parameters
+    
+    try
+        % Get model workspace from simulation output
+        model_name = simOut.SimulationMetadata.ModelInfo.ModelName;
+        model_workspace = get_param(model_name, 'ModelWorkspace');
+        variables = model_workspace.getVariableNames;
+        
+        fprintf('Adding %d model workspace variables to CSV...\n', length(variables));
+        
+        for i = 1:length(variables)
+            var_name = variables{i};
+            
+            try
+                var_value = model_workspace.getVariable(var_name);
+                
+                % Handle different variable types
+                if isnumeric(var_value) && isscalar(var_value)
+                    % Scalar numeric values (lengths, masses, etc.)
+                    column_name = sprintf('model_%s', var_name);
+                    data_table.(column_name) = repmat(var_value, num_rows, 1);
+                    
+                elseif isnumeric(var_value) && isvector(var_value)
+                    % Vector values (3D coordinates, etc.)
+                    for j = 1:length(var_value)
+                        column_name = sprintf('model_%s_%d', var_name, j);
+                        data_table.(column_name) = repmat(var_value(j), num_rows, 1);
+                    end
+                    
+                elseif isnumeric(var_value) && ismatrix(var_value)
+                    % Matrix values (inertia matrices, etc.)
+                    [rows, cols] = size(var_value);
+                    for r = 1:rows
+                        for c = 1:cols
+                            column_name = sprintf('model_%s_%d_%d', var_name, r, c);
+                            data_table.(column_name) = repmat(var_value(r,c), num_rows, 1);
+                        end
+                    end
+                    
+                elseif isa(var_value, 'Simulink.Parameter')
+                    % Handle Simulink Parameters
+                    param_val = var_value.Value;
+                    if isnumeric(param_val) && isscalar(param_val)
+                        column_name = sprintf('model_%s', var_name);
+                        data_table.(column_name) = repmat(param_val, num_rows, 1);
+                    end
+                end
+                
+            catch ME
+                % Skip variables that can't be extracted
+                fprintf('  Warning: Could not extract variable %s: %s\n', var_name, ME.message);
+            end
+        end
+        
+    catch ME
+        fprintf('Warning: Could not access model workspace: %s\n', ME.message);
     end
 end
 
@@ -2182,6 +2488,11 @@ function config = validateInputs(handles)
         
         if scenario_idx == 1 && (isnan(coeff_range) || coeff_range <= 0)
             error('Coefficient range must be positive for variable torques');
+        end
+        
+        % Additional validation: check coefficient table bounds
+        if scenario_idx == 1
+            validateCoefficientBounds(handles, coeff_range);
         end
         if scenario_idx == 3 && isnan(constant_value)
             error('Constant value must be numeric for constant torque');

@@ -1850,7 +1850,7 @@ function successful_trials = runParallelSimulations(handles, config)
         if isempty(gcp('nocreate'))
             % Auto-detect optimal number of workers
             max_cores = feature('numcores');
-            num_workers = min(max_cores, 8); % Limit to 8 workers to avoid overwhelming system
+            num_workers = min(max_cores, 6); % Limit to 6 workers to match MATLAB cluster configuration
             parpool('local', num_workers);
             fprintf('Started parallel pool with %d workers\n', num_workers);
         else
@@ -1872,7 +1872,7 @@ function successful_trials = runParallelSimulations(handles, config)
     
     try
         % Use parsim for parallel simulation
-        simOuts = parsim(simInputs, 'ShowProgress', 'on', 'ShowSimulationManager', 'off');
+        simOuts = parsim(simInputs, 'ShowProgress', true, 'ShowSimulationManager', 'off');
         
         % Process results
         successful_trials = 0;
@@ -2085,8 +2085,17 @@ function simIn = setModelParameters(simIn, config)
         
         % FIXED: Ensure To Workspace blocks save to 'out' variable
         
-        fprintf('Debug: Model parameters set successfully\n');
-        fprintf('Debug: SaveFormat = Structure, ReturnWorkspaceOutputs = on\n');
+        % Apply animation setting
+        if isfield(config, 'enable_animation')
+            if config.enable_animation
+                simIn = simIn.setModelParameter('SimMechanicsOpenGL', 'on');
+                fprintf('Animation enabled for simulation\n');
+            else
+                simIn = simIn.setModelParameter('SimMechanicsOpenGL', 'off');
+            end
+        end
+        
+        % Debug messages removed to clean up output
         
     catch ME
         fprintf('Error setting model parameters: %s\n', ME.message);
@@ -2128,6 +2137,10 @@ function result = processSimulationOutput(trial_num, config, simOut)
                 coeff_idx = coeff_idx + 1;
             end
         end
+        
+        % Add model workspace variables (segment lengths, masses, inertias, etc.)
+        % Note: Model workspace data is always captured as it contains essential model parameters
+        data_table = addModelWorkspaceData(data_table, simOut, num_rows);
         
         % Save to file
         timestamp = datestr(now, 'yyyymmdd_HHMMSS');
@@ -2854,6 +2867,68 @@ function simscape_data = extractSimscapeDataFixed(simlog)
         fprintf('Error extracting Simscape data: %s\n', ME.message);
     end
 end
+
+function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
+    % Extract model workspace variables and add as constant columns
+    % These include segment lengths, masses, inertias, and other model parameters
+    
+    try
+        % Get model workspace from simulation output
+        model_name = simOut.SimulationMetadata.ModelInfo.ModelName;
+        model_workspace = get_param(model_name, 'ModelWorkspace');
+        variables = model_workspace.getVariableNames;
+        
+        fprintf('Adding %d model workspace variables to CSV...\n', length(variables));
+        
+        for i = 1:length(variables)
+            var_name = variables{i};
+            
+            try
+                var_value = model_workspace.getVariable(var_name);
+                
+                % Handle different variable types
+                if isnumeric(var_value) && isscalar(var_value)
+                    % Scalar numeric values (lengths, masses, etc.)
+                    column_name = sprintf('model_%s', var_name);
+                    data_table.(column_name) = repmat(var_value, num_rows, 1);
+                    
+                elseif isnumeric(var_value) && isvector(var_value)
+                    % Vector values (3D coordinates, etc.)
+                    for j = 1:length(var_value)
+                        column_name = sprintf('model_%s_%d', var_name, j);
+                        data_table.(column_name) = repmat(var_value(j), num_rows, 1);
+                    end
+                    
+                elseif isnumeric(var_value) && ismatrix(var_value)
+                    % Matrix values (inertia matrices, etc.)
+                    [rows, cols] = size(var_value);
+                    for r = 1:rows
+                        for c = 1:cols
+                            column_name = sprintf('model_%s_%d_%d', var_name, r, c);
+                            data_table.(column_name) = repmat(var_value(r,c), num_rows, 1);
+                        end
+                    end
+                    
+                elseif isa(var_value, 'Simulink.Parameter')
+                    % Handle Simulink Parameters
+                    param_val = var_value.Value;
+                    if isnumeric(param_val) && isscalar(param_val)
+                        column_name = sprintf('model_%s', var_name);
+                        data_table.(column_name) = repmat(param_val, num_rows, 1);
+                    end
+                end
+                
+            catch ME
+                % Skip variables that can't be extracted
+                fprintf('  Warning: Could not extract variable %s: %s\n', var_name, ME.message);
+            end
+        end
+        
+    catch ME
+        fprintf('Warning: Could not access model workspace: %s\n', ME.message);
+    end
+end
+
 function combined_table = combineDataSources(data_sources)
     combined_table = [];
     
