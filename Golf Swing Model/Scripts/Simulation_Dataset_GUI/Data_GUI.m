@@ -3394,7 +3394,7 @@ function logsout_data = extractLogsoutDataFixed(logsout)
     end
 end
 
-% FIXED: Extract from Simscape with corrected API calls
+% FIXED: Extract from Simscape with hierarchical traversal
 function simscape_data = extractSimscapeDataFixed(simlog)
     simscape_data = [];
     
@@ -3402,102 +3402,30 @@ function simscape_data = extractSimscapeDataFixed(simlog)
         fprintf('Debug: Extracting Simscape data\n');
         
         if ~isempty(simlog) && isa(simlog, 'simscape.logging.Node')
-            % Get time data first from any available source
-            time_data = [];
-            data_cells = {};
-            var_names = {};
+            % First, find time data and collect all signals recursively
+            [time_data, all_signals] = extractSimscapeRecursive(simlog, '');
             
-            % Get all logged variables using correct method
-            try
-                logged_vars = simlog.getElementNames();
-                fprintf('Debug: Found %d Simscape variables using getElementNames\n', length(logged_vars));
-            catch
-                % Alternative method for different MATLAB versions
-                try
-                    logged_vars = fieldnames(simlog);
-                    fprintf('Debug: Using fieldnames, found %d Simscape variables\n', length(logged_vars));
-                catch
-                    fprintf('Debug: Could not get Simscape variable list\n');
-                    logged_vars = {};
-                end
-            end
-            
-            % First pass: find time data from any variable
-            for i = 1:length(logged_vars)
-                var_name = logged_vars{i};
-                try
-                    var_data = simlog.(var_name);
-                    if isstruct(var_data) || isa(var_data, 'simscape.logging.Node')
-                        % Try to get series data
-                        try
-                            if isa(var_data, 'simscape.logging.Node') && isprop(var_data, 'series')
-                                var_series = var_data.series();
-                                if ~isempty(var_series) && isfield(var_series, 'time') && ~isempty(var_series.time)
-                                    time_data = var_series.time;
-                                    fprintf('Debug: Found Simscape time from %s, length: %d\n', var_name, length(time_data));
-                                    break;
-                                end
-                            end
-                        catch
-                            % Continue searching
-                        end
-                    end
-                catch
-                    % Skip variables that can't be accessed
-                    continue;
-                end
-            end
-            
-            % If still no time found, generate it based on expected simulation duration
-            if isempty(time_data)
-                fprintf('Debug: No Simscape time found, trying to generate time vector\n');
-                % Try to get time from the first data variable we can find
-                for i = 1:length(logged_vars)
-                    var_name = logged_vars{i};
-                    try
-                        var_data = simlog.(var_name);
-                        if isa(var_data, 'simscape.logging.Node') && isprop(var_data, 'series')
-                            var_series = var_data.series();
-                            if ~isempty(var_series) && isfield(var_series, 'values') && ~isempty(var_series.values)
-                                data_length = length(var_series.values);
-                                time_data = linspace(0, 1.0, data_length)'; % Default 1 second simulation
-                                fprintf('Debug: Generated Simscape time vector, length: %d\n', length(time_data));
-                                break;
-                            end
-                        end
-                    catch
-                        continue;
-                    end
-                end
-            end
-            
-            % If we have time data, extract all variables
-            if ~isempty(time_data)
+            if ~isempty(time_data) && ~isempty(all_signals)
+                fprintf('Debug: Found Simscape time vector, length: %d\n', length(time_data));
+                fprintf('Debug: Found %d total Simscape signals\n', length(all_signals));
+                
                 data_cells = {time_data};
                 var_names = {'time'};
                 expected_length = length(time_data);
                 
-                % Second pass: extract all variable data
-                for i = 1:length(logged_vars)
-                    var_name = logged_vars{i};
-                    try
-                        var_data = simlog.(var_name);
-                        if isa(var_data, 'simscape.logging.Node') && isprop(var_data, 'series')
-                            var_series = var_data.series();
-                            if ~isempty(var_series) && isfield(var_series, 'values') && ~isempty(var_series.values)
-                                values = var_series.values;
-                                if length(values) == expected_length
-                                    data_cells{end+1} = values(:);
-                                    var_names{end+1} = strrep(var_name, '.', '_');
-                                    fprintf('Debug: Added Simscape variable %s (length: %d)\n', var_name, length(values));
-                                else
-                                    fprintf('Debug: Skipping Simscape variable %s (length mismatch: %d vs %d)\n', var_name, length(values), expected_length);
-                                end
-                            end
+                % Add all signals that match the time length
+                signals_added = 0;
+                for i = 1:length(all_signals)
+                    signal = all_signals{i};
+                    if length(signal.data) == expected_length
+                        data_cells{end+1} = signal.data(:);
+                        var_names{end+1} = signal.name;
+                        signals_added = signals_added + 1;
+                        if mod(signals_added, 50) == 0
+                            fprintf('Debug: Added %d Simscape signals...\n', signals_added);
                         end
-                    catch ME_var
-                        fprintf('Debug: Could not extract Simscape variable %s: %s\n', var_name, ME_var.message);
-                        continue;
+                    else
+                        fprintf('Debug: Skipping %s (length mismatch: %d vs %d)\n', signal.name, length(signal.data), expected_length);
                     end
                 end
                 
@@ -3505,10 +3433,10 @@ function simscape_data = extractSimscapeDataFixed(simlog)
                     simscape_data = table(data_cells{:}, 'VariableNames', var_names);
                     fprintf('Debug: Created Simscape table with %d columns, %d rows\n', width(simscape_data), height(simscape_data));
                 else
-                    fprintf('Debug: Only found time data in Simscape log\n');
+                    fprintf('Debug: Only time data found in Simscape log\n');
                 end
             else
-                fprintf('Debug: No usable Simscape time data found\n');
+                fprintf('Debug: No Simscape data could be extracted\n');
             end
         else
             fprintf('Debug: Simlog is not a valid Simscape logging node\n');
@@ -3516,6 +3444,89 @@ function simscape_data = extractSimscapeDataFixed(simlog)
         
     catch ME
         fprintf('Error extracting Simscape data: %s\n', ME.message);
+        fprintf('Stack trace:\n');
+        for i = 1:length(ME.stack)
+            fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
+        end
+    end
+end
+
+% Recursive function to traverse Simscape hierarchy and extract all signals
+function [time_data, all_signals] = extractSimscapeRecursive(node, path_prefix)
+    time_data = [];
+    all_signals = {};
+    
+    try
+        if isa(node, 'simscape.logging.Node')
+            % Try to get series data from this node
+            try
+                if isprop(node, 'series')
+                    series_data = node.series();
+                    if ~isempty(series_data)
+                        % Check if this node has time data
+                        if isfield(series_data, 'time') && ~isempty(series_data.time)
+                            time_data = series_data.time;
+                        end
+                        
+                        % Check if this node has values data
+                        if isfield(series_data, 'values') && ~isempty(series_data.values)
+                            signal_name = strrep(path_prefix, '.', '_');
+                            if isempty(signal_name)
+                                signal_name = 'root';
+                            end
+                            all_signals{end+1} = struct('name', signal_name, 'data', series_data.values);
+                        end
+                    end
+                end
+            catch
+                % This node doesn't have series data, continue
+            end
+            
+            % Get child nodes
+            try
+                child_names = node.getElementNames();
+            catch
+                try
+                    child_names = fieldnames(node);
+                catch
+                    child_names = {};
+                end
+            end
+            
+            % Recursively process child nodes
+            for i = 1:length(child_names)
+                child_name = child_names{i};
+                try
+                    child_node = node.(child_name);
+                    if isa(child_node, 'simscape.logging.Node')
+                        % Create new path
+                        if isempty(path_prefix)
+                            new_path = child_name;
+                        else
+                            new_path = [path_prefix '_' child_name];
+                        end
+                        
+                        % Recursively extract from child
+                        [child_time, child_signals] = extractSimscapeRecursive(child_node, new_path);
+                        
+                        % Use the first time data we find
+                        if isempty(time_data) && ~isempty(child_time)
+                            time_data = child_time;
+                        end
+                        
+                        % Collect all signals
+                        all_signals = [all_signals, child_signals];
+                    end
+                catch
+                    % Skip nodes that can't be accessed
+                    continue;
+                end
+            end
+        end
+        
+    catch ME
+        % Don't let errors in one branch stop the whole extraction
+        fprintf('Debug: Error in Simscape recursion at %s: %s\n', path_prefix, ME.message);
     end
 end
 
