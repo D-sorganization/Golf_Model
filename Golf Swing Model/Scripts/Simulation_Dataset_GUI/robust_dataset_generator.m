@@ -111,14 +111,14 @@ function successful_trials = robust_dataset_generator(config, varargin)
     logMessage('info', 'Using batch size: %d trials', batch_size);
     
     % Initialize parallel pool with memory limits (respect execution mode)
-            if enable_performance_monitoring
-            try
-                endPhase();
-                recordPhase('Parallel Pool Setup');
-            catch
-                % Performance monitoring not available, continue silently
-            end
+    if enable_performance_monitoring
+        try
+            endPhase();
+            recordPhase('Parallel Pool Setup');
+        catch
+            % Performance monitoring not available, continue silently
         end
+    end
     
     % Check execution mode - use sequential if requested
     if isfield(config, 'execution_mode') && config.execution_mode == 1
@@ -134,14 +134,14 @@ function successful_trials = robust_dataset_generator(config, varargin)
     total_trials = config.num_simulations;
     successful_trials = 0;
     
-            if enable_performance_monitoring
-            try
-                endPhase();
-                recordPhase('Dataset Generation');
-            catch
-                % Performance monitoring not available, continue silently
-            end
+    if enable_performance_monitoring
+        try
+            endPhase();
+            recordPhase('Dataset Generation');
+        catch
+            % Performance monitoring not available, continue silently
         end
+    end
     
     try
         for batch_start = start_trial:batch_size:total_trials
@@ -231,8 +231,12 @@ function successful_trials = robust_dataset_generator(config, varargin)
                 % Performance monitoring not available, continue silently
             end
         end
-        logMessage('info', 'Compiling final dataset...');
-        compileFinalDataset(config, all_results, successful_trials);
+        if successful_trials > 0
+            logMessage('info', 'Compiling final dataset...');
+            compileFinalDataset(config, all_results, successful_trials);
+        else
+            logMessage('warning', 'No successful simulations to compile. Skipping dataset compilation.');
+        end
         
         % Cleanup
         if ~isempty(pool)
@@ -360,6 +364,16 @@ function batch_results = processBatch(config, trial_indices, pool, capture_works
                 % Create config with workspace capture setting
                 trial_config = config;
                 trial_config.capture_workspace = capture_workspace;
+                
+                % Debug: Check what we're passing to runSingleTrial
+                fprintf('Debug: Calling runSingleTrial with trial=%d, config type=%s, capture_workspace=%s\n', ...
+                    trial, class(config), mat2str(capture_workspace));
+                
+                % Check if function exists
+                if ~exist('runSingleTrial', 'file')
+                    error('runSingleTrial function not found in path');
+                end
+                
                 batch_results{i} = runSingleTrial(trial, config, [], capture_workspace);
                 trial_duration = toc(trial_start_time);
                 
