@@ -7,6 +7,8 @@ function robust_dataset_generator(config, varargin)
     % - Automatic recovery from crashes
     % - Parallel pool management with memory limits
     % - Progress tracking and resume capability
+    % - Performance monitoring and analysis
+    % - Verbosity controls for output management
     %
     % Usage:
     %   robust_dataset_generator(config)
@@ -20,6 +22,8 @@ function robust_dataset_generator(config, varargin)
     addParameter(p, 'MaxWorkers', 4, @isnumeric);            % Max parallel workers
     addParameter(p, 'ResumeFrom', '', @ischar);              % Resume from checkpoint
     addParameter(p, 'CheckpointFile', '', @ischar);          % Custom checkpoint file
+    addParameter(p, 'Verbosity', 'normal', @ischar);         % Output verbosity level
+    addParameter(p, 'PerformanceMonitoring', true, @islogical); % Enable performance monitoring
     parse(p, varargin{:});
     
     batch_size = p.Results.BatchSize;
@@ -28,6 +32,17 @@ function robust_dataset_generator(config, varargin)
     max_workers = p.Results.MaxWorkers;
     resume_from = p.Results.ResumeFrom;
     checkpoint_file = p.Results.CheckpointFile;
+    verbosity_level = p.Results.Verbosity;
+    enable_performance_monitoring = p.Results.PerformanceMonitoring;
+    
+    % Initialize verbosity control
+    verbosity_control('set', verbosity_level);
+    
+    % Initialize performance monitoring
+    if enable_performance_monitoring
+        performance_monitor('start');
+        recordPhase('Initialization');
+    end
     
     % Initialize checkpoint system
     if isempty(checkpoint_file)
@@ -37,52 +52,73 @@ function robust_dataset_generator(config, varargin)
     
     % Initialize or load checkpoint
     if ~isempty(resume_from) && exist(resume_from, 'file')
-        fprintf('Resuming from checkpoint: %s\n', resume_from);
+        logMessage('info', 'Resuming from checkpoint: %s', resume_from);
         checkpoint = load(resume_from);
         completed_trials = checkpoint.completed_trials;
         all_results = checkpoint.all_results;
         start_trial = length(completed_trials) + 1;
-        fprintf('Resuming from trial %d\n', start_trial);
+        logMessage('info', 'Resuming from trial %d', start_trial);
     else
         completed_trials = [];
         all_results = {};
         start_trial = 1;
-        fprintf('Starting new dataset generation\n');
+        logMessage('info', 'Starting new dataset generation');
     end
     
     % Calculate optimal batch size based on available memory
     optimal_batch_size = calculateOptimalBatchSize(max_memory_gb, config);
     batch_size = min(batch_size, optimal_batch_size);
-    fprintf('Using batch size: %d trials\n', batch_size);
+    logMessage('info', 'Using batch size: %d trials', batch_size);
     
     % Initialize parallel pool with memory limits
+    if enable_performance_monitoring
+        endPhase();
+        recordPhase('Parallel Pool Setup');
+    end
     pool = initializeParallelPool(max_workers, max_memory_gb);
     
     % Main generation loop
     total_trials = config.num_simulations;
     successful_trials = 0;
     
+    if enable_performance_monitoring
+        endPhase();
+        recordPhase('Dataset Generation');
+    end
+    
     try
         for batch_start = start_trial:batch_size:total_trials
             batch_end = min(batch_start + batch_size - 1, total_trials);
             current_batch_size = batch_end - batch_start + 1;
+            batch_num = ceil(batch_start / batch_size);
             
-            fprintf('\n=== Processing Batch %d-%d of %d ===\n', ...
-                batch_start, batch_end, total_trials);
+            logMessage('info', 'Processing batch %d: trials %d-%d of %d', ...
+                batch_num, batch_start, batch_end, total_trials);
             
             % Check memory before starting batch
             if ~checkMemoryAvailable(max_memory_gb)
-                fprintf('⚠️  Low memory detected. Pausing for cleanup...\n');
+                logMessage('warning', 'Low memory detected. Pausing for cleanup...');
                 cleanupMemory();
                 pause(5); % Give system time to free memory
             end
             
             % Process batch
+            batch_start_time = tic;
             batch_results = processBatch(config, batch_start:batch_end, pool);
+            batch_duration = toc(batch_start_time);
             
             % Update progress
             successful_in_batch = sum([batch_results.success]);
+            failed_in_batch = length(batch_results) - successful_in_batch;
             successful_trials = successful_trials + successful_in_batch;
+            
+            % Record batch performance
+            if enable_performance_monitoring
+                recordBatchTime(batch_num, current_batch_size, batch_duration, successful_in_batch);
+            end
+            
+            % Log batch results
+            logBatchResult(batch_num, current_batch_size, successful_in_batch, failed_in_batch, batch_duration);
             
             % Add to completed trials
             completed_trials = [completed_trials, batch_start:batch_end];
@@ -90,19 +126,38 @@ function robust_dataset_generator(config, varargin)
             
             % Save checkpoint
             if mod(length(completed_trials), save_interval) == 0 || batch_end == total_trials
+                checkpoint_start_time = tic;
                 saveCheckpoint(checkpoint_file, completed_trials, all_results, config);
-                fprintf('✓ Checkpoint saved: %d/%d trials completed\n', ...
+                checkpoint_duration = toc(checkpoint_start_time);
+                
+                % Get checkpoint file size
+                file_info = dir(checkpoint_file);
+                file_size_mb = file_info.bytes / 1024^2;
+                
+                % Record checkpoint performance
+                if enable_performance_monitoring
+                    recordCheckpointTime(checkpoint_duration);
+                end
+                
+                % Log checkpoint info
+                logCheckpoint(checkpoint_duration, file_size_mb);
+                logMessage('info', 'Checkpoint saved: %d/%d trials completed', ...
                     length(completed_trials), total_trials);
             end
             
             % Progress report
-            fprintf('Batch complete: %d/%d successful (%.1f%%)\n', ...
+            logProgress(length(completed_trials), total_trials, 'Overall progress');
+            logMessage('info', 'Batch complete: %d/%d successful (%.1f%%)', ...
                 successful_trials, length(completed_trials), ...
                 100 * successful_trials / length(completed_trials));
         end
         
         % Final compilation
-        fprintf('\n=== Compiling Final Dataset ===\n');
+        if enable_performance_monitoring
+            endPhase();
+            recordPhase('Final Compilation');
+        end
+        logMessage('info', 'Compiling final dataset...');
         compileFinalDataset(config, all_results, successful_trials);
         
         % Cleanup
@@ -110,16 +165,27 @@ function robust_dataset_generator(config, varargin)
             delete(pool);
         end
         
-        fprintf('\n✅ Dataset generation complete!\n');
-        fprintf('Total trials: %d\n', total_trials);
-        fprintf('Successful: %d (%.1f%%)\n', successful_trials, ...
+        % Stop performance monitoring and generate report
+        if enable_performance_monitoring
+            endPhase();
+            performance_monitor('stop');
+        end
+        
+        logMessage('info', 'Dataset generation complete!');
+        logMessage('info', 'Total trials: %d', total_trials);
+        logMessage('info', 'Successful: %d (%.1f%%)', successful_trials, ...
             100 * successful_trials / total_trials);
         
     catch ME
         % Emergency save on error
-        fprintf('\n❌ Error during generation: %s\n', ME.message);
-        fprintf('Saving emergency checkpoint...\n');
+        logMessage('error', 'Error during generation: %s', ME.message);
+        logMessage('info', 'Saving emergency checkpoint...');
         saveCheckpoint(checkpoint_file, completed_trials, all_results, config);
+        
+        % Stop performance monitoring
+        if enable_performance_monitoring
+            performance_monitor('stop');
+        end
         
         % Cleanup
         if ~isempty(pool)
@@ -202,13 +268,27 @@ function batch_results = processBatch(config, trial_indices, pool)
         % Sequential processing
         for i = 1:length(trial_indices)
             trial = trial_indices(i);
-            fprintf('Processing trial %d/%d...\n', trial, config.num_simulations);
+            logProgress(i, length(trial_indices), sprintf('Processing trial %d', trial));
             
             try
+                trial_start_time = tic;
                 batch_results{i} = runSingleTrial(trial, config, []);
+                trial_duration = toc(trial_start_time);
+                
+                % Record trial performance
+                global performance_data;
+                if ~isempty(performance_data)
+                    recordTrialTime(trial, trial_duration, 0); % Processing time not tracked separately
+                end
+                
+                % Log trial result
+                logTrialResult(trial, batch_results{i}.success, trial_duration, ...
+                    batch_results{i}.error);
+                
             catch ME
-                fprintf('Trial %d failed: %s\n', trial, ME.message);
+                trial_duration = 0;
                 batch_results{i} = struct('success', false, 'error', ME.message);
+                logTrialResult(trial, false, trial_duration, ME.message);
             end
         end
     else
