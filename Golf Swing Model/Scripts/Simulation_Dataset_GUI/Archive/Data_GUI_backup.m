@@ -3466,7 +3466,7 @@ function data_array = extractDataFromField(field_value, expected_length)
     end
 end
 
-% FIXED: Extract from CombinedSignalBus
+% FIXED: Extract from CombinedSignalBus with proper golf swing model structure handling
 function data_table = extractFromCombinedSignalBus(combinedBus)
     data_table = [];
     

@@ -2507,7 +2507,18 @@ function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
         end
         
         model_workspace = get_param(model_name, 'ModelWorkspace');
-        variables = model_workspace.getVariableNames;
+                        try
+                    variables = model_workspace.getVariableNames;
+                catch
+                    % For older MATLAB versions, try alternative method
+                    try
+                        variables = model_workspace.whos;
+                        variables = {variables.name};
+                    catch
+                        fprintf('Warning: Could not retrieve model workspace variable names\n');
+                        return;
+                    end
+                end
         
         if length(variables) > 0
             fprintf('Adding %d model workspace variables to CSV...\n', length(variables));
@@ -3064,92 +3075,130 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
             end
         end
         
-        if isempty(time_data)
-            fprintf('Debug: No time field found in CombinedSignalBus\n');
-            fprintf('Debug: Available fields: %s\n', strjoin(bus_fields, ', '));
-            
-            % Try to use the first field as a fallback and extract its time
-            if ~isempty(bus_fields)
-                first_field = bus_fields{1};
-                first_value = combinedBus.(first_field);
-                fprintf('Debug: Examining first field %s (type: %s)\n', first_field, class(first_value));
-                
-                if isstruct(first_value)
-                    sub_fields = fieldnames(first_value);
-                    fprintf('Debug: Subfields: %s\n', strjoin(sub_fields, ', '));
-                    
-                    % Look for any numeric array that could be time
-                    for k = 1:length(sub_fields)
-                        sub_val = first_value.(sub_fields{k});
-                        if isnumeric(sub_val) && length(sub_val) > 1
-                            time_data = sub_val(:);
-                            time_field = first_field;
-                            fprintf('Debug: Using %s.%s as time (length: %d)\n', first_field, sub_fields{k}, length(time_data));
-                            break;
-                        end
-                    end
-                end
+        % First, try to find time data by examining the signal structures
+        for i = 1:length(bus_fields)
+            if ~isempty(time_data)
+                break;
             end
             
-            if isempty(time_data)
-                fprintf('Debug: Could not find any usable time data\n');
-                return;
+            field_name = bus_fields{i};
+            field_value = combinedBus.(field_name);
+            
+            if isstruct(field_value)
+                % This field contains sub-signals
+                sub_fields = fieldnames(field_value);
+                
+                % Try to get time from the first valid signal
+                for j = 1:length(sub_fields)
+                    sub_field_name = sub_fields{j};
+                    signal_data = field_value.(sub_field_name);
+                    
+                    % Check if this is a timeseries or signal structure with time
+                    if isa(signal_data, 'timeseries')
+                        time_data = signal_data.Time(:);
+                        fprintf('Debug: Found time in %s.%s (timeseries), length: %d\n', field_name, sub_field_name, length(time_data));
+                        break;
+                    elseif isstruct(signal_data) && isfield(signal_data, 'time')
+                        time_data = signal_data.time(:);
+                        fprintf('Debug: Found time in %s.%s.time, length: %d\n', field_name, sub_field_name, length(time_data));
+                        break;
+                    elseif isstruct(signal_data) && isfield(signal_data, 'Time')
+                        time_data = signal_data.Time(:);
+                        fprintf('Debug: Found time in %s.%s.Time, length: %d\n', field_name, sub_field_name, length(time_data));
+                        break;
+                    elseif isstruct(signal_data) && isfield(signal_data, 'Values')
+                        % Could be a Simulink.SimulationData.Signal format
+                        if isnumeric(signal_data.Values) && size(signal_data.Values, 1) > 1
+                            % Assume first column is time if it exists
+                            time_data = (0:size(signal_data.Values, 1)-1)' * 0.001; % Default 1ms sampling
+                            fprintf('Debug: Generated time vector for %s.%s, length: %d\n', field_name, sub_field_name, length(time_data));
+                            break;
+                        end
+                    elseif isnumeric(signal_data) && length(signal_data) > 1
+                        % Just numeric data, we'll need to generate time
+                        time_data = (0:length(signal_data)-1)' * 0.001; % Default 1ms sampling
+                        fprintf('Debug: Generated time vector from %s.%s numeric data, length: %d\n', field_name, sub_field_name, length(time_data));
+                        break;
+                    end
+                end
             end
         end
         
-        % Extract all other numeric fields
+        if isempty(time_data)
+            fprintf('Debug: No time data found in any signals\n');
+            return;
+        end
+        
+        % Now extract all signals using this time reference
         data_cells = {time_data};
         var_names = {'time'};
+        expected_length = length(time_data);
         
+        fprintf('Debug: Starting data extraction with time vector length: %d\n', expected_length);
+        
+        % Process each field in the bus
         for i = 1:length(bus_fields)
             field_name = bus_fields{i};
-            
-            % Skip time field
-            if strcmp(field_name, time_field)
-                continue;
-            end
-            
             field_value = combinedBus.(field_name);
             
-            % Handle different data types
-            if isnumeric(field_value)
-                % Check if it's the right length
-                if length(field_value) == length(time_data)
-                    data_cells{end+1} = field_value(:);  % Ensure column vector
-                    var_names{end+1} = field_name;
-                    fprintf('Debug: Added field %s\n', field_name);
-                elseif numel(field_value) > 1 && size(field_value, 1) == length(time_data)
-                    % Multi-dimensional data
-                    for col = 1:size(field_value, 2)
-                        data_cells{end+1} = field_value(:, col);
-                        var_names{end+1} = sprintf('%s_%d', field_name, col);
-                        fprintf('Debug: Added multi-dim field %s_%d\n', field_name, col);
+            if isstruct(field_value)
+                % This field contains sub-signals
+                sub_fields = fieldnames(field_value);
+                
+                for j = 1:length(sub_fields)
+                    sub_field_name = sub_fields{j};
+                    signal_data = field_value.(sub_field_name);
+                    
+                    % Extract numeric data from various formats
+                    numeric_data = [];
+                    
+                    if isa(signal_data, 'timeseries')
+                        numeric_data = signal_data.Data;
+                    elseif isstruct(signal_data) && isfield(signal_data, 'Data')
+                        numeric_data = signal_data.Data;
+                    elseif isstruct(signal_data) && isfield(signal_data, 'Values')
+                        numeric_data = signal_data.Values;
+                    elseif isnumeric(signal_data)
+                        numeric_data = signal_data;
                     end
-                else
-                    fprintf('Debug: Skipping field %s (length mismatch: %d vs %d)\n', field_name, length(field_value), length(time_data));
-                end
-            elseif isstruct(field_value)
-                % Handle nested structs
-                nested_data = extractFromNestedStruct(field_value, field_name, time_data);
-                if ~isempty(nested_data)
-                    % Add nested data
-                    nested_vars = nested_data.Properties.VariableNames;
-                    for j = 1:length(nested_vars)
-                        if ~strcmp(nested_vars{j}, 'time')  % Don't duplicate time
-                            data_cells{end+1} = nested_data.(nested_vars{j});
-                            var_names{end+1} = nested_vars{j};
+                    
+                    % Add the data if it matches our expected length
+                    if ~isempty(numeric_data)
+                        if size(numeric_data, 1) == expected_length
+                            if size(numeric_data, 2) == 1
+                                % Single column
+                                data_cells{end+1} = numeric_data(:);
+                                var_names{end+1} = sprintf('%s_%s', field_name, sub_field_name);
+                                fprintf('Debug: Added %s_%s\n', field_name, sub_field_name);
+                            elseif size(numeric_data, 2) > 1
+                                % Multi-column data
+                                for col = 1:size(numeric_data, 2)
+                                    data_cells{end+1} = numeric_data(:, col);
+                                    var_names{end+1} = sprintf('%s_%s_%d', field_name, sub_field_name, col);
+                                    fprintf('Debug: Added %s_%s_%d\n', field_name, sub_field_name, col);
+                                end
+                            end
+                        else
+                            fprintf('Debug: Skipping %s.%s (length mismatch: %d vs %d)\n', field_name, sub_field_name, size(numeric_data, 1), expected_length);
                         end
                     end
                 end
+            elseif isnumeric(field_value) && length(field_value) == expected_length
+                % Direct numeric field
+                data_cells{end+1} = field_value(:);
+                var_names{end+1} = field_name;
+                fprintf('Debug: Added direct field %s\n', field_name);
             end
         end
         
         % Create table if we have data
         if length(data_cells) > 1
             data_table = table(data_cells{:}, 'VariableNames', var_names);
-            fprintf('Debug: Created CombinedSignalBus table with %d columns\n', width(data_table));
+            fprintf('Debug: Created CombinedSignalBus table with %d columns, %d rows\n', width(data_table), height(data_table));
         else
             fprintf('Debug: No valid data found in CombinedSignalBus\n');
+            fprintf('Debug: Total data_cells collected: %d\n', length(data_cells));
+            fprintf('Debug: Variable names: %s\n', strjoin(var_names, ', '));
         end
         
     catch ME
@@ -3353,56 +3402,113 @@ function simscape_data = extractSimscapeDataFixed(simlog)
         fprintf('Debug: Extracting Simscape data\n');
         
         if ~isempty(simlog) && isa(simlog, 'simscape.logging.Node')
-            % Get series data - this is the correct way to access Simscape data
+            % Get time data first from any available source
+            time_data = [];
+            data_cells = {};
+            var_names = {};
+            
+            % Get all logged variables using correct method
             try
-                series_info = simlog.series();
-                if ~isempty(series_info)
-                    time = series_info.time;
-                    fprintf('Debug: Found Simscape time series, length: %d\n', length(time));
-                    
-                    data_cells = {time};
-                    var_names = {'time'};
-                    
-                    % Get all logged variables using correct method
-                    try
-                        logged_vars = simlog.getElementNames();
-                        fprintf('Debug: Found %d Simscape variables\n', length(logged_vars));
-                    catch
-                        % Alternative method for different MATLAB versions
+                logged_vars = simlog.getElementNames();
+                fprintf('Debug: Found %d Simscape variables using getElementNames\n', length(logged_vars));
+            catch
+                % Alternative method for different MATLAB versions
+                try
+                    logged_vars = fieldnames(simlog);
+                    fprintf('Debug: Using fieldnames, found %d Simscape variables\n', length(logged_vars));
+                catch
+                    fprintf('Debug: Could not get Simscape variable list\n');
+                    logged_vars = {};
+                end
+            end
+            
+            % First pass: find time data from any variable
+            for i = 1:length(logged_vars)
+                var_name = logged_vars{i};
+                try
+                    var_data = simlog.(var_name);
+                    if isstruct(var_data) || isa(var_data, 'simscape.logging.Node')
+                        % Try to get series data
                         try
-                            logged_vars = fieldnames(simlog);
-                            fprintf('Debug: Using fieldnames, found %d Simscape variables\n', length(logged_vars));
-                        catch
-                            fprintf('Debug: Could not get Simscape variable list\n');
-                            logged_vars = {};
-                        end
-                    end
-                    
-                    for i = 1:length(logged_vars)
-                        var_name = logged_vars{i};
-                        try
-                            var_data = simlog.find(var_name);
-                            if ~isempty(var_data) && isprop(var_data, 'series')
+                            if isa(var_data, 'simscape.logging.Node') && isprop(var_data, 'series')
                                 var_series = var_data.series();
-                                if ~isempty(var_series) && length(var_series.values) == length(time)
-                                    data_cells{end+1} = var_series.values;
-                                    var_names{end+1} = strrep(var_name, '.', '_');
-                                    fprintf('Debug: Added Simscape variable %s\n', var_name);
+                                if ~isempty(var_series) && isfield(var_series, 'time') && ~isempty(var_series.time)
+                                    time_data = var_series.time;
+                                    fprintf('Debug: Found Simscape time from %s, length: %d\n', var_name, length(time_data));
+                                    break;
                                 end
                             end
                         catch
-                            % Skip variables that can't be accessed
-                            continue;
+                            % Continue searching
                         end
                     end
-                    
-                    if length(data_cells) > 1
-                        simscape_data = table(data_cells{:}, 'VariableNames', var_names);
-                        fprintf('Debug: Created Simscape table with %d columns\n', width(simscape_data));
+                catch
+                    % Skip variables that can't be accessed
+                    continue;
+                end
+            end
+            
+            % If still no time found, generate it based on expected simulation duration
+            if isempty(time_data)
+                fprintf('Debug: No Simscape time found, trying to generate time vector\n');
+                % Try to get time from the first data variable we can find
+                for i = 1:length(logged_vars)
+                    var_name = logged_vars{i};
+                    try
+                        var_data = simlog.(var_name);
+                        if isa(var_data, 'simscape.logging.Node') && isprop(var_data, 'series')
+                            var_series = var_data.series();
+                            if ~isempty(var_series) && isfield(var_series, 'values') && ~isempty(var_series.values)
+                                data_length = length(var_series.values);
+                                time_data = linspace(0, 1.0, data_length)'; % Default 1 second simulation
+                                fprintf('Debug: Generated Simscape time vector, length: %d\n', length(time_data));
+                                break;
+                            end
+                        end
+                    catch
+                        continue;
                     end
                 end
-            catch ME2
-                fprintf('Debug: Could not access Simscape series data: %s\n', ME2.message);
+            end
+            
+            % If we have time data, extract all variables
+            if ~isempty(time_data)
+                data_cells = {time_data};
+                var_names = {'time'};
+                expected_length = length(time_data);
+                
+                % Second pass: extract all variable data
+                for i = 1:length(logged_vars)
+                    var_name = logged_vars{i};
+                    try
+                        var_data = simlog.(var_name);
+                        if isa(var_data, 'simscape.logging.Node') && isprop(var_data, 'series')
+                            var_series = var_data.series();
+                            if ~isempty(var_series) && isfield(var_series, 'values') && ~isempty(var_series.values)
+                                values = var_series.values;
+                                if length(values) == expected_length
+                                    data_cells{end+1} = values(:);
+                                    var_names{end+1} = strrep(var_name, '.', '_');
+                                    fprintf('Debug: Added Simscape variable %s (length: %d)\n', var_name, length(values));
+                                else
+                                    fprintf('Debug: Skipping Simscape variable %s (length mismatch: %d vs %d)\n', var_name, length(values), expected_length);
+                                end
+                            end
+                        end
+                    catch ME_var
+                        fprintf('Debug: Could not extract Simscape variable %s: %s\n', var_name, ME_var.message);
+                        continue;
+                    end
+                end
+                
+                if length(data_cells) > 1
+                    simscape_data = table(data_cells{:}, 'VariableNames', var_names);
+                    fprintf('Debug: Created Simscape table with %d columns, %d rows\n', width(simscape_data), height(simscape_data));
+                else
+                    fprintf('Debug: Only found time data in Simscape log\n');
+                end
+            else
+                fprintf('Debug: No usable Simscape time data found\n');
             end
         else
             fprintf('Debug: Simlog is not a valid Simscape logging node\n');
