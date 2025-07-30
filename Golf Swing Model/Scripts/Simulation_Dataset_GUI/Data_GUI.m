@@ -1907,23 +1907,71 @@ function successful_trials = runParallelSimulations(handles, config)
             else
                 fprintf('✗ Trial %d simulation failed\n', i);
                 
-                % Extract basic error information
-                if ~isempty(simOuts(i)) && isfield(simOuts(i), 'ErrorMessage') && ~isempty(simOuts(i).ErrorMessage)
-                    fprintf('  Error: %s\n', simOuts(i).ErrorMessage);
-                end
-                
-                if ~isempty(simOuts(i)) && isfield(simOuts(i), 'SimulationMetadata') && ...
-                   isfield(simOuts(i).SimulationMetadata, 'ExecutionInfo') && ...
-                   isfield(simOuts(i).SimulationMetadata.ExecutionInfo, 'ErrorDiagnostic') && ...
-                   ~isempty(simOuts(i).SimulationMetadata.ExecutionInfo.ErrorDiagnostic)
-                    diag = simOuts(i).SimulationMetadata.ExecutionInfo.ErrorDiagnostic;
-                    fprintf('  Details: %s\n', diag.message);
+                % Enhanced error diagnostics
+                if ~isempty(simOuts(i))
+                    fprintf('  Simulation output exists but failed\n');
+                    
+                    % Extract error message
+                    if isfield(simOuts(i), 'ErrorMessage') && ~isempty(simOuts(i).ErrorMessage)
+                        fprintf('  Error Message: %s\n', simOuts(i).ErrorMessage);
+                        
+                        % Analyze error type
+                        error_msg = simOuts(i).ErrorMessage;
+                        if contains(error_msg, 'parameter', 'IgnoreCase', true)
+                            fprintf('  -> Parameter configuration issue detected\n');
+                        elseif contains(error_msg, 'workspace', 'IgnoreCase', true)
+                            fprintf('  -> Workspace variable issue detected\n');
+                        elseif contains(error_msg, 'model', 'IgnoreCase', true)
+                            fprintf('  -> Model loading/access issue detected\n');
+                        elseif contains(error_msg, 'license', 'IgnoreCase', true)
+                            fprintf('  -> Licensing issue detected on worker\n');
+                        elseif contains(error_msg, 'coefficient', 'IgnoreCase', true)
+                            fprintf('  -> Coefficient setting issue detected\n');
+                        end
+                    end
+                    
+                    % Extract diagnostic information
+                    if isfield(simOuts(i), 'SimulationMetadata')
+                        if isfield(simOuts(i).SimulationMetadata, 'ExecutionInfo')
+                            exec_info = simOuts(i).SimulationMetadata.ExecutionInfo;
+                            
+                            if isfield(exec_info, 'StopTime')
+                                fprintf('  Stopped at time: %.6f seconds\n', exec_info.StopTime);
+                            end
+                            
+                            if isfield(exec_info, 'ErrorDiagnostic') && ~isempty(exec_info.ErrorDiagnostic)
+                                if isstruct(exec_info.ErrorDiagnostic) && isfield(exec_info.ErrorDiagnostic, 'message')
+                                    fprintf('  Diagnostic: %s\n', exec_info.ErrorDiagnostic.message);
+                                else
+                                    fprintf('  Diagnostic: %s\n', char(exec_info.ErrorDiagnostic));
+                                end
+                            end
+                        end
+                    end
+                else
+                    fprintf('  No simulation output returned (complete failure)\n');
                 end
             end
         end
         
+        % Summary
+        fprintf('\n=== PARALLEL SIMULATION SUMMARY ===\n');
+        fprintf('Total trials: %d\n', length(simOuts));
+        fprintf('Successful: %d\n', successful_trials);
+        fprintf('Failed: %d\n', length(simOuts) - successful_trials);
+        
+        if successful_trials == 0
+            fprintf('\n⚠️  All parallel simulations failed. Common causes:\n');
+            fprintf('   • Model path not accessible on workers\n');
+            fprintf('   • Missing workspace variables on workers\n');
+            fprintf('   • Toolbox licensing issues on workers\n');
+            fprintf('   • Model configuration conflicts in parallel mode\n');
+            fprintf('   • Coefficient setting issues on workers\n');
+            fprintf('\n💡 Try sequential mode for detailed debugging\n');
+        end
+        
     catch ME
-        fprintf('Parallel simulation failed: %s\n', ME.message);
+        fprintf('\n❌ PARALLEL SIMULATION FRAMEWORK ERROR: %s\n', ME.message);
         
         % Try running one simulation sequentially to get detailed error
         fprintf('\nTrying one simulation sequentially for debugging...\n');
@@ -2209,6 +2257,41 @@ function simIn = setModelParameters(simIn, config)
                 fprintf('Warning: Could not set LimitDataPoints\n');
             end
             
+            % CRITICAL: Enable Simscape logging for parallel execution
+            try
+                simIn = simIn.setModelParameter('SimscapeLogType', 'All');
+                fprintf('Debug: Set SimscapeLogType to All\n');
+            catch ME
+                fprintf('Warning: Could not set SimscapeLogType: %s\n', ME.message);
+            end
+            
+            try
+                simIn = simIn.setModelParameter('SimscapeLogLevel', 'All');
+                fprintf('Debug: Set SimscapeLogLevel to All\n');
+            catch ME
+                fprintf('Warning: Could not set SimscapeLogLevel: %s\n', ME.message);
+            end
+            
+            try
+                simIn = simIn.setModelParameter('SimscapeLogDecimation', '1');
+            catch ME
+                fprintf('Warning: Could not set SimscapeLogDecimation: %s\n', ME.message);
+            end
+            
+            try
+                simIn = simIn.setModelParameter('SimscapeLogToFile', 'off');
+            catch ME
+                fprintf('Warning: Could not set SimscapeLogToFile: %s\n', ME.message);
+            end
+            
+            % Ensure data logging is enabled
+            try
+                simIn = simIn.setModelParameter('LoggingToFile', 'off');
+                simIn = simIn.setModelParameter('DataLogging', 'on');
+            catch ME
+                fprintf('Warning: Could not set logging parameters: %s\n', ME.message);
+            end
+            
             % Set other model parameters to suppress unconnected port warnings
             try
                 simIn = simIn.setModelParameter('UnconnectedInputMsg', 'none');
@@ -2382,16 +2465,63 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
         end
         
         % Extract from Simscape if enabled and available
-        if options.extract_simscape && (isprop(simOut, 'simlog') || isfield(simOut, 'simlog'))
+        if options.extract_simscape
             if options.verbose
-                fprintf('Extracting from Simscape simlog...\n');
+                fprintf('Checking for Simscape simlog...\n');
             end
             
-            simscape_data = extractSimscapeDataFixed(simOut.simlog);
-            if ~isempty(simscape_data)
-                all_data{end+1} = simscape_data;
+            % Enhanced simlog access for parallel execution
+            simlog_available = false;
+            simlog_data = [];
+            
+            if isprop(simOut, 'simlog') || isfield(simOut, 'simlog')
+                try
+                    simlog_data = simOut.simlog;
+                    if ~isempty(simlog_data)
+                        simlog_available = true;
+                        if options.verbose
+                            fprintf('Found simlog (type: %s)\n', class(simlog_data));
+                        end
+                    end
+                catch ME
+                    if options.verbose
+                        fprintf('Warning: Could not access simlog: %s\n', ME.message);
+                    end
+                end
+            end
+            
+            % Try alternative access methods for parallel workers
+            if ~simlog_available
+                try
+                    if isprop(simOut, 'SimulationMetadata') && isfield(simOut.SimulationMetadata, 'SimscapeLoggingInfo')
+                        if options.verbose
+                            fprintf('Attempting alternative simlog access...\n');
+                        end
+                    end
+                catch
+                    % Continue
+                end
+            end
+            
+            if simlog_available
                 if options.verbose
-                    fprintf('Simscape: %d columns extracted\n', width(simscape_data));
+                    fprintf('Extracting from Simscape simlog...\n');
+                end
+                
+                simscape_data = extractSimscapeDataFixed(simlog_data);
+                if ~isempty(simscape_data)
+                    all_data{end+1} = simscape_data;
+                    if options.verbose
+                        fprintf('Simscape: %d columns extracted\n', width(simscape_data));
+                    end
+                else
+                    if options.verbose
+                        fprintf('Warning: No Simscape data extracted despite simlog being available\n');
+                    end
+                end
+            else
+                if options.verbose
+                    fprintf('Warning: No simlog found in simulation output\n');
                 end
             end
         end
@@ -3394,20 +3524,20 @@ function logsout_data = extractLogsoutDataFixed(logsout)
     end
 end
 
-% FIXED: Extract from Simscape with hierarchical traversal
+% FIXED: Extract from Simscape Multibody with proper Children API
 function simscape_data = extractSimscapeDataFixed(simlog)
     simscape_data = [];
     
     try
-        fprintf('Debug: Extracting Simscape data\n');
+        fprintf('Debug: Extracting Simscape Multibody data\n');
         
         if ~isempty(simlog) && isa(simlog, 'simscape.logging.Node')
-            % First, find time data and collect all signals recursively
-            [time_data, all_signals] = extractSimscapeRecursive(simlog, '');
+            % Get time vector and all signals
+            [time_data, all_signals] = extractMultibodySignals(simlog);
             
             if ~isempty(time_data) && ~isempty(all_signals)
                 fprintf('Debug: Found Simscape time vector, length: %d\n', length(time_data));
-                fprintf('Debug: Found %d total Simscape signals\n', length(all_signals));
+                fprintf('Debug: Found %d total Simscape Multibody signals\n', length(all_signals));
                 
                 data_cells = {time_data};
                 var_names = {'time'};
@@ -3421,7 +3551,7 @@ function simscape_data = extractSimscapeDataFixed(simlog)
                         data_cells{end+1} = signal.data(:);
                         var_names{end+1} = signal.name;
                         signals_added = signals_added + 1;
-                        if mod(signals_added, 50) == 0
+                        if mod(signals_added, 25) == 0
                             fprintf('Debug: Added %d Simscape signals...\n', signals_added);
                         end
                     else
@@ -3431,15 +3561,15 @@ function simscape_data = extractSimscapeDataFixed(simlog)
                 
                 if length(data_cells) > 1
                     simscape_data = table(data_cells{:}, 'VariableNames', var_names);
-                    fprintf('Debug: Created Simscape table with %d columns, %d rows\n', width(simscape_data), height(simscape_data));
+                    fprintf('Debug: ✓ Created Simscape table with %d columns, %d rows\n', width(simscape_data), height(simscape_data));
                 else
                     fprintf('Debug: Only time data found in Simscape log\n');
                 end
             else
-                fprintf('Debug: No Simscape data could be extracted\n');
+                fprintf('Debug: No Simscape Multibody data could be extracted\n');
             end
         else
-            fprintf('Debug: Simlog is not a valid Simscape logging node\n');
+            fprintf('Debug: Simlog is not a valid Simscape logging node (type: %s)\n', class(simlog));
         end
         
     catch ME
@@ -3451,82 +3581,180 @@ function simscape_data = extractSimscapeDataFixed(simlog)
     end
 end
 
-% Recursive function to traverse Simscape hierarchy and extract all signals
-function [time_data, all_signals] = extractSimscapeRecursive(node, path_prefix)
+% Extract all signals from Simscape Multibody using proper Children API
+function [time_data, all_signals] = extractMultibodySignals(simlog)
     time_data = [];
     all_signals = {};
     
     try
-        if isa(node, 'simscape.logging.Node')
-            % Try to get series data from this node
+        % Try to access child nodes using proper API
+        child_nodes = [];
+        try
+            child_nodes = simlog.Children;
+            fprintf('Debug: Found %d child nodes using Children property\n', length(child_nodes));
+        catch
             try
-                if isprop(node, 'series')
-                    series_data = node.series();
-                    if ~isempty(series_data)
-                        % Check if this node has time data
-                        if isfield(series_data, 'time') && ~isempty(series_data.time)
-                            time_data = series_data.time;
-                        end
-                        
-                        % Check if this node has values data
-                        if isfield(series_data, 'values') && ~isempty(series_data.values)
-                            signal_name = strrep(path_prefix, '.', '_');
-                            if isempty(signal_name)
-                                signal_name = 'root';
-                            end
-                            all_signals{end+1} = struct('name', signal_name, 'data', series_data.values);
-                        end
-                    end
-                end
-            catch
-                % This node doesn't have series data, continue
-            end
-            
-            % Get child nodes
-            try
-                child_names = node.getElementNames();
+                child_nodes = simlog.children;
+                fprintf('Debug: Found %d child nodes using children property\n', length(child_nodes));
             catch
                 try
-                    child_names = fieldnames(node);
+                    child_nodes = simlog.Nodes;
+                    fprintf('Debug: Found %d child nodes using Nodes property\n', length(child_nodes));
                 catch
-                    child_names = {};
-                end
-            end
-            
-            % Recursively process child nodes
-            for i = 1:length(child_names)
-                child_name = child_names{i};
-                try
-                    child_node = node.(child_name);
-                    if isa(child_node, 'simscape.logging.Node')
-                        % Create new path
-                        if isempty(path_prefix)
-                            new_path = child_name;
-                        else
-                            new_path = [path_prefix '_' child_name];
-                        end
-                        
-                        % Recursively extract from child
-                        [child_time, child_signals] = extractSimscapeRecursive(child_node, new_path);
-                        
-                        % Use the first time data we find
-                        if isempty(time_data) && ~isempty(child_time)
-                            time_data = child_time;
-                        end
-                        
-                        % Collect all signals
-                        all_signals = [all_signals, child_signals];
-                    end
-                catch
-                    % Skip nodes that can't be accessed
-                    continue;
+                    fprintf('Debug: Cannot access child nodes from simlog\n');
+                    return;
                 end
             end
         end
         
+        if isempty(child_nodes)
+            fprintf('Debug: No child nodes found in simlog\n');
+            return;
+        end
+        
+        % Process each child node (bodies, joints, etc.)
+        for i = 1:length(child_nodes)
+            try
+                child_node = child_nodes(i);
+                node_name = '';
+                
+                % Get node name
+                try
+                    node_name = child_node.Name;
+                catch
+                    try
+                        node_name = child_node.name;
+                    catch
+                        node_name = sprintf('Node_%d', i);
+                    end
+                end
+                
+                fprintf('Debug: Processing node: %s\n', node_name);
+                
+                % Extract signals from this node
+                [node_time, node_signals] = extractNodeSignals(child_node, node_name);
+                
+                % Use first time vector found
+                if isempty(time_data) && ~isempty(node_time)
+                    time_data = node_time;
+                    fprintf('Debug: Using time from node: %s (length: %d)\n', node_name, length(time_data));
+                end
+                
+                % Collect signals
+                all_signals = [all_signals, node_signals];
+                
+            catch ME_child
+                fprintf('Debug: Error processing child node %d: %s\n', i, ME_child.message);
+                continue;
+            end
+        end
+        
+        fprintf('Debug: Total signals extracted: %d\n', length(all_signals));
+        
     catch ME
-        % Don't let errors in one branch stop the whole extraction
-        fprintf('Debug: Error in Simscape recursion at %s: %s\n', path_prefix, ME.message);
+        fprintf('Debug: Error in extractMultibodySignals: %s\n', ME.message);
+    end
+end
+
+% Extract signals from a single node (joint, body, etc.)
+function [time_data, signals] = extractNodeSignals(node, node_name)
+    time_data = [];
+    signals = {};
+    
+    try
+        % Try to get signals from this node
+        node_signals = [];
+        try
+            node_signals = node.Children;
+        catch
+            try
+                node_signals = node.children;
+            catch
+                try
+                    node_signals = node.Signals;
+                catch
+                    % This node might be a signal itself
+                    if hasMethod(node, 'hasData')
+                        try
+                            if node.hasData()
+                                [data, time] = node.getData();
+                                if ~isempty(data) && ~isempty(time)
+                                    time_data = time;
+                                    safe_name = matlab.lang.makeValidName(node_name);
+                                    signals{end+1} = struct('name', safe_name, 'data', data);
+                                end
+                            end
+                        catch
+                            % Skip this signal
+                        end
+                    end
+                    return;
+                end
+            end
+        end
+        
+        % Process each signal in this node
+        for j = 1:length(node_signals)
+            try
+                signal = node_signals(j);
+                signal_name = '';
+                
+                % Get signal name
+                try
+                    signal_name = signal.Name;
+                catch
+                    try
+                        signal_name = signal.name;
+                    catch
+                        signal_name = sprintf('Signal_%d', j);
+                    end
+                end
+                
+                % Extract data from signal
+                if hasMethod(signal, 'hasData')
+                    try
+                        if signal.hasData()
+                            [data, time] = signal.getData();
+                            if ~isempty(data) && ~isempty(time)
+                                % Use first time vector
+                                if isempty(time_data)
+                                    time_data = time;
+                                end
+                                
+                                % Create safe variable name
+                                full_name = sprintf('%s_%s', node_name, signal_name);
+                                safe_name = matlab.lang.makeValidName(full_name);
+                                safe_name = strrep(safe_name, '__', '_');
+                                
+                                signals{end+1} = struct('name', safe_name, 'data', data);
+                            end
+                        end
+                    catch ME_data
+                        fprintf('Debug: Could not extract data from %s.%s: %s\n', node_name, signal_name, ME_data.message);
+                    end
+                end
+                
+            catch ME_signal
+                fprintf('Debug: Error processing signal %d in node %s: %s\n', j, node_name, ME_signal.message);
+                continue;
+            end
+        end
+        
+    catch ME
+        fprintf('Debug: Error in extractNodeSignals for %s: %s\n', node_name, ME.message);
+    end
+end
+
+% Check if an object has a specific method
+function result = hasMethod(obj, method_name)
+    result = false;
+    try
+        if isobject(obj)
+            methods_list = methods(obj);
+            result = any(strcmp(methods_list, method_name));
+        end
+    catch
+        result = false;
     end
 end
 
