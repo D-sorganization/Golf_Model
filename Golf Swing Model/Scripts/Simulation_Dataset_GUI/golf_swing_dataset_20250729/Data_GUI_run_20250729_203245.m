@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-07-29 20:32:45
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 2
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: enabled
+% Logsout Dataset: enabled
+% Simscape Results: enabled
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250729
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: DeskComputer
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 2 trials x 189 coefficients
+% First trial coefficients (first 10): 22.920, 16.710, -25.080, -19.990, -1.980, 45.770, 14.640, 18.060, 44.240, 49.800
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
     % Fixed polynomial order: At^6 + Bt^5 + Ct^4 + Dt^3 + Et^2 + Ft + G
@@ -1988,7 +2031,7 @@ function successful_trials = runParallelSimulations(handles, config)
             fprintf('   • Toolbox licensing issues on workers\n');
             fprintf('   • Model configuration conflicts in parallel mode\n');
             fprintf('   • Coefficient setting issues on workers\n');
-            fprintf('\n💡 Try sequential mode for detailed debugging\n');
+            fprintf('\n Try sequential mode for detailed debugging\n');
         end
         
     catch ME
@@ -2291,56 +2334,28 @@ function simIn = setModelParameters(simIn, config)
                 fprintf('Warning: Could not set LimitDataPoints\n');
             end
             
-            % ROBUST SIMSCAPE LOGGING CONFIGURATION
-            % Set each parameter individually with error handling
-            simscape_params_set = 0;
-            
-            % Essential parameter - SimscapeLogType
+            % ENHANCED SIMSCAPE LOGGING CONFIGURATION
             try
+                % Enable Simscape logging with proper settings
                 simIn = simIn.setModelParameter('SimscapeLogType', 'all');
-                simscape_params_set = simscape_params_set + 1;
-                fprintf('Debug: Set SimscapeLogType = all\n');
-            catch ME
-                fprintf('Warning: Could not set SimscapeLogType: %s\n', ME.message);
-            end
-            
-            % Optional parameters - set individually
-            try
-                simIn = simIn.setModelParameter('SimscapeLogLevel', '1');
-                simscape_params_set = simscape_params_set + 1;
-                fprintf('Debug: Set SimscapeLogLevel = 1\n');
-            catch
-                fprintf('Debug: SimscapeLogLevel not supported by this model\n');
-            end
-            
-            try
+                simIn = simIn.setModelParameter('SimscapeLogLevel', '1'); % 1 = all, 2 = nonlinear only, 3 = none
                 simIn = simIn.setModelParameter('SimscapeLogSimulationStatistics', 'on');
-                simscape_params_set = simscape_params_set + 1;
-                fprintf('Debug: Set SimscapeLogSimulationStatistics = on\n');
-            catch
-                fprintf('Debug: SimscapeLogSimulationStatistics not supported by this model\n');
-            end
-            
-            try
-                simIn = simIn.setModelParameter('SimscapeLogName', 'simlog');
-                simscape_params_set = simscape_params_set + 1;
-                fprintf('Debug: Set SimscapeLogName = simlog\n');
-            catch
-                fprintf('Debug: SimscapeLogName not supported by this model\n');
-            end
-            
-            try
+                simIn = simIn.setModelParameter('SimscapeLogName', 'simlog'); % Ensure consistent naming
+                
+                % For Simscape Multibody specifically
                 simIn = simIn.setModelParameter('SimscapeUseOperatingPoints', 'off');
-                simscape_params_set = simscape_params_set + 1;
-                fprintf('Debug: Set SimscapeUseOperatingPoints = off\n');
-            catch
-                fprintf('Debug: SimscapeUseOperatingPoints not supported by this model\n');
-            end
-            
-            if simscape_params_set > 0
-                fprintf('Debug: Successfully set %d of 5 Simscape logging parameters\n', simscape_params_set);
-            else
-                fprintf('Warning: No Simscape logging parameters could be set\n');
+                
+                fprintf('Debug: Enabled comprehensive Simscape logging\n');
+            catch ME
+                fprintf('Warning: Could not set all Simscape logging parameters: %s\n', ME.message);
+                
+                % Try minimal configuration
+                try
+                    simIn = simIn.setModelParameter('SimscapeLogType', 'all');
+                    fprintf('Debug: Enabled basic Simscape logging\n');
+                catch
+                    fprintf('Warning: Simscape logging configuration failed completely\n');
+                end
             end
             
             % Set other model parameters to suppress unconnected port warnings
@@ -2560,7 +2575,7 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                     fprintf('Extracting from Simscape simlog...\n');
                 end
                 
-                simscape_data = extractSimscapeDataRecursive(simlog_data);
+                simscape_data = extractSimscapeDataFixed(simlog_data);
                 if ~isempty(simscape_data)
                     all_data{end+1} = simscape_data;
                     if options.verbose
@@ -2612,19 +2627,16 @@ function combined_table = combineDataSources(data_sources)
         combined_table = data_sources{1};
         
         % Merge additional data sources
-        % Alternative: Use Grok's cleaner mergeTables function if all sources have time:
-        % combined_table = mergeTables(data_sources{:});
-        
         for i = 2:length(data_sources)
             if ~isempty(data_sources{i})
                 % Find common time column
                 if ismember('time', combined_table.Properties.VariableNames) && ...
                    ismember('time', data_sources{i}.Properties.VariableNames)
                     
-                    % Merge on time column (same as Grok's mergeTables)
+                    % Merge on time column
                     combined_table = outerjoin(combined_table, data_sources{i}, 'Keys', 'time', 'MergeKeys', true);
                 else
-                    % Robust fallback for edge cases without time columns
+                    % Simple concatenation if no common time
                     common_vars = intersect(combined_table.Properties.VariableNames, ...
                                           data_sources{i}.Properties.VariableNames);
                     if ~isempty(common_vars)
@@ -2827,49 +2839,6 @@ function config = validateInputs(handles)
         input_file = handles.selected_input_file;
         if ~isempty(input_file) && ~exist(input_file, 'file')
             error('Input file "%s" not found', input_file);
-        end
-        
-        % Grok's Simscape validation: Check if Simscape is enabled but model lacks Simscape blocks
-        if get(handles.use_simscape, 'Value')
-            % Check Simscape license
-            if ~license('test', 'Simscape')
-                error('Simscape license not available. Please disable Simscape data extraction or obtain a Simscape license.');
-            end
-            
-            % Check if model has Simscape blocks
-            try
-                if ~bdIsLoaded(model_name)
-                    load_system(model_path);
-                    model_was_loaded = true;
-                else
-                    model_was_loaded = false;
-                end
-                
-                simscape_blocks = find_system(model_name, 'SimulinkSubDomain', 'Simscape');
-                
-                if isempty(simscape_blocks)
-                    if model_was_loaded
-                        close_system(model_name, 0);
-                    end
-                    error('Simscape data extraction is enabled, but no Simscape blocks found in model "%s". Please disable Simscape extraction or use a model with Simscape components.', model_name);
-                end
-                
-                fprintf('Debug: Found %d Simscape blocks in model for data extraction\n', length(simscape_blocks));
-                
-                if model_was_loaded
-                    close_system(model_name, 0);
-                end
-                
-            catch ME
-                if exist('model_was_loaded', 'var') && model_was_loaded
-                    try
-                        close_system(model_name, 0);
-                    catch
-                        % Ignore close errors
-                    end
-                end
-                rethrow(ME);
-            end
         end
         
         % Create config structure
@@ -3622,105 +3591,290 @@ function logsout_data = extractLogsoutDataFixed(logsout)
     end
 end
 
-% ENHANCED: Extract from Simscape using Grok's targeted API approach
-function simscape_data = extractSimscapeDataRecursive(simlog)
-    simscape_data = table();  % Empty table if no data
-
+% ENHANCED: Extract from Simscape using Claude's comprehensive approach
+function simscape_data = extractSimscapeDataFixed(simlog)
+    simscape_data = [];
+    
     try
-        if isempty(simlog) || ~isa(simlog, 'simscape.logging.Node')
-            fprintf('Debug: Invalid or empty simlog. No Simscape data to extract.\n');
+        fprintf('Debug: Extracting Simscape data\n');
+        
+        if isempty(simlog)
+            fprintf('Debug: Simlog is empty\n');
             return;
         end
-
-        fprintf('Debug: Starting recursive Simscape extraction from root node.\n');
-
-        % Recursively collect all series data
-        [time_data, all_signals] = traverseSimlogNode(simlog, '');
-
-        if isempty(time_data) || isempty(all_signals)
-            fprintf('Debug: No usable Simscape data found after traversal.\n');
-            return;
-        end
-
-        % Build table
-        data_cells = {time_data};
-        var_names = {'time'};
-        expected_length = length(time_data);
-
-        for i = 1:length(all_signals)
-            signal = all_signals{i};
-            if length(signal.data) == expected_length
-                data_cells{end+1} = signal.data(:);
-                var_names{end+1} = signal.name;
-                fprintf('Debug: Added Simscape signal: %s (length: %d)\n', signal.name, expected_length);
-            else
-                fprintf('Debug: Skipped %s (length mismatch: %d vs %d)\n', signal.name, length(signal.data), expected_length);
-            end
-        end
-
-        if length(data_cells) > 1
-            simscape_data = table(data_cells{:}, 'VariableNames', var_names);
-            fprintf('Debug: Created Simscape table with %d columns, %d rows.\n', width(simscape_data), height(simscape_data));
+        
+        % Check the type of simlog
+        fprintf('Debug: Simlog type: %s\n', class(simlog));
+        
+        % Handle different Simscape log types
+        if isa(simlog, 'simscape.logging.Node')
+            fprintf('Debug: Processing Simscape logging node\n');
+            simscape_data = extractFromSimscapeNode(simlog);
+        elseif isstruct(simlog)
+            fprintf('Debug: Processing Simscape struct format\n');
+            simscape_data = extractFromSimscapeStruct(simlog);
         else
-            fprintf('Debug: Only time data found in Simscape log.\n');
+            fprintf('Debug: Unknown simlog format: %s\n', class(simlog));
         end
-
+        
     catch ME
-        fprintf('Error extracting Simscape data recursively: %s\n', ME.message);
+        fprintf('Error extracting Simscape data: %s\n', ME.message);
+        fprintf('Stack trace:\n');
+        for i = 1:min(3, length(ME.stack))
+            fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
+        end
     end
 end
 
-% Recursive helper to traverse simlog tree (Grok's targeted API approach)
-function [time_data, signals] = traverseSimlogNode(node, parent_path)
-    time_data = [];
-    signals = {};
-
+% New function to extract from Simscape logging node
+function data_table = extractFromSimscapeNode(simlog)
+    data_table = [];
+    
     try
-        % Get current node name
-        node_name = '';
-        try
-            node_name = node.id;  % Preferred for simscape.logging.Node
-        catch
-            node_name = 'UnnamedNode';
+        % Initialize collections
+        all_signals = {};
+        time_data = [];
+        
+        % Process the node tree recursively
+        [time_data, all_signals] = processSimscapeNodeRecursive(simlog, '', time_data, all_signals);
+        
+        if isempty(time_data)
+            fprintf('Debug: No time data found in Simscape log\n');
+            return;
         end
-        current_path = fullfile(parent_path, node_name);
-        fprintf('Debug: Traversing node: %s\n', current_path);
-
-        % Check if this node has series data
-        series_names = node.series.children();  % Get all series (e.g., q, w, tau)
-        for i = 1:length(series_names)
-            series_node = node.series.(series_names{i});
-            if series_node.hasData()
-                [data, time] = series_node.values('');  % Get data with default units
-                if ~isempty(data) && ~isempty(time)
-                    % Use first valid time vector
-                    if isempty(time_data)
-                        time_data = time;
-                        fprintf('Debug: Using time from %s (length: %d)\n', current_path, length(time_data));
+        
+        fprintf('Debug: Found %d Simscape signals with time length %d\n', length(all_signals), length(time_data));
+        
+        % Create table from collected signals
+        if ~isempty(all_signals)
+            data_cells = {time_data(:)};
+            var_names = {'time'};
+            
+            % Add all signals
+            for i = 1:length(all_signals)
+                signal = all_signals{i};
+                % Ensure data matches time length
+                if length(signal.data) == length(time_data)
+                    data_cells{end+1} = signal.data(:);
+                    var_names{end+1} = signal.name;
+                elseif size(signal.data, 1) == length(time_data)
+                    % Handle multi-dimensional data
+                    for col = 1:size(signal.data, 2)
+                        data_cells{end+1} = signal.data(:, col);
+                        var_names{end+1} = sprintf('%s_%d', signal.name, col);
                     end
-                    % Add signal
-                    signal_name = matlab.lang.makeValidName(fullfile(current_path, series_names{i}));
-                    signals{end+1} = struct('name', signal_name, 'data', data);
-                    fprintf('Debug: Found series data in %s.%s (length: %d)\n', current_path, series_names{i}, length(data));
                 end
             end
-        end
-
-        % Recurse into child nodes
-        child_ids = node.children();
-        for i = 1:length(child_ids)
-            child_node = node.(child_ids{i});
-            [child_time, child_signals] = traverseSimlogNode(child_node, current_path);
-            % Merge time (use first valid)
-            if isempty(time_data) && ~isempty(child_time)
-                time_data = child_time;
+            
+            if length(data_cells) > 1
+                data_table = table(data_cells{:}, 'VariableNames', var_names);
+                fprintf('Debug: Created Simscape table with %d columns\n', width(data_table));
             end
-            % Append child signals
-            signals = [signals, child_signals];
         end
-
+        
     catch ME
-        fprintf('Debug: Error traversing node %s: %s\n', current_path, ME.message);
+        fprintf('Error in extractFromSimscapeNode: %s\n', ME.message);
+    end
+end
+
+% Recursive function to process Simscape nodes
+function [time_data, all_signals] = processSimscapeNodeRecursive(node, prefix, time_data, all_signals)
+    try
+        % Get node name
+        node_name = '';
+        try
+            node_name = node.Name;
+        catch
+            try
+                node_name = node.name;
+            catch
+                node_name = 'UnnamedNode';
+            end
+        end
+        
+        % Create full path name
+        if isempty(prefix)
+            full_name = node_name;
+        else
+            full_name = sprintf('%s_%s', prefix, node_name);
+        end
+        
+        % Check if this node has data
+        has_data = false;
+        try
+            has_data = node.hasData();
+        catch
+            % Some nodes might not have hasData method
+        end
+        
+        if has_data
+            try
+                % Extract data and time
+                values = node.Values;
+                
+                % Get time and data based on the structure
+                node_time = [];
+                node_data = [];
+                
+                if isstruct(values) || isa(values, 'simscape.logging.Series')
+                    % Try different ways to access time and data
+                    if isfield(values, 'Time')
+                        node_time = values.Time;
+                        node_data = values.Data;
+                    elseif isprop(values, 'Time')
+                        node_time = values.Time;
+                        node_data = values.Data;
+                    elseif ismethod(values, 'time')
+                        node_time = values.time();
+                        node_data = values.data();
+                    end
+                end
+                
+                % Alternative: use series method
+                if isempty(node_time) && ismethod(node, 'series')
+                    try
+                        series_data = node.series();
+                        if ~isempty(series_data)
+                            node_time = series_data.time;
+                            node_data = series_data.values;
+                        end
+                    catch
+                        % series method might not work
+                    end
+                end
+                
+                % If we found valid data
+                if ~isempty(node_time) && ~isempty(node_data)
+                    % Use first time vector found as reference
+                    if isempty(time_data)
+                        time_data = node_time(:);
+                        fprintf('Debug: Using time from %s (length: %d)\n', full_name, length(time_data));
+                    end
+                    
+                    % Add signal if it matches time length
+                    if length(node_time) == length(time_data)
+                        safe_name = matlab.lang.makeValidName(full_name);
+                        all_signals{end+1} = struct('name', safe_name, 'data', node_data);
+                        
+                        if mod(length(all_signals), 10) == 0
+                            fprintf('Debug: Collected %d signals...\n', length(all_signals));
+                        end
+                    end
+                end
+            catch ME
+                fprintf('Debug: Could not extract data from %s: %s\n', full_name, ME.message);
+            end
+        end
+        
+        % Process child nodes
+        children = [];
+        try
+            % Try different ways to access children
+            if isprop(node, 'Children')
+                children = node.Children;
+            elseif ismethod(node, 'childNodes')
+                children = node.childNodes();
+            elseif ismethod(node, 'children')
+                children = node.children();
+            end
+        catch
+            % No children accessible
+        end
+        
+        % Also check for named children (common in Simscape)
+        if isempty(children)
+            try
+                % Get all properties that might be child nodes
+                props = properties(node);
+                for i = 1:length(props)
+                    prop_name = props{i};
+                    % Skip known non-node properties
+                    if ~ismember(prop_name, {'Name', 'Values', 'Description', 'Unit', 'Parent'})
+                        try
+                            child = node.(prop_name);
+                            if isa(child, 'simscape.logging.Node')
+                                if isempty(children)
+                                    children = child;
+                                else
+                                    children(end+1) = child;
+                                end
+                            end
+                        catch
+                            % Property might not be accessible
+                        end
+                    end
+                end
+            catch
+                % Could not enumerate properties
+            end
+        end
+        
+        % Recursively process children
+        if ~isempty(children)
+            fprintf('Debug: Processing %d children of %s\n', length(children), full_name);
+            for i = 1:length(children)
+                [time_data, all_signals] = processSimscapeNodeRecursive(children(i), full_name, time_data, all_signals);
+            end
+        end
+        
+    catch ME
+        fprintf('Debug: Error processing node %s: %s\n', prefix, ME.message);
+    end
+end
+
+% Function to extract from Simscape struct format
+function data_table = extractFromSimscapeStruct(simlog_struct)
+    data_table = [];
+    
+    try
+        % Convert struct to table format
+        field_names = fieldnames(simlog_struct);
+        
+        % Look for time data
+        time_data = [];
+        for i = 1:length(field_names)
+            field = simlog_struct.(field_names{i});
+            if isstruct(field) && isfield(field, 'time')
+                time_data = field.time(:);
+                break;
+            elseif isstruct(field) && isfield(field, 'Time')
+                time_data = field.Time(:);
+                break;
+            end
+        end
+        
+        if isempty(time_data)
+            fprintf('Debug: No time data found in Simscape struct\n');
+            return;
+        end
+        
+        % Extract all numeric data matching time length
+        data_cells = {time_data};
+        var_names = {'time'};
+        
+        for i = 1:length(field_names)
+            field_name = field_names{i};
+            field_value = simlog_struct.(field_name);
+            
+            if isstruct(field_value) && isfield(field_value, 'values')
+                data = field_value.values;
+                if length(data) == length(time_data)
+                    data_cells{end+1} = data(:);
+                    var_names{end+1} = field_name;
+                end
+            elseif isnumeric(field_value) && length(field_value) == length(time_data)
+                data_cells{end+1} = field_value(:);
+                var_names{end+1} = field_name;
+            end
+        end
+        
+        if length(data_cells) > 1
+            data_table = table(data_cells{:}, 'VariableNames', var_names);
+            fprintf('Debug: Created Simscape struct table with %d columns\n', width(data_table));
+        end
+        
+    catch ME
+        fprintf('Error in extractFromSimscapeStruct: %s\n', ME.message);
     end
 end
 
@@ -4446,21 +4600,6 @@ function testSimscapeLogging(model_name)
         
     catch ME
         fprintf('Error testing Simscape logging: %s\n', ME.message);
-    end
-end
-
-% Grok's table merger function for cleaner data merging
-function merged = mergeTables(varargin)
-    merged = table();
-    for i = 1:nargin
-        if ~isempty(varargin{i})
-            if isempty(merged)
-                merged = varargin{i};
-            else
-                % Outer join on 'time', assuming time is consistent
-                merged = outerjoin(merged, varargin{i}, 'Keys', 'time', 'MergeKeys', true);
-            end
-        end
     end
 end
 
