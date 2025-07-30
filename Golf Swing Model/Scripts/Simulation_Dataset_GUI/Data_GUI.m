@@ -4114,43 +4114,43 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
             % Series API failed - this is expected for Multibody
         end
         
-        % Method 2: Simscape Multibody specific - direct property access
-        if ~node_has_data
+        % Method 2: Extract data from 5-level Multibody hierarchy (regardless of exportable flag)
+        if ~node_has_data && isprop(node, 'series')
             try
-                props = properties(node);
-                for i = 1:length(props)
-                    prop_name = props{i};
-                    % Skip non-data properties
-                    if ismember(prop_name, {'id', 'series', 'children'})
-                        continue;
-                    end
+                % Get the signal ID (e.g., 'w' for angular velocity, 'q' for position)
+                signal_id = 'unknown';
+                if isprop(node, 'id') && ~isempty(node.id)
+                    signal_id = node.id;
+                end
+                
+                % Try to get time and data directly from node.series (the correct API)
+                try
+                    extracted_time = node.series.time;
+                    extracted_data = node.series.values;
                     
-                    try
-                        prop_value = node.(prop_name);
-                        if isa(prop_value, 'simscape.logging.Node')
-                            % This is another node - will be handled by recursion
-                            continue;
-                        elseif isstruct(prop_value) || isa(prop_value, 'timeseries')
-                            % Try to extract time series data
-                            [extracted_time, extracted_data] = extractTimeSeriesData(prop_value, sprintf('%s_%s', current_path, prop_name));
-                            if ~isempty(extracted_time) && ~isempty(extracted_data)
-                                if isempty(time_data)
-                                    time_data = extracted_time;
-                                    fprintf('Debug: Using time from %s.%s (length: %d)\n', current_path, prop_name, length(time_data));
-                                end
-                                signal_name = matlab.lang.makeValidName(sprintf('%s_%s', current_path, prop_name));
-                                signals{end+1} = struct('name', signal_name, 'data', extracted_data);
-                                fprintf('Debug: Found Multibody data in %s.%s (length: %d)\n', current_path, prop_name, length(extracted_data));
-                                node_has_data = true;
-                            end
+                    % Check if we actually got data (length > 0)
+                    if ~isempty(extracted_time) && ~isempty(extracted_data) && length(extracted_time) > 0
+                        if isempty(time_data)
+                            time_data = extracted_time;
+                            fprintf('Debug: Using time from %s.%s (length: %d)\n', current_path, signal_id, length(time_data));
                         end
-                    catch
-                        % Skip properties that can't be accessed
-                        continue;
+                        
+                        % Create meaningful signal name: Body_Joint_Component_Axis_Signal
+                        signal_name = matlab.lang.makeValidName(sprintf('%s_%s', current_path, signal_id));
+                        signals{end+1} = struct('name', signal_name, 'data', extracted_data);
+                        fprintf('Debug: ✅ Found Multibody data: %s (length: %d)\n', signal_name, length(extracted_data));
+                        node_has_data = true;
+                    else
+                        % Debug: Show what we found even if empty
+                        fprintf('Debug: Empty data at %s.%s (time length: %d, data size: %s)\n', ...
+                            current_path, signal_id, length(extracted_time), mat2str(size(extracted_data)));
                     end
+                catch ME
+                    % Series access failed - this is normal for non-data nodes
+                    fprintf('Debug: No series data at %s.%s: %s\n', current_path, signal_id, ME.message);
                 end
             catch
-                % Property enumeration failed
+                % Node doesn't have series property
             end
         end
 
