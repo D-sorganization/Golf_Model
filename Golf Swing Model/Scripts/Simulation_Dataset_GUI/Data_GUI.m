@@ -81,16 +81,7 @@ function handles = createMainLayout(fig, handles)
               'BackgroundColor', colors.primary, ...
               'HorizontalAlignment', 'left');
     
-    % Version text
-    uicontrol('Parent', titlePanel, ...
-              'Style', 'text', ...
-              'String', 'v2.0', ...
-              'Units', 'normalized', ...
-              'Position', [0.85, 0.2, 0.13, 0.6], ...
-              'FontSize', 10, ...
-              'ForegroundColor', [0.9, 0.9, 0.9], ...
-              'BackgroundColor', colors.primary, ...
-              'HorizontalAlignment', 'right');
+
     
     % Content area
     contentTop = 1 - titleHeight - 0.01;
@@ -134,17 +125,19 @@ function handles = createLeftColumnContent(parent, handles)
     panelPadding = 0.01;
     
     % Calculate heights
-    numPanels = 4;
+    numPanels = 5;  % Added batch settings panel
     totalSpacing = panelPadding + (numPanels-1)*panelSpacing + panelPadding;
     availableHeight = 1 - totalSpacing;
     
-    h1 = 0.28 * availableHeight;  % Increased from 0.22 to provide more space for Simulink model selection
-    h2 = 0.20 * availableHeight;
-    h3 = 0.33 * availableHeight;
-    h4 = 0.19 * availableHeight;  % Reduced from 0.25 to compensate for h1 increase
+    h1 = 0.25 * availableHeight;  % Configuration panel
+    h2 = 0.18 * availableHeight;  % Modeling panel
+    h3 = 0.25 * availableHeight;  % Joint editor panel
+    h4 = 0.16 * availableHeight;  % Output settings panel
+    h5 = 0.16 * availableHeight;  % Batch settings panel
     
     % Calculate positions
-    y4 = panelPadding;
+    y5 = panelPadding;
+    y4 = y5 + h5 + panelSpacing;
     y3 = y4 + h4 + panelSpacing;
     y2 = y3 + h3 + panelSpacing;
     y1 = y2 + h2 + panelSpacing;
@@ -154,6 +147,7 @@ function handles = createLeftColumnContent(parent, handles)
     handles = createModelingPanel(parent, handles, y2, h2);
     handles = createJointEditorPanel(parent, handles, y3, h3);
     handles = createOutputPanel(parent, handles, y4, h4);
+    handles = createBatchSettingsPanel(parent, handles, y5, h5);
 end
 function handles = createRightColumnContent(parent, handles)
     % Create right column panels
@@ -749,6 +743,136 @@ function handles = createOutputPanel(parent, handles, yPos, height)
                                                   'ForegroundColor', colors.text, ...
                                                   'FontSize', 9, ...
                                                   'TooltipString', 'Include model workspace variables (segment lengths, masses, inertias, etc.) in the output dataset');
+end
+
+function handles = createBatchSettingsPanel(parent, handles, yPos, height)
+    % Batch Settings Panel for Large Dataset Handling
+    colors = handles.colors;
+    
+    panel = uipanel('Parent', parent, ...
+                   'Title', 'Batch Settings', ...
+                   'FontSize', 10, ...
+                   'FontWeight', 'normal', ...
+                   'Units', 'normalized', ...
+                   'Position', [0.01, yPos, 0.98, height], ...
+                   'BackgroundColor', colors.panel, ...
+                   'ForegroundColor', colors.text);
+    
+    rowHeight = 0.25;
+    y = 0.65;
+    
+    % Batch Size
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Batch Size:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, 0.15, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.batch_size_edit = uicontrol('Parent', panel, ...
+                                       'Style', 'edit', ...
+                                       'String', '50', ...
+                                       'Units', 'normalized', ...
+                                       'Position', [0.18, y, 0.12, rowHeight], ...
+                                       'BackgroundColor', 'white', ...
+                                       'HorizontalAlignment', 'center', ...
+                                       'FontSize', 9, ...
+                                       'TooltipString', 'Number of simulations to process in each batch (recommended: 25-100)');
+    
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'trials', ...
+              'Units', 'normalized', ...
+              'Position', [0.31, y, 0.08, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel, ...
+              'FontSize', 9);
+    
+    % Save Interval
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Save Interval:', ...
+              'Units', 'normalized', ...
+              'Position', [0.42, y, 0.15, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.save_interval_edit = uicontrol('Parent', panel, ...
+                                          'Style', 'edit', ...
+                                          'String', '25', ...
+                                          'Units', 'normalized', ...
+                                          'Position', [0.58, y, 0.12, rowHeight], ...
+                                          'BackgroundColor', 'white', ...
+                                          'HorizontalAlignment', 'center', ...
+                                          'FontSize', 9, ...
+                                          'TooltipString', 'Save checkpoint every N batches (recommended: 10-50)');
+    
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'batches', ...
+              'Units', 'normalized', ...
+              'Position', [0.71, y, 0.08, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel, ...
+              'FontSize', 9);
+    
+    % Performance Monitoring
+    y = 0.35;
+    handles.enable_performance_monitoring = uicontrol('Parent', panel, ...
+                                                     'Style', 'checkbox', ...
+                                                     'String', 'Enable Performance Monitoring', ...
+                                                     'Value', 1, ...
+                                                     'Units', 'normalized', ...
+                                                     'Position', [0.02, y, 0.45, rowHeight], ...
+                                                     'BackgroundColor', colors.panel, ...
+                                                     'ForegroundColor', colors.text, ...
+                                                     'FontSize', 9, ...
+                                                     'TooltipString', 'Track execution times, memory usage, and performance metrics');
+    
+    % Verbosity Level
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Verbosity:', ...
+              'Units', 'normalized', ...
+              'Position', [0.48, y, 0.12, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.verbosity_popup = uicontrol('Parent', panel, ...
+                                       'Style', 'popupmenu', ...
+                                       'String', {'Normal', 'Silent', 'Verbose', 'Debug'}, ...
+                                       'Value', 1, ...
+                                       'Units', 'normalized', ...
+                                       'Position', [0.61, y, 0.35, rowHeight], ...
+                                       'BackgroundColor', 'white', ...
+                                       'FontSize', 9, ...
+                                       'TooltipString', 'Output detail level: Silent=minimal, Normal=standard, Verbose=detailed, Debug=all');
+    
+    % Robust Generation Mode
+    y = 0.05;
+    handles.use_robust_generator = uicontrol('Parent', panel, ...
+                                            'Style', 'checkbox', ...
+                                            'String', 'Use Robust Generator', ...
+                                            'Value', 1, ...
+                                            'Units', 'normalized', ...
+                                            'Position', [0.02, y, 0.45, rowHeight], ...
+                                            'BackgroundColor', colors.panel, ...
+                                            'ForegroundColor', colors.text, ...
+                                            'FontSize', 9, ...
+                                            'TooltipString', 'Enable crash-resistant batch processing with memory monitoring and checkpointing');
+    
+    % Memory Monitoring
+    handles.enable_memory_monitoring = uicontrol('Parent', panel, ...
+                                                'Style', 'checkbox', ...
+                                                'String', 'Memory Monitoring', ...
+                                                'Value', 1, ...
+                                                'Units', 'normalized', ...
+                                                'Position', [0.48, y, 0.45, rowHeight], ...
+                                                'BackgroundColor', colors.panel, ...
+                                                'ForegroundColor', colors.text, ...
+                                                'FontSize', 9, ...
+                                                'TooltipString', 'Monitor system memory and automatically manage parallel workers');
 end
 function handles = createPreviewPanel(parent, handles, yPos, height)
     % Parameters Preview Panel
@@ -1812,15 +1936,38 @@ function runGeneration(handles)
         
         set(handles.status_text, 'String', 'Status: Running trials...');
         
-        % Check execution mode and implement parallel processing
-        execution_mode = get(handles.execution_mode_popup, 'Value');
-        
-        if execution_mode == 2 && license('test', 'Distrib_Computing_Toolbox')
-            % Parallel execution
-            successful_trials = runParallelSimulations(handles, config);
+        % Check if robust generator is enabled
+        if config.use_robust_generator
+            % Use robust dataset generator for crash-resistant processing
+            set(handles.status_text, 'String', 'Status: Using robust generator...');
+            drawnow;
+            
+            % Add robust generator parameters to config
+            config.BatchSize = config.batch_size;
+            config.SaveInterval = config.save_interval;
+            config.PerformanceMonitoring = config.enable_performance_monitoring;
+            config.Verbosity = config.verbosity;
+            config.MemoryMonitoring = config.enable_memory_monitoring;
+            
+            % Call robust dataset generator
+            successful_trials = robust_dataset_generator(config, ...
+                'BatchSize', config.BatchSize, ...
+                'SaveInterval', config.SaveInterval, ...
+                'PerformanceMonitoring', config.PerformanceMonitoring, ...
+                'Verbosity', config.Verbosity, ...
+                'MemoryMonitoring', config.MemoryMonitoring, ...
+                'CaptureWorkspace', config.capture_workspace);
         else
-            % Sequential execution
-            successful_trials = runSequentialSimulations(handles, config);
+            % Use traditional execution mode
+            execution_mode = get(handles.execution_mode_popup, 'Value');
+            
+            if execution_mode == 2 && license('test', 'Distrib_Computing_Toolbox')
+                % Parallel execution
+                successful_trials = runParallelSimulations(handles, config);
+            else
+                % Sequential execution
+                successful_trials = runSequentialSimulations(handles, config);
+            end
         end
         
         % Final status
@@ -2950,6 +3097,30 @@ function config = validateInputs(handles)
         config.output_folder = fullfile(output_folder, folder_name);
         config.file_format = get(handles.format_popup, 'Value');
         
+        % Batch settings validation and configuration
+        batch_size = str2double(get(handles.batch_size_edit, 'String'));
+        save_interval = str2double(get(handles.save_interval_edit, 'String'));
+        
+        if isnan(batch_size) || batch_size <= 0 || batch_size > 1000
+            error('Batch size must be between 1 and 1,000');
+        end
+        if isnan(save_interval) || save_interval <= 0 || save_interval > 1000
+            error('Save interval must be between 1 and 1,000');
+        end
+        
+        % Get verbosity level
+        verbosity_options = {'Normal', 'Silent', 'Verbose', 'Debug'};
+        verbosity_idx = get(handles.verbosity_popup, 'Value');
+        verbosity_level = verbosity_options{verbosity_idx};
+        
+        % Add batch settings to config
+        config.batch_size = batch_size;
+        config.save_interval = save_interval;
+        config.enable_performance_monitoring = get(handles.enable_performance_monitoring, 'Value');
+        config.verbosity = verbosity_level;
+        config.use_robust_generator = get(handles.use_robust_generator, 'Value');
+        config.enable_memory_monitoring = get(handles.enable_memory_monitoring, 'Value');
+        
     catch ME
         errordlg(ME.message, 'Input Validation Error');
         config = [];
@@ -3203,6 +3374,14 @@ function handles = loadUserPreferences(handles)
     handles.preferences.default_sample_rate = 100;
     handles.preferences.capture_workspace = true; % Default to capturing workspace data
     
+    % Batch settings defaults
+    handles.preferences.default_batch_size = 50;
+    handles.preferences.default_save_interval = 25;
+    handles.preferences.enable_performance_monitoring = true;
+    handles.preferences.default_verbosity = 'Normal';
+    handles.preferences.use_robust_generator = true;
+    handles.preferences.enable_memory_monitoring = true;
+    
     % Try to load saved preferences
     if exist(pref_file, 'file')
         try
@@ -3258,6 +3437,35 @@ function applyUserPreferences(handles)
             set(handles.capture_workspace_checkbox, 'Value', prefs.capture_workspace);
         end
         
+        % Apply batch settings
+        if isfield(handles, 'batch_size_edit') && isfield(prefs, 'default_batch_size')
+            set(handles.batch_size_edit, 'String', num2str(prefs.default_batch_size));
+        end
+        
+        if isfield(handles, 'save_interval_edit') && isfield(prefs, 'default_save_interval')
+            set(handles.save_interval_edit, 'String', num2str(prefs.default_save_interval));
+        end
+        
+        if isfield(handles, 'enable_performance_monitoring') && isfield(prefs, 'enable_performance_monitoring')
+            set(handles.enable_performance_monitoring, 'Value', prefs.enable_performance_monitoring);
+        end
+        
+        if isfield(handles, 'verbosity_popup') && isfield(prefs, 'default_verbosity')
+            verbosity_options = {'Normal', 'Silent', 'Verbose', 'Debug'};
+            verbosity_idx = find(strcmp(verbosity_options, prefs.default_verbosity), 1);
+            if ~isempty(verbosity_idx)
+                set(handles.verbosity_popup, 'Value', verbosity_idx);
+            end
+        end
+        
+        if isfield(handles, 'use_robust_generator') && isfield(prefs, 'use_robust_generator')
+            set(handles.use_robust_generator, 'Value', prefs.use_robust_generator);
+        end
+        
+        if isfield(handles, 'enable_memory_monitoring') && isfield(prefs, 'enable_memory_monitoring')
+            set(handles.enable_memory_monitoring, 'Value', prefs.enable_memory_monitoring);
+        end
+        
     catch
         % Silently fail if preferences can't be applied
     end
@@ -3288,6 +3496,41 @@ function saveUserPreferences(handles)
         % Save workspace capture setting
         if isfield(handles, 'capture_workspace_checkbox')
             handles.preferences.capture_workspace = get(handles.capture_workspace_checkbox, 'Value');
+        end
+        
+        % Save batch settings
+        if isfield(handles, 'batch_size_edit')
+            batch_size = str2double(get(handles.batch_size_edit, 'String'));
+            if ~isnan(batch_size)
+                handles.preferences.default_batch_size = batch_size;
+            end
+        end
+        
+        if isfield(handles, 'save_interval_edit')
+            save_interval = str2double(get(handles.save_interval_edit, 'String'));
+            if ~isnan(save_interval)
+                handles.preferences.default_save_interval = save_interval;
+            end
+        end
+        
+        if isfield(handles, 'enable_performance_monitoring')
+            handles.preferences.enable_performance_monitoring = get(handles.enable_performance_monitoring, 'Value');
+        end
+        
+        if isfield(handles, 'verbosity_popup')
+            verbosity_options = {'Normal', 'Silent', 'Verbose', 'Debug'};
+            verbosity_idx = get(handles.verbosity_popup, 'Value');
+            if verbosity_idx <= length(verbosity_options)
+                handles.preferences.default_verbosity = verbosity_options{verbosity_idx};
+            end
+        end
+        
+        if isfield(handles, 'use_robust_generator')
+            handles.preferences.use_robust_generator = get(handles.use_robust_generator, 'Value');
+        end
+        
+        if isfield(handles, 'enable_memory_monitoring')
+            handles.preferences.enable_memory_monitoring = get(handles.enable_memory_monitoring, 'Value');
         end
         
         % Save to file
