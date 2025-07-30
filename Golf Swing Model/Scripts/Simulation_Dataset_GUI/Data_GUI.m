@@ -1819,12 +1819,7 @@ function runGeneration(handles)
             set(handles.status_text, 'String', ['Status: ' final_msg ' - Dataset compiled']);
         end
         
-        % Save script and settings for reproducibility
-        try
-            saveScriptAndSettings(config);
-        catch ME
-            fprintf('Warning: Could not save script and settings: %s\n', ME.message);
-        end
+        % Note: Script and settings saving temporarily disabled to avoid errors
         
         set(handles.start_button, 'Enable', 'on');
         set(handles.stop_button, 'Enable', 'off');
@@ -1882,21 +1877,14 @@ function successful_trials = runParallelSimulations(handles, config)
     end
     
     % Run parallel simulations
-    % Check model configuration before running
-    checkModelConfiguration(config.model_name);
-    
     set(handles.progress_text, 'String', 'Running parallel simulations...');
     drawnow;
     
     try
-        % Use parsim with more options for debugging
-        simOuts = parsim(simInputs, ...
-            'ShowProgress', true, ...
-            'ShowSimulationManager', 'off', ...
-            'TransferBaseWorkspaceVariables', 'on', ...
-            'AttachedFiles', {config.model_path}, ...
-            'ManageDependencies', 'off', ... % Try turning off dependency analysis
-            'UseFastRestart', 'off'); % Ensure clean simulation state
+        % Use parsim for parallel simulation
+        simOuts = parsim(simInputs, 'ShowProgress', true, 'ShowSimulationManager', 'off', ...
+                        'TransferBaseWorkspaceVariables', 'on', ...
+                        'AttachedFiles', {config.model_path});
         
         % Process results
         successful_trials = 0;
@@ -2282,26 +2270,12 @@ function simIn = setModelParameters(simIn, config)
                 fprintf('Warning: Could not set LimitDataPoints\n');
             end
             
-            % CRITICAL: Enable Simscape logging with correct parameter names
+            % Enable basic Simscape logging (minimal approach)
             try
-                % For Simscape Multibody, use these parameters
-                simIn = simIn.setModelParameter('SimMechanicsOpenEditorOnUpdate', 'off');
                 simIn = simIn.setModelParameter('SimscapeLogType', 'all');
-                simIn = simIn.setModelParameter('SimscapeLogToFile', 'off');
-                simIn = simIn.setModelParameter('SimscapeLogName', 'simlog');
-                fprintf('Debug: Enabled Simscape logging\n');
+                fprintf('Debug: Enabled basic Simscape logging\n');
             catch ME
-                fprintf('Warning: Could not set Simscape logging parameters: %s\n', ME.message);
-                
-                % Try alternative parameter names for different Simscape versions
-                try
-                    simIn = simIn.setModelParameter('SimscapeLogType', 'All');
-                    simIn = simIn.setModelParameter('SimscapeUseLocalSolverOptions', 'off');
-                    simIn = simIn.setModelParameter('SimscapeLogToWorkspace', 'on');
-                    fprintf('Debug: Set alternative Simscape logging parameters\n');
-                catch ME2
-                    fprintf('Warning: Alternative Simscape parameters also failed: %s\n', ME2.message);
-                end
+                fprintf('Warning: Could not set SimscapeLogType: %s\n', ME.message);
             end
             
             % Set other model parameters to suppress unconnected port warnings
@@ -2452,15 +2426,6 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
             combinedBus = simOut.CombinedSignalBus;
             if ~isempty(combinedBus)
                 signal_bus_data = extractFromCombinedSignalBus(combinedBus);
-                if isempty(signal_bus_data)
-                    % Try enhanced extraction method if standard method fails
-                    if options.verbose
-                        fprintf('Standard extraction failed, trying enhanced method...\n');
-                    end
-                    % Need to pass a simple config struct for simulation time
-                    temp_config = struct('simulation_time', 1.0); % Default fallback
-                    signal_bus_data = extractFromCombinedSignalBusEnhanced(combinedBus, temp_config);
-                end
                 
                 if ~isempty(signal_bus_data)
                     all_data{end+1} = signal_bus_data;
@@ -3546,7 +3511,7 @@ function logsout_data = extractLogsoutDataFixed(logsout)
     end
 end
 
-% FIXED: Extract from Simscape Multibody with proper Children API
+% FIXED: Extract from Simscape Multibody (ADD to existing data, don't replace)
 function simscape_data = extractSimscapeDataFixed(simlog)
     simscape_data = [];
     
@@ -3554,12 +3519,96 @@ function simscape_data = extractSimscapeDataFixed(simlog)
         fprintf('Debug: Extracting Simscape Multibody data\n');
         
         if ~isempty(simlog) && isa(simlog, 'simscape.logging.Node')
-            % Get time vector and all signals
-            [time_data, all_signals] = extractMultibodySignals(simlog);
+            % Try to access child nodes for Multibody data
+            child_nodes = [];
+            try
+                child_nodes = simlog.Children;
+                fprintf('Debug: Found %d child nodes using Children property\n', length(child_nodes));
+            catch
+                try
+                    child_nodes = simlog.children;
+                    fprintf('Debug: Found %d child nodes using children property\n', length(child_nodes));
+                catch
+                    fprintf('Debug: Cannot access child nodes from simlog\n');
+                    return;
+                end
+            end
             
+            if isempty(child_nodes)
+                fprintf('Debug: No child nodes found in simlog\n');
+                return;
+            end
+            
+            % Find time data and extract signals
+            time_data = [];
+            all_signals = {};
+            
+            % Process each child node (bodies, joints, etc.)
+            for i = 1:length(child_nodes)
+                try
+                    child_node = child_nodes(i);
+                    node_name = '';
+                    
+                    % Get node name
+                    try
+                        node_name = child_node.Name;
+                    catch
+                        node_name = sprintf('Node_%d', i);
+                    end
+                    
+                    fprintf('Debug: Processing Simscape node: %s\n', node_name);
+                    
+                    % Try to get signals from this node
+                    try
+                        node_signals = child_node.Children;
+                        
+                        for j = 1:length(node_signals)
+                            signal = node_signals(j);
+                            signal_name = '';
+                            
+                            try
+                                signal_name = signal.Name;
+                            catch
+                                signal_name = sprintf('Signal_%d', j);
+                            end
+                            
+                            % Extract data from signal if it has data
+                            try
+                                if ismethod(signal, 'hasData') && signal.hasData()
+                                    [data, time] = signal.getData();
+                                    if ~isempty(data) && ~isempty(time)
+                                        % Use first time vector we find
+                                        if isempty(time_data)
+                                            time_data = time;
+                                            fprintf('Debug: Using time from %s.%s (length: %d)\n', node_name, signal_name, length(time_data));
+                                        end
+                                        
+                                        % Store signal data
+                                        safe_name = matlab.lang.makeValidName(sprintf('%s_%s', node_name, signal_name));
+                                        all_signals{end+1} = struct('name', safe_name, 'data', data);
+                                    end
+                                end
+                            catch
+                                % Skip signals that can't be accessed
+                                continue;
+                            end
+                        end
+                        
+                    catch
+                        % This node doesn't have signals we can access
+                        continue;
+                    end
+                    
+                catch
+                    fprintf('Debug: Error processing Simscape node %d\n', i);
+                    continue;
+                end
+            end
+            
+            % Create table if we have data
             if ~isempty(time_data) && ~isempty(all_signals)
                 fprintf('Debug: Found Simscape time vector, length: %d\n', length(time_data));
-                fprintf('Debug: Found %d total Simscape Multibody signals\n', length(all_signals));
+                fprintf('Debug: Found %d total Simscape signals\n', length(all_signals));
                 
                 data_cells = {time_data};
                 var_names = {'time'};
@@ -3576,8 +3625,6 @@ function simscape_data = extractSimscapeDataFixed(simlog)
                         if mod(signals_added, 25) == 0
                             fprintf('Debug: Added %d Simscape signals...\n', signals_added);
                         end
-                    else
-                        fprintf('Debug: Skipping %s (length mismatch: %d vs %d)\n', signal.name, length(signal.data), expected_length);
                     end
                 end
                 
@@ -3588,7 +3635,7 @@ function simscape_data = extractSimscapeDataFixed(simlog)
                     fprintf('Debug: Only time data found in Simscape log\n');
                 end
             else
-                fprintf('Debug: No Simscape Multibody data could be extracted\n');
+                fprintf('Debug: No usable Simscape data found\n');
             end
         else
             fprintf('Debug: Simlog is not a valid Simscape logging node (type: %s)\n', class(simlog));
@@ -3597,7 +3644,7 @@ function simscape_data = extractSimscapeDataFixed(simlog)
     catch ME
         fprintf('Error extracting Simscape data: %s\n', ME.message);
         fprintf('Stack trace:\n');
-        for i = 1:length(ME.stack)
+        for i = 1:min(3, length(ME.stack))
             fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
         end
     end
@@ -4097,5 +4144,174 @@ function checkModelConfiguration(model_name)
         
     catch ME
         fprintf('Error checking model configuration: %s\n', ME.message);
+    end
+end
+
+% Save script and settings for reproducibility
+function saveScriptAndSettings(config)
+    try
+        % Create timestamped filename
+        timestamp = datestr(now, 'yyyymmdd_HHMMSS');
+        script_filename = sprintf('Data_GUI_run_%s.m', timestamp);
+        script_path = fullfile(config.output_folder, script_filename);
+        
+        % Get the current script content
+        current_script_path = mfilename('fullpath');
+        current_script_path = [current_script_path '.m']; % Add .m extension
+        
+        if ~exist(current_script_path, 'file')
+            fprintf('Warning: Could not find current script file: %s\n', current_script_path);
+            return;
+        end
+        
+        % Read current script content
+        fid_in = fopen(current_script_path, 'r');
+        if fid_in == -1
+            fprintf('Warning: Could not open current script file for reading\n');
+            return;
+        end
+        
+        script_content = fread(fid_in, '*char')';
+        fclose(fid_in);
+        
+        % Create output file with settings header
+        fid_out = fopen(script_path, 'w');
+        if fid_out == -1
+            fprintf('Warning: Could not create script copy file: %s\n', script_path);
+            return;
+        end
+        
+        % Write settings header
+        fprintf(fid_out, '%% GOLF SWING DATA GENERATION RUN RECORD\n');
+        fprintf(fid_out, '%% Generated: %s\n', datestr(now, 'yyyy-mm-dd HH:MM:SS'));
+        fprintf(fid_out, '%% This file contains the exact script and settings used for this data generation run\n');
+        fprintf(fid_out, '%%\n');
+        fprintf(fid_out, '%% =================================================================\n');
+        fprintf(fid_out, '%% RUN CONFIGURATION SETTINGS\n');
+        fprintf(fid_out, '%% =================================================================\n');
+        fprintf(fid_out, '%%\n');
+        
+        % Write all configuration settings
+        fprintf(fid_out, '%% SIMULATION PARAMETERS:\n');
+        fprintf(fid_out, '%% Number of trials: %d\n', config.num_simulations);
+        if isfield(config, 'simulation_time')
+            fprintf(fid_out, '%% Simulation time: %.3f seconds\n', config.simulation_time);
+        end
+        if isfield(config, 'sample_rate')
+            fprintf(fid_out, '%% Sample rate: %.1f Hz\n', config.sample_rate);
+        end
+        fprintf(fid_out, '%%\n');
+        
+        % Torque scenario
+        fprintf(fid_out, '%% TORQUE CONFIGURATION:\n');
+        if isfield(config, 'torque_scenario')
+            scenarios = {'Variable Torque', 'Zero Torque', 'Constant Torque'};
+            if config.torque_scenario >= 1 && config.torque_scenario <= length(scenarios)
+                fprintf(fid_out, '%% Torque scenario: %s\n', scenarios{config.torque_scenario});
+            end
+        end
+        if isfield(config, 'coeff_range')
+            fprintf(fid_out, '%% Coefficient range: %.3f\n', config.coeff_range);
+        end
+        if isfield(config, 'constant_torque_value')
+            fprintf(fid_out, '%% Constant torque value: %.3f\n', config.constant_torque_value);
+        end
+        fprintf(fid_out, '%%\n');
+        
+        % Model information
+        fprintf(fid_out, '%% MODEL INFORMATION:\n');
+        if isfield(config, 'model_name')
+            fprintf(fid_out, '%% Model name: %s\n', config.model_name);
+        end
+        if isfield(config, 'model_path')
+            fprintf(fid_out, '%% Model path: %s\n', config.model_path);
+        end
+        fprintf(fid_out, '%%\n');
+        
+        % Data sources
+        fprintf(fid_out, '%% DATA SOURCES ENABLED:\n');
+        if isfield(config, 'use_signal_bus')
+            fprintf(fid_out, '%% CombinedSignalBus: %s\n', logical2str(config.use_signal_bus));
+        end
+        if isfield(config, 'use_logsout')
+            fprintf(fid_out, '%% Logsout Dataset: %s\n', logical2str(config.use_logsout));
+        end
+        if isfield(config, 'use_simscape')
+            fprintf(fid_out, '%% Simscape Results: %s\n', logical2str(config.use_simscape));
+        end
+        fprintf(fid_out, '%%\n');
+        
+        % Output settings
+        fprintf(fid_out, '%% OUTPUT SETTINGS:\n');
+        if isfield(config, 'output_folder')
+            fprintf(fid_out, '%% Output folder: %s\n', config.output_folder);
+        end
+        if isfield(config, 'dataset_name')
+            fprintf(fid_out, '%% Dataset name: %s\n', config.dataset_name);
+        end
+        if isfield(config, 'file_format')
+            formats = {'CSV Files', 'MAT Files', 'Both CSV and MAT'};
+            if config.file_format >= 1 && config.file_format <= length(formats)
+                fprintf(fid_out, '%% File format: %s\n', formats{config.file_format});
+            end
+        end
+        fprintf(fid_out, '%%\n');
+        
+        % System information
+        fprintf(fid_out, '%% SYSTEM INFORMATION:\n');
+        fprintf(fid_out, '%% MATLAB version: %s\n', version);
+        fprintf(fid_out, '%% Computer: %s\n', computer);
+        try
+            [~, hostname] = system('hostname');
+            fprintf(fid_out, '%% Hostname: %s', hostname); % hostname already includes newline
+        catch
+            fprintf(fid_out, '%% Hostname: Unknown\n');
+        end
+        fprintf(fid_out, '%%\n');
+        
+        % Coefficient information if available
+        if isfield(config, 'coefficient_values') && ~isempty(config.coefficient_values)
+            fprintf(fid_out, '%% POLYNOMIAL COEFFICIENTS:\n');
+            fprintf(fid_out, '%% Coefficient matrix size: %d trials x %d coefficients\n', ...
+                size(config.coefficient_values, 1), size(config.coefficient_values, 2));
+            
+            % Show first few coefficients as example
+            if size(config.coefficient_values, 1) > 0
+                fprintf(fid_out, '%% First trial coefficients (first 10): ');
+                coeffs_to_show = min(10, size(config.coefficient_values, 2));
+                for i = 1:coeffs_to_show
+                    fprintf(fid_out, '%.3f', config.coefficient_values(1, i));
+                    if i < coeffs_to_show
+                        fprintf(fid_out, ', ');
+                    end
+                end
+                fprintf(fid_out, '\n');
+            end
+            fprintf(fid_out, '%%\n');
+        end
+        
+        fprintf(fid_out, '%% =================================================================\n');
+        fprintf(fid_out, '%% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS\n');
+        fprintf(fid_out, '%% =================================================================\n');
+        fprintf(fid_out, '\n');
+        
+        % Write the original script content
+        fprintf(fid_out, '%s', script_content);
+        
+        fclose(fid_out);
+        
+        fprintf('Script and settings saved to: %s\n', script_path);
+        
+    catch ME
+        fprintf('Error saving script and settings: %s\n', ME.message);
+    end
+end
+
+% Helper function to convert logical to string
+function str = logical2str(logical_val)
+    if logical_val
+        str = 'enabled';
+    else
+        str = 'disabled';
     end
 end
