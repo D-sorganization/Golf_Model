@@ -1,4 +1,4 @@
-function robust_dataset_generator(config, varargin)
+function successful_trials = robust_dataset_generator(config, varargin)
     % ROBUST_DATASET_GENERATOR - Crash-resistant dataset generation with intermediate saves
     % 
     % Features:
@@ -11,8 +11,8 @@ function robust_dataset_generator(config, varargin)
     % - Verbosity controls for output management
     %
     % Usage:
-    %   robust_dataset_generator(config)
-    %   robust_dataset_generator(config, 'BatchSize', 100, 'SaveInterval', 50)
+    %   successful_trials = robust_dataset_generator(config)
+    %   successful_trials = robust_dataset_generator(config, 'BatchSize', 100, 'SaveInterval', 50)
     
     % Parse optional parameters
     p = inputParser;
@@ -203,6 +203,9 @@ function robust_dataset_generator(config, varargin)
         logMessage('info', 'Total trials: %d', total_trials);
         logMessage('info', 'Successful: %d (%.1f%%)', successful_trials, ...
             100 * successful_trials / total_trials);
+        
+        % Return successful trials count
+        return;
         
     catch ME
         % Emergency save on error
