@@ -3464,24 +3464,77 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                         numeric_data = signal_data;
                     end
                     
-                    % Add the data if it matches our expected length
+                    % Add the data - handle both time series and constant properties
                     if ~isempty(numeric_data)
+                        data_size = size(numeric_data);
+                        num_elements = numel(numeric_data);
+                        
                         if size(numeric_data, 1) == expected_length
+                            % TIME SERIES DATA - matches expected length
                             if size(numeric_data, 2) == 1
-                                % Single column
+                                % Single column time series
                                 data_cells{end+1} = numeric_data(:);
                                 var_names{end+1} = sprintf('%s_%s', field_name, sub_field_name);
-                                fprintf('Debug: Added %s_%s\n', field_name, sub_field_name);
+                                fprintf('Debug: Added time series %s_%s\n', field_name, sub_field_name);
                             elseif size(numeric_data, 2) > 1
-                                % Multi-column data
+                                % Multi-column time series
                                 for col = 1:size(numeric_data, 2)
                                     data_cells{end+1} = numeric_data(:, col);
                                     var_names{end+1} = sprintf('%s_%s_%d', field_name, sub_field_name, col);
-                                    fprintf('Debug: Added %s_%s_%d\n', field_name, sub_field_name, col);
+                                    fprintf('Debug: Added time series %s_%s_%d\n', field_name, sub_field_name, col);
                                 end
                             end
+                            
+                        elseif num_elements == 3
+                            % 3D VECTOR (e.g., COM position [x, y, z])
+                            vector_data = numeric_data(:);  % Ensure column vector
+                            for dim = 1:3
+                                % Replicate constant value for all time steps
+                                replicated_data = repmat(vector_data(dim), expected_length, 1);
+                                data_cells{end+1} = replicated_data;
+                                dim_labels = {'x', 'y', 'z'};
+                                var_names{end+1} = sprintf('%s_%s_%s', field_name, sub_field_name, dim_labels{dim});
+                                fprintf('Debug: Added 3D vector %s_%s_%s (replicated %g for %d timesteps)\n', ...
+                                    field_name, sub_field_name, dim_labels{dim}, vector_data(dim), expected_length);
+                            end
+                            
+                        elseif num_elements == 9
+                            % 3x3 MATRIX (e.g., inertia matrix)
+                            if isequal(data_size, [3, 3])
+                                % Already 3x3 matrix
+                                matrix_data = numeric_data;
+                            else
+                                % Reshape to 3x3 if it's a 9x1 vector
+                                matrix_data = reshape(numeric_data, 3, 3);
+                            end
+                            
+                            % Extract all 9 elements and replicate for each time step
+                            for row = 1:3
+                                for col = 1:3
+                                    matrix_element = matrix_data(row, col);
+                                    replicated_data = repmat(matrix_element, expected_length, 1);
+                                    data_cells{end+1} = replicated_data;
+                                    var_names{end+1} = sprintf('%s_%s_I%d%d', field_name, sub_field_name, row, col);
+                                    fprintf('Debug: Added 3x3 matrix %s_%s_I%d%d (replicated %g for %d timesteps)\n', ...
+                                        field_name, sub_field_name, row, col, matrix_element, expected_length);
+                                end
+                            end
+                            
+                        elseif num_elements == 6
+                            % 6 ELEMENT DATA (e.g., 6DOF pose/twist)
+                            vector_data = numeric_data(:);  % Ensure column vector
+                            for dim = 1:6
+                                replicated_data = repmat(vector_data(dim), expected_length, 1);
+                                data_cells{end+1} = replicated_data;
+                                var_names{end+1} = sprintf('%s_%s_dof%d', field_name, sub_field_name, dim);
+                                fprintf('Debug: Added 6DOF data %s_%s_dof%d (replicated %g for %d timesteps)\n', ...
+                                    field_name, sub_field_name, dim, vector_data(dim), expected_length);
+                            end
+                            
                         else
-                            fprintf('Debug: Skipping %s.%s (length mismatch: %d vs %d)\n', field_name, sub_field_name, size(numeric_data, 1), expected_length);
+                            % UNHANDLED SIZE - still skip but with better diagnostic
+                            fprintf('Debug: Skipping %s.%s (size [%s] not supported - need time series, 3D vector, 3x3 matrix, or 6DOF)\n', ...
+                                field_name, sub_field_name, num2str(data_size));
                         end
                     end
                 end
@@ -3857,6 +3910,20 @@ function [time_data, all_signals] = fallbackSimlogExtraction(simlog)
                                 all_signals{end+1} = struct('name', signal_name, 'data', extracted_data);
                                 fprintf('Debug: Fallback found data in %s\n', prop_name);
                             end
+                        elseif isstruct(prop_value)
+                            % Try to extract constant matrix/vector data from struct
+                            [constant_signals] = extractConstantMatrixData(prop_value, prop_name, []);
+                            if ~isempty(constant_signals)
+                                all_signals = [all_signals, constant_signals];
+                                fprintf('Debug: Fallback found constant data in struct %s\n', prop_name);
+                            end
+                        elseif isnumeric(prop_value)
+                            % Handle numeric arrays directly (constant matrices/vectors)
+                            [constant_signals] = extractConstantMatrixData(prop_value, prop_name, []);
+                            if ~isempty(constant_signals)
+                                all_signals = [all_signals, constant_signals];
+                                fprintf('Debug: Fallback found numeric data in %s\n', prop_name);
+                            end
                         end
                     catch
                         continue;
@@ -3906,6 +3973,102 @@ function [time_data, all_signals] = fallbackSimlogExtraction(simlog)
         fprintf('Debug: Fallback extraction successful - found %d signals\n', length(all_signals));
     else
         fprintf('Debug: Fallback extraction found no data\n');
+    end
+end
+
+% Extract constant matrix/vector data and replicate for time series
+function [constant_signals] = extractConstantMatrixData(data_value, signal_name, reference_time)
+    constant_signals = {};
+    
+    try
+        if isstruct(data_value)
+            % Extract numeric data from struct fields
+            fields = fieldnames(data_value);
+            for i = 1:length(fields)
+                field_name = fields{i};
+                field_value = data_value.(field_name);
+                
+                % Recursively process struct fields
+                if isnumeric(field_value)
+                    sub_signals = extractConstantMatrixData(field_value, sprintf('%s_%s', signal_name, field_name), reference_time);
+                    constant_signals = [constant_signals, sub_signals];
+                end
+            end
+            
+        elseif isnumeric(data_value)
+            % Process numeric data directly
+            num_elements = numel(data_value);
+            data_size = size(data_value);
+            
+            % Determine reference length (use 3006 as default if no reference provided)
+            if isempty(reference_time)
+                expected_length = 3006;  % Default length based on typical simulation
+            else
+                expected_length = length(reference_time);
+            end
+            
+            if num_elements == 3
+                % 3D VECTOR (e.g., COM position [x, y, z])
+                vector_data = data_value(:);  % Ensure column vector
+                dim_labels = {'x', 'y', 'z'};
+                for dim = 1:3
+                    replicated_data = repmat(vector_data(dim), expected_length, 1);
+                    signal_name_full = matlab.lang.makeValidName(sprintf('%s_%s', signal_name, dim_labels{dim}));
+                    constant_signals{end+1} = struct('name', signal_name_full, 'data', replicated_data);
+                    fprintf('Debug: Added 3D vector %s (replicated %g for %d timesteps)\n', signal_name_full, vector_data(dim), expected_length);
+                end
+                
+            elseif num_elements == 6
+                % 6DOF DATA (e.g., pose/twist [x,y,z,rx,ry,rz])
+                vector_data = data_value(:);  % Ensure column vector
+                dof_labels = {'x', 'y', 'z', 'rx', 'ry', 'rz'};
+                for dim = 1:6
+                    replicated_data = repmat(vector_data(dim), expected_length, 1);
+                    signal_name_full = matlab.lang.makeValidName(sprintf('%s_%s', signal_name, dof_labels{dim}));
+                    constant_signals{end+1} = struct('name', signal_name_full, 'data', replicated_data);
+                    fprintf('Debug: Added 6DOF data %s (replicated %g for %d timesteps)\n', signal_name_full, vector_data(dim), expected_length);
+                end
+                
+            elseif num_elements == 9 && isequal(data_size, [3, 3])
+                % 3x3 MATRIX (e.g., inertia matrix, rotation matrix)
+                matrix_data = data_value;
+                for row = 1:3
+                    for col = 1:3
+                        matrix_element = matrix_data(row, col);
+                        replicated_data = repmat(matrix_element, expected_length, 1);
+                        signal_name_full = matlab.lang.makeValidName(sprintf('%s_R%d%d', signal_name, row, col));
+                        constant_signals{end+1} = struct('name', signal_name_full, 'data', replicated_data);
+                        fprintf('Debug: Added 3x3 matrix %s (replicated %g for %d timesteps)\n', signal_name_full, matrix_element, expected_length);
+                    end
+                end
+                
+            elseif num_elements == 9 && ~isequal(data_size, [3, 3])
+                % 9-ELEMENT VECTOR (flattened 3x3 matrix)
+                vector_data = data_value(:);  % Ensure column vector
+                for elem = 1:9
+                    row = ceil(elem/3);
+                    col = mod(elem-1, 3) + 1;
+                    replicated_data = repmat(vector_data(elem), expected_length, 1);
+                    signal_name_full = matlab.lang.makeValidName(sprintf('%s_I%d%d', signal_name, row, col));
+                    constant_signals{end+1} = struct('name', signal_name_full, 'data', replicated_data);
+                    fprintf('Debug: Added 9-element vector %s (replicated %g for %d timesteps)\n', signal_name_full, vector_data(elem), expected_length);
+                end
+                
+            elseif num_elements == 1
+                % SCALAR CONSTANT
+                replicated_data = repmat(data_value, expected_length, 1);
+                signal_name_full = matlab.lang.makeValidName(signal_name);
+                constant_signals{end+1} = struct('name', signal_name_full, 'data', replicated_data);
+                fprintf('Debug: Added scalar constant %s (replicated %g for %d timesteps)\n', signal_name_full, data_value, expected_length);
+                
+            else
+                % UNSUPPORTED SIZE - log for debugging
+                fprintf('Debug: Skipping %s (unsupported size [%s] - need 1, 3, 6, or 9 elements)\n', signal_name, num2str(data_size));
+            end
+        end
+        
+    catch ME
+        fprintf('Debug: Error processing constant data %s: %s\n', signal_name, ME.message);
     end
 end
 
@@ -4067,6 +4230,33 @@ function [time_data, values_data] = extractTimeSeriesData(data_obj, signal_path)
                 time_data = data_obj.Time;
                 values_data = data_obj.Data;
                 fprintf('Debug: Extracted struct Time/Data from %s\n', signal_path);
+            else
+                % Check for direct numeric data in struct (constant matrices/vectors)
+                fields = fieldnames(data_obj);
+                for i = 1:length(fields)
+                    field_name = fields{i};
+                    field_value = data_obj.(field_name);
+                    if isnumeric(field_value)
+                        % Found numeric data - treat as constant and create mock time
+                        num_elements = numel(field_value);
+                        if num_elements >= 1 && num_elements <= 9
+                            % Create a default time vector for constant data
+                            time_data = linspace(0, 3, 3006)';  % Default 3 second simulation
+                            values_data = field_value;
+                            fprintf('Debug: Extracted constant numeric data from %s.%s (%d elements)\n', signal_path, field_name, num_elements);
+                            break;  % Use first numeric field found
+                        end
+                    end
+                end
+            end
+        elseif isnumeric(data_obj)
+            % Direct numeric data (constant values)
+            num_elements = numel(data_obj);
+            if num_elements >= 1 && num_elements <= 9
+                % Create a default time vector for constant data
+                time_data = linspace(0, 3, 3006)';  % Default 3 second simulation
+                values_data = data_obj;
+                fprintf('Debug: Extracted direct numeric data from %s (%d elements)\n', signal_path, num_elements);
             end
         end
         
