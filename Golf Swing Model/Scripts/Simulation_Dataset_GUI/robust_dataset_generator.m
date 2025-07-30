@@ -64,12 +64,24 @@ function successful_trials = robust_dataset_generator(config, varargin)
     capture_workspace = p.Results.CaptureWorkspace;
     
     % Initialize verbosity control
-    verbosity_control('set', verbosity_level);
+    try
+        verbosity_control('set', verbosity_level);
+    catch ME
+        % If verbosity_control is not available, create a simple fallback
+        fprintf('Warning: verbosity_control not available, using fallback logging\n');
+        global verbosity_level;
+        verbosity_level = verbosity_level;
+    end
     
     % Initialize performance monitoring
     if enable_performance_monitoring
-        performance_monitor('start');
-        recordPhase('Initialization');
+        try
+            performance_monitor('start');
+            recordPhase('Initialization');
+        catch ME
+            fprintf('Warning: Performance monitoring not available: %s\n', ME.message);
+            enable_performance_monitoring = false;
+        end
     end
     
     % Initialize checkpoint system
@@ -99,10 +111,14 @@ function successful_trials = robust_dataset_generator(config, varargin)
     logMessage('info', 'Using batch size: %d trials', batch_size);
     
     % Initialize parallel pool with memory limits (respect execution mode)
-    if enable_performance_monitoring
-        endPhase();
-        recordPhase('Parallel Pool Setup');
-    end
+            if enable_performance_monitoring
+            try
+                endPhase();
+                recordPhase('Parallel Pool Setup');
+            catch
+                % Performance monitoring not available, continue silently
+            end
+        end
     
     % Check execution mode - use sequential if requested
     if isfield(config, 'execution_mode') && config.execution_mode == 1
@@ -118,10 +134,14 @@ function successful_trials = robust_dataset_generator(config, varargin)
     total_trials = config.num_simulations;
     successful_trials = 0;
     
-    if enable_performance_monitoring
-        endPhase();
-        recordPhase('Dataset Generation');
-    end
+            if enable_performance_monitoring
+            try
+                endPhase();
+                recordPhase('Dataset Generation');
+            catch
+                % Performance monitoring not available, continue silently
+            end
+        end
     
     try
         for batch_start = start_trial:batch_size:total_trials
@@ -151,7 +171,11 @@ function successful_trials = robust_dataset_generator(config, varargin)
             
             % Record batch performance
             if enable_performance_monitoring
-                recordBatchTime(batch_num, current_batch_size, batch_duration, successful_in_batch);
+                try
+                    recordBatchTime(batch_num, current_batch_size, batch_duration, successful_in_batch);
+                catch
+                    % Performance monitoring not available, continue silently
+                end
             end
             
             % Log batch results
@@ -173,7 +197,11 @@ function successful_trials = robust_dataset_generator(config, varargin)
                 
                 % Record checkpoint performance
                 if enable_performance_monitoring
-                    recordCheckpointTime(checkpoint_duration);
+                    try
+                        recordCheckpointTime(checkpoint_duration);
+                    catch
+                        % Performance monitoring not available, continue silently
+                    end
                 end
                 
                 % Log checkpoint info
@@ -191,8 +219,12 @@ function successful_trials = robust_dataset_generator(config, varargin)
         
         % Final compilation
         if enable_performance_monitoring
-            endPhase();
-            recordPhase('Final Compilation');
+            try
+                endPhase();
+                recordPhase('Final Compilation');
+            catch
+                % Performance monitoring not available, continue silently
+            end
         end
         logMessage('info', 'Compiling final dataset...');
         compileFinalDataset(config, all_results, successful_trials);
@@ -204,8 +236,12 @@ function successful_trials = robust_dataset_generator(config, varargin)
         
         % Stop performance monitoring and generate report
         if enable_performance_monitoring
-            endPhase();
-            performance_monitor('stop');
+            try
+                endPhase();
+                performance_monitor('stop');
+            catch
+                % Performance monitoring not available, continue silently
+            end
         end
         
         logMessage('info', 'Dataset generation complete!');
@@ -224,7 +260,11 @@ function successful_trials = robust_dataset_generator(config, varargin)
         
         % Stop performance monitoring
         if enable_performance_monitoring
-            performance_monitor('stop');
+            try
+                performance_monitor('stop');
+            catch
+                % Performance monitoring not available, continue silently
+            end
         end
         
         % Cleanup
@@ -349,8 +389,17 @@ function batch_results = processBatch(config, trial_indices, pool, capture_works
             for i = 1:length(simOuts)
                 trial = trial_indices(i);
                 try
-                    if ~isempty(simOuts(i)) && isSimulationSuccessful(simOuts(i))
-                        batch_results{i} = processSimulationOutput(trial, config, simOuts(i));
+                    % Handle potential brace indexing issues with simOuts(i)
+                    if iscell(simOuts) && i <= length(simOuts)
+                        simOut = simOuts{i}; % Use cell indexing
+                    elseif isnumeric(simOuts) || isstruct(simOuts)
+                        simOut = simOuts(i); % Use regular indexing
+                    else
+                        simOut = [];
+                    end
+                    
+                    if ~isempty(simOut) && isSimulationSuccessful(simOut)
+                        batch_results{i} = processSimulationOutput(trial, config, simOut);
                     else
                         batch_results{i} = struct('success', false, 'error', 'Simulation failed');
                     end
@@ -516,5 +565,118 @@ function compileFinalDataset(config, all_results, successful_trials)
     catch ME
         fprintf('Error compiling final dataset: %s\n', ME.message);
         rethrow(ME);
+    end
+end
+
+% Fallback logging functions if verbosity_control is not available
+function logMessage(level, message, varargin)
+    % Fallback logging function
+    try
+        % Try to use the real logMessage function first
+        logMessage_real(level, message, varargin{:});
+    catch
+        % Fallback to simple fprintf
+        if nargin > 2
+            formatted_message = sprintf(message, varargin{:});
+        else
+            formatted_message = message;
+        end
+        
+        switch lower(level)
+            case 'error'
+                fprintf('❌ ERROR: %s\n', formatted_message);
+            case 'warning'
+                fprintf('⚠️  WARNING: %s\n', formatted_message);
+            case 'info'
+                fprintf('ℹ️  INFO: %s\n', formatted_message);
+            case 'debug'
+                fprintf('🔍 DEBUG: %s\n', formatted_message);
+            otherwise
+                fprintf('%s\n', formatted_message);
+        end
+    end
+end
+
+function logProgress(current, total, message)
+    % Fallback progress logging function
+    try
+        % Try to use the real logProgress function first
+        logProgress_real(current, total, message);
+    catch
+        % Fallback to simple fprintf
+        percentage = 100 * current / total;
+        fprintf('\r%s: %d/%d (%.1f%%)', message, current, total, percentage);
+        if current == total
+            fprintf('\n');
+        end
+    end
+end
+
+function logTrialResult(trial_num, success, duration, error_msg)
+    % Fallback trial result logging function
+    try
+        % Try to use the real logTrialResult function first
+        logTrialResult_real(trial_num, success, duration, error_msg);
+    catch
+        % Fallback to simple fprintf
+        if success
+            fprintf('Trial %d completed successfully in %.2f seconds\n', trial_num, duration);
+        else
+            fprintf('Trial %d failed after %.2f seconds: %s\n', trial_num, duration, error_msg);
+        end
+    end
+end
+
+function logCheckpoint(duration, file_size_mb)
+    % Fallback checkpoint logging function
+    try
+        % Try to use the real logCheckpoint function first
+        logCheckpoint_real(duration, file_size_mb);
+    catch
+        % Fallback to simple fprintf
+        fprintf('Checkpoint saved in %.2f seconds (%.1f MB)\n', duration, file_size_mb);
+    end
+end
+
+function recordTrialTime(trial, duration, processing_time)
+    % Fallback trial time recording function
+    try
+        % Try to use the real recordTrialTime function first
+        recordTrialTime_real(trial, duration, processing_time);
+    catch
+        % Fallback - do nothing
+    end
+end
+
+function recordBatchTime(batch_num, batch_size, duration, successful)
+    % Fallback batch time recording function
+    try
+        % Try to use the real recordBatchTime function first
+        recordBatchTime_real(batch_num, batch_size, duration, successful);
+    catch
+        % Fallback - do nothing
+    end
+end
+
+function recordCheckpointTime(duration)
+    % Fallback checkpoint time recording function
+    try
+        % Try to use the real recordCheckpointTime function first
+        recordCheckpointTime_real(duration);
+    catch
+        % Fallback - do nothing
+    end
+end
+
+function logBatchResult(batch_num, batch_size, successful, failed, duration)
+    % Fallback batch result logging function
+    try
+        % Try to use the real logBatchResult function first
+        logBatchResult_real(batch_num, batch_size, successful, failed, duration);
+    catch
+        % Fallback to simple fprintf
+        success_rate = 100 * successful / batch_size;
+        fprintf('Batch %d: %d/%d successful (%.1f%%) in %.1f seconds\n', ...
+            batch_num, successful, batch_size, success_rate, duration);
     end
 end 
