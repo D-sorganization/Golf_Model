@@ -98,12 +98,21 @@ function successful_trials = robust_dataset_generator(config, varargin)
     batch_size = min(batch_size, optimal_batch_size);
     logMessage('info', 'Using batch size: %d trials', batch_size);
     
-    % Initialize parallel pool with memory limits
+    % Initialize parallel pool with memory limits (respect execution mode)
     if enable_performance_monitoring
         endPhase();
         recordPhase('Parallel Pool Setup');
     end
-    pool = initializeParallelPool(max_workers, max_memory_gb);
+    
+    % Check execution mode - use sequential if requested
+    if isfield(config, 'execution_mode') && config.execution_mode == 1
+        % Sequential mode requested
+        logMessage('info', 'Using sequential execution mode as requested');
+        pool = [];
+    else
+        % Parallel mode (default or explicitly requested)
+        pool = initializeParallelPool(max_workers, max_memory_gb);
+    end
     
     % Main generation loop
     total_trials = config.num_simulations;
