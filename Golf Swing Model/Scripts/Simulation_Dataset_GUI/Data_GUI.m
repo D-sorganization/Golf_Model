@@ -1040,16 +1040,19 @@ function handles = createProgressPanel(parent, handles, yPos, height)
                                      'Min', 0, ... % Allow selection
                                      'Enable', 'inactive'); % Read-only but selectable
     
-    % Status
+    % Status (copyable error messages)
     handles.status_text = uicontrol('Parent', panel, ...
-                                   'Style', 'text', ...
+                                   'Style', 'edit', ...
                                    'String', 'Status: Ready', ...
                                    'Units', 'normalized', ...
                                    'Position', [0.02, 0.15, 0.96, 0.35], ...
                                    'HorizontalAlignment', 'left', ...
                                    'BackgroundColor', [0.97, 0.97, 0.97], ...
                                    'ForegroundColor', colors.success, ...
-                                   'FontSize', 9);
+                                   'FontSize', 9, ...
+                                   'Max', 2, ... % Allow multiple lines
+                                   'Min', 0, ... % Allow selection
+                                   'Enable', 'inactive'); % Read-only but selectable
 end
 function handles = createControlPanel(parent, handles, yPos, height)
     % Control Buttons Panel
@@ -2075,7 +2078,22 @@ function successful_trials = runParallelSimulations(handles, config)
         end
         
         for i = 1:length(simOuts)
-            if ~isempty(simOuts(i))
+            % Safely access simOuts(i) to handle potential brace indexing issues
+            try
+                current_simOut = simOuts(i);
+                
+                % Check if we got a valid single simulation output object
+                if isempty(current_simOut)
+                    fprintf('✗ Trial %d: Empty simulation output\n', i);
+                    continue;
+                end
+                
+                % Handle case where simOuts(i) returns multiple values (brace indexing issue)
+                if ~isscalar(current_simOut)
+                    fprintf('✗ Trial %d: Multiple simulation outputs returned (brace indexing issue)\n', i);
+                    continue;
+                end
+                
                 % Check if simulation completed successfully
                 simulation_success = false;
                 has_error = false;
@@ -2083,10 +2101,10 @@ function successful_trials = runParallelSimulations(handles, config)
                 % Try multiple ways to check simulation status
                 try
                     % Method 1: Check SimulationMetadata (standard way)
-                    if isprop(simOuts(i), 'SimulationMetadata') && ...
-                       isfield(simOuts(i).SimulationMetadata, 'ExecutionInfo')
+                    if isprop(current_simOut, 'SimulationMetadata') && ...
+                       isfield(current_simOut.SimulationMetadata, 'ExecutionInfo')
                         
-                        execInfo = simOuts(i).SimulationMetadata.ExecutionInfo;
+                        execInfo = current_simOut.SimulationMetadata.ExecutionInfo;
                         
                         if isfield(execInfo, 'StopEvent') && execInfo.StopEvent == "CompletedNormally"
                             simulation_success = true;
@@ -2100,16 +2118,16 @@ function successful_trials = runParallelSimulations(handles, config)
                         end
                     else
                         % Method 2: Check for ErrorMessage property (indicates failure)
-                        if isprop(simOuts(i), 'ErrorMessage') && ~isempty(simOuts(i).ErrorMessage)
+                        if isprop(current_simOut, 'ErrorMessage') && ~isempty(current_simOut.ErrorMessage)
                             has_error = true;
-                            fprintf('✗ Trial %d simulation failed: %s\n', i, simOuts(i).ErrorMessage);
+                            fprintf('✗ Trial %d simulation failed: %s\n', i, current_simOut.ErrorMessage);
                         else
                             % Method 3: If no metadata but we have output data, assume success
                             % Check if we have expected output fields (logsout, simlog, etc.)
                             has_data = false;
-                            if isprop(simOuts(i), 'logsout') || isfield(simOuts(i), 'logsout') || ...
-                               isprop(simOuts(i), 'simlog') || isfield(simOuts(i), 'simlog') || ...
-                               isprop(simOuts(i), 'CombinedSignalBus') || isfield(simOuts(i), 'CombinedSignalBus')
+                            if isprop(current_simOut, 'logsout') || isfield(current_simOut, 'logsout') || ...
+                               isprop(current_simOut, 'simlog') || isfield(current_simOut, 'simlog') || ...
+                               isprop(current_simOut, 'CombinedSignalBus') || isfield(current_simOut, 'CombinedSignalBus')
                                 has_data = true;
                             end
                             
@@ -2130,7 +2148,7 @@ function successful_trials = runParallelSimulations(handles, config)
                 % Process simulation if it succeeded
                 if simulation_success && ~has_error
                     try
-                        result = processSimulationOutput(i, config, simOuts(i), config.capture_workspace);
+                        result = processSimulationOutput(i, config, current_simOut, config.capture_workspace);
                         if result.success
                             successful_trials = successful_trials + 1;
                             fprintf('✓ Trial %d completed successfully\n', i);
@@ -2141,8 +2159,15 @@ function successful_trials = runParallelSimulations(handles, config)
                         fprintf('Error processing trial %d: %s\n', i, ME.message);
                     end
                 end
-            else
-                fprintf('✗ Trial %d: Empty simulation output\n', i);
+                
+            catch ME
+                % Handle brace indexing errors specifically
+                if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
+                    fprintf('✗ Trial %d: Brace indexing error - simulation output corrupted\n', i);
+                    fprintf('  Error: %s\n', ME.message);
+                else
+                    fprintf('✗ Trial %d: Unexpected error accessing simulation output: %s\n', i, ME.message);
+                end
             end
         end
         
@@ -2616,6 +2641,22 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
     signal_info = struct();
     
     try
+        % Validate simOut input to prevent brace indexing errors
+        if isempty(simOut)
+            if options.verbose
+                fprintf('Warning: Empty simulation output provided\n');
+            end
+            return;
+        end
+        
+        % Check if simOut is a valid simulation output object
+        if ~isobject(simOut) && ~isstruct(simOut)
+            if options.verbose
+                fprintf('Warning: Invalid simulation output type: %s\n', class(simOut));
+            end
+            return;
+        end
+        
         % Initialize data collection
         all_data = {};
         
@@ -2625,14 +2666,26 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                 fprintf('Extracting from CombinedSignalBus...\n');
             end
             
-            combinedBus = simOut.CombinedSignalBus;
-            if ~isempty(combinedBus)
-                signal_bus_data = extractFromCombinedSignalBus(combinedBus);
-                
-                if ~isempty(signal_bus_data)
-                    all_data{end+1} = signal_bus_data;
+            try
+                combinedBus = simOut.CombinedSignalBus;
+                if ~isempty(combinedBus)
+                    signal_bus_data = extractFromCombinedSignalBus(combinedBus);
+                    
+                    if ~isempty(signal_bus_data)
+                        all_data{end+1} = signal_bus_data;
+                        if options.verbose
+                            fprintf('CombinedSignalBus: %d columns extracted\n', width(signal_bus_data));
+                        end
+                    end
+                end
+            catch ME
+                if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
                     if options.verbose
-                        fprintf('CombinedSignalBus: %d columns extracted\n', width(signal_bus_data));
+                        fprintf('Warning: Brace indexing error accessing CombinedSignalBus: %s\n', ME.message);
+                    end
+                else
+                    if options.verbose
+                        fprintf('Warning: Error extracting CombinedSignalBus: %s\n', ME.message);
                     end
                 end
             end
@@ -2644,11 +2697,23 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                 fprintf('Extracting from logsout...\n');
             end
             
-            logsout_data = extractLogsoutDataFixed(simOut.logsout);
-            if ~isempty(logsout_data)
-                all_data{end+1} = logsout_data;
-                if options.verbose
-                    fprintf('Logsout: %d columns extracted\n', width(logsout_data));
+            try
+                logsout_data = extractLogsoutDataFixed(simOut.logsout);
+                if ~isempty(logsout_data)
+                    all_data{end+1} = logsout_data;
+                    if options.verbose
+                        fprintf('Logsout: %d columns extracted\n', width(logsout_data));
+                    end
+                end
+            catch ME
+                if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
+                    if options.verbose
+                        fprintf('Warning: Brace indexing error accessing logsout: %s\n', ME.message);
+                    end
+                else
+                    if options.verbose
+                        fprintf('Warning: Error extracting logsout: %s\n', ME.message);
+                    end
                 end
             end
         end
@@ -2673,8 +2738,14 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                         end
                     end
                 catch ME
-                    if options.verbose
-                        fprintf('Warning: Could not access simlog: %s\n', ME.message);
+                    if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
+                        if options.verbose
+                            fprintf('Warning: Brace indexing error accessing simlog: %s\n', ME.message);
+                        end
+                    else
+                        if options.verbose
+                            fprintf('Warning: Could not access simlog: %s\n', ME.message);
+                        end
                     end
                 end
             end
