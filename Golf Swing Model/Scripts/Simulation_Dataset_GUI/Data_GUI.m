@@ -3089,7 +3089,7 @@ function config = validateInputs(handles)
         config.use_signal_bus = get(handles.use_signal_bus, 'Value');
         config.use_simscape = get(handles.use_simscape, 'Value');
         config.enable_animation = get(handles.enable_animation, 'Value');
-        config.capture_workspace = get(handles.capture_workspace_checkbox, 'Value');
+        config.capture_workspace = logical(get(handles.capture_workspace_checkbox, 'Value'));
         config.output_folder = fullfile(output_folder, folder_name);
         config.file_format = get(handles.format_popup, 'Value');
         
@@ -3430,7 +3430,7 @@ function applyUserPreferences(handles)
         
         % Apply workspace capture setting
         if isfield(handles, 'capture_workspace_checkbox') && isfield(prefs, 'capture_workspace')
-            set(handles.capture_workspace_checkbox, 'Value', prefs.capture_workspace);
+            set(handles.capture_workspace_checkbox, 'Value', double(prefs.capture_workspace));
         end
         
         % Apply batch settings
@@ -3491,7 +3491,7 @@ function saveUserPreferences(handles)
         
         % Save workspace capture setting
         if isfield(handles, 'capture_workspace_checkbox')
-            handles.preferences.capture_workspace = get(handles.capture_workspace_checkbox, 'Value');
+            handles.preferences.capture_workspace = logical(get(handles.capture_workspace_checkbox, 'Value'));
         end
         
         % Save batch settings
