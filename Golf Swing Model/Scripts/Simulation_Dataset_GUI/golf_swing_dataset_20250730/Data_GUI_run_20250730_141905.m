@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-07-30 14:19:05
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 2
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: enabled
+% Logsout Dataset: enabled
+% Simscape Results: enabled
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250730
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: OGLaptop
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 2 trials x 189 coefficients
+% First trial coefficients (first 10): 22.990, 22.860, 31.730, 16.930, 43.640, 8.980, 32.050, 14.110, 39.180, 26.080
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
     % Fixed polynomial order: At^6 + Bt^5 + Ct^4 + Dt^3 + Et^2 + Ft + G
@@ -2389,17 +2432,8 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
         warning_state5 = warning('off', 'Simulink:Blocks:UnconnectedOutputPort');
         warning_state6 = warning('off', 'Simulink:Blocks:UnconnectedInputPort');
         
-        % Run simulation with progress indicator and visualization suppression
+        % Run simulation with progress indicator
         fprintf('Running trial %d simulation...', trial_num);
-        
-        % Suppress visualization by setting model parameters
-        try
-            simIn = simIn.setModelParameter('ShowSimulationManager', 'off');
-            simIn = simIn.setModelParameter('ShowProgress', 'off');
-        catch
-            % If these parameters don't exist, continue anyway
-        end
-        
         simOut = sim(simIn);
         fprintf(' Done.\n');
         

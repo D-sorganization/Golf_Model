@@ -740,8 +740,17 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
         warning_state5 = warning('off', 'Simulink:Blocks:UnconnectedOutputPort');
         warning_state6 = warning('off', 'Simulink:Blocks:UnconnectedInputPort');
         
-        % Run simulation with progress indicator
+        % Run simulation with progress indicator and visualization suppression
         fprintf('Running trial %d simulation...', trial_num);
+        
+        % Suppress visualization by setting model parameters
+        try
+            simIn = simIn.setModelParameter('ShowSimulationManager', 'off');
+            simIn = simIn.setModelParameter('ShowProgress', 'off');
+        catch
+            % If these parameters don't exist, continue anyway
+        end
+        
         simOut = sim(simIn);
         fprintf(' Done.\n');
         
@@ -1032,6 +1041,8 @@ function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
     % Fallback function for adding workspace data
     % This is a simplified version - the full version would extract model workspace variables
     fprintf('Workspace data capture not implemented in fallback version\n');
+    % IMPORTANT: Return the data_table to prevent it from becoming []
+    % This ensures the calling function can continue with the table
 end
 
 function logWorkspaceCapture(enabled, num_vars)
@@ -1047,6 +1058,8 @@ function data_table = resampleDataToFrequency(data_table, target_freq, simulatio
     % Fallback function for data resampling
     % This is a simplified version - the full version would resample the data
     fprintf('Data resampling not implemented in fallback version\n');
+    % IMPORTANT: Return the data_table to prevent it from becoming []
+    % This ensures the calling function can continue with the table
 end
 
 function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
