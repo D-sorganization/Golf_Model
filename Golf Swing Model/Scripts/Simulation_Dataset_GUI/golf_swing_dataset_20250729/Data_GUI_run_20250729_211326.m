@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-07-29 21:13:26
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 2
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: enabled
+% Logsout Dataset: enabled
+% Simscape Results: enabled
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250729
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: DeskComputer
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 2 trials x 189 coefficients
+% First trial coefficients (first 10): 11.160, -7.350, 38.780, 5.790, -13.650, -12.680, 3.670, -43.790, 10.370, -38.930
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
     % Fixed polynomial order: At^6 + Bt^5 + Ct^4 + Dt^3 + Et^2 + Ft + G
@@ -1992,7 +2035,7 @@ function successful_trials = runParallelSimulations(handles, config)
             fprintf('   • Toolbox licensing issues on workers\n');
             fprintf('   • Model configuration conflicts in parallel mode\n');
             fprintf('   • Coefficient setting issues on workers\n');
-            fprintf('\n💡 Try sequential mode for detailed debugging\n');
+            fprintf('\n Try sequential mode for detailed debugging\n');
         end
         
     catch ME
@@ -3681,7 +3724,7 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
         
         % Try to inspect the simlog structure
         try
-            fprintf('🔍 Inspecting simlog properties...\n');
+            fprintf(' Inspecting simlog properties...\n');
             props = properties(simlog);
             fprintf('   Properties: %s\n', strjoin(props, ', '));
         catch
@@ -3694,7 +3737,7 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
             fprintf('✅ Found %d top-level children: %s\n', length(children_ids), strjoin(children_ids, ', '));
         catch ME
             fprintf('❌ Could not get children method: %s\n', ME.message);
-            fprintf('🔄 Using properties as children (Multibody approach)\n');
+            fprintf(' Using properties as children (Multibody approach)\n');
             
             % Get properties excluding system properties
             all_props = properties(simlog);
@@ -3714,7 +3757,7 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
             try
                 first_child_id = children_ids{1};
                 first_child = simlog.(first_child_id);
-                fprintf('🔍 First child (%s) class: %s\n', first_child_id, class(first_child));
+                fprintf(' First child (%s) class: %s\n', first_child_id, class(first_child));
                 
                 % Try to get series from first child
                 try
@@ -3733,15 +3776,23 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
 
         fprintf('Debug: Starting recursive Simscape extraction from root node.\n');
 
-        % Recursively collect all series data
+        % Recursively collect all series data using Grok's method
         [time_data, all_signals] = traverseSimlogNode(simlog, '');
 
         if isempty(time_data) || isempty(all_signals)
-            fprintf('⚠️  Primary method found no data. Simscape extraction skipped.\n');
-            fprintf('ℹ️  Note: Your simulation has %d total columns, so other data sources are working.\n', 1431);
-            return;
+            fprintf('⚠️  Grok method found no data. Trying fallback methods...\n');
+            
+            % FALLBACK METHOD 1: Simple property inspection
+            [time_data, all_signals] = fallbackSimlogExtraction(simlog);
+            
+            if isempty(time_data) || isempty(all_signals)
+                fprintf('❌ All extraction methods failed. No usable Simscape data found.\n');
+                return;
+            else
+                fprintf('✅ Fallback method found data!\n');
+            end
         else
-            fprintf('✅ Simscape extraction found data!\n');
+            fprintf('✅ Grok method found data!\n');
         end
 
         % Build table
@@ -3793,7 +3844,7 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
         
         % Method 1: Try generic Simscape series API
         try
-            series_names = node.series.children();  % Standard Simscape method
+            series_names = node.series.children();  % Original Grok method
             for i = 1:length(series_names)
                 series_node = node.series.(series_names{i});
                 if series_node.hasData()
@@ -3811,7 +3862,7 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
                 end
             end
         catch
-            % Series API failed - this is expected for some Multibody versions
+            % Series API failed - this is expected for Multibody
         end
         
         % Method 2: Simscape Multibody specific - direct property access

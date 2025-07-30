@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-07-29 20:58:55
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 2
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: enabled
+% Logsout Dataset: enabled
+% Simscape Results: enabled
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250729
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: DeskComputer
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 2 trials x 189 coefficients
+% First trial coefficients (first 10): 30.770, -41.460, 39.550, 37.940, -39.060, -42.740, -6.230, 38.900, 7.910, 47.210
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
     % Fixed polynomial order: At^6 + Bt^5 + Ct^4 + Dt^3 + Et^2 + Ft + G
@@ -1992,7 +2035,7 @@ function successful_trials = runParallelSimulations(handles, config)
             fprintf('   • Toolbox licensing issues on workers\n');
             fprintf('   • Model configuration conflicts in parallel mode\n');
             fprintf('   • Coefficient setting issues on workers\n');
-            fprintf('\n💡 Try sequential mode for detailed debugging\n');
+            fprintf('\n Try sequential mode for detailed debugging\n');
         end
         
     catch ME
@@ -3655,81 +3698,15 @@ function logsout_data = extractLogsoutDataFixed(logsout)
     end
 end
 
-% ENHANCED: Extract from Simscape with detailed diagnostics
+% ENHANCED: Extract from Simscape using Grok's targeted API approach
 function simscape_data = extractSimscapeDataRecursive(simlog)
     simscape_data = table();  % Empty table if no data
 
     try
-        % DETAILED DIAGNOSTICS
-        fprintf('=== SIMSCAPE DIAGNOSTIC START ===\n');
-        
-        if isempty(simlog)
-            fprintf('❌ simlog is EMPTY\n');
-            fprintf('=== SIMSCAPE DIAGNOSTIC END ===\n');
+        if isempty(simlog) || ~isa(simlog, 'simscape.logging.Node')
+            fprintf('Debug: Invalid or empty simlog. No Simscape data to extract.\n');
             return;
         end
-        
-        fprintf('✅ simlog exists, class: %s\n', class(simlog));
-        
-        if ~isa(simlog, 'simscape.logging.Node')
-            fprintf('❌ simlog is not a simscape.logging.Node\n');
-            fprintf('=== SIMSCAPE DIAGNOSTIC END ===\n');
-            return;
-        end
-        
-        fprintf('✅ simlog is valid simscape.logging.Node\n');
-        
-        % Try to inspect the simlog structure
-        try
-            fprintf('🔍 Inspecting simlog properties...\n');
-            props = properties(simlog);
-            fprintf('   Properties: %s\n', strjoin(props, ', '));
-        catch
-            fprintf('❌ Could not get simlog properties\n');
-        end
-        
-        % Try to get children (properties ARE the children in Multibody)
-        try
-            children_ids = simlog.children();
-            fprintf('✅ Found %d top-level children: %s\n', length(children_ids), strjoin(children_ids, ', '));
-        catch ME
-            fprintf('❌ Could not get children method: %s\n', ME.message);
-            fprintf('🔄 Using properties as children (Multibody approach)\n');
-            
-            % Get properties excluding system properties
-            all_props = properties(simlog);
-            children_ids = {};
-            for i = 1:length(all_props)
-                prop_name = all_props{i};
-                % Skip system properties, keep actual joint/body names
-                if ~ismember(prop_name, {'id', 'savable', 'exportable'})
-                    children_ids{end+1} = prop_name;
-                end
-            end
-            fprintf('✅ Found %d children from properties: %s\n', length(children_ids), strjoin(children_ids, ', '));
-        end
-        
-        % Try to inspect first child
-        if ~isempty(children_ids)
-            try
-                first_child_id = children_ids{1};
-                first_child = simlog.(first_child_id);
-                fprintf('🔍 First child (%s) class: %s\n', first_child_id, class(first_child));
-                
-                % Try to get series from first child
-                try
-                    series_children = first_child.series.children();
-                    fprintf('✅ First child has %d series: %s\n', length(series_children), strjoin(series_children, ', '));
-                catch ME2
-                    fprintf('❌ First child series access failed: %s\n', ME2.message);
-                end
-                
-            catch ME
-                fprintf('❌ Could not inspect first child: %s\n', ME.message);
-            end
-        end
-        
-        fprintf('=== SIMSCAPE DIAGNOSTIC END ===\n');
 
         fprintf('Debug: Starting recursive Simscape extraction from root node.\n');
 
@@ -3737,11 +3714,8 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
         [time_data, all_signals] = traverseSimlogNode(simlog, '');
 
         if isempty(time_data) || isempty(all_signals)
-            fprintf('⚠️  Primary method found no data. Simscape extraction skipped.\n');
-            fprintf('ℹ️  Note: Your simulation has %d total columns, so other data sources are working.\n', 1431);
+            fprintf('Debug: No usable Simscape data found after traversal.\n');
             return;
-        else
-            fprintf('✅ Simscape extraction found data!\n');
         end
 
         % Build table
@@ -3772,7 +3746,7 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
     end
 end
 
-% Simscape Multibody specific traversal (different API than generic Simscape)
+% Recursive helper to traverse simlog tree (Grok's targeted API approach)
 function [time_data, signals] = traverseSimlogNode(node, parent_path)
     time_data = [];
     signals = {};
@@ -3786,165 +3760,43 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
             node_name = 'UnnamedNode';
         end
         current_path = fullfile(parent_path, node_name);
-        fprintf('Debug: Traversing Multibody node: %s\n', current_path);
+        fprintf('Debug: Traversing node: %s\n', current_path);
 
-        % SIMSCAPE MULTIBODY APPROACH: Try multiple extraction methods
-        node_has_data = false;
-        
-        % Method 1: Try generic Simscape series API
-        try
-            series_names = node.series.children();  % Standard Simscape method
-            for i = 1:length(series_names)
-                series_node = node.series.(series_names{i});
-                if series_node.hasData()
-                    [data, time] = series_node.values('');
-                    if ~isempty(data) && ~isempty(time)
-                        if isempty(time_data)
-                            time_data = time;
-                            fprintf('Debug: Using time from %s (length: %d)\n', current_path, length(time_data));
-                        end
-                        signal_name = matlab.lang.makeValidName(fullfile(current_path, series_names{i}));
-                        signals{end+1} = struct('name', signal_name, 'data', data);
-                        fprintf('Debug: Found series data in %s.%s (length: %d)\n', current_path, series_names{i}, length(data));
-                        node_has_data = true;
+        % Check if this node has series data
+        series_names = node.series.children();  % Get all series (e.g., q, w, tau)
+        for i = 1:length(series_names)
+            series_node = node.series.(series_names{i});
+            if series_node.hasData()
+                [data, time] = series_node.values('');  % Get data with default units
+                if ~isempty(data) && ~isempty(time)
+                    % Use first valid time vector
+                    if isempty(time_data)
+                        time_data = time;
+                        fprintf('Debug: Using time from %s (length: %d)\n', current_path, length(time_data));
                     end
+                    % Add signal
+                    signal_name = matlab.lang.makeValidName(fullfile(current_path, series_names{i}));
+                    signals{end+1} = struct('name', signal_name, 'data', data);
+                    fprintf('Debug: Found series data in %s.%s (length: %d)\n', current_path, series_names{i}, length(data));
                 end
-            end
-        catch
-            % Series API failed - this is expected for some Multibody versions
-        end
-        
-        % Method 2: Simscape Multibody specific - direct property access
-        if ~node_has_data
-            try
-                props = properties(node);
-                for i = 1:length(props)
-                    prop_name = props{i};
-                    % Skip non-data properties
-                    if ismember(prop_name, {'id', 'series', 'children'})
-                        continue;
-                    end
-                    
-                    try
-                        prop_value = node.(prop_name);
-                        if isa(prop_value, 'simscape.logging.Node')
-                            % This is another node - will be handled by recursion
-                            continue;
-                        elseif isstruct(prop_value) || isa(prop_value, 'timeseries')
-                            % Try to extract time series data
-                            [extracted_time, extracted_data] = extractTimeSeriesData(prop_value, sprintf('%s_%s', current_path, prop_name));
-                            if ~isempty(extracted_time) && ~isempty(extracted_data)
-                                if isempty(time_data)
-                                    time_data = extracted_time;
-                                    fprintf('Debug: Using time from %s.%s (length: %d)\n', current_path, prop_name, length(time_data));
-                                end
-                                signal_name = matlab.lang.makeValidName(sprintf('%s_%s', current_path, prop_name));
-                                signals{end+1} = struct('name', signal_name, 'data', extracted_data);
-                                fprintf('Debug: Found Multibody data in %s.%s (length: %d)\n', current_path, prop_name, length(extracted_data));
-                                node_has_data = true;
-                            end
-                        end
-                    catch
-                        % Skip properties that can't be accessed
-                        continue;
-                    end
-                end
-            catch
-                % Property enumeration failed
             end
         end
 
         % Recurse into child nodes
-        child_ids = [];
-        try
-            child_ids = node.children();
-        catch
-            % children() method doesn't exist - use properties as children (Multibody)
-            try
-                all_props = properties(node);
-                child_ids = {};
-                for i = 1:length(all_props)
-                    prop_name = all_props{i};
-                    % Skip system properties, keep actual joint/body names
-                    if ~ismember(prop_name, {'id', 'savable', 'exportable'})
-                        % Check if this property is actually a child node
-                        try
-                            prop_value = node.(prop_name);
-                            if isa(prop_value, 'simscape.logging.Node')
-                                child_ids{end+1} = prop_name;
-                            end
-                        catch
-                            % Skip properties that can't be accessed
-                        end
-                    end
-                end
-            catch
-                % Property enumeration failed
-                child_ids = [];
+        child_ids = node.children();
+        for i = 1:length(child_ids)
+            child_node = node.(child_ids{i});
+            [child_time, child_signals] = traverseSimlogNode(child_node, current_path);
+            % Merge time (use first valid)
+            if isempty(time_data) && ~isempty(child_time)
+                time_data = child_time;
             end
-        end
-        
-        % Process child nodes
-        if ~isempty(child_ids)
-            for i = 1:length(child_ids)
-                try
-                    child_node = node.(child_ids{i});
-                    [child_time, child_signals] = traverseSimlogNode(child_node, current_path);
-                    % Merge time (use first valid)
-                    if isempty(time_data) && ~isempty(child_time)
-                        time_data = child_time;
-                    end
-                    % Append child signals
-                    signals = [signals, child_signals];
-                catch ME
-                    fprintf('Debug: Error accessing child %s: %s\n', child_ids{i}, ME.message);
-                end
-            end
+            % Append child signals
+            signals = [signals, child_signals];
         end
 
     catch ME
-        fprintf('Debug: Error traversing Multibody node %s: %s\n', current_path, ME.message);
-    end
-end
-
-% Helper function to extract time series data from various formats
-function [time_data, values_data] = extractTimeSeriesData(data_obj, signal_path)
-    time_data = [];
-    values_data = [];
-    
-    try
-        if isa(data_obj, 'timeseries')
-            % MATLAB timeseries object
-            time_data = data_obj.Time;
-            values_data = data_obj.Data;
-            fprintf('Debug: Extracted timeseries from %s\n', signal_path);
-        elseif isstruct(data_obj)
-            % Struct with time/data fields
-            if isfield(data_obj, 'time') && isfield(data_obj, 'signals')
-                time_data = data_obj.time;
-                if isstruct(data_obj.signals) && isfield(data_obj.signals, 'values')
-                    values_data = data_obj.signals.values;
-                    fprintf('Debug: Extracted struct time/signals from %s\n', signal_path);
-                end
-            elseif isfield(data_obj, 'Time') && isfield(data_obj, 'Data')
-                time_data = data_obj.Time;
-                values_data = data_obj.Data;
-                fprintf('Debug: Extracted struct Time/Data from %s\n', signal_path);
-            end
-        end
-        
-        % Ensure column vectors
-        if ~isempty(time_data)
-            time_data = time_data(:);
-        end
-        if ~isempty(values_data)
-            if isvector(values_data)
-                values_data = values_data(:);
-            end
-        end
-        
-    catch ME
-        fprintf('Debug: Error extracting time series from %s: %s\n', signal_path, ME.message);
+        fprintf('Debug: Error traversing node %s: %s\n', current_path, ME.message);
     end
 end
 
