@@ -4091,22 +4091,41 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
         % SIMSCAPE MULTIBODY APPROACH: Try multiple extraction methods
         node_has_data = false;
         
-        % Method 1: Try generic Simscape series API
+        % Method 1: Try direct data extraction from leaf nodes (5-layer deep approach)
         try
-            series_names = node.series.children();  % Standard Simscape series API
-            for i = 1:length(series_names)
-                series_node = node.series.(series_names{i});
-                if series_node.hasData()
-                    [data, time] = series_node.values('');
-                    if ~isempty(data) && ~isempty(time)
-                        if isempty(time_data)
-                            time_data = time;
-                            fprintf('Debug: Using time from %s (length: %d)\n', current_path, length(time_data));
+            % Check if this node directly contains time series data (leaf node)
+            if isprop(node, 'time') && isprop(node, 'values')
+                time = node.time;
+                values = node.values;
+                if ~isempty(time) && ~isempty(values) && isnumeric(time) && isnumeric(values)
+                    if isempty(time_data)
+                        time_data = time(:);
+                        fprintf('Debug: ✅ FOUND TIME DATA at %s (length: %d)\n', current_path, length(time_data));
+                    end
+                    signal_name = matlab.lang.makeValidName(current_path);
+                    signals{end+1} = struct('name', signal_name, 'data', values(:));
+                    fprintf('Debug: ✅ EXTRACTED LEAF DATA from %s (length: %d)\n', current_path, length(values));
+                    node_has_data = true;
+                end
+            end
+            
+            % If no direct data, try series API
+            if ~node_has_data
+                series_names = node.series.children();  % Standard Simscape series API
+                for i = 1:length(series_names)
+                    series_node = node.series.(series_names{i});
+                    if series_node.hasData()
+                        [data, time] = series_node.values('');
+                        if ~isempty(data) && ~isempty(time)
+                            if isempty(time_data)
+                                time_data = time;
+                                fprintf('Debug: Using time from %s (length: %d)\n', current_path, length(time_data));
+                            end
+                            signal_name = matlab.lang.makeValidName(fullfile(current_path, series_names{i}));
+                            signals{end+1} = struct('name', signal_name, 'data', data);
+                            fprintf('Debug: Found series data in %s.%s (length: %d)\n', current_path, series_names{i}, length(data));
+                            node_has_data = true;
                         end
-                        signal_name = matlab.lang.makeValidName(fullfile(current_path, series_names{i}));
-                        signals{end+1} = struct('name', signal_name, 'data', data);
-                        fprintf('Debug: Found series data in %s.%s (length: %d)\n', current_path, series_names{i}, length(data));
-                        node_has_data = true;
                     end
                 end
             end
@@ -4142,6 +4161,25 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
                                 signals{end+1} = struct('name', signal_name, 'data', extracted_data);
                                 fprintf('Debug: Found Multibody data in %s.%s (length: %d)\n', current_path, prop_name, length(extracted_data));
                                 node_has_data = true;
+                            end
+                        elseif isnumeric(prop_value) && length(prop_value) > 1
+                            % Direct numeric property (could be time series data)
+                            if isempty(time_data) && strcmp(prop_name, 'time')
+                                time_data = prop_value(:);
+                                fprintf('Debug: ✅ FOUND TIME PROPERTY at %s.%s (length: %d)\n', current_path, prop_name, length(time_data));
+                            elseif ~isempty(time_data) && strcmp(prop_name, 'values')
+                                signal_name = matlab.lang.makeValidName(current_path);
+                                signals{end+1} = struct('name', signal_name, 'data', prop_value(:));
+                                fprintf('Debug: ✅ EXTRACTED VALUES PROPERTY from %s.%s (length: %d)\n', current_path, prop_name, length(prop_value));
+                                node_has_data = true;
+                            elseif ~strcmp(prop_name, 'time') && ~strcmp(prop_name, 'values')
+                                % Other numeric data - replicate time reference
+                                if ~isempty(time_data) && length(prop_value) == length(time_data)
+                                    signal_name = matlab.lang.makeValidName(sprintf('%s_%s', current_path, prop_name));
+                                    signals{end+1} = struct('name', signal_name, 'data', prop_value(:));
+                                    fprintf('Debug: ✅ EXTRACTED NUMERIC PROPERTY %s.%s (length: %d)\n', current_path, prop_name, length(prop_value));
+                                    node_has_data = true;
+                                end
                             end
                         end
                     catch
