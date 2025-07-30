@@ -164,8 +164,13 @@ function successful_trials = robust_dataset_generator(config, varargin)
             batch_results = processBatch(config, batch_start:batch_end, pool, capture_workspace);
             batch_duration = toc(batch_start_time);
             
-            % Update progress
-            successful_in_batch = sum([batch_results.success]);
+            % Update progress - handle cell array of structures
+            if iscell(batch_results) && ~isempty(batch_results)
+                success_values = cellfun(@(x) x.success, batch_results);
+                successful_in_batch = sum(success_values);
+            else
+                successful_in_batch = 0;
+            end
             failed_in_batch = length(batch_results) - successful_in_batch;
             successful_trials = successful_trials + successful_in_batch;
             
@@ -355,7 +360,7 @@ function batch_results = processBatch(config, trial_indices, pool, capture_works
                 % Create config with workspace capture setting
                 trial_config = config;
                 trial_config.capture_workspace = capture_workspace;
-                batch_results{i} = runSingleTrial(trial, trial_config, [], capture_workspace);
+                batch_results{i} = runSingleTrial(trial, config, [], capture_workspace);
                 trial_duration = toc(trial_start_time);
                 
                 % Record trial performance
@@ -496,7 +501,16 @@ function saveCheckpoint(checkpoint_file, completed_trials, all_results, config)
         checkpoint.all_results = all_results;
         checkpoint.config = config;
         checkpoint.timestamp = datestr(now);
-        checkpoint.successful_count = sum([all_results.success]);
+        % Handle cell array of structures properly
+        if iscell(all_results) && ~isempty(all_results)
+            % Extract success field from each cell
+            success_values = cellfun(@(x) x.success, all_results, 'UniformOutput', false);
+            % Convert to numeric array and sum
+            success_array = cell2mat(success_values);
+            checkpoint.successful_count = sum(success_array);
+        else
+            checkpoint.successful_count = 0;
+        end
         
         save(checkpoint_file, '-struct', 'checkpoint');
         
@@ -546,8 +560,14 @@ end
 function compileFinalDataset(config, all_results, successful_trials)
     % Compile final dataset from all results
     try
-        % Extract successful results
-        successful_results = all_results([all_results.success]);
+        % Extract successful results - handle cell array of structures
+        if iscell(all_results) && ~isempty(all_results)
+            % Find successful results
+            success_indices = cellfun(@(x) x.success, all_results);
+            successful_results = all_results(success_indices);
+        else
+            successful_results = {};
+        end
         
         if isempty(successful_results)
             error('No successful simulations to compile');
