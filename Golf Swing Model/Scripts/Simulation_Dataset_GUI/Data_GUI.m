@@ -1819,6 +1819,13 @@ function runGeneration(handles)
             set(handles.status_text, 'String', ['Status: ' final_msg ' - Dataset compiled']);
         end
         
+        % Save script and settings for reproducibility
+        try
+            saveScriptAndSettings(config);
+        catch ME
+            fprintf('Warning: Could not save script and settings: %s\n', ME.message);
+        end
+        
         set(handles.start_button, 'Enable', 'on');
         set(handles.stop_button, 'Enable', 'off');
         
@@ -1875,14 +1882,21 @@ function successful_trials = runParallelSimulations(handles, config)
     end
     
     % Run parallel simulations
+    % Check model configuration before running
+    checkModelConfiguration(config.model_name);
+    
     set(handles.progress_text, 'String', 'Running parallel simulations...');
     drawnow;
     
     try
-        % Use parsim for parallel simulation with model transfer
-        simOuts = parsim(simInputs, 'ShowProgress', true, 'ShowSimulationManager', 'off', ...
-                        'TransferBaseWorkspaceVariables', 'on', ...
-                        'AttachedFiles', {config.model_path});
+        % Use parsim with more options for debugging
+        simOuts = parsim(simInputs, ...
+            'ShowProgress', true, ...
+            'ShowSimulationManager', 'off', ...
+            'TransferBaseWorkspaceVariables', 'on', ...
+            'AttachedFiles', {config.model_path}, ...
+            'ManageDependencies', 'off', ... % Try turning off dependency analysis
+            'UseFastRestart', 'off'); % Ensure clean simulation state
         
         % Process results
         successful_trials = 0;
@@ -1893,64 +1907,62 @@ function successful_trials = runParallelSimulations(handles, config)
         end
         
         for i = 1:length(simOuts)
-            if ~isempty(simOuts(i)) && isfield(simOuts(i), 'SimulationMetadata') && ...
-               simOuts(i).SimulationMetadata.ExecutionInfo.StopEvent == "CompletedNormally"
-                try
-                    result = processSimulationOutput(i, config, simOuts(i));
-                    if result.success
-                        successful_trials = successful_trials + 1;
-                        fprintf('✓ Trial %d completed successfully\n', i);
-                    end
-                catch ME
-                    fprintf('Error processing trial %d: %s\n', i, ME.message);
-                end
-            else
-                fprintf('✗ Trial %d simulation failed\n', i);
-                
-                % Enhanced error diagnostics
-                if ~isempty(simOuts(i))
-                    fprintf('  Simulation output exists but failed\n');
+            if ~isempty(simOuts(i))
+                % Check if simulation completed successfully
+                if isprop(simOuts(i), 'SimulationMetadata') && ...
+                   isfield(simOuts(i).SimulationMetadata, 'ExecutionInfo')
                     
-                    % Extract error message
-                    if isfield(simOuts(i), 'ErrorMessage') && ~isempty(simOuts(i).ErrorMessage)
-                        fprintf('  Error Message: %s\n', simOuts(i).ErrorMessage);
-                        
-                        % Analyze error type
-                        error_msg = simOuts(i).ErrorMessage;
-                        if contains(error_msg, 'parameter', 'IgnoreCase', true)
-                            fprintf('  -> Parameter configuration issue detected\n');
-                        elseif contains(error_msg, 'workspace', 'IgnoreCase', true)
-                            fprintf('  -> Workspace variable issue detected\n');
-                        elseif contains(error_msg, 'model', 'IgnoreCase', true)
-                            fprintf('  -> Model loading/access issue detected\n');
-                        elseif contains(error_msg, 'license', 'IgnoreCase', true)
-                            fprintf('  -> Licensing issue detected on worker\n');
-                        elseif contains(error_msg, 'coefficient', 'IgnoreCase', true)
-                            fprintf('  -> Coefficient setting issue detected\n');
+                    execInfo = simOuts(i).SimulationMetadata.ExecutionInfo;
+                    
+                    if isfield(execInfo, 'StopEvent') && execInfo.StopEvent == "CompletedNormally"
+                        try
+                            result = processSimulationOutput(i, config, simOuts(i));
+                            if result.success
+                                successful_trials = successful_trials + 1;
+                                fprintf('✓ Trial %d completed successfully\n', i);
+                            else
+                                fprintf('✗ Trial %d processing failed: %s\n', i, result.error);
+                            end
+                        catch ME
+                            fprintf('Error processing trial %d: %s\n', i, ME.message);
                         end
-                    end
-                    
-                    % Extract diagnostic information
-                    if isfield(simOuts(i), 'SimulationMetadata')
-                        if isfield(simOuts(i).SimulationMetadata, 'ExecutionInfo')
-                            exec_info = simOuts(i).SimulationMetadata.ExecutionInfo;
+                    else
+                        % Extract detailed error information
+                        fprintf('✗ Trial %d simulation failed\n', i);
+                        
+                        if isfield(execInfo, 'ErrorDiagnostic') && ~isempty(execInfo.ErrorDiagnostic)
+                            fprintf('  Error: %s\n', execInfo.ErrorDiagnostic.message);
                             
-                            if isfield(exec_info, 'StopTime')
-                                fprintf('  Stopped at time: %.6f seconds\n', exec_info.StopTime);
-                            end
-                            
-                            if isfield(exec_info, 'ErrorDiagnostic') && ~isempty(exec_info.ErrorDiagnostic)
-                                if isstruct(exec_info.ErrorDiagnostic) && isfield(exec_info.ErrorDiagnostic, 'message')
-                                    fprintf('  Diagnostic: %s\n', exec_info.ErrorDiagnostic.message);
-                                else
-                                    fprintf('  Diagnostic: %s\n', char(exec_info.ErrorDiagnostic));
+                            % Print cause chain
+                            cause = execInfo.ErrorDiagnostic.cause;
+                            depth = 1;
+                            while ~isempty(cause) && depth < 5
+                                if iscell(cause) && ~isempty(cause)
+                                    cause = cause{1};
                                 end
+                                if isstruct(cause) && isfield(cause, 'message')
+                                    fprintf('  Cause %d: %s\n', depth, cause.message);
+                                    if isfield(cause, 'cause')
+                                        cause = cause.cause;
+                                    else
+                                        break;
+                                    end
+                                else
+                                    break;
+                                end
+                                depth = depth + 1;
                             end
+                        end
+                        
+                        if isprop(simOuts(i), 'ErrorMessage') && ~isempty(simOuts(i).ErrorMessage)
+                            fprintf('  Additional info: %s\n', simOuts(i).ErrorMessage);
                         end
                     end
                 else
-                    fprintf('  No simulation output returned (complete failure)\n');
+                    fprintf('✗ Trial %d: No simulation metadata available\n', i);
                 end
+            else
+                fprintf('✗ Trial %d: Empty simulation output\n', i);
             end
         end
         
@@ -1973,20 +1985,33 @@ function successful_trials = runParallelSimulations(handles, config)
     catch ME
         fprintf('\n❌ PARALLEL SIMULATION FRAMEWORK ERROR: %s\n', ME.message);
         
+        fprintf('Attempting to diagnose the issue...\n');
+        
         % Try running one simulation sequentially to get detailed error
-        fprintf('\nTrying one simulation sequentially for debugging...\n');
         try
             if ~isempty(simInputs) && length(simInputs) >= 1
-                fprintf('Running single simulation to diagnose issue...\n');
+                fprintf('\nRunning single simulation sequentially for debugging...\n');
+                
+                % Ensure model is loaded
+                if ~bdIsLoaded(config.model_name)
+                    load_system(config.model_path);
+                end
+                
                 single_simOut = sim(simInputs(1));
                 fprintf('Single simulation succeeded - issue may be parallel-specific\n');
+                
+                % Check if Simscape logging worked
+                if isprop(single_simOut, 'simlog') || isfield(single_simOut, 'simlog')
+                    fprintf('Simscape logging is available in sequential mode\n');
+                else
+                    fprintf('Warning: No Simscape logging even in sequential mode\n');
+                end
             end
         catch singleME
             fprintf('Single simulation also failed: %s\n', singleME.message);
-            if ~isempty(singleME.stack)
-                fprintf('Stack trace:\n');
-                for i = 1:min(3, length(singleME.stack))
-                    fprintf('  %s (line %d)\n', singleME.stack(i).name, singleME.stack(i).line);
+            if ~isempty(singleME.cause)
+                for j = 1:length(singleME.cause)
+                    fprintf('  Cause %d: %s\n', j, singleME.cause{j}.message);
                 end
             end
         end
@@ -2257,39 +2282,26 @@ function simIn = setModelParameters(simIn, config)
                 fprintf('Warning: Could not set LimitDataPoints\n');
             end
             
-            % CRITICAL: Enable Simscape logging for parallel execution
+            % CRITICAL: Enable Simscape logging with correct parameter names
             try
-                simIn = simIn.setModelParameter('SimscapeLogType', 'All');
-                fprintf('Debug: Set SimscapeLogType to All\n');
-            catch ME
-                fprintf('Warning: Could not set SimscapeLogType: %s\n', ME.message);
-            end
-            
-            try
-                simIn = simIn.setModelParameter('SimscapeLogLevel', 'All');
-                fprintf('Debug: Set SimscapeLogLevel to All\n');
-            catch ME
-                fprintf('Warning: Could not set SimscapeLogLevel: %s\n', ME.message);
-            end
-            
-            try
-                simIn = simIn.setModelParameter('SimscapeLogDecimation', '1');
-            catch ME
-                fprintf('Warning: Could not set SimscapeLogDecimation: %s\n', ME.message);
-            end
-            
-            try
+                % For Simscape Multibody, use these parameters
+                simIn = simIn.setModelParameter('SimMechanicsOpenEditorOnUpdate', 'off');
+                simIn = simIn.setModelParameter('SimscapeLogType', 'all');
                 simIn = simIn.setModelParameter('SimscapeLogToFile', 'off');
+                simIn = simIn.setModelParameter('SimscapeLogName', 'simlog');
+                fprintf('Debug: Enabled Simscape logging\n');
             catch ME
-                fprintf('Warning: Could not set SimscapeLogToFile: %s\n', ME.message);
-            end
-            
-            % Ensure data logging is enabled
-            try
-                simIn = simIn.setModelParameter('LoggingToFile', 'off');
-                simIn = simIn.setModelParameter('DataLogging', 'on');
-            catch ME
-                fprintf('Warning: Could not set logging parameters: %s\n', ME.message);
+                fprintf('Warning: Could not set Simscape logging parameters: %s\n', ME.message);
+                
+                % Try alternative parameter names for different Simscape versions
+                try
+                    simIn = simIn.setModelParameter('SimscapeLogType', 'All');
+                    simIn = simIn.setModelParameter('SimscapeUseLocalSolverOptions', 'off');
+                    simIn = simIn.setModelParameter('SimscapeLogToWorkspace', 'on');
+                    fprintf('Debug: Set alternative Simscape logging parameters\n');
+                catch ME2
+                    fprintf('Warning: Alternative Simscape parameters also failed: %s\n', ME2.message);
+                end
             end
             
             % Set other model parameters to suppress unconnected port warnings
@@ -2440,6 +2452,16 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
             combinedBus = simOut.CombinedSignalBus;
             if ~isempty(combinedBus)
                 signal_bus_data = extractFromCombinedSignalBus(combinedBus);
+                if isempty(signal_bus_data)
+                    % Try enhanced extraction method if standard method fails
+                    if options.verbose
+                        fprintf('Standard extraction failed, trying enhanced method...\n');
+                    end
+                    % Need to pass a simple config struct for simulation time
+                    temp_config = struct('simulation_time', 1.0); % Default fallback
+                    signal_bus_data = extractFromCombinedSignalBusEnhanced(combinedBus, temp_config);
+                end
+                
                 if ~isempty(signal_bus_data)
                     all_data{end+1} = signal_bus_data;
                     if options.verbose
@@ -3921,5 +3943,159 @@ function resampled_table = resampleDataToFrequency(data_table, target_freq, sim_
         fprintf('Error resampling data: %s\n', ME.message);
         fprintf('Returning original data\n');
         resampled_table = data_table;
+    end
+end
+
+% Enhanced CombinedSignalBus extraction for golf swing model
+function data_table = extractFromCombinedSignalBusEnhanced(combinedBus, config)
+    data_table = [];
+    
+    try
+        fprintf('Debug: Processing CombinedSignalBus (enhanced method)\n');
+        
+        if ~isstruct(combinedBus)
+            fprintf('Debug: CombinedSignalBus is not a struct\n');
+            return;
+        end
+        
+        bus_fields = fieldnames(combinedBus);
+        fprintf('Debug: CombinedSignalBus fields: %s\n', strjoin(bus_fields, ', '));
+        
+        % Try to extract time from Simscape-style bus structure
+        % Typically, one of the log structures should contain time
+        time_data = [];
+        time_source = '';
+        
+        % Look for any log structure that might contain valid data
+        for i = 1:length(bus_fields)
+            field_name = bus_fields{i};
+            field_value = combinedBus.(field_name);
+            
+            if isstruct(field_value) && ~isempty(fieldnames(field_value))
+                % This could be a log structure
+                sub_fields = fieldnames(field_value);
+                
+                % Look for any numeric field that could be time or data
+                for j = 1:length(sub_fields)
+                    sub_field = field_value.(sub_fields{j});
+                    
+                    % Check if this is numeric data with reasonable length
+                    if isnumeric(sub_field) && length(sub_field) > 10
+                        if isempty(time_data) || length(sub_field) > length(time_data)
+                            % Assume this could be our time reference
+                            time_data = (0:length(sub_field)-1)' * (config.simulation_time / (length(sub_field)-1));
+                            time_source = sprintf('%s.%s', field_name, sub_fields{j});
+                            fprintf('Debug: Generated time from %s (length: %d)\n', time_source, length(time_data));
+                            break;
+                        end
+                    end
+                end
+            end
+            
+            if ~isempty(time_data)
+                break;
+            end
+        end
+        
+        if isempty(time_data)
+            % If we still don't have time, generate a default time vector
+            fprintf('Debug: No suitable data found for time reference, cannot proceed\n');
+            return;
+        end
+        
+        % Now extract all data using this time reference
+        data_cells = {time_data};
+        var_names = {'time'};
+        expected_length = length(time_data);
+        
+        % Extract all signals that match our time length
+        for i = 1:length(bus_fields)
+            field_name = bus_fields{i};
+            field_value = combinedBus.(field_name);
+            
+            if isstruct(field_value)
+                sub_fields = fieldnames(field_value);
+                
+                for j = 1:length(sub_fields)
+                    sub_field_name = sub_fields{j};
+                    sub_field_value = field_value.(sub_field_name);
+                    
+                    if isnumeric(sub_field_value) && length(sub_field_value) == expected_length
+                        % Single column data
+                        data_cells{end+1} = sub_field_value(:);
+                        var_names{end+1} = sprintf('%s_%s', field_name, sub_field_name);
+                    elseif isnumeric(sub_field_value) && size(sub_field_value, 1) == expected_length
+                        % Multi-column data
+                        for col = 1:size(sub_field_value, 2)
+                            data_cells{end+1} = sub_field_value(:, col);
+                            var_names{end+1} = sprintf('%s_%s_%d', field_name, sub_field_name, col);
+                        end
+                    end
+                end
+            end
+        end
+        
+        if length(data_cells) > 1
+            data_table = table(data_cells{:}, 'VariableNames', var_names);
+            fprintf('Debug: Created enhanced CombinedSignalBus table with %d columns\n', width(data_table));
+        end
+        
+    catch ME
+        fprintf('Error in enhanced CombinedSignalBus extraction: %s\n', ME.message);
+    end
+end
+
+% Check model configuration for data logging
+function checkModelConfiguration(model_name)
+    % Check if model is configured for proper data logging
+    try
+        fprintf('\n=== Checking Model Configuration ===\n');
+        
+        % Check if model is loaded
+        if ~bdIsLoaded(model_name)
+            fprintf('Model %s is not loaded\n', model_name);
+            return;
+        end
+        
+        % Check solver settings
+        solver = get_param(model_name, 'Solver');
+        fprintf('Solver: %s\n', solver);
+        
+        % Check logging settings
+        signal_logging = get_param(model_name, 'SignalLogging');
+        fprintf('Signal Logging: %s\n', signal_logging);
+        
+        % Check Simscape settings if available
+        try
+            simscape_log_type = get_param(model_name, 'SimscapeLogType');
+            fprintf('Simscape Log Type: %s\n', simscape_log_type);
+        catch
+            fprintf('Simscape Log Type: Not available or not a Simscape model\n');
+        end
+        
+        % Check for To Workspace blocks
+        to_workspace_blocks = find_system(model_name, 'BlockType', 'ToWorkspace');
+        fprintf('Found %d To Workspace blocks\n', length(to_workspace_blocks));
+        
+        % Check for Bus Creator blocks (for CombinedSignalBus)
+        bus_creators = find_system(model_name, 'BlockType', 'BusCreator');
+        fprintf('Found %d Bus Creator blocks\n', length(bus_creators));
+        
+        % Look for a bus named CombinedSignalBus
+        for i = 1:length(bus_creators)
+            try
+                output_signal = get_param(bus_creators{i}, 'OutputSignalNames');
+                if contains(output_signal, 'CombinedSignalBus')
+                    fprintf('Found CombinedSignalBus at: %s\n', bus_creators{i});
+                end
+            catch
+                % Some bus creators might not have output signal names
+            end
+        end
+        
+        fprintf('=================================\n\n');
+        
+    catch ME
+        fprintf('Error checking model configuration: %s\n', ME.message);
     end
 end
