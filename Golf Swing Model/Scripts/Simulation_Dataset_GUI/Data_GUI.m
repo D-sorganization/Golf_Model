@@ -1819,7 +1819,12 @@ function runGeneration(handles)
             set(handles.status_text, 'String', ['Status: ' final_msg ' - Dataset compiled']);
         end
         
-        % Note: Script and settings saving temporarily disabled to avoid errors
+        % Save script and settings for reproducibility
+        try
+            saveScriptAndSettings(config);
+        catch ME
+            fprintf('Warning: Could not save script and settings: %s\n', ME.message);
+        end
         
         set(handles.start_button, 'Enable', 'on');
         set(handles.stop_button, 'Enable', 'off');
@@ -3523,141 +3528,78 @@ function logsout_data = extractLogsoutDataFixed(logsout)
     end
 end
 
-% FIXED: Extract from Simscape Multibody (ADD to existing data, don't replace)
+% FIXED: Extract from Simscape using correct API (based on Gemini's analysis)
 function simscape_data = extractSimscapeDataFixed(simlog)
+    % Extracts all data series from a Simscape simlog object into a single table.
     simscape_data = [];
+    if isempty(simlog) || ~isa(simlog, 'simscape.logging.Node')
+        fprintf('Warning: Simlog is empty or not a valid Simscape logging node.\n');
+        return;
+    end
+
+    fprintf('Extracting data from Simscape simlog...\n');
     
-    try
-        fprintf('Debug: Extracting Simscape Multibody data\n');
+    % Use a map to collect all found data series to avoid duplicates
+    series_map = containers.Map('KeyType', 'char', 'ValueType', 'any');
+    
+    % Recursively parse the entire simlog tree starting from the root
+    parseSimscapeNode(simlog, '', series_map);
+    
+    if series_map.Count == 0
+        fprintf('Warning: No data series found in the Simscape log.\n');
+        return;
+    end
+    
+    fprintf('Found %d unique data series in the Simscape log.\n', series_map.Count);
+    
+    % Find a common time vector. All signals in a Simscape log share a time vector.
+    all_keys = keys(series_map);
+    first_series = series_map(all_keys{1});
+    time_vector = first_series.time;
+    
+    % Prepare data for table creation
+    col_names = {'time'};
+    col_data = {time_vector(:)}; % Ensure time is a column vector
+    
+    % Add each data series as a column
+    for i = 1:length(all_keys)
+        key = all_keys{i};
+        series = series_map(key);
         
-        if ~isempty(simlog) && isa(simlog, 'simscape.logging.Node')
-            % Try to access child nodes for Multibody data
-            child_nodes = [];
-            try
-                child_nodes = simlog.Children;
-                fprintf('Debug: Found %d child nodes using Children property\n', length(child_nodes));
-            catch
-                try
-                    child_nodes = simlog.children;
-                    fprintf('Debug: Found %d child nodes using children property\n', length(child_nodes));
-                catch
-                    fprintf('Debug: Cannot access child nodes from simlog\n');
-                    return;
-                end
-            end
-            
-            if isempty(child_nodes)
-                fprintf('Debug: No child nodes found in simlog\n');
-                return;
-            end
-            
-            % Find time data and extract signals
-            time_data = [];
-            all_signals = {};
-            
-            % Process each child node (bodies, joints, etc.)
-            for i = 1:length(child_nodes)
-                try
-                    child_node = child_nodes(i);
-                    node_name = '';
-                    
-                    % Get node name
-                    try
-                        node_name = child_node.Name;
-                    catch
-                        node_name = sprintf('Node_%d', i);
-                    end
-                    
-                    fprintf('Debug: Processing Simscape node: %s\n', node_name);
-                    
-                    % Try to get signals from this node
-                    try
-                        node_signals = child_node.Children;
-                        
-                        for j = 1:length(node_signals)
-                            signal = node_signals(j);
-                            signal_name = '';
-                            
-                            try
-                                signal_name = signal.Name;
-                            catch
-                                signal_name = sprintf('Signal_%d', j);
-                            end
-                            
-                            % Extract data from signal if it has data
-                            try
-                                if ismethod(signal, 'hasData') && signal.hasData()
-                                    [data, time] = signal.getData();
-                                    if ~isempty(data) && ~isempty(time)
-                                        % Use first time vector we find
-                                        if isempty(time_data)
-                                            time_data = time;
-                                            fprintf('Debug: Using time from %s.%s (length: %d)\n', node_name, signal_name, length(time_data));
-                                        end
-                                        
-                                        % Store signal data
-                                        safe_name = matlab.lang.makeValidName(sprintf('%s_%s', node_name, signal_name));
-                                        all_signals{end+1} = struct('name', safe_name, 'data', data);
-                                    end
-                                end
-                            catch
-                                % Skip signals that can't be accessed
-                                continue;
-                            end
-                        end
-                        
-                    catch
-                        % This node doesn't have signals we can access
-                        continue;
-                    end
-                    
-                catch
-                    fprintf('Debug: Error processing Simscape node %d\n', i);
-                    continue;
-                end
-            end
-            
-            % Create table if we have data
-            if ~isempty(time_data) && ~isempty(all_signals)
-                fprintf('Debug: Found Simscape time vector, length: %d\n', length(time_data));
-                fprintf('Debug: Found %d total Simscape signals\n', length(all_signals));
-                
-                data_cells = {time_data};
-                var_names = {'time'};
-                expected_length = length(time_data);
-                
-                % Add all signals that match the time length
-                signals_added = 0;
-                for i = 1:length(all_signals)
-                    signal = all_signals{i};
-                    if length(signal.data) == expected_length
-                        data_cells{end+1} = signal.data(:);
-                        var_names{end+1} = signal.name;
-                        signals_added = signals_added + 1;
-                        if mod(signals_added, 25) == 0
-                            fprintf('Debug: Added %d Simscape signals...\n', signals_added);
-                        end
-                    end
-                end
-                
-                if length(data_cells) > 1
-                    simscape_data = table(data_cells{:}, 'VariableNames', var_names);
-                    fprintf('Debug: ✓ Created Simscape table with %d columns, %d rows\n', width(simscape_data), height(simscape_data));
-                else
-                    fprintf('Debug: Only time data found in Simscape log\n');
-                end
-            else
-                fprintf('Debug: No usable Simscape data found\n');
-            end
-        else
-            fprintf('Debug: Simlog is not a valid Simscape logging node (type: %s)\n', class(simlog));
+        % Interpolate data onto the common time vector to ensure consistent length
+        % This is a safety measure; lengths should already match.
+        data_resampled = interp1(series.time, series.values, time_vector, 'linear');
+        
+        col_names{end+1} = key;
+        col_data{end+1} = data_resampled(:); % Ensure data is a column vector
+    end
+    
+    % Create the final table
+    simscape_data = table(col_data{:}, 'VariableNames', col_names);
+    fprintf('Successfully created Simscape data table with %d columns and %d rows.\n', width(simscape_data), height(simscape_data));
+end
+
+function parseSimscapeNode(node, path_prefix, series_map)
+    % Recursively traverses a Simscape logging node to find all data series.
+    
+    % Check if the current node itself is a data series
+    if ismethod(node, 'series') && ~isempty(node.series.time)
+        % Create a unique, valid name for the data series
+        full_path = matlab.lang.makeValidName(strrep([path_prefix, '.', node.id], '..', '_'));
+        
+        % Store the data and time in the map
+        if ~isKey(series_map, full_path)
+             series_map(full_path) = struct('time', node.series.time, 'values', node.series.values);
         end
-        
-    catch ME
-        fprintf('Error extracting Simscape data: %s\n', ME.message);
-        fprintf('Stack trace:\n');
-        for i = 1:min(3, length(ME.stack))
-            fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
+    end
+    
+    % Recursively call this function for all children of the current node
+    if isprop(node, 'children')
+        childNodes = node.children;
+        for i = 1:length(childNodes)
+            child = childNodes(i);
+            new_prefix = [path_prefix, '.', node.id];
+            parseSimscapeNode(child, new_prefix, series_map);
         end
     end
 end
