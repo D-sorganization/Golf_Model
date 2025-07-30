@@ -3072,31 +3072,71 @@ function compileDataset(config)
             return;
         end
         
-        % Initialize master table
-        master_data = [];
+        % THREE-PASS ALGORITHM to preserve ALL columns (union approach)
+        fprintf('Using 3-pass algorithm to preserve all columns...\n');
+        
+        % PASS 1: Discover all unique column names across all files
+        all_unique_columns = {};
+        valid_files = {};
         
         for i = 1:length(csv_files)
             file_path = fullfile(config.output_folder, csv_files(i).name);
-            fprintf('Reading %s...\n', csv_files(i).name);
+            try
+                trial_data = readtable(file_path);
+                if ~isempty(trial_data)
+                    valid_files{end+1} = file_path;
+                    trial_columns = trial_data.Properties.VariableNames;
+                    all_unique_columns = union(all_unique_columns, trial_columns);
+                    fprintf('  Pass 1 - %s: %d columns found\n', csv_files(i).name, length(trial_columns));
+                end
+            catch ME
+                warning('Failed to read %s during discovery: %s', csv_files(i).name, ME.message);
+            end
+        end
+        
+        fprintf('  Total unique columns discovered: %d\n', length(all_unique_columns));
+        
+        % PASS 2: Standardize each trial to have all columns (with NaN for missing)
+        standardized_tables = {};
+        
+        for i = 1:length(valid_files)
+            file_path = valid_files{i};
+            [~, filename, ~] = fileparts(file_path);
             
             try
                 trial_data = readtable(file_path);
                 
-                if isempty(master_data)
-                    master_data = trial_data;
-                else
-                    % Ensure consistent columns
-                    common_vars = intersect(master_data.Properties.VariableNames, ...
-                                          trial_data.Properties.VariableNames);
-                    if ~isempty(common_vars)
-                        master_data = [master_data(:, common_vars); trial_data(:, common_vars)];
+                % Create standardized table with all columns
+                standardized_data = table();
+                for col = 1:length(all_unique_columns)
+                    col_name = all_unique_columns{col};
+                    if ismember(col_name, trial_data.Properties.VariableNames)
+                        standardized_data.(col_name) = trial_data.(col_name);
+                    else
+                        % Fill missing column with NaN
+                        standardized_data.(col_name) = NaN(height(trial_data), 1);
                     end
                 end
                 
+                standardized_tables{end+1} = standardized_data;
+                fprintf('  Pass 2 - %s: standardized to %d columns\n', filename, width(standardized_data));
+                
             catch ME
-                warning('Failed to read %s: %s', csv_files(i).name, ME.message);
+                warning('Failed to standardize %s: %s', filename, ME.message);
             end
         end
+        
+        % PASS 3: Concatenate all standardized tables
+        master_data = [];
+        for i = 1:length(standardized_tables)
+            if isempty(master_data)
+                master_data = standardized_tables{i};
+            else
+                master_data = [master_data; standardized_tables{i}];
+            end
+        end
+        
+        fprintf('✅ 3-pass compilation complete - preserved ALL %d columns!\n', width(master_data));
         
         if ~isempty(master_data)
             % Save master dataset
@@ -3734,13 +3774,13 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
 
         fprintf('Debug: Starting recursive Simscape extraction from root node.\n');
 
-        % Recursively collect all series data using Grok's method
+        % Recursively collect all series data using primary traversal method
         [time_data, all_signals] = traverseSimlogNode(simlog, '');
 
         if isempty(time_data) || isempty(all_signals)
-            fprintf('⚠️  Grok method found no data. Trying fallback methods...\n');
+            fprintf('⚠️  Primary method found no data. Trying fallback methods...\n');
             
-            % FALLBACK METHOD 1: Simple property inspection
+            % FALLBACK METHOD: Simple property inspection
             [time_data, all_signals] = fallbackSimlogExtraction(simlog);
             
             if isempty(time_data) || isempty(all_signals)
@@ -3750,7 +3790,7 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
                 fprintf('✅ Fallback method found data!\n');
             end
         else
-            fprintf('✅ Grok method found data!\n');
+            fprintf('✅ Primary traversal method found data!\n');
         end
 
         % Build table
@@ -3781,6 +3821,94 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
     end
 end
 
+% FALLBACK SIMSCAPE EXTRACTION - Simple property inspection method
+function [time_data, all_signals] = fallbackSimlogExtraction(simlog)
+    time_data = [];
+    all_signals = {};
+    
+    try
+        fprintf('Debug: Attempting fallback Simscape extraction...\n');
+        
+        % Method 1: Try direct property enumeration
+        try
+            props = properties(simlog);
+            fprintf('Debug: Simlog has %d properties\n', length(props));
+            
+            for i = 1:length(props)
+                prop_name = props{i};
+                if ~ismember(prop_name, {'id', 'savable', 'exportable'})
+                    try
+                        prop_value = simlog.(prop_name);
+                        if isa(prop_value, 'simscape.logging.Node')
+                            % Recursively extract from child nodes
+                            [child_time, child_signals] = fallbackSimlogExtraction(prop_value);
+                            if isempty(time_data) && ~isempty(child_time)
+                                time_data = child_time;
+                            end
+                            all_signals = [all_signals, child_signals];
+                        elseif isstruct(prop_value) || isa(prop_value, 'timeseries')
+                            % Try to extract time series data
+                            [extracted_time, extracted_data] = extractTimeSeriesData(prop_value, prop_name);
+                            if ~isempty(extracted_time) && ~isempty(extracted_data)
+                                if isempty(time_data)
+                                    time_data = extracted_time;
+                                end
+                                signal_name = matlab.lang.makeValidName(prop_name);
+                                all_signals{end+1} = struct('name', signal_name, 'data', extracted_data);
+                                fprintf('Debug: Fallback found data in %s\n', prop_name);
+                            end
+                        end
+                    catch
+                        continue;
+                    end
+                end
+            end
+        catch ME
+            fprintf('Debug: Property enumeration failed: %s\n', ME.message);
+        end
+        
+        % Method 2: Try common Simscape Multibody patterns
+        if isempty(time_data) || isempty(all_signals)
+            try
+                % Look for common joint/body properties
+                common_props = {'Px', 'Py', 'Pz', 'Vx', 'Vy', 'Vz', 'q', 'w', 'f', 't'};
+                for i = 1:length(common_props)
+                    prop = common_props{i};
+                    if isprop(simlog, prop) || isfield(simlog, prop)
+                        try
+                            prop_data = simlog.(prop);
+                            if isstruct(prop_data) && isfield(prop_data, 'series')
+                                series_data = prop_data.series;
+                                if isstruct(series_data) && isfield(series_data, 'time') && isfield(series_data, 'values')
+                                    if isempty(time_data)
+                                        time_data = series_data.time;
+                                    end
+                                    signal_name = matlab.lang.makeValidName(['fallback_' prop]);
+                                    all_signals{end+1} = struct('name', signal_name, 'data', series_data.values);
+                                    fprintf('Debug: Fallback found %s data\n', prop);
+                                end
+                            end
+                        catch
+                            continue;
+                        end
+                    end
+                end
+            catch ME
+                fprintf('Debug: Common property search failed: %s\n', ME.message);
+            end
+        end
+        
+    catch ME
+        fprintf('Debug: Fallback extraction failed: %s\n', ME.message);
+    end
+    
+    if ~isempty(time_data) && ~isempty(all_signals)
+        fprintf('Debug: Fallback extraction successful - found %d signals\n', length(all_signals));
+    else
+        fprintf('Debug: Fallback extraction found no data\n');
+    end
+end
+
 % Simscape Multibody specific traversal (different API than generic Simscape)
 function [time_data, signals] = traverseSimlogNode(node, parent_path)
     time_data = [];
@@ -3802,7 +3930,7 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
         
         % Method 1: Try generic Simscape series API
         try
-            series_names = node.series.children();  % Original Grok method
+            series_names = node.series.children();  % Standard Simscape series API
             for i = 1:length(series_names)
                 series_node = node.series.(series_names{i});
                 if series_node.hasData()
