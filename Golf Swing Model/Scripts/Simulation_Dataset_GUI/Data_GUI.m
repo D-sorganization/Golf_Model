@@ -1897,57 +1897,69 @@ function successful_trials = runParallelSimulations(handles, config)
         for i = 1:length(simOuts)
             if ~isempty(simOuts(i))
                 % Check if simulation completed successfully
-                if isprop(simOuts(i), 'SimulationMetadata') && ...
-                   isfield(simOuts(i).SimulationMetadata, 'ExecutionInfo')
-                    
-                    execInfo = simOuts(i).SimulationMetadata.ExecutionInfo;
-                    
-                    if isfield(execInfo, 'StopEvent') && execInfo.StopEvent == "CompletedNormally"
-                        try
-                            result = processSimulationOutput(i, config, simOuts(i));
-                            if result.success
-                                successful_trials = successful_trials + 1;
-                                fprintf('✓ Trial %d completed successfully\n', i);
-                            else
-                                fprintf('✗ Trial %d processing failed: %s\n', i, result.error);
+                simulation_success = false;
+                has_error = false;
+                
+                % Try multiple ways to check simulation status
+                try
+                    % Method 1: Check SimulationMetadata (standard way)
+                    if isprop(simOuts(i), 'SimulationMetadata') && ...
+                       isfield(simOuts(i).SimulationMetadata, 'ExecutionInfo')
+                        
+                        execInfo = simOuts(i).SimulationMetadata.ExecutionInfo;
+                        
+                        if isfield(execInfo, 'StopEvent') && execInfo.StopEvent == "CompletedNormally"
+                            simulation_success = true;
+                        else
+                            has_error = true;
+                            fprintf('✗ Trial %d simulation failed (metadata)\n', i);
+                            
+                            if isfield(execInfo, 'ErrorDiagnostic') && ~isempty(execInfo.ErrorDiagnostic)
+                                fprintf('  Error: %s\n', execInfo.ErrorDiagnostic.message);
                             end
-                        catch ME
-                            fprintf('Error processing trial %d: %s\n', i, ME.message);
                         end
                     else
-                        % Extract detailed error information
-                        fprintf('✗ Trial %d simulation failed\n', i);
-                        
-                        if isfield(execInfo, 'ErrorDiagnostic') && ~isempty(execInfo.ErrorDiagnostic)
-                            fprintf('  Error: %s\n', execInfo.ErrorDiagnostic.message);
+                        % Method 2: Check for ErrorMessage property (indicates failure)
+                        if isprop(simOuts(i), 'ErrorMessage') && ~isempty(simOuts(i).ErrorMessage)
+                            has_error = true;
+                            fprintf('✗ Trial %d simulation failed: %s\n', i, simOuts(i).ErrorMessage);
+                        else
+                            % Method 3: If no metadata but we have output data, assume success
+                            % Check if we have expected output fields (logsout, simlog, etc.)
+                            has_data = false;
+                            if isprop(simOuts(i), 'logsout') || isfield(simOuts(i), 'logsout') || ...
+                               isprop(simOuts(i), 'simlog') || isfield(simOuts(i), 'simlog') || ...
+                               isprop(simOuts(i), 'CombinedSignalBus') || isfield(simOuts(i), 'CombinedSignalBus')
+                                has_data = true;
+                            end
                             
-                            % Print cause chain
-                            cause = execInfo.ErrorDiagnostic.cause;
-                            depth = 1;
-                            while ~isempty(cause) && depth < 5
-                                if iscell(cause) && ~isempty(cause)
-                                    cause = cause{1};
-                                end
-                                if isstruct(cause) && isfield(cause, 'message')
-                                    fprintf('  Cause %d: %s\n', depth, cause.message);
-                                    if isfield(cause, 'cause')
-                                        cause = cause.cause;
-                                    else
-                                        break;
-                                    end
-                                else
-                                    break;
-                                end
-                                depth = depth + 1;
+                            if has_data
+                                fprintf('✓ Trial %d: Assuming success (has output data, no error message)\n', i);
+                                simulation_success = true;
+                            else
+                                fprintf('✗ Trial %d: No metadata, no data, assuming failure\n', i);
+                                has_error = true;
                             end
                         end
-                        
-                        if isprop(simOuts(i), 'ErrorMessage') && ~isempty(simOuts(i).ErrorMessage)
-                            fprintf('  Additional info: %s\n', simOuts(i).ErrorMessage);
-                        end
                     end
-                else
-                    fprintf('✗ Trial %d: No simulation metadata available\n', i);
+                catch ME
+                    fprintf('✗ Trial %d: Error checking simulation status: %s\n', i, ME.message);
+                    has_error = true;
+                end
+                
+                % Process simulation if it succeeded
+                if simulation_success && ~has_error
+                    try
+                        result = processSimulationOutput(i, config, simOuts(i));
+                        if result.success
+                            successful_trials = successful_trials + 1;
+                            fprintf('✓ Trial %d completed successfully\n', i);
+                        else
+                            fprintf('✗ Trial %d processing failed: %s\n', i, result.error);
+                        end
+                    catch ME
+                        fprintf('Error processing trial %d: %s\n', i, ME.message);
+                    end
                 end
             else
                 fprintf('✗ Trial %d: Empty simulation output\n', i);
