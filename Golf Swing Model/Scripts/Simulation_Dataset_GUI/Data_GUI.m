@@ -130,8 +130,8 @@ function handles = createLeftColumnContent(parent, handles)
     availableHeight = 1 - totalSpacing;
     
     h1 = 0.25 * availableHeight;  % Configuration panel
-    h2 = 0.18 * availableHeight;  % Modeling panel
-    h3 = 0.25 * availableHeight;  % Joint editor panel
+    h2 = 0.12 * availableHeight;  % Modeling panel (reduced)
+    h3 = 0.31 * availableHeight;  % Joint editor panel (increased)
     h4 = 0.16 * availableHeight;  % Output settings panel
     h5 = 0.16 * availableHeight;  % Batch settings panel
     
@@ -357,6 +357,19 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                     'Value', 1, ...
                                     'BackgroundColor', colors.panel);
     
+    % Model Workspace Data checkbox (moved from output panel)
+    y = y - 0.20;
+    handles.capture_workspace_checkbox = uicontrol('Parent', panel, ...
+                                                  'Style', 'checkbox', ...
+                                                  'String', 'Model Workspace Data', ...
+                                                  'Value', 1, ... % Default to checked
+                                                  'Units', 'normalized', ...
+                                                  'Position', [0.18, y, 0.35, rowHeight], ...
+                                                  'BackgroundColor', colors.panel, ...
+                                                  'ForegroundColor', colors.text, ...
+                                                  'FontSize', 9, ...
+                                                  'TooltipString', 'Include model workspace variables (segment lengths, masses, inertias, etc.) in the output dataset');
+    
     % Animation Option
     y = y - 0.20;
     uicontrol('Parent', panel, ...
@@ -443,9 +456,9 @@ function handles = createModelingPanel(parent, handles, yPos, height)
                    'BackgroundColor', colors.panel, ...
                    'ForegroundColor', colors.text);
     
-    rowHeight = 0.18;
+    rowHeight = 0.25;
     labelWidth = 0.25;
-    y = 0.65;
+    y = 0.60;
     
     % Torque Scenario
     uicontrol('Parent', panel, ...
@@ -465,7 +478,7 @@ function handles = createModelingPanel(parent, handles, yPos, height)
                                              'Callback', @torqueScenarioCallback);
     
     % Parameters
-    y = y - 0.35;
+    y = y - 0.30;
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
               'String', 'Coefficient Range (±):', ...
@@ -516,7 +529,7 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                    'ForegroundColor', colors.text);
     
     % Selection row
-    y = 0.80;
+    y = 0.85;
     rowHeight = 0.12;
     
     uicontrol('Parent', panel, ...
@@ -569,7 +582,7 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                                          'Enable', 'off');
     
     % Coefficient edit boxes
-    y = 0.48;
+    y = 0.55;
     coeff_labels = {'A', 'B', 'C', 'D', 'E', 'F', 'G'};
     coeff_powers = {'t⁶', 't⁵', 't⁴', 't³', 't²', 't', '1'};  % Powers for each coefficient
     handles.joint_coeff_edits = gobjects(1, 7);
@@ -592,7 +605,7 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                   'Style', 'text', ...
                   'String', [coeff_labels{i} ' (' coeff_powers{i} ')'], ...
                   'Units', 'normalized', ...
-                  'Position', [xPos, y+0.08, coeffWidth, 0.08], ...
+                  'Position', [xPos, y+0.12, coeffWidth, 0.10], ...
                   'FontWeight', 'normal', ...
                   'FontSize', 9, ...
                   'ForegroundColor', labelColor, ...
@@ -603,14 +616,14 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                                                 'Style', 'edit', ...
                                                 'String', '0.00', ...
                                                 'Units', 'normalized', ...
-                                                'Position', [xPos, y, coeffWidth, 0.10], ...
+                                                'Position', [xPos, y, coeffWidth, 0.12], ...
                                                 'BackgroundColor', 'white', ...
                                                 'HorizontalAlignment', 'center', ...
                                                 'Callback', @validateCoefficientInput);
     end
     
     % Action buttons
-    y = 0.22;
+    y = 0.28;
     buttonHeight = 0.12;
     
     handles.apply_joint_button = uicontrol('Parent', panel, ...
@@ -731,18 +744,7 @@ function handles = createOutputPanel(parent, handles, yPos, height)
                                     'Position', [0.65, y, 0.31, rowHeight], ...
                                     'BackgroundColor', 'white');
     
-    % Workspace data capture checkbox
-    y = 0.05;
-    handles.capture_workspace_checkbox = uicontrol('Parent', panel, ...
-                                                  'Style', 'checkbox', ...
-                                                  'String', 'Capture Model Workspace Data', ...
-                                                  'Value', 1, ... % Default to checked
-                                                  'Units', 'normalized', ...
-                                                  'Position', [0.02, y, 0.96, rowHeight], ...
-                                                  'BackgroundColor', colors.panel, ...
-                                                  'ForegroundColor', colors.text, ...
-                                                  'FontSize', 9, ...
-                                                  'TooltipString', 'Include model workspace variables (segment lengths, masses, inertias, etc.) in the output dataset');
+
 end
 
 function handles = createBatchSettingsPanel(parent, handles, yPos, height)
@@ -1947,15 +1949,10 @@ function runGeneration(handles)
             config.SaveInterval = config.save_interval;
             config.PerformanceMonitoring = config.enable_performance_monitoring;
             config.Verbosity = config.verbosity;
-            config.MemoryMonitoring = config.enable_memory_monitoring;
             
             % Call robust dataset generator
             successful_trials = robust_dataset_generator(config, ...
-                'BatchSize', config.BatchSize, ...
-                'SaveInterval', config.SaveInterval, ...
-                'PerformanceMonitoring', config.PerformanceMonitoring, ...
-                'Verbosity', config.Verbosity, ...
-                'MemoryMonitoring', config.MemoryMonitoring, ...
+                'MaxMemoryGB', 8, ...  % Default memory limit
                 'CaptureWorkspace', config.capture_workspace);
         else
             % Use traditional execution mode
@@ -2124,7 +2121,7 @@ function successful_trials = runParallelSimulations(handles, config)
                 % Process simulation if it succeeded
                 if simulation_success && ~has_error
                     try
-                        result = processSimulationOutput(i, config, simOuts(i));
+                        result = processSimulationOutput(i, config, simOuts(i), config.capture_workspace);
                         if result.success
                             successful_trials = successful_trials + 1;
                             fprintf('✓ Trial %d completed successfully\n', i);
@@ -2213,7 +2210,7 @@ function successful_trials = runSequentialSimulations(handles, config)
                 trial_coefficients = config.coefficient_values(end, :);
             end
             
-            result = runSingleTrial(trial, config, trial_coefficients);
+            result = runSingleTrial(trial, config, trial_coefficients, config.capture_workspace);
             
             if result.success
                 successful_trials = successful_trials + 1;
@@ -2337,7 +2334,7 @@ function simIn = loadInputFile(simIn, input_file)
     end
 end
 % Real Simulation Function - Replaces Mock
-function result = runSingleTrial(trial_num, config, trial_coefficients)
+function result = runSingleTrial(trial_num, config, trial_coefficients, capture_workspace)
     result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
     
     try
@@ -2374,7 +2371,7 @@ function result = runSingleTrial(trial_num, config, trial_coefficients)
         warning(warning_state6);
         
         % Process simulation output
-        result = processSimulationOutput(trial_num, config, simOut);
+        result = processSimulationOutput(trial_num, config, simOut, capture_workspace);
         
     catch ME
         % Restore warning state in case of error
@@ -2479,7 +2476,7 @@ function simIn = setModelParameters(simIn, config)
             rethrow(ME);
         end
 end
-function result = processSimulationOutput(trial_num, config, simOut)
+function result = processSimulationOutput(trial_num, config, simOut, capture_workspace)
     result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
     
     try
@@ -2528,12 +2525,9 @@ function result = processSimulationOutput(trial_num, config, simOut)
         end
         
         % Add model workspace variables (segment lengths, masses, inertias, etc.)
-        % Check if workspace capture is enabled
-        capture_workspace = true; % Default to true
-        if isfield(config, 'capture_workspace')
-            capture_workspace = config.capture_workspace;
-        elseif exist('handles', 'var') && isfield(handles, 'capture_workspace_checkbox')
-            capture_workspace = get(handles.capture_workspace_checkbox, 'Value');
+        % Use the capture_workspace parameter passed to this function
+        if nargin < 4
+            capture_workspace = true; % Default to true if not provided
         end
         
         if capture_workspace

@@ -16,25 +16,51 @@ function robust_dataset_generator(config, varargin)
     
     % Parse optional parameters
     p = inputParser;
-    addParameter(p, 'BatchSize', 100, @isnumeric);           % Trials per batch
-    addParameter(p, 'SaveInterval', 50, @isnumeric);         % Save every N trials
+    addParameter(p, 'BatchSize', [], @isnumeric);           % Trials per batch
+    addParameter(p, 'SaveInterval', [], @isnumeric);         % Save every N trials
     addParameter(p, 'MaxMemoryGB', 8, @isnumeric);           % Max memory usage
     addParameter(p, 'MaxWorkers', 4, @isnumeric);            % Max parallel workers
     addParameter(p, 'ResumeFrom', '', @ischar);              % Resume from checkpoint
     addParameter(p, 'CheckpointFile', '', @ischar);          % Custom checkpoint file
-    addParameter(p, 'Verbosity', 'normal', @ischar);         % Output verbosity level
-    addParameter(p, 'PerformanceMonitoring', true, @islogical); % Enable performance monitoring
+    addParameter(p, 'Verbosity', '', @ischar);         % Output verbosity level
+    addParameter(p, 'PerformanceMonitoring', [], @islogical); % Enable performance monitoring
     addParameter(p, 'CaptureWorkspace', true, @islogical);   % Capture model workspace data
     parse(p, varargin{:});
     
+    % Get parameters from input parser or config structure
     batch_size = p.Results.BatchSize;
+    if isempty(batch_size) && isfield(config, 'BatchSize')
+        batch_size = config.BatchSize;
+    elseif isempty(batch_size)
+        batch_size = 100; % Default
+    end
+    
     save_interval = p.Results.SaveInterval;
+    if isempty(save_interval) && isfield(config, 'SaveInterval')
+        save_interval = config.SaveInterval;
+    elseif isempty(save_interval)
+        save_interval = 50; % Default
+    end
+    
     max_memory_gb = p.Results.MaxMemoryGB;
     max_workers = p.Results.MaxWorkers;
     resume_from = p.Results.ResumeFrom;
     checkpoint_file = p.Results.CheckpointFile;
+    
     verbosity_level = p.Results.Verbosity;
+    if isempty(verbosity_level) && isfield(config, 'Verbosity')
+        verbosity_level = config.Verbosity;
+    elseif isempty(verbosity_level)
+        verbosity_level = 'normal'; % Default
+    end
+    
     enable_performance_monitoring = p.Results.PerformanceMonitoring;
+    if isempty(enable_performance_monitoring) && isfield(config, 'PerformanceMonitoring')
+        enable_performance_monitoring = config.PerformanceMonitoring;
+    elseif isempty(enable_performance_monitoring)
+        enable_performance_monitoring = true; % Default
+    end
+    
     capture_workspace = p.Results.CaptureWorkspace;
     
     % Initialize verbosity control
@@ -106,7 +132,7 @@ function robust_dataset_generator(config, varargin)
             
             % Process batch
             batch_start_time = tic;
-            batch_results = processBatch(config, batch_start:batch_end, pool);
+            batch_results = processBatch(config, batch_start:batch_end, pool, capture_workspace);
             batch_duration = toc(batch_start_time);
             
             % Update progress
@@ -262,7 +288,7 @@ function pool = initializeParallelPool(max_workers, max_memory_gb)
     end
 end
 
-function batch_results = processBatch(config, trial_indices, pool)
+function batch_results = processBatch(config, trial_indices, pool, capture_workspace)
     % Process a batch of trials
     batch_results = cell(1, length(trial_indices));
     
@@ -277,7 +303,7 @@ function batch_results = processBatch(config, trial_indices, pool)
                 % Create config with workspace capture setting
                 trial_config = config;
                 trial_config.capture_workspace = capture_workspace;
-                batch_results{i} = runSingleTrial(trial, trial_config, []);
+                batch_results{i} = runSingleTrial(trial, trial_config, [], capture_workspace);
                 trial_duration = toc(trial_start_time);
                 
                 % Record trial performance
@@ -329,7 +355,7 @@ function batch_results = processBatch(config, trial_indices, pool)
             for i = 1:length(trial_indices)
                 trial = trial_indices(i);
                 try
-                    batch_results{i} = runSingleTrial(trial, config, []);
+                    batch_results{i} = runSingleTrial(trial, config, [], capture_workspace);
                 catch ME
                     batch_results{i} = struct('success', false, 'error', ME.message);
                 end
