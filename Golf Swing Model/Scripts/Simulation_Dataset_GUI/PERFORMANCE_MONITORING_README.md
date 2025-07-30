@@ -19,6 +19,12 @@ This system provides comprehensive performance monitoring and intelligent output
 - **Performance-optimized output** for large datasets
 - **Easy switching** between modes
 
+### 📊 **Workspace Data Control**
+- **Optional workspace capture** with checkbox control
+- **Performance optimization** by excluding model parameters
+- **User preference saving** for workspace capture setting
+- **Verbosity integration** for workspace capture status
+
 ## Performance Monitoring
 
 ### Usage
@@ -187,6 +193,7 @@ robust_dataset_generator(config, ...
 robust_dataset_generator(config, ...
     'Verbosity', 'silent', ...
     'PerformanceMonitoring', true, ...
+    'CaptureWorkspace', false, ...  % Disable workspace capture for performance
     'BatchSize', 100, ...
     'SaveInterval', 50);
 
@@ -194,6 +201,7 @@ robust_dataset_generator(config, ...
 robust_dataset_generator(config, ...
     'Verbosity', 'debug', ...
     'PerformanceMonitoring', true, ...
+    'CaptureWorkspace', true, ...   % Include workspace data for debugging
     'BatchSize', 10, ...
     'SaveInterval', 5);
 ```
@@ -270,7 +278,8 @@ performance_monitor('start');
 % Standard settings
 robust_dataset_generator(config, ...
     'Verbosity', 'normal', ...
-    'PerformanceMonitoring', true);
+    'PerformanceMonitoring', true, ...
+    'CaptureWorkspace', true);  % Default workspace capture
 ```
 
 ## Performance Optimization Tips
@@ -301,6 +310,11 @@ robust_dataset_generator(config, ...
    - Reduce number of workers
    - Optimize worker memory allocation
    - Check for resource contention
+
+6. **If workspace capture is slow**:
+   - Disable workspace capture for performance-critical runs
+   - Use `'CaptureWorkspace', false` parameter
+   - Consider capturing workspace only for debugging runs
 
 ## Troubleshooting
 

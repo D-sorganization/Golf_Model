@@ -24,6 +24,7 @@ function robust_dataset_generator(config, varargin)
     addParameter(p, 'CheckpointFile', '', @ischar);          % Custom checkpoint file
     addParameter(p, 'Verbosity', 'normal', @ischar);         % Output verbosity level
     addParameter(p, 'PerformanceMonitoring', true, @islogical); % Enable performance monitoring
+    addParameter(p, 'CaptureWorkspace', true, @islogical);   % Capture model workspace data
     parse(p, varargin{:});
     
     batch_size = p.Results.BatchSize;
@@ -34,6 +35,7 @@ function robust_dataset_generator(config, varargin)
     checkpoint_file = p.Results.CheckpointFile;
     verbosity_level = p.Results.Verbosity;
     enable_performance_monitoring = p.Results.PerformanceMonitoring;
+    capture_workspace = p.Results.CaptureWorkspace;
     
     % Initialize verbosity control
     verbosity_control('set', verbosity_level);
@@ -272,7 +274,10 @@ function batch_results = processBatch(config, trial_indices, pool)
             
             try
                 trial_start_time = tic;
-                batch_results{i} = runSingleTrial(trial, config, []);
+                % Create config with workspace capture setting
+                trial_config = config;
+                trial_config.capture_workspace = capture_workspace;
+                batch_results{i} = runSingleTrial(trial, trial_config, []);
                 trial_duration = toc(trial_start_time);
                 
                 % Record trial performance

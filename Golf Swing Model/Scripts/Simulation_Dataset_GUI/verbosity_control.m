@@ -331,3 +331,26 @@ function logCheckpoint(save_time, file_size)
         logMessage('info', 'Checkpoint saved: %.1f MB in %.3f seconds', file_size, save_time);
     end
 end 
+
+function logWorkspaceCapture(enabled, num_variables)
+    % Log workspace capture status
+    global verbosity_level;
+    
+    if isempty(verbosity_level)
+        verbosity_level = 'normal';
+    end
+    
+    if strcmp(verbosity_level, 'silent')
+        return;
+    end
+    
+    if enabled
+        if strcmp(verbosity_level, 'normal')
+            logMessage('info', 'Workspace capture enabled (%d variables)', num_variables);
+        else
+            logMessage('info', 'Model workspace capture enabled: %d variables will be included', num_variables);
+        end
+    else
+        logMessage('info', 'Workspace capture disabled - model parameters excluded');
+    end
+end 

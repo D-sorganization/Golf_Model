@@ -736,6 +736,19 @@ function handles = createOutputPanel(parent, handles, yPos, height)
                                     'Units', 'normalized', ...
                                     'Position', [0.65, y, 0.31, rowHeight], ...
                                     'BackgroundColor', 'white');
+    
+    % Workspace data capture checkbox
+    y = 0.05;
+    handles.capture_workspace_checkbox = uicontrol('Parent', panel, ...
+                                                  'Style', 'checkbox', ...
+                                                  'String', 'Capture Model Workspace Data', ...
+                                                  'Value', 1, ... % Default to checked
+                                                  'Units', 'normalized', ...
+                                                  'Position', [0.02, y, 0.96, rowHeight], ...
+                                                  'BackgroundColor', colors.panel, ...
+                                                  'ForegroundColor', colors.text, ...
+                                                  'FontSize', 9, ...
+                                                  'TooltipString', 'Include model workspace variables (segment lengths, masses, inertias, etc.) in the output dataset');
 end
 function handles = createPreviewPanel(parent, handles, yPos, height)
     % Parameters Preview Panel
@@ -2368,8 +2381,19 @@ function result = processSimulationOutput(trial_num, config, simOut)
         end
         
         % Add model workspace variables (segment lengths, masses, inertias, etc.)
-        % Note: Model workspace data is always captured as it contains essential model parameters
-        data_table = addModelWorkspaceData(data_table, simOut, num_rows);
+        % Check if workspace capture is enabled
+        capture_workspace = true; % Default to true
+        if isfield(config, 'capture_workspace')
+            capture_workspace = config.capture_workspace;
+        elseif exist('handles', 'var') && isfield(handles, 'capture_workspace_checkbox')
+            capture_workspace = get(handles.capture_workspace_checkbox, 'Value');
+        end
+        
+        if capture_workspace
+            data_table = addModelWorkspaceData(data_table, simOut, num_rows);
+        else
+            logWorkspaceCapture(false, 0);
+        end
         
         % Save to file in selected format(s)
         timestamp = datestr(now, 'yyyymmdd_HHMMSS');
@@ -2650,7 +2674,7 @@ function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
         
         % Check if model is loaded
         if ~bdIsLoaded(model_name)
-            fprintf('Warning: Model %s not loaded, skipping workspace data\n', model_name);
+            logMessage('warning', 'Model %s not loaded, skipping workspace data', model_name);
             return;
         end
         
@@ -2663,15 +2687,15 @@ function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
                         variables = model_workspace.whos;
                         variables = {variables.name};
                     catch
-                        fprintf('Warning: Could not retrieve model workspace variable names\n');
+                        logMessage('warning', 'Could not retrieve model workspace variable names');
                         return;
                     end
                 end
         
         if length(variables) > 0
-            fprintf('Adding %d model workspace variables to CSV...\n', length(variables));
+            logWorkspaceCapture(true, length(variables));
         else
-            fprintf('No model workspace variables found\n');
+            logMessage('info', 'No model workspace variables found');
             return;
         end
         
@@ -2715,12 +2739,12 @@ function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
                 
             catch ME
                 % Skip variables that can't be extracted
-                fprintf('  Warning: Could not extract variable %s: %s\n', var_name, ME.message);
+                logMessage('warning', 'Could not extract variable %s: %s', var_name, ME.message);
             end
         end
         
     catch ME
-        fprintf('Warning: Could not access model workspace: %s\n', ME.message);
+        logMessage('warning', 'Could not access model workspace: %s', ME.message);
     end
 end
 
@@ -2922,6 +2946,7 @@ function config = validateInputs(handles)
         config.use_signal_bus = get(handles.use_signal_bus, 'Value');
         config.use_simscape = get(handles.use_simscape, 'Value');
         config.enable_animation = get(handles.enable_animation, 'Value');
+        config.capture_workspace = get(handles.capture_workspace_checkbox, 'Value');
         config.output_folder = fullfile(output_folder, folder_name);
         config.file_format = get(handles.format_popup, 'Value');
         
@@ -3176,6 +3201,7 @@ function handles = loadUserPreferences(handles)
     handles.preferences.default_num_trials = 10;
     handles.preferences.default_sim_time = 0.3;
     handles.preferences.default_sample_rate = 100;
+    handles.preferences.capture_workspace = true; % Default to capturing workspace data
     
     % Try to load saved preferences
     if exist(pref_file, 'file')
@@ -3227,6 +3253,11 @@ function applyUserPreferences(handles)
             set(handles.sample_rate_edit, 'String', num2str(prefs.default_sample_rate));
         end
         
+        % Apply workspace capture setting
+        if isfield(handles, 'capture_workspace_checkbox') && isfield(prefs, 'capture_workspace')
+            set(handles.capture_workspace_checkbox, 'Value', prefs.capture_workspace);
+        end
+        
     catch
         % Silently fail if preferences can't be applied
     end
@@ -3252,6 +3283,11 @@ function saveUserPreferences(handles)
             handles.preferences.last_input_file_path = handles.selected_input_file;
             [~, filename, ext] = fileparts(handles.selected_input_file);
             handles.preferences.last_input_file = [filename ext];
+        end
+        
+        % Save workspace capture setting
+        if isfield(handles, 'capture_workspace_checkbox')
+            handles.preferences.capture_workspace = get(handles.capture_workspace_checkbox, 'Value');
         end
         
         % Save to file
