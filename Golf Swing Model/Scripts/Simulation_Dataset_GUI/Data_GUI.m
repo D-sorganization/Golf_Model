@@ -2502,6 +2502,21 @@ function simIn = setModelParameters(simIn, config)
                 fprintf('Warning: Simscape data extraction may not work without this parameter\n');
             end
             
+            % Set animation control based on user preference
+            try
+                if isfield(config, 'enable_animation') && ~config.enable_animation
+                    % Disable animation for faster simulation
+                    simIn = simIn.setModelParameter('SimulationMode', 'accelerator');
+                    fprintf('Debug: ✅ Animation disabled - using accelerator mode\n');
+                else
+                    % Enable animation (normal mode)
+                    simIn = simIn.setModelParameter('SimulationMode', 'normal');
+                    fprintf('Debug: ⚠️ Animation enabled - using normal mode (slower)\n');
+                end
+            catch ME
+                fprintf('Warning: Could not set simulation mode for animation control: %s\n', ME.message);
+            end
+            
             % Set other model parameters to suppress unconnected port warnings
             try
                 simIn = simIn.setModelParameter('UnconnectedInputMsg', 'none');
