@@ -508,17 +508,19 @@ function success = isSimulationSuccessful(simOut)
             end
         end
         
-        % Check for output data
-        fprintf('DEBUG: Checking for logsout/simlog...\n');
+        % Check for output data (including CombinedSignalBus)
+        fprintf('DEBUG: Checking for data sources...\n');
         has_logsout = isprop(simOut, 'logsout') || isfield(simOut, 'logsout');
         has_simlog = isprop(simOut, 'simlog') || isfield(simOut, 'simlog');
-        fprintf('DEBUG: has_logsout: %s, has_simlog: %s\n', mat2str(has_logsout), mat2str(has_simlog));
+        has_combined_bus = isprop(simOut, 'CombinedSignalBus') || isfield(simOut, 'CombinedSignalBus');
+        fprintf('DEBUG: has_logsout: %s, has_simlog: %s, has_combined_bus: %s\n', ...
+            mat2str(has_logsout), mat2str(has_simlog), mat2str(has_combined_bus));
         
-        if has_logsout || has_simlog
+        if has_logsout || has_simlog || has_combined_bus
             success = true;
             fprintf('DEBUG: Simulation marked as successful due to data presence\n');
         else
-            fprintf('DEBUG: No logsout or simlog found\n');
+            fprintf('DEBUG: No data sources found (logsout, simlog, or CombinedSignalBus)\n');
         end
         
     catch
