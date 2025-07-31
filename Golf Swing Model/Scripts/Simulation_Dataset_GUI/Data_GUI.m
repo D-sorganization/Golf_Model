@@ -2471,6 +2471,14 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
         % Run simulation with progress indicator and visualization suppression
         fprintf('Running trial %d simulation...', trial_num);
         
+        % Debug: Check what simulation mode is set
+        try
+            current_mode = simIn.getModelParameter('SimulationMode');
+            fprintf('Debug: Sequential mode - SimulationMode set to: %s\n', current_mode);
+        catch
+            fprintf('Debug: Sequential mode - Could not get SimulationMode parameter\n');
+        end
+        
         % Visualization suppression (problematic parameters removed for compatibility)
         % Note: ShowSimulationManager and ShowProgress don't exist for block diagrams
         
