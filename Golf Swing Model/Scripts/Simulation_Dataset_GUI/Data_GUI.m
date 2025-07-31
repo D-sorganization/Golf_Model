@@ -1946,8 +1946,9 @@ function runGeneration(handles)
         
         set(handles.status_text, 'String', 'Status: Running trials...');
         
-        % Check if robust generator is enabled
-        if config.use_robust_generator
+        % Check if robust generator is enabled AND we're not forcing sequential
+        execution_mode = get(handles.execution_mode_popup, 'Value');
+        if config.use_robust_generator && execution_mode ~= 1  % 1 = Sequential
             % Use robust dataset generator for crash-resistant processing
             set(handles.status_text, 'String', 'Status: Using robust generator...');
             drawnow;
@@ -2064,7 +2065,7 @@ function successful_trials = runParallelSimulations(handles, config)
         fprintf('Debug: Running %d simulations in parallel with Simscape logging\n', length(simInputs));
         
         % Use parsim for parallel simulation with robust error handling
-        simOuts = parsim(simInputs, 'ShowProgress', true, 'ShowSimulationManager', 'off', ...
+        simOuts = parsim(simInputs, ...
                         'TransferBaseWorkspaceVariables', 'on', ...
                         'AttachedFiles', {config.model_path}, ...
                         'StopOnError', 'off');  % Don't stop on individual simulation errors
@@ -2392,13 +2393,8 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
         % Run simulation with progress indicator and visualization suppression
         fprintf('Running trial %d simulation...', trial_num);
         
-        % Suppress visualization by setting model parameters
-        try
-            simIn = simIn.setModelParameter('ShowSimulationManager', 'off');
-            simIn = simIn.setModelParameter('ShowProgress', 'off');
-        catch
-            % If these parameters don't exist, continue anyway
-        end
+        % Visualization suppression (problematic parameters removed for compatibility)
+        % Note: ShowSimulationManager and ShowProgress don't exist for block diagrams
         
         simOut = sim(simIn);
         fprintf(' Done.\n');
