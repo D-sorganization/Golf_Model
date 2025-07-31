@@ -884,6 +884,7 @@ function simIn = setPolynomialCoefficients(simIn, trial_coefficients, config)
     
     % Set polynomial coefficients for the simulation
     try
+        fprintf('DEBUG: Starting setPolynomialCoefficients processing\n');
         if ~isempty(trial_coefficients)
             % Handle parallel worker coefficient format issues
             if iscell(trial_coefficients)
@@ -933,12 +934,16 @@ function simIn = setPolynomialCoefficients(simIn, trial_coefficients, config)
             end
             
             % Set coefficients for each joint
+            fprintf('DEBUG: About to call getPolynomialParameterInfo()\n');
             param_info = getPolynomialParameterInfo();
+            fprintf('DEBUG: getPolynomialParameterInfo() returned successfully\n');
             coeff_idx = 1;
             
+            fprintf('DEBUG: Starting loop through %d joints\n', length(param_info.joint_names));
             for j = 1:length(param_info.joint_names)
                 joint_name = param_info.joint_names{j};
                 coeffs = param_info.joint_coeffs{j};
+                fprintf('DEBUG: Processing joint %d: %s with %d coefficients\n', j, joint_name, length(coeffs));
                 
                 for k = 1:length(coeffs)
                     if coeff_idx <= length(trial_coefficients)
