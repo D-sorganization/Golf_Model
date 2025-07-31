@@ -1,5 +1,5 @@
 % GOLF SWING DATA GENERATION RUN RECORD
-% Generated: 2025-07-30 20:52:16
+% Generated: 2025-07-30 22:11:09
 % This file contains the exact script and settings used for this data generation run
 %
 % =================================================================
@@ -35,7 +35,7 @@
 %
 % POLYNOMIAL COEFFICIENTS:
 % Coefficient matrix size: 2 trials x 189 coefficients
-% First trial coefficients (first 10): -3.850, 40.490, -11.350, 10.300, 6.030, 34.580, -21.520, 16.330, 10.230, 15.650
+% First trial coefficients (first 10): -7.860, 38.140, -49.850, 0.070, 25.480, 17.550, -31.890, 49.600, 39.150, 19.600
 %
 % =================================================================
 % END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
@@ -2328,6 +2328,12 @@ function simInputs = prepareSimulationInputs(config)
             trial_coefficients = config.coefficient_values(end, :);
         end
         
+        % Ensure coefficients are numeric (fix for parallel execution)
+        if iscell(trial_coefficients)
+            trial_coefficients = cell2mat(trial_coefficients);
+        end
+        trial_coefficients = double(trial_coefficients);  % Ensure double precision
+        
         % Create SimulationInput object
         simIn = Simulink.SimulationInput(model_name);
         
@@ -2335,7 +2341,11 @@ function simInputs = prepareSimulationInputs(config)
         simIn = setModelParameters(simIn, config);
         
         % Set polynomial coefficients
-        simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
+        try
+            simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
+        catch ME
+            fprintf('Warning: Could not set polynomial coefficients: %s\n', ME.message);
+        end
         
         % Load input file if specified
         if ~isempty(config.input_file) && exist(config.input_file, 'file')
@@ -2346,12 +2356,76 @@ function simInputs = prepareSimulationInputs(config)
     end
 end
 function simIn = setPolynomialCoefficients(simIn, coefficients, config)
+    % DEBUG: Print what we're receiving
+    fprintf('DEBUG: setPolynomialCoefficients called with:\n');
+    fprintf('  coefficients class: %s\n', class(coefficients));
+    fprintf('  coefficients size: %s\n', mat2str(size(coefficients)));
+    if iscell(coefficients)
+        fprintf('  coefficients is cell array with %d elements\n', numel(coefficients));
+        if numel(coefficients) > 0
+            fprintf('  first element class: %s\n', class(coefficients{1}));
+        end
+    end
+    
     % Get parameter info for coefficient mapping
     param_info = getPolynomialParameterInfo();
     
     % Basic validation
     if isempty(param_info.joint_names)
         error('No joint names found in polynomial parameter info');
+    end
+    
+    % Handle parallel worker coefficient format issues
+    if iscell(coefficients)
+        fprintf('Debug: Converting cell array coefficients to numeric (parallel worker fix)\n');
+        try
+            % Check if cells contain strings or numbers
+            if all(cellfun(@ischar, coefficients))
+                % Convert string cells to numeric
+                coefficients = cellfun(@str2double, coefficients);
+                fprintf('Debug: Converted string cells to numeric\n');
+            elseif all(cellfun(@isnumeric, coefficients))
+                % Convert numeric cells to array
+                coefficients = cell2mat(coefficients);
+                fprintf('Debug: Converted numeric cells to array\n');
+            else
+                % Mixed content or other issues
+                fprintf('Warning: Mixed cell content, attempting element-wise conversion\n');
+                numeric_coeffs = zeros(size(coefficients));
+                for i = 1:numel(coefficients)
+                    if ischar(coefficients{i})
+                        numeric_coeffs(i) = str2double(coefficients{i});
+                    elseif isnumeric(coefficients{i})
+                        numeric_coeffs(i) = coefficients{i};
+                    else
+                        numeric_coeffs(i) = NaN;
+                    end
+                end
+                coefficients = numeric_coeffs;
+            end
+        catch ME
+            fprintf('Error: Could not convert cell coefficients to numeric: %s\n', ME.message);
+            % Try one more approach - flatten and convert
+            try
+                coefficients = str2double(coefficients(:));
+                fprintf('Debug: Used str2double on flattened cells\n');
+            catch
+                fprintf('Error: All conversion attempts failed\n');
+                return;
+            end
+        end
+    end
+    
+    % Ensure coefficients are numeric
+    if ~isnumeric(coefficients)
+        fprintf('Error: Coefficients must be numeric, got %s\n', class(coefficients));
+        return;
+    end
+    
+    % Ensure coefficients are a row vector if needed
+    if size(coefficients, 1) > 1 && size(coefficients, 2) == 1
+        coefficients = coefficients';
+        fprintf('Debug: Transposed coefficients to row vector\n');
     end
     
     fprintf('Setting %d coefficients for %d joints\n', length(coefficients), length(param_info.joint_names));
@@ -2423,7 +2497,11 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
         simIn = setModelParameters(simIn, config);
         
         % Set polynomial coefficients for this trial
-        simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
+        try
+            simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
+        catch ME
+            fprintf('Warning: Could not set polynomial coefficients: %s\n', ME.message);
+        end
         
         % Suppress specific warnings that are not critical
         warning_state = warning('off', 'Simulink:Bus:EditTimeBusPropNotAllowed');
