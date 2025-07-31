@@ -417,9 +417,12 @@ function batch_results = processBatch(config, trial_indices, pool, capture_works
                         simOut = [];
                     end
                     
+                    fprintf('DEBUG: Checking simulation success for trial %d\n', trial);
                     if ~isempty(simOut) && isSimulationSuccessful(simOut)
+                        fprintf('DEBUG: Simulation successful, calling processSimulationOutput for trial %d\n', trial);
                         batch_results{i} = processSimulationOutput(trial, config, simOut);
                     else
+                        fprintf('DEBUG: Simulation failed for trial %d\n', trial);
                         batch_results{i} = struct('success', false, 'error', 'Simulation failed');
                     end
                 catch ME
