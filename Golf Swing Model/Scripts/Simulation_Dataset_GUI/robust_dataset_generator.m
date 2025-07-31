@@ -1034,12 +1034,22 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
         options.extract_combined_bus = config.use_signal_bus;
         options.extract_logsout = config.use_logsout;
         options.extract_simscape = config.use_simscape;
-        options.verbose = false; % Set to true for debugging
         
-        fprintf('DEBUG: About to call extractSignalsFromSimOut...\n');
+        % Set verbosity based on config
+        if isfield(config, 'Verbosity')
+            options.verbose = strcmp(config.Verbosity, 'verbose');
+        else
+            options.verbose = false; % Default to quiet
+        end
+        
+        if options.verbose
+            fprintf('DEBUG: About to call extractSignalsFromSimOut...\n');
+        end
         try
             [data_table, signal_info] = extractSignalsFromSimOut(simOut, options);
-            fprintf('DEBUG: extractSignalsFromSimOut completed successfully\n');
+            if options.verbose
+                fprintf('DEBUG: extractSignalsFromSimOut completed successfully\n');
+            end
         catch ME
             fprintf('ERROR: extractSignalsFromSimOut failed: %s\n', ME.message);
             fprintf('Stack trace:\n');
@@ -1218,28 +1228,40 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
         
         % Extract from CombinedSignalBus if enabled and available
         if options.extract_combined_bus && (isprop(simOut, 'CombinedSignalBus') || isfield(simOut, 'CombinedSignalBus'))
-            fprintf('DEBUG: Extracting from CombinedSignalBus...\n');
+            if options.verbose
+                fprintf('DEBUG: Extracting from CombinedSignalBus...\n');
+            end
             
             try
                 combinedBus = simOut.CombinedSignalBus;
                 if ~isempty(combinedBus)
-                    fprintf('DEBUG: Calling extractCombinedSignalBusData...\n');
+                    if options.verbose
+                        fprintf('DEBUG: Calling extractCombinedSignalBusData...\n');
+                    end
                     signal_bus_data = extractCombinedSignalBusData(combinedBus);
                     
                     if ~isempty(signal_bus_data)
                         all_data{end+1} = signal_bus_data;
-                        fprintf('DEBUG: CombinedSignalBus: %d columns extracted\n', width(signal_bus_data));
+                        if options.verbose
+                            fprintf('DEBUG: CombinedSignalBus: %d columns extracted\n', width(signal_bus_data));
+                        end
                     else
-                        fprintf('DEBUG: CombinedSignalBus extraction returned empty data\n');
+                        if options.verbose
+                            fprintf('DEBUG: CombinedSignalBus extraction returned empty data\n');
+                        end
                     end
                 else
-                    fprintf('DEBUG: CombinedSignalBus is empty\n');
+                    if options.verbose
+                        fprintf('DEBUG: CombinedSignalBus is empty\n');
+                    end
                 end
             catch ME
                 fprintf('ERROR: Failed to extract CombinedSignalBus data: %s\n', ME.message);
-                fprintf('Stack trace:\n');
-                for i = 1:length(ME.stack)
-                    fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
+                if options.verbose
+                    fprintf('Stack trace:\n');
+                    for i = 1:length(ME.stack)
+                        fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
+                    end
                 end
             end
         end
@@ -1273,7 +1295,9 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
         
         % Extract from Simscape if enabled and available
         if options.extract_simscape
-            fprintf('DEBUG: Checking for Simscape simlog...\n');
+            if options.verbose
+                fprintf('DEBUG: Checking for Simscape simlog...\n');
+            end
             
             % Enhanced simlog access for parallel execution
             simlog_available = false;
@@ -1284,36 +1308,52 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                     simlog_data = simOut.simlog;
                     if ~isempty(simlog_data)
                         simlog_available = true;
-                        fprintf('DEBUG: Simscape simlog found and accessible\n');
+                        if options.verbose
+                            fprintf('DEBUG: Simscape simlog found and accessible\n');
+                        end
                     else
-                        fprintf('DEBUG: Simscape simlog is empty\n');
+                        if options.verbose
+                            fprintf('DEBUG: Simscape simlog is empty\n');
+                        end
                     end
                 catch ME
                     fprintf('ERROR: Failed to access simlog: %s\n', ME.message);
                 end
             else
-                fprintf('DEBUG: No simlog property/field found in simOut\n');
+                if options.verbose
+                    fprintf('DEBUG: No simlog property/field found in simOut\n');
+                end
             end
             
             if simlog_available
                 try
-                    fprintf('DEBUG: Calling extractSimscapeDataFixed...\n');
+                    if options.verbose
+                        fprintf('DEBUG: Calling extractSimscapeDataFixed...\n');
+                    end
                     simscape_data = extractSimscapeDataFixed(simlog_data);
                     if ~isempty(simscape_data)
                         all_data{end+1} = simscape_data;
-                        fprintf('DEBUG: Simscape: %d columns extracted\n', width(simscape_data));
+                        if options.verbose
+                            fprintf('DEBUG: Simscape: %d columns extracted\n', width(simscape_data));
+                        end
                     else
-                        fprintf('DEBUG: Simscape extraction returned empty data\n');
+                        if options.verbose
+                            fprintf('DEBUG: Simscape extraction returned empty data\n');
+                        end
                     end
                 catch ME
                     fprintf('ERROR: Failed to extract Simscape data: %s\n', ME.message);
-                    fprintf('Stack trace:\n');
-                    for i = 1:length(ME.stack)
-                        fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
+                    if options.verbose
+                        fprintf('Stack trace:\n');
+                        for i = 1:length(ME.stack)
+                            fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
+                        end
                     end
                 end
             else
-                fprintf('DEBUG: No Simscape simlog data available\n');
+                if options.verbose
+                    fprintf('DEBUG: No Simscape simlog data available\n');
+                end
             end
         end
         
