@@ -418,7 +418,10 @@ function batch_results = processBatch(config, trial_indices, pool, capture_works
                     end
                     
                     fprintf('DEBUG: Checking simulation success for trial %d\n', trial);
-                    if ~isempty(simOut) && isSimulationSuccessful(simOut)
+                    fprintf('DEBUG: About to call isSimulationSuccessful for trial %d\n', trial);
+                    success_result = isSimulationSuccessful(simOut);
+                    fprintf('DEBUG: isSimulationSuccessful returned: %s for trial %d\n', mat2str(success_result), trial);
+                    if ~isempty(simOut) && success_result
                         fprintf('DEBUG: Simulation successful, calling processSimulationOutput for trial %d\n', trial);
                         batch_results{i} = processSimulationOutput(trial, config, simOut);
                     else
@@ -481,6 +484,7 @@ function success = isSimulationSuccessful(simOut)
     % Check if simulation completed successfully
     success = false;
     
+    fprintf('=== DEBUG: ENTERING isSimulationSuccessful FUNCTION ===\n');
     fprintf('DEBUG: Checking simulation success...\n');
     fprintf('DEBUG: simOut class: %s\n', class(simOut));
     fprintf('DEBUG: simOut properties: ');
