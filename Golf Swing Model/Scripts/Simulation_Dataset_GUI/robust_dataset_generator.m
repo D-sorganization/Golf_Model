@@ -871,6 +871,17 @@ function simIn = setModelParameters(simIn, config)
 end
 
 function simIn = setPolynomialCoefficients(simIn, trial_coefficients, config)
+    % DEBUG: Print what we're receiving
+    fprintf('DEBUG: setPolynomialCoefficients called with:\n');
+    fprintf('  coefficients class: %s\n', class(trial_coefficients));
+    fprintf('  coefficients size: %s\n', mat2str(size(trial_coefficients)));
+    if iscell(trial_coefficients)
+        fprintf('  coefficients is cell array with %d elements\n', numel(trial_coefficients));
+        if numel(trial_coefficients) > 0
+            fprintf('  first element class: %s\n', class(trial_coefficients{1}));
+        end
+    end
+    
     % Set polynomial coefficients for the simulation
     try
         if ~isempty(trial_coefficients)
