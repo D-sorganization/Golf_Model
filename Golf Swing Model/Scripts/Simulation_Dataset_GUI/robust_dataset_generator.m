@@ -369,12 +369,19 @@ function batch_results = processBatch(config, trial_indices, pool, capture_works
                 fprintf('Debug: Calling runSingleTrial with trial=%d, config type=%s, capture_workspace=%s\n', ...
                     trial, class(config), mat2str(capture_workspace));
                 
+                % Get coefficients for this trial
+                if trial <= size(config.coefficient_values, 1)
+                    trial_coefficients = config.coefficient_values(trial, :);
+                else
+                    trial_coefficients = config.coefficient_values(end, :);
+                end
+                
                 % Check if function exists
                 if ~exist('runSingleTrial', 'file')
                     error('runSingleTrial function not found in path');
                 end
                 
-                batch_results{i} = runSingleTrial(trial, config, [], capture_workspace);
+                batch_results{i} = runSingleTrial(trial, config, trial_coefficients, capture_workspace);
                 trial_duration = toc(trial_start_time);
                 
                 % Record trial performance
@@ -449,7 +456,14 @@ function batch_results = processBatch(config, trial_indices, pool, capture_works
             for i = 1:length(trial_indices)
                 trial = trial_indices(i);
                 try
-                    batch_results{i} = runSingleTrial(trial, config, [], capture_workspace);
+                    % Get coefficients for this trial
+                    if trial <= size(config.coefficient_values, 1)
+                        trial_coefficients = config.coefficient_values(trial, :);
+                    else
+                        trial_coefficients = config.coefficient_values(end, :);
+                    end
+                    
+                    batch_results{i} = runSingleTrial(trial, config, trial_coefficients, capture_workspace);
                 catch ME
                     batch_results{i} = struct('success', false, 'error', ME.message);
                 end
@@ -639,101 +653,62 @@ end
 % Fallback logging functions if verbosity_control is not available
 function logMessage(level, message, varargin)
     % Fallback logging function
-    try
-        % Try to use the real logMessage function first
-        logMessage_real(level, message, varargin{:});
-    catch
-        % Fallback to simple fprintf
-        if nargin > 2
-            formatted_message = sprintf(message, varargin{:});
-        else
-            formatted_message = message;
-        end
-        
-        switch lower(level)
-            case 'error'
-                fprintf('❌ ERROR: %s\n', formatted_message);
-            case 'warning'
-                fprintf('⚠️  WARNING: %s\n', formatted_message);
-            case 'info'
-                fprintf('ℹ️  INFO: %s\n', formatted_message);
-            case 'debug'
-                fprintf('🔍 DEBUG: %s\n', formatted_message);
-            otherwise
-                fprintf('%s\n', formatted_message);
-        end
+    if nargin > 2
+        formatted_message = sprintf(message, varargin{:});
+    else
+        formatted_message = message;
+    end
+    
+    switch lower(level)
+        case 'error'
+            fprintf('❌ ERROR: %s\n', formatted_message);
+        case 'warning'
+            fprintf('⚠️  WARNING: %s\n', formatted_message);
+        case 'info'
+            fprintf('ℹ️  INFO: %s\n', formatted_message);
+        case 'debug'
+            fprintf('🔍 DEBUG: %s\n', formatted_message);
+        otherwise
+            fprintf('%s\n', formatted_message);
     end
 end
 
 function logProgress(current, total, message)
     % Fallback progress logging function
-    try
-        % Try to use the real logProgress function first
-        logProgress_real(current, total, message);
-    catch
-        % Fallback to simple fprintf
-        percentage = 100 * current / total;
-        fprintf('\r%s: %d/%d (%.1f%%)', message, current, total, percentage);
-        if current == total
-            fprintf('\n');
-        end
+    percentage = 100 * current / total;
+    fprintf('\r%s: %d/%d (%.1f%%)', message, current, total, percentage);
+    if current == total
+        fprintf('\n');
     end
 end
 
 function logTrialResult(trial_num, success, duration, error_msg)
     % Fallback trial result logging function
-    try
-        % Try to use the real logTrialResult function first
-        logTrialResult_real(trial_num, success, duration, error_msg);
-    catch
-        % Fallback to simple fprintf
-        if success
-            fprintf('Trial %d completed successfully in %.2f seconds\n', trial_num, duration);
-        else
-            fprintf('Trial %d failed after %.2f seconds: %s\n', trial_num, duration, error_msg);
-        end
+    if success
+        fprintf('Trial %d completed successfully in %.2f seconds\n', trial_num, duration);
+    else
+        fprintf('Trial %d failed after %.2f seconds: %s\n', trial_num, duration, error_msg);
     end
 end
 
 function logCheckpoint(duration, file_size_mb)
     % Fallback checkpoint logging function
-    try
-        % Try to use the real logCheckpoint function first
-        logCheckpoint_real(duration, file_size_mb);
-    catch
-        % Fallback to simple fprintf
-        fprintf('Checkpoint saved in %.2f seconds (%.1f MB)\n', duration, file_size_mb);
-    end
+    fprintf('Checkpoint saved in %.2f seconds (%.1f MB)\n', duration, file_size_mb);
 end
 
 function recordTrialTime(trial, duration, processing_time)
     % Fallback trial time recording function
-    try
-        % Try to use the real recordTrialTime function first
-        recordTrialTime_real(trial, duration, processing_time);
-    catch
-        % Fallback - do nothing
-    end
+    % Do nothing in fallback version
 end
 
 function recordBatchTime(batch_num, batch_size, duration, successful)
     % Fallback batch time recording function
-    try
-        % Try to use the real recordBatchTime function first
-        recordBatchTime_real(batch_num, batch_size, duration, successful);
-    catch
-        % Fallback - do nothing
-    end
+    % Do nothing in fallback version
 end
 
 function recordCheckpointTime(duration)
     % Fallback checkpoint time recording function
-    try
-        % Try to use the real recordCheckpointTime function first
-        recordCheckpointTime_real(duration);
-    catch
-        % Fallback - do nothing
-    end
+    % Do nothing in fallback version
 end
 
 function logBatchResult(batch_num, batch_size, successful, failed, duration)
@@ -1012,22 +987,82 @@ function simIn = setPolynomialCoefficients(simIn, trial_coefficients, config)
 end
 
 function param_info = getPolynomialParameterInfo()
-    % Get polynomial parameter information for the golf swing model
+    % Get polynomial parameter information for coefficient setting
     param_info = struct();
     param_info.joint_names = {'Hip', 'Knee', 'Ankle', 'Shoulder', 'Elbow', 'Wrist'};
-    param_info.joint_coeffs = {{'A', 'B', 'C', 'D', 'E', 'F', 'G'}, ...
-                              {'A', 'B', 'C', 'D', 'E', 'F', 'G'}, ...
-                              {'A', 'B', 'C', 'D', 'E', 'F', 'G'}, ...
-                              {'A', 'B', 'C', 'D', 'E', 'F', 'G'}, ...
-                              {'A', 'B', 'C', 'D', 'E', 'F', 'G'}, ...
-                              {'A', 'B', 'C', 'D', 'E', 'F', 'G'}};
+    param_info.joint_coeffs = {
+        {'a0', 'a1', 'a2', 'a3', 'a4', 'a5'},  % Hip
+        {'b0', 'b1', 'b2', 'b3', 'b4', 'b5'},  % Knee
+        {'c0', 'c1', 'c2', 'c3', 'c4', 'c5'},  % Ankle
+        {'d0', 'd1', 'd2', 'd3', 'd4', 'd5'},  % Shoulder
+        {'e0', 'e1', 'e2', 'e3', 'e4', 'e5'},  % Elbow
+        {'f0', 'f1', 'f2', 'f3', 'f4', 'f5'}   % Wrist
+    };
 end
 
 function result = processSimulationOutput(trial_num, config, simOut, capture_workspace)
     result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
+    result.data_captured = struct();
+    result.data_captured.signal_bus = false;
+    result.data_captured.logsout = false;
+    result.data_captured.simscape = false;
+    result.data_captured.workspace = false;
     
     try
         fprintf('Processing simulation output for trial %d...\n', trial_num);
+        
+        % --- BEGIN VERIFICATION CHECKS ---
+        fprintf('  Verification for Trial %d:\n', trial_num);
+        fprintf('  - Model Workspace Capture Requested: %s\n', logical2str(capture_workspace));
+        fprintf('  - CombinedSignalBus Capture Requested: %s\n', logical2str(config.use_signal_bus));
+        fprintf('  - Logsout Capture Requested: %s\n', logical2str(config.use_logsout));
+        fprintf('  - Simscape Results Capture Requested: %s\n', logical2str(config.use_simscape));
+        
+        % Check what data sources are actually available and contain data
+        if isprop(simOut, 'CombinedSignalBus') || isfield(simOut, 'CombinedSignalBus')
+            bus_data = simOut.CombinedSignalBus;
+            if ~isempty(bus_data) && isstruct(bus_data)
+                fields = fieldnames(bus_data);
+                has_data = any(cellfun(@(f) ~isempty(bus_data.(f)), fields));
+                fprintf('  - CombinedSignalBus Available: YES (has data: %s)\n', logical2str(has_data));
+                result.data_captured.signal_bus = has_data;
+            else
+                fprintf('  - CombinedSignalBus Available: YES (empty)\n');
+            end
+        else
+            fprintf('  - CombinedSignalBus Available: NO\n');
+        end
+        
+        if isprop(simOut, 'logsout') || isfield(simOut, 'logsout')
+            logsout_data = simOut.logsout;
+            if ~isempty(logsout_data)
+                if isa(logsout_data, 'Simulink.SimulationData.Dataset')
+                    has_data = logsout_data.numElements > 0;
+                    fprintf('  - Logsout Available: YES (has data: %s, %d elements)\n', logical2str(has_data), logsout_data.numElements);
+                    result.data_captured.logsout = has_data;
+                else
+                    fprintf('  - Logsout Available: YES (non-Dataset format)\n');
+                    result.data_captured.logsout = true;
+                end
+            else
+                fprintf('  - Logsout Available: YES (empty)\n');
+            end
+        else
+            fprintf('  - Logsout Available: NO\n');
+        end
+        
+        if isprop(simOut, 'simlog') || isfield(simOut, 'simlog')
+            simlog_data = simOut.simlog;
+            if ~isempty(simlog_data)
+                fprintf('  - Simscape simlog Available: YES (has data)\n');
+                result.data_captured.simscape = true;
+            else
+                fprintf('  - Simscape simlog Available: YES (empty)\n');
+            end
+        else
+            fprintf('  - Simscape simlog Available: NO\n');
+        end
+        % --- END VERIFICATION CHECKS ---
         
         % Extract data using the enhanced signal extraction system
         options = struct();
@@ -1101,6 +1136,7 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
         
         if capture_workspace
             data_table = addModelWorkspaceData(data_table, simOut, num_rows);
+            result.data_captured.workspace = true;
         else
             logWorkspaceCapture(false, 0);
         end
@@ -1148,12 +1184,28 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
         % Update result with primary filename
         filename = saved_files{1};
         
-        result.success = true;
+        % Verify each source was captured if requested
+        if config.use_signal_bus && ~result.data_captured.signal_bus
+            fprintf('WARNING: CombinedSignalBus requested but not captured\n');
+            result.success = false;
+        elseif config.use_logsout && ~result.data_captured.logsout
+            fprintf('WARNING: Logsout requested but not captured\n');
+            result.success = false;
+        elseif config.use_simscape && ~result.data_captured.simscape
+            fprintf('WARNING: Simscape requested but not captured\n');
+            result.success = false;
+        elseif capture_workspace && ~result.data_captured.workspace
+            fprintf('WARNING: Model workspace requested but not captured\n');
+            result.success = false;
+        else
+            result.success = true;
+        end
+        
         result.filename = filename;
         result.data_points = num_rows;
         result.columns = width(data_table);
         
-        fprintf('Trial %d completed: %d data points, %d columns\n', trial_num, num_rows, width(data_table));
+        fprintf('Trial %d completed: %d data points, %d columns (success: %s)\n', trial_num, num_rows, width(data_table), logical2str(result.success));
         
     catch ME
         result.success = false;
@@ -1389,5 +1441,355 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
     catch ME
         fprintf('Error in extractSignalsFromSimOut: %s\n', ME.message);
         data_table = [];
+    end
+end 
+
+% ============================================================================
+% MISSING FUNCTION DEPENDENCIES - ADDED FOR INTEGRATION
+% ============================================================================
+
+function data_table = extractCombinedSignalBusData(combinedBus)
+    % Extract data from CombinedSignalBus structure
+    data_table = [];
+    
+    try
+        if ~isstruct(combinedBus)
+            fprintf('DEBUG: CombinedSignalBus is not a struct\n');
+            return;
+        end
+        
+        % Get field names
+        fields = fieldnames(combinedBus);
+        data_cells = {};
+        var_names = {};
+        
+        % Find time reference from first valid field
+        time_data = [];
+        expected_length = 0;
+        
+        for i = 1:length(fields)
+            field_name = fields{i};
+            field_value = combinedBus.(field_name);
+            
+            if isstruct(field_value) && isfield(field_value, 'time')
+                time_data = field_value.time;
+                expected_length = length(time_data);
+                break;
+            elseif isnumeric(field_value) && length(field_value) > 10
+                % Assume this is time data
+                time_data = field_value;
+                expected_length = length(time_data);
+                break;
+            end
+        end
+        
+        if isempty(time_data)
+            fprintf('DEBUG: No time data found in CombinedSignalBus\n');
+            return;
+        end
+        
+        % Add time column
+        data_cells{end+1} = time_data;
+        var_names{end+1} = 'time';
+        
+        % Extract all signals
+        for i = 1:length(fields)
+            field_name = fields{i};
+            field_value = combinedBus.(field_name);
+            
+            if isstruct(field_value)
+                % Handle nested structure
+                sub_fields = fieldnames(field_value);
+                for j = 1:length(sub_fields)
+                    sub_field = sub_fields{j};
+                    sub_value = field_value.(sub_field);
+                    
+                    if isnumeric(sub_value) && length(sub_value) == expected_length
+                        data_cells{end+1} = sub_value;
+                        var_names{end+1} = sprintf('%s_%s', field_name, sub_field);
+                    elseif isnumeric(sub_value) && size(sub_value, 1) == expected_length
+                        % Multi-column data
+                        for col = 1:size(sub_value, 2)
+                            data_cells{end+1} = sub_value(:, col);
+                            var_names{end+1} = sprintf('%s_%s_%d', field_name, sub_field, col);
+                        end
+                    end
+                end
+            elseif isnumeric(field_value) && length(field_value) == expected_length
+                data_cells{end+1} = field_value;
+                var_names{end+1} = field_name;
+            end
+        end
+        
+        if length(data_cells) > 1
+            data_table = table(data_cells{:}, 'VariableNames', var_names);
+            fprintf('DEBUG: CombinedSignalBus extracted %d columns\n', width(data_table));
+        end
+        
+    catch ME
+        fprintf('Error extracting CombinedSignalBus data: %s\n', ME.message);
+    end
+end
+
+function logsout_data = extractLogsoutDataFixed(logsout)
+    % Fixed logsout data extraction
+    logsout_data = [];
+    
+    try
+        % Handle modern Simulink.SimulationData.Dataset format
+        if isa(logsout, 'Simulink.SimulationData.Dataset')
+            if logsout.numElements == 0
+                fprintf('DEBUG: Logsout dataset is empty\n');
+                return;
+            end
+            
+            % Get time from first element
+            first_element = logsout.getElement(1);
+            
+            % Handle Signal objects properly
+            if isa(first_element, 'Simulink.SimulationData.Signal')
+                time = first_element.Values.Time;
+            elseif isa(first_element, 'timeseries')
+                time = first_element.Time;
+            else
+                fprintf('DEBUG: Unsupported first element type: %s\n', class(first_element));
+                return;
+            end
+            
+            data_cells = {time};
+            var_names = {'time'};
+            expected_length = length(time);
+            
+            % Process each element in the dataset
+            for i = 1:logsout.numElements
+                element = logsout.getElement(i);
+                
+                if isa(element, 'Simulink.SimulationData.Signal')
+                    signalName = element.Name;
+                    if isempty(signalName)
+                        signalName = sprintf('Signal_%d', i);
+                    end
+                    
+                    % Extract data from Signal object
+                    data = element.Values.Data;
+                    signal_time = element.Values.Time;
+                    
+                    % Ensure data matches time length and is valid
+                    if isnumeric(data) && length(signal_time) == expected_length && ~isempty(data)
+                        if size(data, 1) == expected_length
+                            if size(data, 2) > 1
+                                % Multi-dimensional signal
+                                for col = 1:size(data, 2)
+                                    col_data = data(:, col);
+                                    if length(col_data) == expected_length
+                                        data_cells{end+1} = col_data;
+                                        var_names{end+1} = sprintf('%s_%d', signalName, col);
+                                    end
+                                end
+                            else
+                                % Single column signal
+                                flat_data = data(:);
+                                if length(flat_data) == expected_length
+                                    data_cells{end+1} = flat_data;
+                                    var_names{end+1} = signalName;
+                                end
+                            end
+                        end
+                    end
+                elseif isa(element, 'timeseries')
+                    signalName = element.Name;
+                    data = element.Data;
+                    if isnumeric(data) && length(data) == expected_length && ~isempty(data)
+                        flat_data = data(:);
+                        if length(flat_data) == expected_length
+                            data_cells{end+1} = flat_data;
+                            var_names{end+1} = signalName;
+                        end
+                    end
+                end
+            end
+            
+            % Validate all data vectors have the same length before creating table
+            if length(data_cells) > 1
+                lengths = cellfun(@length, data_cells);
+                if all(lengths == expected_length)
+                    logsout_data = table(data_cells{:}, 'VariableNames', var_names);
+                    fprintf('DEBUG: Logsout extracted %d columns\n', width(logsout_data));
+                else
+                    % Try to create table with only vectors of the correct length
+                    valid_indices = find(lengths == expected_length);
+                    if length(valid_indices) > 1
+                        valid_cells = data_cells(valid_indices);
+                        valid_names = var_names(valid_indices);
+                        logsout_data = table(valid_cells{:}, 'VariableNames', valid_names);
+                        fprintf('DEBUG: Logsout extracted %d columns (filtered)\n', width(logsout_data));
+                    end
+                end
+            end
+            
+        else
+            fprintf('DEBUG: Logsout format not supported: %s\n', class(logsout));
+        end
+        
+    catch ME
+        fprintf('Error extracting logsout data: %s\n', ME.message);
+    end
+end
+
+function simscape_data = extractSimscapeDataFixed(simlog)
+    % Fixed Simscape data extraction using Method 2 (direct access)
+    simscape_data = table();
+    
+    try
+        if isempty(simlog)
+            fprintf('DEBUG: Simlog is empty\n');
+            return;
+        end
+        
+        if ~isa(simlog, 'simscape.logging.Node')
+            fprintf('DEBUG: Simlog is not a simscape.logging.Node: %s\n', class(simlog));
+            return;
+        end
+        
+        % Use Method 2: Direct access to node.series.time and node.series.values
+        [time_data, all_signals] = traverseSimlogNodeFixed(simlog, '');
+        
+        if isempty(time_data) || isempty(all_signals)
+            fprintf('DEBUG: No time data or signals extracted from simlog\n');
+            return;
+        end
+        
+        % Build table
+        data_cells = {time_data};
+        var_names = {'time'};
+        expected_length = length(time_data);
+        
+        for i = 1:length(all_signals)
+            signal = all_signals{i};
+            if length(signal.data) == expected_length
+                data_cells{end+1} = signal.data(:);
+                var_names{end+1} = signal.name;
+            end
+        end
+        
+        if length(data_cells) > 1
+            simscape_data = table(data_cells{:}, 'VariableNames', var_names);
+            fprintf('DEBUG: Simscape extracted %d columns\n', width(simscape_data));
+        end
+        
+    catch ME
+        fprintf('Error extracting Simscape data: %s\n', ME.message);
+    end
+end
+
+function [time_data, signals] = traverseSimlogNodeFixed(node, parent_path)
+    % Traverse Simscape log nodes using Method 2 (direct access)
+    time_data = [];
+    signals = {};
+    
+    try
+        % Get current node name
+        node_name = '';
+        try
+            node_name = node.id;
+        catch
+            node_name = 'UnnamedNode';
+        end
+        current_path = fullfile(parent_path, node_name);
+        
+        % Method 2: Direct access to series data
+        if isprop(node, 'series')
+            try
+                extracted_time = node.series.time;
+                extracted_data = node.series.values;
+                
+                if ~isempty(extracted_time) && ~isempty(extracted_data) && length(extracted_time) > 0
+                    if isempty(time_data)
+                        time_data = extracted_time;
+                    end
+                    
+                    signal_name = matlab.lang.makeValidName(sprintf('%s_%s', current_path, node_name));
+                    signals{end+1} = struct('name', signal_name, 'data', extracted_data);
+                end
+            catch ME
+                % No series data at this node
+                fprintf('DEBUG: No series data at node %s: %s\n', node_name, ME.message);
+            end
+        end
+        
+        % Recurse into child nodes
+        child_ids = [];
+        try
+            child_ids = node.children();
+        catch
+            % Use properties as children
+            try
+                all_props = properties(node);
+                child_ids = {};
+                for i = 1:length(all_props)
+                    prop_name = all_props{i};
+                    if ~ismember(prop_name, {'id', 'savable', 'exportable'})
+                        try
+                            prop_value = node.(prop_name);
+                            if isa(prop_value, 'simscape.logging.Node')
+                                child_ids{end+1} = prop_name;
+                            end
+                        catch
+                            % Skip properties that can't be accessed
+                        end
+                    end
+                end
+            catch
+                child_ids = [];
+            end
+        end
+        
+        % Process child nodes
+        for i = 1:length(child_ids)
+            try
+                child_node = node.(child_ids{i});
+                [child_time, child_signals] = traverseSimlogNodeFixed(child_node, current_path);
+                
+                if isempty(time_data) && ~isempty(child_time)
+                    time_data = child_time;
+                end
+                
+                if ~isempty(child_signals)
+                    signals = [signals, child_signals];
+                end
+            catch ME
+                fprintf('DEBUG: Error accessing child %s: %s\n', child_ids{i}, ME.message);
+            end
+        end
+        
+    catch ME
+        fprintf('DEBUG: Error traversing node %s: %s\n', node_name, ME.message);
+    end
+end
+
+% ============================================================================
+% HELPER FUNCTIONS FOR INTEGRATION
+% ============================================================================
+
+function simIn = loadInputFile(simIn, input_file)
+    % Load input file into simulation
+    try
+        if exist(input_file, 'file')
+            simIn = simIn.setExternalInput(input_file);
+            fprintf('DEBUG: Loaded input file: %s\n', input_file);
+        else
+            fprintf('WARNING: Input file not found: %s\n', input_file);
+        end
+    catch ME
+        fprintf('ERROR: Failed to load input file %s: %s\n', input_file, ME.message);
+    end
+end
+
+% Helper function for logical to string conversion
+function str = logical2str(logical_val)
+    if logical_val
+        str = 'enabled';
+    else
+        str = 'disabled';
     end
 end 
