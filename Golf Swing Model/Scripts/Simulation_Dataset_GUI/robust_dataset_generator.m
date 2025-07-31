@@ -432,7 +432,6 @@ function batch_results = processBatch(config, trial_indices, pool, capture_works
             fprintf('DEBUG: First simInput parameters: %s\n', mat2str(simInputs(1).ModelParameters));
             
             simOuts = parsim(simInputs, 'ShowProgress', true, ...
-                           'ShowSimulationManager', 'off', ...
                            'StopOnError', 'off');
             
             fprintf('DEBUG: parsim completed. simOuts class: %s, size: %s\n', class(simOuts), mat2str(size(simOuts)));
@@ -518,7 +517,7 @@ function simInputs = prepareBatchSimulationInputs(config, trial_indices)
         end
         
         % Create SimulationInput object
-        simIn = Simulink.SimulationInput(config.model_path);
+        simIn = Simulink.SimulationInput(config.model_name);
         
         % Set simulation parameters
         simIn = setModelParameters(simIn, config);
@@ -756,15 +755,10 @@ end
 
 function logBatchResult(batch_num, batch_size, successful, failed, duration)
     % Fallback batch result logging function
-    try
-        % Try to use the real logBatchResult function first
-        logBatchResult_real(batch_num, batch_size, successful, failed, duration);
-    catch
-        % Fallback to simple fprintf
-        success_rate = 100 * successful / batch_size;
-        fprintf('Batch %d: %d/%d successful (%.1f%%) in %.1f seconds\n', ...
-            batch_num, successful, batch_size, success_rate, duration);
-    end
+    % Fallback to simple fprintf
+    success_rate = 100 * successful / batch_size;
+    fprintf('Batch %d: %d/%d successful (%.1f%%) in %.1f seconds\n', ...
+        batch_num, successful, batch_size, success_rate, duration);
 end
 
 % ============================================================================
@@ -776,7 +770,7 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
     
     try
         % Create simulation input
-        simIn = Simulink.SimulationInput(config.model_path);
+        simIn = Simulink.SimulationInput(config.model_name);
         
         % Set model parameters
         simIn = setModelParameters(simIn, config);
@@ -796,12 +790,8 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
         fprintf('Running trial %d simulation...', trial_num);
         
         % Suppress visualization by setting model parameters
-        try
-            simIn = simIn.setModelParameter('ShowSimulationManager', 'off');
-            simIn = simIn.setModelParameter('ShowProgress', 'off');
-        catch
-            % If these parameters don't exist, continue anyway
-        end
+        % Note: ShowSimulationManager and ShowProgress are not valid parameters for this model
+        % These parameters were removed to prevent simulation errors
         
         simOut = sim(simIn);
         fprintf(' Done.\n');
@@ -1228,21 +1218,32 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
         filename = saved_files{1};
         
         % Verify each source was captured if requested
+        fprintf('  Final Data Capture Verification for Trial %d:\n', trial_num);
+        fprintf('  - Signal Bus: Requested=%s, Captured=%s\n', logical2str(config.use_signal_bus), logical2str(result.data_captured.signal_bus));
+        fprintf('  - Logsout: Requested=%s, Captured=%s\n', logical2str(config.use_logsout), logical2str(result.data_captured.logsout));
+        fprintf('  - Simscape: Requested=%s, Captured=%s\n', logical2str(config.use_simscape), logical2str(result.data_captured.simscape));
+        fprintf('  - Workspace: Requested=%s, Captured=%s\n', logical2str(capture_workspace), logical2str(result.data_captured.workspace));
+        
+        % Check if all requested data sources were captured
+        all_captured = true;
         if config.use_signal_bus && ~result.data_captured.signal_bus
             fprintf('WARNING: CombinedSignalBus requested but not captured\n');
-            result.success = false;
-        elseif config.use_logsout && ~result.data_captured.logsout
-            fprintf('WARNING: Logsout requested but not captured\n');
-            result.success = false;
-        elseif config.use_simscape && ~result.data_captured.simscape
-            fprintf('WARNING: Simscape requested but not captured\n');
-            result.success = false;
-        elseif capture_workspace && ~result.data_captured.workspace
-            fprintf('WARNING: Model workspace requested but not captured\n');
-            result.success = false;
-        else
-            result.success = true;
+            all_captured = false;
         end
+        if config.use_logsout && ~result.data_captured.logsout
+            fprintf('WARNING: Logsout requested but not captured\n');
+            all_captured = false;
+        end
+        if config.use_simscape && ~result.data_captured.simscape
+            fprintf('WARNING: Simscape requested but not captured\n');
+            all_captured = false;
+        end
+        if capture_workspace && ~result.data_captured.workspace
+            fprintf('WARNING: Model workspace requested but not captured\n');
+            all_captured = false;
+        end
+        
+        result.success = all_captured;
         
         result.filename = filename;
         result.data_points = num_rows;
