@@ -2292,7 +2292,11 @@ function simInputs = prepareSimulationInputs(config)
         simIn = setModelParameters(simIn, config);
         
         % Set polynomial coefficients
-        simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
+        try
+            simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
+        catch ME
+            fprintf('Warning: Could not set polynomial coefficients: %s\n', ME.message);
+        end
         
         % Load input file if specified
         if ~isempty(config.input_file) && exist(config.input_file, 'file')
@@ -2309,6 +2313,23 @@ function simIn = setPolynomialCoefficients(simIn, coefficients, config)
     % Basic validation
     if isempty(param_info.joint_names)
         error('No joint names found in polynomial parameter info');
+    end
+    
+    % Handle parallel worker coefficient format issues
+    if iscell(coefficients)
+        fprintf('Debug: Converting cell array coefficients to numeric (parallel worker fix)\n');
+        try
+            coefficients = cell2mat(coefficients);
+        catch ME
+            fprintf('Warning: Could not convert cell coefficients to numeric: %s\n', ME.message);
+            return;
+        end
+    end
+    
+    % Ensure coefficients are numeric
+    if ~isnumeric(coefficients)
+        fprintf('Error: Coefficients must be numeric, got %s\n', class(coefficients));
+        return;
     end
     
     fprintf('Setting %d coefficients for %d joints\n', length(coefficients), length(param_info.joint_names));
@@ -2380,7 +2401,11 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
         simIn = setModelParameters(simIn, config);
         
         % Set polynomial coefficients for this trial
-        simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
+        try
+            simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
+        catch ME
+            fprintf('Warning: Could not set polynomial coefficients: %s\n', ME.message);
+        end
         
         % Suppress specific warnings that are not critical
         warning_state = warning('off', 'Simulink:Bus:EditTimeBusPropNotAllowed');
