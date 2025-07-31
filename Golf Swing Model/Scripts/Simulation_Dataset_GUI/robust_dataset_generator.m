@@ -1163,29 +1163,165 @@ function data_table = resampleDataToFrequency(data_table, target_freq, simulatio
 end
 
 function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
-    % Simplified signal extraction function for robust_dataset_generator
-    % This is a fallback version that creates basic data structure
+    % Extract signals from simulation output based on specified options
+    % This replaces the missing extractAllSignalsFromBus function
     
     data_table = [];
     signal_info = struct();
     
     try
-        % Create a basic data table with time column
-        % Use a default simulation time since config is not available in this scope
-        time_vector = linspace(0, 1, 1000)'; % Default 1 second simulation with 1000 points
+        % Validate simOut input to prevent brace indexing errors
+        if isempty(simOut)
+            if options.verbose
+                fprintf('Warning: Empty simulation output provided\n');
+            end
+            return;
+        end
         
-        % Create basic data structure
-        data_table = table(time_vector, 'VariableNames', {'time'});
+        % Check if simOut is a valid simulation output object
+        if ~isobject(simOut) && ~isstruct(simOut)
+            if options.verbose
+                fprintf('Warning: Invalid simulation output type: %s\n', class(simOut));
+            end
+            return;
+        end
         
-        % Add some basic columns for demonstration
-        data_table.position_x = zeros(size(time_vector));
-        data_table.position_y = zeros(size(time_vector));
-        data_table.position_z = zeros(size(time_vector));
-        data_table.velocity_x = zeros(size(time_vector));
-        data_table.velocity_y = zeros(size(time_vector));
-        data_table.velocity_z = zeros(size(time_vector));
+        % Initialize data collection
+        all_data = {};
         
-        fprintf('Created basic data table with %d rows\n', height(data_table));
+        % Extract from CombinedSignalBus if enabled and available
+        if options.extract_combined_bus && (isprop(simOut, 'CombinedSignalBus') || isfield(simOut, 'CombinedSignalBus'))
+            if options.verbose
+                fprintf('Extracting from CombinedSignalBus...\n');
+            end
+            
+                try
+                    combinedBus = simOut.CombinedSignalBus;
+                    if ~isempty(combinedBus)
+                        signal_bus_data = extractCombinedSignalBusData(combinedBus);
+                        
+                        if ~isempty(signal_bus_data)
+                            all_data{end+1} = signal_bus_data;
+                            if options.verbose
+                                fprintf('CombinedSignalBus: %d columns extracted\n', width(signal_bus_data));
+                            end
+                        end
+                    end
+                catch ME
+                if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
+                    if options.verbose
+                        fprintf('Warning: Brace indexing error accessing CombinedSignalBus: %s\n', ME.message);
+                    end
+                else
+                    if options.verbose
+                        fprintf('Warning: Error extracting CombinedSignalBus: %s\n', ME.message);
+                    end
+                end
+            end
+        end
+        
+        % Extract from logsout if enabled and available
+        if options.extract_logsout && (isprop(simOut, 'logsout') || isfield(simOut, 'logsout'))
+            if options.verbose
+                fprintf('Extracting from logsout...\n');
+            end
+            
+            try
+                logsout_data = extractLogsoutDataFixed(simOut.logsout);
+                if ~isempty(logsout_data)
+                    all_data{end+1} = logsout_data;
+                    if options.verbose
+                        fprintf('Logsout: %d columns extracted\n', width(logsout_data));
+                    end
+                end
+            catch ME
+                if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
+                    if options.verbose
+                        fprintf('Warning: Brace indexing error accessing logsout: %s\n', ME.message);
+                    end
+                else
+                    if options.verbose
+                        fprintf('Warning: Error extracting logsout: %s\n', ME.message);
+                    end
+                end
+            end
+        end
+        
+        % Extract from Simscape if enabled and available
+        if options.extract_simscape
+            if options.verbose
+                fprintf('Checking for Simscape simlog...\n');
+            end
+            
+            % Enhanced simlog access for parallel execution
+            simlog_available = false;
+            simlog_data = [];
+            
+            if isprop(simOut, 'simlog') || isfield(simOut, 'simlog')
+                try
+                    simlog_data = simOut.simlog;
+                    if ~isempty(simlog_data)
+                        simlog_available = true;
+                        if options.verbose
+                            fprintf('Simscape simlog found and accessible\n');
+                        end
+                    end
+                catch ME
+                    if options.verbose
+                        fprintf('Warning: Error accessing simlog: %s\n', ME.message);
+                    end
+                end
+            end
+            
+            if simlog_available
+                try
+                    simscape_data = extractSimscapeDataFixed(simlog_data);
+                    if ~isempty(simscape_data)
+                        all_data{end+1} = simscape_data;
+                        if options.verbose
+                            fprintf('Simscape: %d columns extracted\n', width(simscape_data));
+                        end
+                    end
+                catch ME
+                    if options.verbose
+                        fprintf('Warning: Error extracting Simscape data: %s\n', ME.message);
+                    end
+                end
+            else
+                if options.verbose
+                    fprintf('No Simscape simlog data available\n');
+                end
+            end
+        end
+        
+        % Combine all extracted data
+        if ~isempty(all_data)
+            % Start with the first dataset
+            data_table = all_data{1};
+            
+            % Add additional datasets as columns
+            for i = 2:length(all_data)
+                if ~isempty(all_data{i})
+                    % Get common time column if available
+                    if ismember('time', data_table.Properties.VariableNames) && ...
+                       ismember('time', all_data{i}.Properties.VariableNames)
+                        % Merge on time column
+                        data_table = outerjoin(data_table, all_data{i}, 'MergeKeys', true);
+                    else
+                        % Simple concatenation
+                        data_table = [data_table, all_data{i}];
+                    end
+                end
+            end
+            
+            if options.verbose
+                fprintf('Final combined dataset: %d rows, %d columns\n', height(data_table), width(data_table));
+            end
+        else
+            if options.verbose
+                fprintf('No data extracted from any source\n');
+            end
+        end
         
     catch ME
         fprintf('Error in extractSignalsFromSimOut: %s\n', ME.message);
