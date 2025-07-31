@@ -4473,6 +4473,8 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
         end
         
         % Method 2: Extract data from 5-level Multibody hierarchy (regardless of exportable flag)
+        fprintf('Debug: Method 2 check - node_has_data=%s, has_series=%s\n', ...
+            mat2str(node_has_data), mat2str(isprop(node, 'series')));
         if ~node_has_data && isprop(node, 'series')
             try
                 % Get the signal ID (e.g., 'w' for angular velocity, 'q' for position)
@@ -4480,6 +4482,7 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
                 if isprop(node, 'id') && ~isempty(node.id)
                     signal_id = node.id;
                 end
+                fprintf('Debug: Method 2 attempting series access at %s.%s\n', current_path, signal_id);
                 
                 % Try to get time and data directly from node.series (the correct API)
                 try
@@ -4543,22 +4546,32 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
         end
         
         % Process child nodes
+        fprintf('Debug: Processing %d child nodes at %s\n', length(child_ids), current_path);
         if ~isempty(child_ids)
             for i = 1:length(child_ids)
                 try
                     child_node = node.(child_ids{i});
+                    fprintf('Debug: → Recursing into child %s (%d/%d)\n', child_ids{i}, i, length(child_ids));
                     [child_time, child_signals] = traverseSimlogNode(child_node, current_path);
                     % Merge time (use first valid)
                     if isempty(time_data) && ~isempty(child_time)
                         time_data = child_time;
+                        fprintf('Debug: ← Got time data from child %s (length: %d)\n', child_ids{i}, length(child_time));
                     end
                     % Append child signals
-                    signals = [signals, child_signals];
+                    if ~isempty(child_signals)
+                        signals = [signals, child_signals];
+                        fprintf('Debug: ← Got %d signals from child %s\n', length(child_signals), child_ids{i});
+                    end
                 catch ME
                     fprintf('Debug: Error accessing child %s: %s\n', child_ids{i}, ME.message);
                 end
             end
         end
+        
+        % Final summary for this node
+        fprintf('Debug: Node %s summary: time=%s, signals=%d\n', current_path, ...
+            mat2str(~isempty(time_data)), length(signals));
 
     catch ME
         fprintf('Debug: Error traversing Multibody node %s: %s\n', current_path, ME.message);
