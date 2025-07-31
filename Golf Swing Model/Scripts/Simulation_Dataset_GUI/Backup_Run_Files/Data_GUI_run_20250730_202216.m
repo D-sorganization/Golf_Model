@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-07-30 20:22:16
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 2
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: enabled
+% Logsout Dataset: enabled
+% Simscape Results: enabled
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250730
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: DeskComputer
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 2 trials x 189 coefficients
+% First trial coefficients (first 10): -1.920, -43.350, 39.780, -0.280, 27.130, -43.960, -23.750, 15.110, -36.640, 13.850
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
     % Fixed polynomial order: At^6 + Bt^5 + Ct^4 + Dt^3 + Et^2 + Ft + G
@@ -2285,12 +2328,6 @@ function simInputs = prepareSimulationInputs(config)
             trial_coefficients = config.coefficient_values(end, :);
         end
         
-        % Ensure coefficients are numeric (fix for parallel execution)
-        if iscell(trial_coefficients)
-            trial_coefficients = cell2mat(trial_coefficients);
-        end
-        trial_coefficients = double(trial_coefficients);  % Ensure double precision
-        
         % Create SimulationInput object
         simIn = Simulink.SimulationInput(model_name);
         
@@ -2298,11 +2335,7 @@ function simInputs = prepareSimulationInputs(config)
         simIn = setModelParameters(simIn, config);
         
         % Set polynomial coefficients
-        try
-            simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
-        catch ME
-            fprintf('Warning: Could not set polynomial coefficients: %s\n', ME.message);
-        end
+        simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
         
         % Load input file if specified
         if ~isempty(config.input_file) && exist(config.input_file, 'file')
@@ -2313,76 +2346,12 @@ function simInputs = prepareSimulationInputs(config)
     end
 end
 function simIn = setPolynomialCoefficients(simIn, coefficients, config)
-    % DEBUG: Print what we're receiving
-    fprintf('DEBUG: setPolynomialCoefficients called with:\n');
-    fprintf('  coefficients class: %s\n', class(coefficients));
-    fprintf('  coefficients size: %s\n', mat2str(size(coefficients)));
-    if iscell(coefficients)
-        fprintf('  coefficients is cell array with %d elements\n', numel(coefficients));
-        if numel(coefficients) > 0
-            fprintf('  first element class: %s\n', class(coefficients{1}));
-        end
-    end
-    
     % Get parameter info for coefficient mapping
     param_info = getPolynomialParameterInfo();
     
     % Basic validation
     if isempty(param_info.joint_names)
         error('No joint names found in polynomial parameter info');
-    end
-    
-    % Handle parallel worker coefficient format issues
-    if iscell(coefficients)
-        fprintf('Debug: Converting cell array coefficients to numeric (parallel worker fix)\n');
-        try
-            % Check if cells contain strings or numbers
-            if all(cellfun(@ischar, coefficients))
-                % Convert string cells to numeric
-                coefficients = cellfun(@str2double, coefficients);
-                fprintf('Debug: Converted string cells to numeric\n');
-            elseif all(cellfun(@isnumeric, coefficients))
-                % Convert numeric cells to array
-                coefficients = cell2mat(coefficients);
-                fprintf('Debug: Converted numeric cells to array\n');
-            else
-                % Mixed content or other issues
-                fprintf('Warning: Mixed cell content, attempting element-wise conversion\n');
-                numeric_coeffs = zeros(size(coefficients));
-                for i = 1:numel(coefficients)
-                    if ischar(coefficients{i})
-                        numeric_coeffs(i) = str2double(coefficients{i});
-                    elseif isnumeric(coefficients{i})
-                        numeric_coeffs(i) = coefficients{i};
-                    else
-                        numeric_coeffs(i) = NaN;
-                    end
-                end
-                coefficients = numeric_coeffs;
-            end
-        catch ME
-            fprintf('Error: Could not convert cell coefficients to numeric: %s\n', ME.message);
-            % Try one more approach - flatten and convert
-            try
-                coefficients = str2double(coefficients(:));
-                fprintf('Debug: Used str2double on flattened cells\n');
-            catch
-                fprintf('Error: All conversion attempts failed\n');
-                return;
-            end
-        end
-    end
-    
-    % Ensure coefficients are numeric
-    if ~isnumeric(coefficients)
-        fprintf('Error: Coefficients must be numeric, got %s\n', class(coefficients));
-        return;
-    end
-    
-    % Ensure coefficients are a row vector if needed
-    if size(coefficients, 1) > 1 && size(coefficients, 2) == 1
-        coefficients = coefficients';
-        fprintf('Debug: Transposed coefficients to row vector\n');
     end
     
     fprintf('Setting %d coefficients for %d joints\n', length(coefficients), length(param_info.joint_names));
@@ -2454,11 +2423,7 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
         simIn = setModelParameters(simIn, config);
         
         % Set polynomial coefficients for this trial
-        try
-            simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
-        catch ME
-            fprintf('Warning: Could not set polynomial coefficients: %s\n', ME.message);
-        end
+        simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
         
         % Suppress specific warnings that are not critical
         warning_state = warning('off', 'Simulink:Bus:EditTimeBusPropNotAllowed');
@@ -2580,21 +2545,6 @@ function simIn = setModelParameters(simIn, config)
                 fprintf('Warning: Simscape data extraction may not work without this parameter\n');
             end
             
-            % Set animation control based on user preference
-            try
-                if isfield(config, 'enable_animation') && ~config.enable_animation
-                    % Disable animation for faster simulation
-                    simIn = simIn.setModelParameter('SimulationMode', 'accelerator');
-                    fprintf('Debug: ✅ Animation disabled - using accelerator mode\n');
-                else
-                    % Enable animation (normal mode)
-                    simIn = simIn.setModelParameter('SimulationMode', 'normal');
-                    fprintf('Debug: ⚠️ Animation enabled - using normal mode (slower)\n');
-                end
-            catch ME
-                fprintf('Warning: Could not set simulation mode for animation control: %s\n', ME.message);
-            end
-            
             % Set other model parameters to suppress unconnected port warnings
             try
                 simIn = simIn.setModelParameter('UnconnectedInputMsg', 'none');
@@ -2665,7 +2615,7 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
         if capture_workspace
             data_table = addModelWorkspaceData(data_table, simOut, num_rows);
         else
-            fprintf('Debug: Model workspace capture disabled by user setting\n');
+            logWorkspaceCapture(false, 0);
         end
         
         % Save to file in selected format(s)
@@ -2993,7 +2943,7 @@ function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
         
         % Check if model is loaded
         if ~bdIsLoaded(model_name)
-            fprintf('Warning: Model %s not loaded, skipping workspace data\n', model_name);
+            logMessage('warning', 'Model %s not loaded, skipping workspace data', model_name);
             return;
         end
         
@@ -3006,15 +2956,15 @@ function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
                         variables = model_workspace.whos;
                         variables = {variables.name};
                     catch
-                        fprintf('Warning: Could not retrieve model workspace variable names\n');
+                        logMessage('warning', 'Could not retrieve model workspace variable names');
                         return;
                     end
                 end
         
         if length(variables) > 0
-            fprintf('Adding %d model workspace variables to CSV...\n', length(variables));
+            logWorkspaceCapture(true, length(variables));
         else
-            fprintf('No model workspace variables found\n');
+            logMessage('info', 'No model workspace variables found');
             return;
         end
         
@@ -3058,12 +3008,12 @@ function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
                 
             catch ME
                 % Skip variables that can't be extracted
-                fprintf('Warning: Could not extract variable %s: %s\n', var_name, ME.message);
+                logMessage('warning', 'Could not extract variable %s: %s', var_name, ME.message);
             end
         end
         
     catch ME
-        fprintf('Warning: Could not access model workspace: %s\n', ME.message);
+        logMessage('warning', 'Could not access model workspace: %s', ME.message);
     end
 end
 
@@ -4566,8 +4516,6 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
         end
         
         % Method 2: Extract data from 5-level Multibody hierarchy (regardless of exportable flag)
-        fprintf('Debug: Method 2 check - node_has_data=%s, has_series=%s\n', ...
-            mat2str(node_has_data), mat2str(isprop(node, 'series')));
         if ~node_has_data && isprop(node, 'series')
             try
                 % Get the signal ID (e.g., 'w' for angular velocity, 'q' for position)
@@ -4575,7 +4523,6 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
                 if isprop(node, 'id') && ~isempty(node.id)
                     signal_id = node.id;
                 end
-                fprintf('Debug: Method 2 attempting series access at %s.%s\n', current_path, signal_id);
                 
                 % Try to get time and data directly from node.series (the correct API)
                 try
@@ -4639,32 +4586,22 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
         end
         
         % Process child nodes
-        fprintf('Debug: Processing %d child nodes at %s\n', length(child_ids), current_path);
         if ~isempty(child_ids)
             for i = 1:length(child_ids)
                 try
                     child_node = node.(child_ids{i});
-                    fprintf('Debug: → Recursing into child %s (%d/%d)\n', child_ids{i}, i, length(child_ids));
                     [child_time, child_signals] = traverseSimlogNode(child_node, current_path);
                     % Merge time (use first valid)
                     if isempty(time_data) && ~isempty(child_time)
                         time_data = child_time;
-                        fprintf('Debug: ← Got time data from child %s (length: %d)\n', child_ids{i}, length(child_time));
                     end
                     % Append child signals
-                    if ~isempty(child_signals)
-                        signals = [signals, child_signals];
-                        fprintf('Debug: ← Got %d signals from child %s\n', length(child_signals), child_ids{i});
-                    end
+                    signals = [signals, child_signals];
                 catch ME
                     fprintf('Debug: Error accessing child %s: %s\n', child_ids{i}, ME.message);
                 end
             end
         end
-        
-        % Final summary for this node
-        fprintf('Debug: Node %s summary: time=%s, signals=%d\n', current_path, ...
-            mat2str(~isempty(time_data)), length(signals));
 
     catch ME
         fprintf('Debug: Error traversing Multibody node %s: %s\n', current_path, ME.message);

@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-07-30 21:39:31
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 2
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: enabled
+% Logsout Dataset: enabled
+% Simscape Results: enabled
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250730
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: DeskComputer
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 2 trials x 189 coefficients
+% First trial coefficients (first 10): -20.100, -8.120, -44.420, -46.910, -31.340, -22.910, -43.380, -16.650, -45.010, -39.870
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
     % Fixed polynomial order: At^6 + Bt^5 + Ct^4 + Dt^3 + Et^2 + Ft + G
@@ -2313,17 +2356,6 @@ function simInputs = prepareSimulationInputs(config)
     end
 end
 function simIn = setPolynomialCoefficients(simIn, coefficients, config)
-    % DEBUG: Print what we're receiving
-    fprintf('DEBUG: setPolynomialCoefficients called with:\n');
-    fprintf('  coefficients class: %s\n', class(coefficients));
-    fprintf('  coefficients size: %s\n', mat2str(size(coefficients)));
-    if iscell(coefficients)
-        fprintf('  coefficients is cell array with %d elements\n', numel(coefficients));
-        if numel(coefficients) > 0
-            fprintf('  first element class: %s\n', class(coefficients{1}));
-        end
-    end
-    
     % Get parameter info for coefficient mapping
     param_info = getPolynomialParameterInfo();
     

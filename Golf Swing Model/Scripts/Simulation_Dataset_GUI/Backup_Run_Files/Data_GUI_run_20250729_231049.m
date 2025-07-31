@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-07-29 23:10:49
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 2
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: enabled
+% Logsout Dataset: enabled
+% Simscape Results: enabled
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250729
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: DeskComputer
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 2 trials x 189 coefficients
+% First trial coefficients (first 10): -1.920, -43.350, 39.780, -0.280, 27.130, -43.960, -23.750, 15.110, -36.640, 13.850
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
     % Fixed polynomial order: At^6 + Bt^5 + Ct^4 + Dt^3 + Et^2 + Ft + G
@@ -81,7 +124,16 @@ function handles = createMainLayout(fig, handles)
               'BackgroundColor', colors.primary, ...
               'HorizontalAlignment', 'left');
     
-
+    % Version text
+    uicontrol('Parent', titlePanel, ...
+              'Style', 'text', ...
+              'String', 'v2.0', ...
+              'Units', 'normalized', ...
+              'Position', [0.85, 0.2, 0.13, 0.6], ...
+              'FontSize', 10, ...
+              'ForegroundColor', [0.9, 0.9, 0.9], ...
+              'BackgroundColor', colors.primary, ...
+              'HorizontalAlignment', 'right');
     
     % Content area
     contentTop = 1 - titleHeight - 0.01;
@@ -125,19 +177,17 @@ function handles = createLeftColumnContent(parent, handles)
     panelPadding = 0.01;
     
     % Calculate heights
-    numPanels = 5;  % Added batch settings panel
+    numPanels = 4;
     totalSpacing = panelPadding + (numPanels-1)*panelSpacing + panelPadding;
     availableHeight = 1 - totalSpacing;
     
-    h1 = 0.25 * availableHeight;  % Configuration panel
-    h2 = 0.12 * availableHeight;  % Modeling panel (reduced)
-    h3 = 0.31 * availableHeight;  % Joint editor panel (increased)
-    h4 = 0.16 * availableHeight;  % Output settings panel
-    h5 = 0.16 * availableHeight;  % Batch settings panel
+    h1 = 0.28 * availableHeight;  % Increased from 0.22 to provide more space for Simulink model selection
+    h2 = 0.20 * availableHeight;
+    h3 = 0.33 * availableHeight;
+    h4 = 0.19 * availableHeight;  % Reduced from 0.25 to compensate for h1 increase
     
     % Calculate positions
-    y5 = panelPadding;
-    y4 = y5 + h5 + panelSpacing;
+    y4 = panelPadding;
     y3 = y4 + h4 + panelSpacing;
     y2 = y3 + h3 + panelSpacing;
     y1 = y2 + h2 + panelSpacing;
@@ -147,7 +197,6 @@ function handles = createLeftColumnContent(parent, handles)
     handles = createModelingPanel(parent, handles, y2, h2);
     handles = createJointEditorPanel(parent, handles, y3, h3);
     handles = createOutputPanel(parent, handles, y4, h4);
-    handles = createBatchSettingsPanel(parent, handles, y5, h5);
 end
 function handles = createRightColumnContent(parent, handles)
     % Create right column panels
@@ -324,7 +373,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                             'BackgroundColor', 'white');
     
     % Data Sources
-    y = y - 0.20;
+    y = y - 0.25;
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
               'String', 'Data Sources:', ...
@@ -337,7 +386,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                       'Style', 'checkbox', ...
                                       'String', 'CombinedSignalBus', ...
                                       'Units', 'normalized', ...
-                                      'Position', [0.18, y, 0.20, rowHeight], ...
+                                      'Position', [0.18, y, 0.25, rowHeight], ...
                                       'Value', 1, ...
                                       'BackgroundColor', colors.panel);
     
@@ -345,7 +394,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                    'Style', 'checkbox', ...
                                    'String', 'Logsout Dataset', ...
                                    'Units', 'normalized', ...
-                                   'Position', [0.39, y, 0.20, rowHeight], ...
+                                   'Position', [0.44, y, 0.25, rowHeight], ...
                                    'Value', 1, ...
                                    'BackgroundColor', colors.panel);
     
@@ -353,28 +402,25 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                     'Style', 'checkbox', ...
                                     'String', 'Simscape Results', ...
                                     'Units', 'normalized', ...
-                                    'Position', [0.60, y, 0.20, rowHeight], ...
+                                    'Position', [0.70, y, 0.25, rowHeight], ...
                                     'Value', 1, ...
                                     'BackgroundColor', colors.panel);
     
-    handles.capture_workspace_checkbox = uicontrol('Parent', panel, ...
-                                                  'Style', 'checkbox', ...
-                                                  'String', 'Model Workspace', ...
-                                                  'Value', 1, ... % Default to checked
-                                                  'Units', 'normalized', ...
-                                                  'Position', [0.81, y, 0.18, rowHeight], ...
-                                                  'BackgroundColor', colors.panel, ...
-                                                  'ForegroundColor', colors.text, ...
-                                                  'FontSize', 9, ...
-                                                  'TooltipString', 'Include model workspace variables (segment lengths, masses, inertias, etc.) in the output dataset');
-    
     % Animation Option
-    y = y - 0.18;
+    y = y - 0.20;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Animation:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, 0.15, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
     handles.enable_animation = uicontrol('Parent', panel, ...
                                         'Style', 'checkbox', ...
-                                        'String', 'Enable Animation', ...
+                                        'String', 'Enable Animation (slower)', ...
                                         'Units', 'normalized', ...
-                                        'Position', [0.18, y, 0.25, rowHeight], ...
+                                        'Position', [0.18, y, 0.35, rowHeight], ...
                                         'Value', 0, ...
                                         'BackgroundColor', colors.panel);
     
@@ -446,9 +492,9 @@ function handles = createModelingPanel(parent, handles, yPos, height)
                    'BackgroundColor', colors.panel, ...
                    'ForegroundColor', colors.text);
     
-    rowHeight = 0.25;
+    rowHeight = 0.18;
     labelWidth = 0.25;
-    y = 0.60;
+    y = 0.65;
     
     % Torque Scenario
     uicontrol('Parent', panel, ...
@@ -468,7 +514,7 @@ function handles = createModelingPanel(parent, handles, yPos, height)
                                              'Callback', @torqueScenarioCallback);
     
     % Parameters
-    y = y - 0.30;
+    y = y - 0.35;
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
               'String', 'Coefficient Range (±):', ...
@@ -519,7 +565,7 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                    'ForegroundColor', colors.text);
     
     % Selection row
-    y = 0.85;
+    y = 0.80;
     rowHeight = 0.12;
     
     uicontrol('Parent', panel, ...
@@ -572,7 +618,7 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                                          'Enable', 'off');
     
     % Coefficient edit boxes
-    y = 0.55;
+    y = 0.48;
     coeff_labels = {'A', 'B', 'C', 'D', 'E', 'F', 'G'};
     coeff_powers = {'t⁶', 't⁵', 't⁴', 't³', 't²', 't', '1'};  % Powers for each coefficient
     handles.joint_coeff_edits = gobjects(1, 7);
@@ -595,7 +641,7 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                   'Style', 'text', ...
                   'String', [coeff_labels{i} ' (' coeff_powers{i} ')'], ...
                   'Units', 'normalized', ...
-                  'Position', [xPos, y+0.12, coeffWidth, 0.10], ...
+                  'Position', [xPos, y+0.08, coeffWidth, 0.08], ...
                   'FontWeight', 'normal', ...
                   'FontSize', 9, ...
                   'ForegroundColor', labelColor, ...
@@ -606,14 +652,14 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                                                 'Style', 'edit', ...
                                                 'String', '0.00', ...
                                                 'Units', 'normalized', ...
-                                                'Position', [xPos, y, coeffWidth, 0.12], ...
+                                                'Position', [xPos, y, coeffWidth, 0.10], ...
                                                 'BackgroundColor', 'white', ...
                                                 'HorizontalAlignment', 'center', ...
                                                 'Callback', @validateCoefficientInput);
     end
     
     % Action buttons
-    y = 0.28;
+    y = 0.22;
     buttonHeight = 0.12;
     
     handles.apply_joint_button = uicontrol('Parent', panel, ...
@@ -733,150 +779,6 @@ function handles = createOutputPanel(parent, handles, yPos, height)
                                     'Units', 'normalized', ...
                                     'Position', [0.65, y, 0.31, rowHeight], ...
                                     'BackgroundColor', 'white');
-    
-
-end
-
-function handles = createBatchSettingsPanel(parent, handles, yPos, height)
-    % Batch Settings Panel
-    colors = handles.colors;
-    
-    panel = uipanel('Parent', parent, ...
-                   'Title', 'Batch Settings', ...
-                   'FontSize', 10, ...
-                   'FontWeight', 'normal', ...
-                   'Units', 'normalized', ...
-                   'Position', [0.01, yPos, 0.98, height], ...
-                   'BackgroundColor', colors.panel, ...
-                   'ForegroundColor', colors.text);
-    
-    % Single help button for the entire section
-    uicontrol('Parent', panel, ...
-              'Style', 'pushbutton', ...
-              'String', '?', ...
-              'Units', 'normalized', ...
-              'Position', [0.92, 0.88, 0.06, 0.10], ...
-              'BackgroundColor', [0.8, 0.8, 1], ...
-              'ForegroundColor', 'black', ...
-              'FontSize', 10, ...
-              'FontWeight', 'bold', ...
-              'Callback', @(src, event) showBatchSettingsHelp());
-    
-    rowHeight = 0.25;
-    y = 0.65;
-    
-    % Batch Size
-    uicontrol('Parent', panel, ...
-              'Style', 'text', ...
-              'String', 'Batch Size:', ...
-              'Units', 'normalized', ...
-              'Position', [0.02, y, 0.15, rowHeight], ...
-              'HorizontalAlignment', 'left', ...
-              'BackgroundColor', colors.panel);
-    
-    handles.batch_size_edit = uicontrol('Parent', panel, ...
-                                       'Style', 'edit', ...
-                                       'String', '50', ...
-                                       'Units', 'normalized', ...
-                                       'Position', [0.18, y, 0.12, rowHeight], ...
-                                       'BackgroundColor', 'white', ...
-                                       'HorizontalAlignment', 'center', ...
-                                       'FontSize', 9, ...
-                                       'TooltipString', 'Number of simulations to process in each batch (recommended: 25-100)');
-    
-    uicontrol('Parent', panel, ...
-              'Style', 'text', ...
-              'String', 'trials', ...
-              'Units', 'normalized', ...
-              'Position', [0.31, y, 0.08, rowHeight], ...
-              'HorizontalAlignment', 'left', ...
-              'BackgroundColor', colors.panel, ...
-              'FontSize', 9);
-    
-    % Save Interval
-    uicontrol('Parent', panel, ...
-              'Style', 'text', ...
-              'String', 'Save Interval:', ...
-              'Units', 'normalized', ...
-              'Position', [0.42, y, 0.15, rowHeight], ...
-              'HorizontalAlignment', 'left', ...
-              'BackgroundColor', colors.panel);
-    
-    handles.save_interval_edit = uicontrol('Parent', panel, ...
-                                          'Style', 'edit', ...
-                                          'String', '25', ...
-                                          'Units', 'normalized', ...
-                                          'Position', [0.58, y, 0.12, rowHeight], ...
-                                          'BackgroundColor', 'white', ...
-                                          'HorizontalAlignment', 'center', ...
-                                          'FontSize', 9, ...
-                                          'TooltipString', 'Save checkpoint every N batches (recommended: 10-50)');
-    
-    uicontrol('Parent', panel, ...
-              'Style', 'text', ...
-              'String', 'batches', ...
-              'Units', 'normalized', ...
-              'Position', [0.71, y, 0.08, rowHeight], ...
-              'HorizontalAlignment', 'left', ...
-              'BackgroundColor', colors.panel, ...
-              'FontSize', 9);
-    
-    % Performance Monitoring
-    y = 0.35;
-    handles.enable_performance_monitoring = uicontrol('Parent', panel, ...
-                                                     'Style', 'checkbox', ...
-                                                     'String', 'Enable Performance Monitoring', ...
-                                                     'Value', 1, ...
-                                                     'Units', 'normalized', ...
-                                                     'Position', [0.02, y, 0.45, rowHeight], ...
-                                                     'BackgroundColor', colors.panel, ...
-                                                     'ForegroundColor', colors.text, ...
-                                                     'FontSize', 9, ...
-                                                     'TooltipString', 'Track execution times, memory usage, and performance metrics');
-    
-    % Verbosity Level
-    uicontrol('Parent', panel, ...
-              'Style', 'text', ...
-              'String', 'Verbosity:', ...
-              'Units', 'normalized', ...
-              'Position', [0.48, y, 0.12, rowHeight], ...
-              'HorizontalAlignment', 'left', ...
-              'BackgroundColor', colors.panel);
-    
-    handles.verbosity_popup = uicontrol('Parent', panel, ...
-                                       'Style', 'popupmenu', ...
-                                       'String', {'Normal', 'Silent', 'Verbose', 'Debug'}, ...
-                                       'Value', 1, ...
-                                       'Units', 'normalized', ...
-                                       'Position', [0.61, y, 0.35, rowHeight], ...
-                                       'BackgroundColor', 'white', ...
-                                       'FontSize', 9, ...
-                                       'TooltipString', 'Output detail level: Silent=minimal, Normal=standard, Verbose=detailed, Debug=all');
-    
-    % Robust Generation Mode
-    y = 0.05;
-    handles.use_robust_generator = uicontrol('Parent', panel, ...
-                                            'Style', 'checkbox', ...
-                                            'String', 'Use Robust Generator', ...
-                                            'Value', 1, ...
-                                            'Units', 'normalized', ...
-                                            'Position', [0.02, y, 0.45, rowHeight], ...
-                                            'BackgroundColor', colors.panel, ...
-                                            'ForegroundColor', colors.text, ...
-                                            'FontSize', 9, ...
-                                            'TooltipString', 'Enable crash-resistant batch processing with memory monitoring and checkpointing');
-    
-    % Memory Monitoring
-    handles.enable_memory_monitoring = uicontrol('Parent', panel, ...
-                                                'Style', 'checkbox', ...
-                                                'String', 'Memory Monitoring', ...
-                                                'Value', 1, ...
-                                                'Units', 'normalized', ...
-                                                'Position', [0.48, y, 0.45, rowHeight], ...
-                                                'BackgroundColor', colors.panel, ...
-                                                'ForegroundColor', colors.text, ...
-                                                'FontSize', 9, ...
-                                                'TooltipString', 'Monitor system memory and automatically manage parallel workers');
 end
 function handles = createPreviewPanel(parent, handles, yPos, height)
     % Parameters Preview Panel
@@ -1026,33 +928,27 @@ function handles = createProgressPanel(parent, handles, yPos, height)
                    'BackgroundColor', colors.panel, ...
                    'ForegroundColor', colors.text);
     
-    % Progress text (copyable)
+    % Progress text
     handles.progress_text = uicontrol('Parent', panel, ...
-                                     'Style', 'edit', ...
+                                     'Style', 'text', ...
                                      'String', 'Ready to start generation...', ...
                                      'Units', 'normalized', ...
                                      'Position', [0.02, 0.55, 0.96, 0.35], ...
                                      'FontWeight', 'normal', ...
                                      'FontSize', 10, ...
                                      'HorizontalAlignment', 'left', ...
-                                     'BackgroundColor', colors.panel, ...
-                                     'Max', 2, ... % Allow multiple lines
-                                     'Min', 0, ... % Allow selection
-                                     'Enable', 'inactive'); % Read-only but selectable
+                                     'BackgroundColor', colors.panel);
     
-    % Status (copyable error messages)
+    % Status
     handles.status_text = uicontrol('Parent', panel, ...
-                                   'Style', 'edit', ...
+                                   'Style', 'text', ...
                                    'String', 'Status: Ready', ...
                                    'Units', 'normalized', ...
                                    'Position', [0.02, 0.15, 0.96, 0.35], ...
                                    'HorizontalAlignment', 'left', ...
                                    'BackgroundColor', [0.97, 0.97, 0.97], ...
                                    'ForegroundColor', colors.success, ...
-                                   'FontSize', 9, ...
-                                   'Max', 2, ... % Allow multiple lines
-                                   'Min', 0, ... % Allow selection
-                                   'Enable', 'inactive'); % Read-only but selectable
+                                   'FontSize', 9);
 end
 function handles = createControlPanel(parent, handles, yPos, height)
     % Control Buttons Panel
@@ -1946,38 +1842,15 @@ function runGeneration(handles)
         
         set(handles.status_text, 'String', 'Status: Running trials...');
         
-        % Check if robust generator is enabled AND we're not forcing sequential
+        % Check execution mode and implement parallel processing
         execution_mode = get(handles.execution_mode_popup, 'Value');
-        if config.use_robust_generator && execution_mode ~= 1  % 1 = Sequential
-            % Use robust dataset generator for crash-resistant processing
-            set(handles.status_text, 'String', 'Status: Using robust generator...');
-            drawnow;
-            
-            % Add robust generator parameters to config
-            config.BatchSize = config.batch_size;
-            config.SaveInterval = config.save_interval;
-            config.PerformanceMonitoring = config.enable_performance_monitoring;
-            config.Verbosity = config.verbosity;
-            
-            % Get execution mode and pass to robust generator
-            execution_mode = get(handles.execution_mode_popup, 'Value');
-            config.execution_mode = execution_mode;
-            
-            % Call robust dataset generator
-            successful_trials = robust_dataset_generator(config, ...
-                'MaxMemoryGB', 8, ...  % Default memory limit
-                'CaptureWorkspace', config.capture_workspace);
+        
+        if execution_mode == 2 && license('test', 'Distrib_Computing_Toolbox')
+            % Parallel execution
+            successful_trials = runParallelSimulations(handles, config);
         else
-            % Use traditional execution mode
-            execution_mode = get(handles.execution_mode_popup, 'Value');
-            
-            if execution_mode == 2 && license('test', 'Distrib_Computing_Toolbox')
-                % Parallel execution
-                successful_trials = runParallelSimulations(handles, config);
-            else
-                % Sequential execution
-                successful_trials = runSequentialSimulations(handles, config);
-            end
+            % Sequential execution
+            successful_trials = runSequentialSimulations(handles, config);
         end
         
         % Final status
@@ -2065,7 +1938,7 @@ function successful_trials = runParallelSimulations(handles, config)
         fprintf('Debug: Running %d simulations in parallel with Simscape logging\n', length(simInputs));
         
         % Use parsim for parallel simulation with robust error handling
-        simOuts = parsim(simInputs, ...
+        simOuts = parsim(simInputs, 'ShowProgress', true, 'ShowSimulationManager', 'off', ...
                         'TransferBaseWorkspaceVariables', 'on', ...
                         'AttachedFiles', {config.model_path}, ...
                         'StopOnError', 'off');  % Don't stop on individual simulation errors
@@ -2079,22 +1952,7 @@ function successful_trials = runParallelSimulations(handles, config)
         end
         
         for i = 1:length(simOuts)
-            % Safely access simOuts(i) to handle potential brace indexing issues
-            try
-                current_simOut = simOuts(i);
-                
-                % Check if we got a valid single simulation output object
-                if isempty(current_simOut)
-                    fprintf('✗ Trial %d: Empty simulation output\n', i);
-                    continue;
-                end
-                
-                % Handle case where simOuts(i) returns multiple values (brace indexing issue)
-                if ~isscalar(current_simOut)
-                    fprintf('✗ Trial %d: Multiple simulation outputs returned (brace indexing issue)\n', i);
-                    continue;
-                end
-                
+            if ~isempty(simOuts(i))
                 % Check if simulation completed successfully
                 simulation_success = false;
                 has_error = false;
@@ -2102,10 +1960,10 @@ function successful_trials = runParallelSimulations(handles, config)
                 % Try multiple ways to check simulation status
                 try
                     % Method 1: Check SimulationMetadata (standard way)
-                    if isprop(current_simOut, 'SimulationMetadata') && ...
-                       isfield(current_simOut.SimulationMetadata, 'ExecutionInfo')
+                    if isprop(simOuts(i), 'SimulationMetadata') && ...
+                       isfield(simOuts(i).SimulationMetadata, 'ExecutionInfo')
                         
-                        execInfo = current_simOut.SimulationMetadata.ExecutionInfo;
+                        execInfo = simOuts(i).SimulationMetadata.ExecutionInfo;
                         
                         if isfield(execInfo, 'StopEvent') && execInfo.StopEvent == "CompletedNormally"
                             simulation_success = true;
@@ -2119,16 +1977,16 @@ function successful_trials = runParallelSimulations(handles, config)
                         end
                     else
                         % Method 2: Check for ErrorMessage property (indicates failure)
-                        if isprop(current_simOut, 'ErrorMessage') && ~isempty(current_simOut.ErrorMessage)
+                        if isprop(simOuts(i), 'ErrorMessage') && ~isempty(simOuts(i).ErrorMessage)
                             has_error = true;
-                            fprintf('✗ Trial %d simulation failed: %s\n', i, current_simOut.ErrorMessage);
+                            fprintf('✗ Trial %d simulation failed: %s\n', i, simOuts(i).ErrorMessage);
                         else
                             % Method 3: If no metadata but we have output data, assume success
                             % Check if we have expected output fields (logsout, simlog, etc.)
                             has_data = false;
-                            if isprop(current_simOut, 'logsout') || isfield(current_simOut, 'logsout') || ...
-                               isprop(current_simOut, 'simlog') || isfield(current_simOut, 'simlog') || ...
-                               isprop(current_simOut, 'CombinedSignalBus') || isfield(current_simOut, 'CombinedSignalBus')
+                            if isprop(simOuts(i), 'logsout') || isfield(simOuts(i), 'logsout') || ...
+                               isprop(simOuts(i), 'simlog') || isfield(simOuts(i), 'simlog') || ...
+                               isprop(simOuts(i), 'CombinedSignalBus') || isfield(simOuts(i), 'CombinedSignalBus')
                                 has_data = true;
                             end
                             
@@ -2149,7 +2007,7 @@ function successful_trials = runParallelSimulations(handles, config)
                 % Process simulation if it succeeded
                 if simulation_success && ~has_error
                     try
-                        result = processSimulationOutput(i, config, current_simOut, config.capture_workspace);
+                        result = processSimulationOutput(i, config, simOuts(i));
                         if result.success
                             successful_trials = successful_trials + 1;
                             fprintf('✓ Trial %d completed successfully\n', i);
@@ -2160,15 +2018,8 @@ function successful_trials = runParallelSimulations(handles, config)
                         fprintf('Error processing trial %d: %s\n', i, ME.message);
                     end
                 end
-                
-            catch ME
-                % Handle brace indexing errors specifically
-                if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
-                    fprintf('✗ Trial %d: Brace indexing error - simulation output corrupted\n', i);
-                    fprintf('  Error: %s\n', ME.message);
-                else
-                    fprintf('✗ Trial %d: Unexpected error accessing simulation output: %s\n', i, ME.message);
-                end
+            else
+                fprintf('✗ Trial %d: Empty simulation output\n', i);
             end
         end
         
@@ -2245,7 +2096,7 @@ function successful_trials = runSequentialSimulations(handles, config)
                 trial_coefficients = config.coefficient_values(end, :);
             end
             
-            result = runSingleTrial(trial, config, trial_coefficients, config.capture_workspace);
+            result = runSingleTrial(trial, config, trial_coefficients);
             
             if result.success
                 successful_trials = successful_trials + 1;
@@ -2285,12 +2136,6 @@ function simInputs = prepareSimulationInputs(config)
             trial_coefficients = config.coefficient_values(end, :);
         end
         
-        % Ensure coefficients are numeric (fix for parallel execution)
-        if iscell(trial_coefficients)
-            trial_coefficients = cell2mat(trial_coefficients);
-        end
-        trial_coefficients = double(trial_coefficients);  % Ensure double precision
-        
         % Create SimulationInput object
         simIn = Simulink.SimulationInput(model_name);
         
@@ -2298,11 +2143,7 @@ function simInputs = prepareSimulationInputs(config)
         simIn = setModelParameters(simIn, config);
         
         % Set polynomial coefficients
-        try
-            simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
-        catch ME
-            fprintf('Warning: Could not set polynomial coefficients: %s\n', ME.message);
-        end
+        simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
         
         % Load input file if specified
         if ~isempty(config.input_file) && exist(config.input_file, 'file')
@@ -2313,76 +2154,12 @@ function simInputs = prepareSimulationInputs(config)
     end
 end
 function simIn = setPolynomialCoefficients(simIn, coefficients, config)
-    % DEBUG: Print what we're receiving
-    fprintf('DEBUG: setPolynomialCoefficients called with:\n');
-    fprintf('  coefficients class: %s\n', class(coefficients));
-    fprintf('  coefficients size: %s\n', mat2str(size(coefficients)));
-    if iscell(coefficients)
-        fprintf('  coefficients is cell array with %d elements\n', numel(coefficients));
-        if numel(coefficients) > 0
-            fprintf('  first element class: %s\n', class(coefficients{1}));
-        end
-    end
-    
     % Get parameter info for coefficient mapping
     param_info = getPolynomialParameterInfo();
     
     % Basic validation
     if isempty(param_info.joint_names)
         error('No joint names found in polynomial parameter info');
-    end
-    
-    % Handle parallel worker coefficient format issues
-    if iscell(coefficients)
-        fprintf('Debug: Converting cell array coefficients to numeric (parallel worker fix)\n');
-        try
-            % Check if cells contain strings or numbers
-            if all(cellfun(@ischar, coefficients))
-                % Convert string cells to numeric
-                coefficients = cellfun(@str2double, coefficients);
-                fprintf('Debug: Converted string cells to numeric\n');
-            elseif all(cellfun(@isnumeric, coefficients))
-                % Convert numeric cells to array
-                coefficients = cell2mat(coefficients);
-                fprintf('Debug: Converted numeric cells to array\n');
-            else
-                % Mixed content or other issues
-                fprintf('Warning: Mixed cell content, attempting element-wise conversion\n');
-                numeric_coeffs = zeros(size(coefficients));
-                for i = 1:numel(coefficients)
-                    if ischar(coefficients{i})
-                        numeric_coeffs(i) = str2double(coefficients{i});
-                    elseif isnumeric(coefficients{i})
-                        numeric_coeffs(i) = coefficients{i};
-                    else
-                        numeric_coeffs(i) = NaN;
-                    end
-                end
-                coefficients = numeric_coeffs;
-            end
-        catch ME
-            fprintf('Error: Could not convert cell coefficients to numeric: %s\n', ME.message);
-            % Try one more approach - flatten and convert
-            try
-                coefficients = str2double(coefficients(:));
-                fprintf('Debug: Used str2double on flattened cells\n');
-            catch
-                fprintf('Error: All conversion attempts failed\n');
-                return;
-            end
-        end
-    end
-    
-    % Ensure coefficients are numeric
-    if ~isnumeric(coefficients)
-        fprintf('Error: Coefficients must be numeric, got %s\n', class(coefficients));
-        return;
-    end
-    
-    % Ensure coefficients are a row vector if needed
-    if size(coefficients, 1) > 1 && size(coefficients, 2) == 1
-        coefficients = coefficients';
-        fprintf('Debug: Transposed coefficients to row vector\n');
     end
     
     fprintf('Setting %d coefficients for %d joints\n', length(coefficients), length(param_info.joint_names));
@@ -2443,7 +2220,7 @@ function simIn = loadInputFile(simIn, input_file)
     end
 end
 % Real Simulation Function - Replaces Mock
-function result = runSingleTrial(trial_num, config, trial_coefficients, capture_workspace)
+function result = runSingleTrial(trial_num, config, trial_coefficients)
     result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
     
     try
@@ -2454,11 +2231,7 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
         simIn = setModelParameters(simIn, config);
         
         % Set polynomial coefficients for this trial
-        try
-            simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
-        catch ME
-            fprintf('Warning: Could not set polynomial coefficients: %s\n', ME.message);
-        end
+        simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
         
         % Suppress specific warnings that are not critical
         warning_state = warning('off', 'Simulink:Bus:EditTimeBusPropNotAllowed');
@@ -2468,12 +2241,8 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
         warning_state5 = warning('off', 'Simulink:Blocks:UnconnectedOutputPort');
         warning_state6 = warning('off', 'Simulink:Blocks:UnconnectedInputPort');
         
-        % Run simulation with progress indicator and visualization suppression
+        % Run simulation with progress indicator
         fprintf('Running trial %d simulation...', trial_num);
-        
-        % Visualization suppression (problematic parameters removed for compatibility)
-        % Note: ShowSimulationManager and ShowProgress don't exist for block diagrams
-        
         simOut = sim(simIn);
         fprintf(' Done.\n');
         
@@ -2488,7 +2257,7 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
         warning(warning_state6);
         
         % Process simulation output
-        result = processSimulationOutput(trial_num, config, simOut, capture_workspace);
+        result = processSimulationOutput(trial_num, config, simOut);
         
     catch ME
         % Restore warning state in case of error
@@ -2580,21 +2349,6 @@ function simIn = setModelParameters(simIn, config)
                 fprintf('Warning: Simscape data extraction may not work without this parameter\n');
             end
             
-            % Set animation control based on user preference
-            try
-                if isfield(config, 'enable_animation') && ~config.enable_animation
-                    % Disable animation for faster simulation
-                    simIn = simIn.setModelParameter('SimulationMode', 'accelerator');
-                    fprintf('Debug: ✅ Animation disabled - using accelerator mode\n');
-                else
-                    % Enable animation (normal mode)
-                    simIn = simIn.setModelParameter('SimulationMode', 'normal');
-                    fprintf('Debug: ⚠️ Animation enabled - using normal mode (slower)\n');
-                end
-            catch ME
-                fprintf('Warning: Could not set simulation mode for animation control: %s\n', ME.message);
-            end
-            
             % Set other model parameters to suppress unconnected port warnings
             try
                 simIn = simIn.setModelParameter('UnconnectedInputMsg', 'none');
@@ -2608,7 +2362,7 @@ function simIn = setModelParameters(simIn, config)
             rethrow(ME);
         end
 end
-function result = processSimulationOutput(trial_num, config, simOut, capture_workspace)
+function result = processSimulationOutput(trial_num, config, simOut)
     result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
     
     try
@@ -2657,16 +2411,8 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
         end
         
         % Add model workspace variables (segment lengths, masses, inertias, etc.)
-        % Use the capture_workspace parameter passed to this function
-        if nargin < 4
-            capture_workspace = true; % Default to true if not provided
-        end
-        
-        if capture_workspace
-            data_table = addModelWorkspaceData(data_table, simOut, num_rows);
-        else
-            fprintf('Debug: Model workspace capture disabled by user setting\n');
-        end
+        % Note: Model workspace data is always captured as it contains essential model parameters
+        data_table = addModelWorkspaceData(data_table, simOut, num_rows);
         
         % Save to file in selected format(s)
         timestamp = datestr(now, 'yyyymmdd_HHMMSS');
@@ -2739,22 +2485,6 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
     signal_info = struct();
     
     try
-        % Validate simOut input to prevent brace indexing errors
-        if isempty(simOut)
-            if options.verbose
-                fprintf('Warning: Empty simulation output provided\n');
-            end
-            return;
-        end
-        
-        % Check if simOut is a valid simulation output object
-        if ~isobject(simOut) && ~isstruct(simOut)
-            if options.verbose
-                fprintf('Warning: Invalid simulation output type: %s\n', class(simOut));
-            end
-            return;
-        end
-        
         % Initialize data collection
         all_data = {};
         
@@ -2764,26 +2494,14 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                 fprintf('Extracting from CombinedSignalBus...\n');
             end
             
-            try
-                combinedBus = simOut.CombinedSignalBus;
-                if ~isempty(combinedBus)
-                    signal_bus_data = extractFromCombinedSignalBus(combinedBus);
-                    
-                    if ~isempty(signal_bus_data)
-                        all_data{end+1} = signal_bus_data;
-                        if options.verbose
-                            fprintf('CombinedSignalBus: %d columns extracted\n', width(signal_bus_data));
-                        end
-                    end
-                end
-            catch ME
-                if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
+            combinedBus = simOut.CombinedSignalBus;
+            if ~isempty(combinedBus)
+                signal_bus_data = extractFromCombinedSignalBus(combinedBus);
+                
+                if ~isempty(signal_bus_data)
+                    all_data{end+1} = signal_bus_data;
                     if options.verbose
-                        fprintf('Warning: Brace indexing error accessing CombinedSignalBus: %s\n', ME.message);
-                    end
-                else
-                    if options.verbose
-                        fprintf('Warning: Error extracting CombinedSignalBus: %s\n', ME.message);
+                        fprintf('CombinedSignalBus: %d columns extracted\n', width(signal_bus_data));
                     end
                 end
             end
@@ -2795,23 +2513,11 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                 fprintf('Extracting from logsout...\n');
             end
             
-            try
-                logsout_data = extractLogsoutDataFixed(simOut.logsout);
-                if ~isempty(logsout_data)
-                    all_data{end+1} = logsout_data;
-                    if options.verbose
-                        fprintf('Logsout: %d columns extracted\n', width(logsout_data));
-                    end
-                end
-            catch ME
-                if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
-                    if options.verbose
-                        fprintf('Warning: Brace indexing error accessing logsout: %s\n', ME.message);
-                    end
-                else
-                    if options.verbose
-                        fprintf('Warning: Error extracting logsout: %s\n', ME.message);
-                    end
+            logsout_data = extractLogsoutDataFixed(simOut.logsout);
+            if ~isempty(logsout_data)
+                all_data{end+1} = logsout_data;
+                if options.verbose
+                    fprintf('Logsout: %d columns extracted\n', width(logsout_data));
                 end
             end
         end
@@ -2836,14 +2542,8 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                         end
                     end
                 catch ME
-                    if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
-                        if options.verbose
-                            fprintf('Warning: Brace indexing error accessing simlog: %s\n', ME.message);
-                        end
-                    else
-                        if options.verbose
-                            fprintf('Warning: Could not access simlog: %s\n', ME.message);
-                        end
+                    if options.verbose
+                        fprintf('Warning: Could not access simlog: %s\n', ME.message);
                     end
                 end
             end
@@ -3058,7 +2758,7 @@ function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
                 
             catch ME
                 % Skip variables that can't be extracted
-                fprintf('Warning: Could not extract variable %s: %s\n', var_name, ME.message);
+                fprintf('  Warning: Could not extract variable %s: %s\n', var_name, ME.message);
             end
         end
         
@@ -3265,33 +2965,8 @@ function config = validateInputs(handles)
         config.use_signal_bus = get(handles.use_signal_bus, 'Value');
         config.use_simscape = get(handles.use_simscape, 'Value');
         config.enable_animation = get(handles.enable_animation, 'Value');
-        config.capture_workspace = logical(get(handles.capture_workspace_checkbox, 'Value'));
         config.output_folder = fullfile(output_folder, folder_name);
         config.file_format = get(handles.format_popup, 'Value');
-        
-        % Batch settings validation and configuration
-        batch_size = str2double(get(handles.batch_size_edit, 'String'));
-        save_interval = str2double(get(handles.save_interval_edit, 'String'));
-        
-        if isnan(batch_size) || batch_size <= 0 || batch_size > 1000
-            error('Batch size must be between 1 and 1,000');
-        end
-        if isnan(save_interval) || save_interval <= 0 || save_interval > 1000
-            error('Save interval must be between 1 and 1,000');
-        end
-        
-        % Get verbosity level
-        verbosity_options = {'Normal', 'Silent', 'Verbose', 'Debug'};
-        verbosity_idx = get(handles.verbosity_popup, 'Value');
-        verbosity_level = verbosity_options{verbosity_idx};
-        
-        % Add batch settings to config
-        config.batch_size = batch_size;
-        config.save_interval = save_interval;
-        config.enable_performance_monitoring = get(handles.enable_performance_monitoring, 'Value');
-        config.verbosity = verbosity_level;
-        config.use_robust_generator = get(handles.use_robust_generator, 'Value');
-        config.enable_memory_monitoring = get(handles.enable_memory_monitoring, 'Value');
         
     catch ME
         errordlg(ME.message, 'Input Validation Error');
@@ -3544,15 +3219,6 @@ function handles = loadUserPreferences(handles)
     handles.preferences.default_num_trials = 10;
     handles.preferences.default_sim_time = 0.3;
     handles.preferences.default_sample_rate = 100;
-    handles.preferences.capture_workspace = true; % Default to capturing workspace data
-    
-    % Batch settings defaults
-    handles.preferences.default_batch_size = 50;
-    handles.preferences.default_save_interval = 25;
-    handles.preferences.enable_performance_monitoring = true;
-    handles.preferences.default_verbosity = 'Normal';
-    handles.preferences.use_robust_generator = true;
-    handles.preferences.enable_memory_monitoring = true;
     
     % Try to load saved preferences
     if exist(pref_file, 'file')
@@ -3604,40 +3270,6 @@ function applyUserPreferences(handles)
             set(handles.sample_rate_edit, 'String', num2str(prefs.default_sample_rate));
         end
         
-        % Apply workspace capture setting
-        if isfield(handles, 'capture_workspace_checkbox') && isfield(prefs, 'capture_workspace')
-            set(handles.capture_workspace_checkbox, 'Value', double(prefs.capture_workspace));
-        end
-        
-        % Apply batch settings
-        if isfield(handles, 'batch_size_edit') && isfield(prefs, 'default_batch_size')
-            set(handles.batch_size_edit, 'String', num2str(prefs.default_batch_size));
-        end
-        
-        if isfield(handles, 'save_interval_edit') && isfield(prefs, 'default_save_interval')
-            set(handles.save_interval_edit, 'String', num2str(prefs.default_save_interval));
-        end
-        
-        if isfield(handles, 'enable_performance_monitoring') && isfield(prefs, 'enable_performance_monitoring')
-            set(handles.enable_performance_monitoring, 'Value', prefs.enable_performance_monitoring);
-        end
-        
-        if isfield(handles, 'verbosity_popup') && isfield(prefs, 'default_verbosity')
-            verbosity_options = {'Normal', 'Silent', 'Verbose', 'Debug'};
-            verbosity_idx = find(strcmp(verbosity_options, prefs.default_verbosity), 1);
-            if ~isempty(verbosity_idx)
-                set(handles.verbosity_popup, 'Value', verbosity_idx);
-            end
-        end
-        
-        if isfield(handles, 'use_robust_generator') && isfield(prefs, 'use_robust_generator')
-            set(handles.use_robust_generator, 'Value', prefs.use_robust_generator);
-        end
-        
-        if isfield(handles, 'enable_memory_monitoring') && isfield(prefs, 'enable_memory_monitoring')
-            set(handles.enable_memory_monitoring, 'Value', prefs.enable_memory_monitoring);
-        end
-        
     catch
         % Silently fail if preferences can't be applied
     end
@@ -3663,46 +3295,6 @@ function saveUserPreferences(handles)
             handles.preferences.last_input_file_path = handles.selected_input_file;
             [~, filename, ext] = fileparts(handles.selected_input_file);
             handles.preferences.last_input_file = [filename ext];
-        end
-        
-        % Save workspace capture setting
-        if isfield(handles, 'capture_workspace_checkbox')
-            handles.preferences.capture_workspace = logical(get(handles.capture_workspace_checkbox, 'Value'));
-        end
-        
-        % Save batch settings
-        if isfield(handles, 'batch_size_edit')
-            batch_size = str2double(get(handles.batch_size_edit, 'String'));
-            if ~isnan(batch_size)
-                handles.preferences.default_batch_size = batch_size;
-            end
-        end
-        
-        if isfield(handles, 'save_interval_edit')
-            save_interval = str2double(get(handles.save_interval_edit, 'String'));
-            if ~isnan(save_interval)
-                handles.preferences.default_save_interval = save_interval;
-            end
-        end
-        
-        if isfield(handles, 'enable_performance_monitoring')
-            handles.preferences.enable_performance_monitoring = get(handles.enable_performance_monitoring, 'Value');
-        end
-        
-        if isfield(handles, 'verbosity_popup')
-            verbosity_options = {'Normal', 'Silent', 'Verbose', 'Debug'};
-            verbosity_idx = get(handles.verbosity_popup, 'Value');
-            if verbosity_idx <= length(verbosity_options)
-                handles.preferences.default_verbosity = verbosity_options{verbosity_idx};
-            end
-        end
-        
-        if isfield(handles, 'use_robust_generator')
-            handles.preferences.use_robust_generator = get(handles.use_robust_generator, 'Value');
-        end
-        
-        if isfield(handles, 'enable_memory_monitoring')
-            handles.preferences.enable_memory_monitoring = get(handles.enable_memory_monitoring, 'Value');
         end
         
         % Save to file
@@ -3915,77 +3507,24 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                         numeric_data = signal_data;
                     end
                     
-                    % Add the data - handle both time series and constant properties
+                    % Add the data if it matches our expected length
                     if ~isempty(numeric_data)
-                        data_size = size(numeric_data);
-                        num_elements = numel(numeric_data);
-                        
                         if size(numeric_data, 1) == expected_length
-                            % TIME SERIES DATA - matches expected length
                             if size(numeric_data, 2) == 1
-                                % Single column time series
+                                % Single column
                                 data_cells{end+1} = numeric_data(:);
                                 var_names{end+1} = sprintf('%s_%s', field_name, sub_field_name);
-                                fprintf('Debug: Added time series %s_%s\n', field_name, sub_field_name);
+                                fprintf('Debug: Added %s_%s\n', field_name, sub_field_name);
                             elseif size(numeric_data, 2) > 1
-                                % Multi-column time series
+                                % Multi-column data
                                 for col = 1:size(numeric_data, 2)
                                     data_cells{end+1} = numeric_data(:, col);
                                     var_names{end+1} = sprintf('%s_%s_%d', field_name, sub_field_name, col);
-                                    fprintf('Debug: Added time series %s_%s_%d\n', field_name, sub_field_name, col);
+                                    fprintf('Debug: Added %s_%s_%d\n', field_name, sub_field_name, col);
                                 end
                             end
-                            
-                        elseif num_elements == 3
-                            % 3D VECTOR (e.g., COM position [x, y, z])
-                            vector_data = numeric_data(:);  % Ensure column vector
-                            for dim = 1:3
-                                % Replicate constant value for all time steps
-                                replicated_data = repmat(vector_data(dim), expected_length, 1);
-                                data_cells{end+1} = replicated_data;
-                                dim_labels = {'x', 'y', 'z'};
-                                var_names{end+1} = sprintf('%s_%s_%s', field_name, sub_field_name, dim_labels{dim});
-                                fprintf('Debug: Added 3D vector %s_%s_%s (replicated %g for %d timesteps)\n', ...
-                                    field_name, sub_field_name, dim_labels{dim}, vector_data(dim), expected_length);
-                            end
-                            
-                        elseif num_elements == 9
-                            % 3x3 MATRIX (e.g., inertia matrix)
-                            if isequal(data_size, [3, 3])
-                                % Already 3x3 matrix
-                                matrix_data = numeric_data;
-                            else
-                                % Reshape to 3x3 if it's a 9x1 vector
-                                matrix_data = reshape(numeric_data, 3, 3);
-                            end
-                            
-                            % Extract all 9 elements and replicate for each time step
-                            for row = 1:3
-                                for col = 1:3
-                                    matrix_element = matrix_data(row, col);
-                                    replicated_data = repmat(matrix_element, expected_length, 1);
-                                    data_cells{end+1} = replicated_data;
-                                    var_names{end+1} = sprintf('%s_%s_I%d%d', field_name, sub_field_name, row, col);
-                                    fprintf('Debug: Added 3x3 matrix %s_%s_I%d%d (replicated %g for %d timesteps)\n', ...
-                                        field_name, sub_field_name, row, col, matrix_element, expected_length);
-                                end
-                            end
-                            
-                        elseif num_elements == 6
-                            % 6 ELEMENT DATA (e.g., 6DOF pose/twist)
-                            vector_data = numeric_data(:);  % Ensure column vector
-                            for dim = 1:6
-                                replicated_data = repmat(vector_data(dim), expected_length, 1);
-                                data_cells{end+1} = replicated_data;
-                                var_names{end+1} = sprintf('%s_%s_dof%d', field_name, sub_field_name, dim);
-                                fprintf('Debug: Added 6DOF data %s_%s_dof%d (replicated %g for %d timesteps)\n', ...
-                                    field_name, sub_field_name, dim, vector_data(dim), expected_length);
-                            end
-                            
                         else
-                            % UNHANDLED SIZE - still skip but with better diagnostic
-                            fprintf('Debug: Skipping %s.%s (size [%s] not supported - need time series, 3D vector, 3x3 matrix, or 6DOF)\n', ...
-                                field_name, sub_field_name, num2str(data_size));
+                            fprintf('Debug: Skipping %s.%s (length mismatch: %d vs %d)\n', field_name, sub_field_name, size(numeric_data, 1), expected_length);
                         end
                     end
                 end
@@ -4361,20 +3900,6 @@ function [time_data, all_signals] = fallbackSimlogExtraction(simlog)
                                 all_signals{end+1} = struct('name', signal_name, 'data', extracted_data);
                                 fprintf('Debug: Fallback found data in %s\n', prop_name);
                             end
-                        elseif isstruct(prop_value)
-                            % Try to extract constant matrix/vector data from struct
-                            [constant_signals] = extractConstantMatrixData(prop_value, prop_name, []);
-                            if ~isempty(constant_signals)
-                                all_signals = [all_signals, constant_signals];
-                                fprintf('Debug: Fallback found constant data in struct %s\n', prop_name);
-                            end
-                        elseif isnumeric(prop_value)
-                            % Handle numeric arrays directly (constant matrices/vectors)
-                            [constant_signals] = extractConstantMatrixData(prop_value, prop_name, []);
-                            if ~isempty(constant_signals)
-                                all_signals = [all_signals, constant_signals];
-                                fprintf('Debug: Fallback found numeric data in %s\n', prop_name);
-                            end
                         end
                     catch
                         continue;
@@ -4427,102 +3952,6 @@ function [time_data, all_signals] = fallbackSimlogExtraction(simlog)
     end
 end
 
-% Extract constant matrix/vector data and replicate for time series
-function [constant_signals] = extractConstantMatrixData(data_value, signal_name, reference_time)
-    constant_signals = {};
-    
-    try
-        if isstruct(data_value)
-            % Extract numeric data from struct fields
-            fields = fieldnames(data_value);
-            for i = 1:length(fields)
-                field_name = fields{i};
-                field_value = data_value.(field_name);
-                
-                % Recursively process struct fields
-                if isnumeric(field_value)
-                    sub_signals = extractConstantMatrixData(field_value, sprintf('%s_%s', signal_name, field_name), reference_time);
-                    constant_signals = [constant_signals, sub_signals];
-                end
-            end
-            
-        elseif isnumeric(data_value)
-            % Process numeric data directly
-            num_elements = numel(data_value);
-            data_size = size(data_value);
-            
-            % Determine reference length (use 3006 as default if no reference provided)
-            if isempty(reference_time)
-                expected_length = 3006;  % Default length based on typical simulation
-            else
-                expected_length = length(reference_time);
-            end
-            
-            if num_elements == 3
-                % 3D VECTOR (e.g., COM position [x, y, z])
-                vector_data = data_value(:);  % Ensure column vector
-                dim_labels = {'x', 'y', 'z'};
-                for dim = 1:3
-                    replicated_data = repmat(vector_data(dim), expected_length, 1);
-                    signal_name_full = matlab.lang.makeValidName(sprintf('%s_%s', signal_name, dim_labels{dim}));
-                    constant_signals{end+1} = struct('name', signal_name_full, 'data', replicated_data);
-                    fprintf('Debug: Added 3D vector %s (replicated %g for %d timesteps)\n', signal_name_full, vector_data(dim), expected_length);
-                end
-                
-            elseif num_elements == 6
-                % 6DOF DATA (e.g., pose/twist [x,y,z,rx,ry,rz])
-                vector_data = data_value(:);  % Ensure column vector
-                dof_labels = {'x', 'y', 'z', 'rx', 'ry', 'rz'};
-                for dim = 1:6
-                    replicated_data = repmat(vector_data(dim), expected_length, 1);
-                    signal_name_full = matlab.lang.makeValidName(sprintf('%s_%s', signal_name, dof_labels{dim}));
-                    constant_signals{end+1} = struct('name', signal_name_full, 'data', replicated_data);
-                    fprintf('Debug: Added 6DOF data %s (replicated %g for %d timesteps)\n', signal_name_full, vector_data(dim), expected_length);
-                end
-                
-            elseif num_elements == 9 && isequal(data_size, [3, 3])
-                % 3x3 MATRIX (e.g., inertia matrix, rotation matrix)
-                matrix_data = data_value;
-                for row = 1:3
-                    for col = 1:3
-                        matrix_element = matrix_data(row, col);
-                        replicated_data = repmat(matrix_element, expected_length, 1);
-                        signal_name_full = matlab.lang.makeValidName(sprintf('%s_R%d%d', signal_name, row, col));
-                        constant_signals{end+1} = struct('name', signal_name_full, 'data', replicated_data);
-                        fprintf('Debug: Added 3x3 matrix %s (replicated %g for %d timesteps)\n', signal_name_full, matrix_element, expected_length);
-                    end
-                end
-                
-            elseif num_elements == 9 && ~isequal(data_size, [3, 3])
-                % 9-ELEMENT VECTOR (flattened 3x3 matrix)
-                vector_data = data_value(:);  % Ensure column vector
-                for elem = 1:9
-                    row = ceil(elem/3);
-                    col = mod(elem-1, 3) + 1;
-                    replicated_data = repmat(vector_data(elem), expected_length, 1);
-                    signal_name_full = matlab.lang.makeValidName(sprintf('%s_I%d%d', signal_name, row, col));
-                    constant_signals{end+1} = struct('name', signal_name_full, 'data', replicated_data);
-                    fprintf('Debug: Added 9-element vector %s (replicated %g for %d timesteps)\n', signal_name_full, vector_data(elem), expected_length);
-                end
-                
-            elseif num_elements == 1
-                % SCALAR CONSTANT
-                replicated_data = repmat(data_value, expected_length, 1);
-                signal_name_full = matlab.lang.makeValidName(signal_name);
-                constant_signals{end+1} = struct('name', signal_name_full, 'data', replicated_data);
-                fprintf('Debug: Added scalar constant %s (replicated %g for %d timesteps)\n', signal_name_full, data_value, expected_length);
-                
-            else
-                % UNSUPPORTED SIZE - log for debugging
-                fprintf('Debug: Skipping %s (unsupported size [%s] - need 1, 3, 6, or 9 elements)\n', signal_name, num2str(data_size));
-            end
-        end
-        
-    catch ME
-        fprintf('Debug: Error processing constant data %s: %s\n', signal_name, ME.message);
-    end
-end
-
 % Simscape Multibody specific traversal (different API than generic Simscape)
 function [time_data, signals] = traverseSimlogNode(node, parent_path)
     time_data = [];
@@ -4542,9 +3971,9 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
         % SIMSCAPE MULTIBODY APPROACH: Try multiple extraction methods
         node_has_data = false;
         
-        % Method 1: Try generic Simscape series API (RESTORED WORKING VERSION)
+        % Method 1: Try generic Simscape series API
         try
-            series_names = node.series.children();  % Original working method
+            series_names = node.series.children();  % Standard Simscape series API
             for i = 1:length(series_names)
                 series_node = node.series.(series_names{i});
                 if series_node.hasData()
@@ -4565,46 +3994,43 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
             % Series API failed - this is expected for Multibody
         end
         
-        % Method 2: Extract data from 5-level Multibody hierarchy (regardless of exportable flag)
-        fprintf('Debug: Method 2 check - node_has_data=%s, has_series=%s\n', ...
-            mat2str(node_has_data), mat2str(isprop(node, 'series')));
-        if ~node_has_data && isprop(node, 'series')
+        % Method 2: Simscape Multibody specific - direct property access
+        if ~node_has_data
             try
-                % Get the signal ID (e.g., 'w' for angular velocity, 'q' for position)
-                signal_id = 'unknown';
-                if isprop(node, 'id') && ~isempty(node.id)
-                    signal_id = node.id;
-                end
-                fprintf('Debug: Method 2 attempting series access at %s.%s\n', current_path, signal_id);
-                
-                % Try to get time and data directly from node.series (the correct API)
-                try
-                    extracted_time = node.series.time;
-                    extracted_data = node.series.values;
-                    
-                    % Check if we actually got data (length > 0)
-                    if ~isempty(extracted_time) && ~isempty(extracted_data) && length(extracted_time) > 0
-                        if isempty(time_data)
-                            time_data = extracted_time;
-                            fprintf('Debug: Using time from %s.%s (length: %d)\n', current_path, signal_id, length(time_data));
-                        end
-                        
-                        % Create meaningful signal name: Body_Joint_Component_Axis_Signal
-                        signal_name = matlab.lang.makeValidName(sprintf('%s_%s', current_path, signal_id));
-                        signals{end+1} = struct('name', signal_name, 'data', extracted_data);
-                        fprintf('Debug: ✅ Found Multibody data: %s (length: %d)\n', signal_name, length(extracted_data));
-                        node_has_data = true;
-                    else
-                        % Debug: Show what we found even if empty
-                        fprintf('Debug: Empty data at %s.%s (time length: %d, data size: %s)\n', ...
-                            current_path, signal_id, length(extracted_time), mat2str(size(extracted_data)));
+                props = properties(node);
+                for i = 1:length(props)
+                    prop_name = props{i};
+                    % Skip non-data properties
+                    if ismember(prop_name, {'id', 'series', 'children'})
+                        continue;
                     end
-                catch ME
-                    % Series access failed - this is normal for non-data nodes
-                    fprintf('Debug: No series data at %s.%s: %s\n', current_path, signal_id, ME.message);
+                    
+                    try
+                        prop_value = node.(prop_name);
+                        if isa(prop_value, 'simscape.logging.Node')
+                            % This is another node - will be handled by recursion
+                            continue;
+                        elseif isstruct(prop_value) || isa(prop_value, 'timeseries')
+                            % Try to extract time series data
+                            [extracted_time, extracted_data] = extractTimeSeriesData(prop_value, sprintf('%s_%s', current_path, prop_name));
+                            if ~isempty(extracted_time) && ~isempty(extracted_data)
+                                if isempty(time_data)
+                                    time_data = extracted_time;
+                                    fprintf('Debug: Using time from %s.%s (length: %d)\n', current_path, prop_name, length(time_data));
+                                end
+                                signal_name = matlab.lang.makeValidName(sprintf('%s_%s', current_path, prop_name));
+                                signals{end+1} = struct('name', signal_name, 'data', extracted_data);
+                                fprintf('Debug: Found Multibody data in %s.%s (length: %d)\n', current_path, prop_name, length(extracted_data));
+                                node_has_data = true;
+                            end
+                        end
+                    catch
+                        % Skip properties that can't be accessed
+                        continue;
+                    end
                 end
             catch
-                % Node doesn't have series property
+                % Property enumeration failed
             end
         end
 
@@ -4639,32 +4065,22 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
         end
         
         % Process child nodes
-        fprintf('Debug: Processing %d child nodes at %s\n', length(child_ids), current_path);
         if ~isempty(child_ids)
             for i = 1:length(child_ids)
                 try
                     child_node = node.(child_ids{i});
-                    fprintf('Debug: → Recursing into child %s (%d/%d)\n', child_ids{i}, i, length(child_ids));
                     [child_time, child_signals] = traverseSimlogNode(child_node, current_path);
                     % Merge time (use first valid)
                     if isempty(time_data) && ~isempty(child_time)
                         time_data = child_time;
-                        fprintf('Debug: ← Got time data from child %s (length: %d)\n', child_ids{i}, length(child_time));
                     end
                     % Append child signals
-                    if ~isempty(child_signals)
-                        signals = [signals, child_signals];
-                        fprintf('Debug: ← Got %d signals from child %s\n', length(child_signals), child_ids{i});
-                    end
+                    signals = [signals, child_signals];
                 catch ME
                     fprintf('Debug: Error accessing child %s: %s\n', child_ids{i}, ME.message);
                 end
             end
         end
-        
-        % Final summary for this node
-        fprintf('Debug: Node %s summary: time=%s, signals=%d\n', current_path, ...
-            mat2str(~isempty(time_data)), length(signals));
 
     catch ME
         fprintf('Debug: Error traversing Multibody node %s: %s\n', current_path, ME.message);
@@ -4694,33 +4110,6 @@ function [time_data, values_data] = extractTimeSeriesData(data_obj, signal_path)
                 time_data = data_obj.Time;
                 values_data = data_obj.Data;
                 fprintf('Debug: Extracted struct Time/Data from %s\n', signal_path);
-            else
-                % Check for direct numeric data in struct (constant matrices/vectors)
-                fields = fieldnames(data_obj);
-                for i = 1:length(fields)
-                    field_name = fields{i};
-                    field_value = data_obj.(field_name);
-                    if isnumeric(field_value)
-                        % Found numeric data - treat as constant and create mock time
-                        num_elements = numel(field_value);
-                        if num_elements >= 1 && num_elements <= 9
-                            % Create a default time vector for constant data
-                            time_data = linspace(0, 3, 3006)';  % Default 3 second simulation
-                            values_data = field_value;
-                            fprintf('Debug: Extracted constant numeric data from %s.%s (%d elements)\n', signal_path, field_name, num_elements);
-                            break;  % Use first numeric field found
-                        end
-                    end
-                end
-            end
-        elseif isnumeric(data_obj)
-            % Direct numeric data (constant values)
-            num_elements = numel(data_obj);
-            if num_elements >= 1 && num_elements <= 9
-                % Create a default time vector for constant data
-                time_data = linspace(0, 3, 3006)';  % Default 3 second simulation
-                values_data = data_obj;
-                fprintf('Debug: Extracted direct numeric data from %s (%d elements)\n', signal_path, num_elements);
             end
         end
         
@@ -5486,52 +4875,4 @@ function str = logical2str(logical_val)
     else
         str = 'disabled';
     end
-end
-
-% Help function for batch settings
-function showBatchSettingsHelp()
-    % Create a simple help dialog for batch settings
-    help_dialog = figure('Name', 'Help: Batch Settings', ...
-                        'NumberTitle', 'off', ...
-                        'MenuBar', 'none', ...
-                        'ToolBar', 'none', ...
-                        'Resize', 'off', ...
-                        'Position', [400, 400, 400, 200], ...
-                        'Color', [0.94, 0.94, 0.94]);
-    
-    % Add help text
-    help_text = {
-        'Batch Settings Help:';
-        '';
-        'Batch Size: Number of simulations to process in each batch. Smaller batches use less memory but may be slower. Recommended: 25-100 for most systems.';
-        '';
-        'Save Interval: Save checkpoint every N batches. More frequent saves protect against crashes but may slow down processing. Recommended: 10-50 batches.';
-        '';
-        'Performance Monitoring: Track execution times, memory usage, and performance metrics. Provides detailed analysis of bottlenecks and optimization opportunities.';
-        '';
-        'Verbosity: Output detail level - Silent=minimal output, Normal=standard progress, Verbose=detailed info, Debug=all messages including technical details.';
-        '';
-        'Robust Generator: Enable crash-resistant batch processing with memory monitoring and checkpointing. Automatically recovers from crashes and manages system resources.';
-        '';
-        'Memory Monitoring: Monitor system memory and automatically manage parallel workers. Helps prevent crashes due to memory exhaustion.';
-    };
-    
-    uicontrol('Parent', help_dialog, ...
-              'Style', 'text', ...
-              'String', help_text, ...
-              'Units', 'normalized', ...
-              'Position', [0.05, 0.1, 0.9, 0.8], ...
-              'HorizontalAlignment', 'left', ...
-              'BackgroundColor', [0.94, 0.94, 0.94], ...
-              'FontSize', 10, ...
-              'FontWeight', 'normal');
-    
-    % Add close button
-    uicontrol('Parent', help_dialog, ...
-              'Style', 'pushbutton', ...
-              'String', 'Close', ...
-              'Units', 'normalized', ...
-              'Position', [0.4, 0.05, 0.2, 0.1], ...
-              'BackgroundColor', [0.8, 0.8, 0.8], ...
-              'Callback', @(src, event) close(help_dialog));
 end
