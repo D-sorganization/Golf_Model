@@ -481,6 +481,16 @@ function success = isSimulationSuccessful(simOut)
     % Check if simulation completed successfully
     success = false;
     
+    fprintf('DEBUG: Checking simulation success...\n');
+    fprintf('DEBUG: simOut class: %s\n', class(simOut));
+    fprintf('DEBUG: simOut properties: ');
+    if isobject(simOut)
+        props = properties(simOut);
+        fprintf('%s\n', strjoin(props, ', '));
+    else
+        fprintf('not an object\n');
+    end
+    
     try
         % Check for error message
         if isprop(simOut, 'ErrorMessage') && ~isempty(simOut.ErrorMessage)
@@ -499,9 +509,16 @@ function success = isSimulationSuccessful(simOut)
         end
         
         % Check for output data
-        if isprop(simOut, 'logsout') || isfield(simOut, 'logsout') || ...
-           isprop(simOut, 'simlog') || isfield(simOut, 'simlog')
+        fprintf('DEBUG: Checking for logsout/simlog...\n');
+        has_logsout = isprop(simOut, 'logsout') || isfield(simOut, 'logsout');
+        has_simlog = isprop(simOut, 'simlog') || isfield(simOut, 'simlog');
+        fprintf('DEBUG: has_logsout: %s, has_simlog: %s\n', mat2str(has_logsout), mat2str(has_simlog));
+        
+        if has_logsout || has_simlog
             success = true;
+            fprintf('DEBUG: Simulation marked as successful due to data presence\n');
+        else
+            fprintf('DEBUG: No logsout or simlog found\n');
         end
         
     catch
