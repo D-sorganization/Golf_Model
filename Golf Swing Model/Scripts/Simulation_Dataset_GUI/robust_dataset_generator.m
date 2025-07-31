@@ -890,6 +890,21 @@ function simIn = setModelParameters(simIn, config)
             % These parameters might not exist in all model types
         end
         
+        % ANIMATION CONTROL - Set simulation mode based on animation preference
+        try
+            if isfield(config, 'enable_animation') && ~config.enable_animation
+                % Disable animation by setting to accelerator mode
+                simIn = simIn.setModelParameter('SimulationMode', 'accelerator');
+                fprintf('Debug: Animation disabled (accelerator mode)\n');
+            else
+                % Enable animation with normal mode
+                simIn = simIn.setModelParameter('SimulationMode', 'normal');
+                fprintf('Debug: Animation enabled (normal mode)\n');
+            end
+        catch ME
+            fprintf('Warning: Could not set animation mode: %s\n', ME.message);
+        end
+        
     catch ME
         fprintf('Error setting model parameters: %s\n', ME.message);
         rethrow(ME);
