@@ -427,9 +427,18 @@ function batch_results = processBatch(config, trial_indices, pool, capture_works
             end
             
             % Run parallel simulations
+            fprintf('DEBUG: About to run parsim with %d simulation inputs\n', length(simInputs));
+            fprintf('DEBUG: First simInput model: %s\n', simInputs(1).ModelName);
+            fprintf('DEBUG: First simInput parameters: %s\n', mat2str(simInputs(1).ModelParameters));
+            
             simOuts = parsim(simInputs, 'ShowProgress', true, ...
                            'ShowSimulationManager', 'off', ...
                            'StopOnError', 'off');
+            
+            fprintf('DEBUG: parsim completed. simOuts class: %s, size: %s\n', class(simOuts), mat2str(size(simOuts)));
+            if ~isempty(simOuts)
+                fprintf('DEBUG: First simOut class: %s\n', class(simOuts(1)));
+            end
             
             % Process results
             for i = 1:length(simOuts)
@@ -509,7 +518,7 @@ function simInputs = prepareBatchSimulationInputs(config, trial_indices)
         end
         
         % Create SimulationInput object
-        simIn = Simulink.SimulationInput(config.model_name);
+        simIn = Simulink.SimulationInput(config.model_path);
         
         % Set simulation parameters
         simIn = setModelParameters(simIn, config);
