@@ -987,7 +987,19 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
         options.extract_simscape = config.use_simscape;
         options.verbose = false; % Set to true for debugging
         
-        [data_table, signal_info] = extractSignalsFromSimOut(simOut, options);
+        fprintf('DEBUG: About to call extractSignalsFromSimOut...\n');
+        try
+            [data_table, signal_info] = extractSignalsFromSimOut(simOut, options);
+            fprintf('DEBUG: extractSignalsFromSimOut completed successfully\n');
+        catch ME
+            fprintf('ERROR: extractSignalsFromSimOut failed: %s\n', ME.message);
+            fprintf('Stack trace:\n');
+            for i = 1:length(ME.stack)
+                fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
+            end
+            result.error = sprintf('Data extraction failed: %s', ME.message);
+            return;
+        end
         
         if isempty(data_table)
             result.error = 'No data extracted from simulation';
