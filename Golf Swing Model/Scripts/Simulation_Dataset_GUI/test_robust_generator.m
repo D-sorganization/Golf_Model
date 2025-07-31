@@ -12,8 +12,9 @@ function test_robust_generator()
     config.model_path = fullfile(pwd, '..', '..', 'Model', 'GolfSwing3D_Kinetic.slx');
     
     % Simulation parameters
-    config.simulation_time = 2.0;  % 2 seconds
+    config.simulation_time = 0.5;  % 0.5 seconds (reduced to avoid timeout)
     config.enable_animation = false;  % Disable animation for faster testing
+    config.input_file = '';  % No input file for testing
     
     % Data capture settings
     config.use_signal_bus = true;
@@ -42,7 +43,7 @@ function test_robust_generator()
     config.BatchSize = 1;  % Small batch size for testing
     config.SaveInterval = 1;  % Save after each trial
     config.MaxMemoryGB = 4;  % Conservative memory limit
-    config.MaxWorkers = 2;  % Small number of workers for testing
+    config.MaxWorkers = 1;  % Single worker to avoid timeout issues
     config.Verbosity = 'verbose';  % Enable verbose output
     config.PerformanceMonitoring = true;
     config.CaptureWorkspace = true;

@@ -65,7 +65,14 @@ function successful_trials = robust_dataset_generator(config, varargin)
     
     % Initialize verbosity control
     try
-        verbosity_control('set', verbosity_level);
+        if exist('verbosity_control', 'file')
+            verbosity_control('set', verbosity_level);
+        else
+            % Fallback verbosity control
+            fprintf('Warning: verbosity_control not available, using fallback logging\n');
+            global verbosity_level;
+            verbosity_level = verbosity_level;
+        end
     catch ME
         % If verbosity_control is not available, create a simple fallback
         fprintf('Warning: verbosity_control not available, using fallback logging\n');
@@ -76,8 +83,18 @@ function successful_trials = robust_dataset_generator(config, varargin)
     % Initialize performance monitoring
     if enable_performance_monitoring
         try
-            performance_monitor('start');
-            recordPhase('Initialization');
+            if exist('performance_monitor', 'file')
+                performance_monitor('start');
+            else
+                fprintf('Warning: performance_monitor not available\n');
+                enable_performance_monitoring = false;
+            end
+            
+            if exist('recordPhase', 'file')
+                recordPhase('Initialization');
+            else
+                fprintf('Warning: recordPhase not available\n');
+            end
         catch ME
             fprintf('Warning: Performance monitoring not available: %s\n', ME.message);
             enable_performance_monitoring = false;
@@ -113,8 +130,12 @@ function successful_trials = robust_dataset_generator(config, varargin)
     % Initialize parallel pool with memory limits (respect execution mode)
     if enable_performance_monitoring
         try
-            endPhase();
-            recordPhase('Parallel Pool Setup');
+            if exist('endPhase', 'file')
+                endPhase();
+            end
+            if exist('recordPhase', 'file')
+                recordPhase('Parallel Pool Setup');
+            end
         catch
             % Performance monitoring not available, continue silently
         end
@@ -136,8 +157,12 @@ function successful_trials = robust_dataset_generator(config, varargin)
     
     if enable_performance_monitoring
         try
-            endPhase();
-            recordPhase('Dataset Generation');
+            if exist('endPhase', 'file')
+                endPhase();
+            end
+            if exist('recordPhase', 'file')
+                recordPhase('Dataset Generation');
+            end
         catch
             % Performance monitoring not available, continue silently
         end
@@ -225,8 +250,12 @@ function successful_trials = robust_dataset_generator(config, varargin)
         % Final compilation
         if enable_performance_monitoring
             try
-                endPhase();
-                recordPhase('Final Compilation');
+                if exist('endPhase', 'file')
+                    endPhase();
+                end
+                if exist('recordPhase', 'file')
+                    recordPhase('Final Compilation');
+                end
             catch
                 % Performance monitoring not available, continue silently
             end
@@ -246,8 +275,12 @@ function successful_trials = robust_dataset_generator(config, varargin)
         % Stop performance monitoring and generate report
         if enable_performance_monitoring
             try
-                endPhase();
-                performance_monitor('stop');
+                if exist('endPhase', 'file')
+                    endPhase();
+                end
+                if exist('performance_monitor', 'file')
+                    performance_monitor('stop');
+                end
             catch
                 % Performance monitoring not available, continue silently
             end
@@ -270,7 +303,9 @@ function successful_trials = robust_dataset_generator(config, varargin)
         % Stop performance monitoring
         if enable_performance_monitoring
             try
-                performance_monitor('stop');
+                if exist('performance_monitor', 'file')
+                    performance_monitor('stop');
+                end
             catch
                 % Performance monitoring not available, continue silently
             end
@@ -289,8 +324,8 @@ function optimal_batch_size = calculateOptimalBatchSize(max_memory_gb, config)
     % Calculate optimal batch size based on available memory
     try
         % Estimate memory per simulation (rough estimate)
-        % Simscape logging can be memory intensive
-        estimated_memory_per_sim_mb = 50; % Conservative estimate
+        % Simscape logging can be memory intensive - increased from 50MB to 500MB
+        estimated_memory_per_sim_mb = 500; % Realistic estimate for Simscape models
         
         % Get available memory
         [~, systemview] = memory;
@@ -412,17 +447,25 @@ function batch_results = processBatch(config, trial_indices, pool, capture_works
             % Add current directory to parallel workers' path
             spmd
                 addpath(current_dir);
-                % Load the simulation worker functions
-                simulation_worker_functions;
                 % Ensure all required functions are available
                 if ~exist('setModelParameters', 'file')
                     fprintf('Warning: setModelParameters function not found on worker\n');
                 end
-                if ~exist('setPolynomialCoefficients', 'file')
-                    fprintf('Warning: setPolynomialCoefficients function not found on worker\n');
-                end
-                if ~exist('loadInputFile', 'file')
-                    fprintf('Warning: loadInputFile function not found on worker\n');
+                
+                % Validate model loading on workers
+                try
+                    if ~bdIsLoaded(config.model_name)
+                        if exist(config.model_path, 'file')
+                            load_system(config.model_path);
+                            fprintf('Worker %d: Successfully loaded model %s\n', labindex, config.model_name);
+                        else
+                            fprintf('Worker %d: ERROR - Model file not found at %s\n', labindex, config.model_path);
+                        end
+                    else
+                        fprintf('Worker %d: Model %s already loaded\n', labindex, config.model_name);
+                    end
+                catch ME
+                    fprintf('Worker %d: ERROR loading model: %s\n', labindex, ME.message);
                 end
             end
             
@@ -443,31 +486,29 @@ function batch_results = processBatch(config, trial_indices, pool, capture_works
             for i = 1:length(simOuts)
                 trial = trial_indices(i);
                 try
-                    % Handle potential brace indexing issues with simOuts(i)
-                    if iscell(simOuts) && i <= length(simOuts)
-                        simOut = simOuts{i}; % Use cell indexing
-                    elseif isnumeric(simOuts) || isstruct(simOuts)
-                        simOut = simOuts(i); % Use regular indexing
+                    % Better parsim result handling as suggested in Claude's review
+                    if iscell(simOuts)
+                        current_simOut = simOuts{i};  % Cell array access
                     else
-                        simOut = [];
+                        current_simOut = simOuts(i);  % Regular array access
                     end
                     
                     fprintf('DEBUG: Processing trial %d simulation output\n', trial);
-                    fprintf('DEBUG: simOut class: %s\n', class(simOut));
+                    fprintf('DEBUG: simOut class: %s\n', class(current_simOut));
                     
-                    % Check if simOut is a valid simulation output object
-                    if isempty(simOut) || ~isobject(simOut) || ~isa(simOut, 'Simulink.SimulationOutput')
-                        fprintf('DEBUG: Invalid simulation output for trial %d - treating as failed\n', trial);
-                        batch_results{i} = struct('success', false, 'error', 'Invalid simulation output');
+                    % Validate result is a proper SimulationOutput
+                    if ~isa(current_simOut, 'Simulink.SimulationOutput')
+                        fprintf('DEBUG: Invalid simulation output type for trial %d: %s\n', trial, class(current_simOut));
+                        batch_results{i} = struct('success', false, 'error', 'Invalid simulation output type');
                         continue;
                     end
                     
                     fprintf('DEBUG: About to call isSimulationSuccessful for trial %d\n', trial);
-                    success_result = isSimulationSuccessful(simOut);
+                    success_result = isSimulationSuccessful(current_simOut);
                     fprintf('DEBUG: isSimulationSuccessful returned: %s for trial %d\n', mat2str(success_result), trial);
                     if success_result
                         fprintf('DEBUG: Simulation successful, calling processSimulationOutput for trial %d\n', trial);
-                        batch_results{i} = processSimulationOutput(trial, config, simOut, capture_workspace);
+                        batch_results{i} = processSimulationOutput(trial, config, current_simOut, capture_workspace);
                     else
                         fprintf('DEBUG: Simulation failed for trial %d\n', trial);
                         batch_results{i} = struct('success', false, 'error', 'Simulation failed');
@@ -482,19 +523,32 @@ function batch_results = processBatch(config, trial_indices, pool, capture_works
             fprintf('Parallel batch failed: %s\n', ME.message);
             fprintf('Falling back to sequential processing for this batch\n');
             
-            % Fallback to sequential
+            % Fallback to sequential with better error handling
             for i = 1:length(trial_indices)
                 trial = trial_indices(i);
                 try
-                    % Get coefficients for this trial
+                    % Get coefficients for this trial with proper handling
                     if trial <= size(config.coefficient_values, 1)
                         trial_coefficients = config.coefficient_values(trial, :);
                     else
                         trial_coefficients = config.coefficient_values(end, :);
                     end
                     
+                    % Handle parallel worker coefficient format issues
+                    if iscell(trial_coefficients)
+                        fprintf('Debug: Converting cell array coefficients to numeric (parallel worker fix)\n');
+                        trial_coefficients = cell2mat(trial_coefficients);
+                    end
+                    
+                    % Ensure coefficients are numeric
+                    if ~isnumeric(trial_coefficients)
+                        fprintf('Debug: Converting non-numeric coefficients to numeric\n');
+                        trial_coefficients = double(trial_coefficients);
+                    end
+                    
                     batch_results{i} = runSingleTrial(trial, config, trial_coefficients, capture_workspace);
                 catch ME
+                    fprintf('Sequential fallback failed for trial %d: %s\n', trial, ME.message);
                     batch_results{i} = struct('success', false, 'error', ME.message);
                 end
             end
@@ -524,7 +578,7 @@ function simInputs = prepareBatchSimulationInputs(config, trial_indices)
         simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
         
         % Load input file if specified
-        if ~isempty(config.input_file) && exist(config.input_file, 'file')
+        if isfield(config, 'input_file') && ~isempty(config.input_file) && exist(config.input_file, 'file')
             simIn = loadInputFile(simIn, config.input_file);
         end
         
