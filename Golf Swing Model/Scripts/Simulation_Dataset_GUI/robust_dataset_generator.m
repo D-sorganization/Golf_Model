@@ -412,6 +412,18 @@ function batch_results = processBatch(config, trial_indices, pool, capture_works
             % Add current directory to parallel workers' path
             spmd
                 addpath(current_dir);
+                % Load the simulation worker functions
+                simulation_worker_functions;
+                % Ensure all required functions are available
+                if ~exist('setModelParameters', 'file')
+                    fprintf('Warning: setModelParameters function not found on worker\n');
+                end
+                if ~exist('setPolynomialCoefficients', 'file')
+                    fprintf('Warning: setPolynomialCoefficients function not found on worker\n');
+                end
+                if ~exist('loadInputFile', 'file')
+                    fprintf('Warning: loadInputFile function not found on worker\n');
+                end
             end
             
             % Run parallel simulations
@@ -432,18 +444,28 @@ function batch_results = processBatch(config, trial_indices, pool, capture_works
                         simOut = [];
                     end
                     
-                    fprintf('DEBUG: Checking simulation success for trial %d\n', trial);
+                    fprintf('DEBUG: Processing trial %d simulation output\n', trial);
+                    fprintf('DEBUG: simOut class: %s\n', class(simOut));
+                    
+                    % Check if simOut is a valid simulation output object
+                    if isempty(simOut) || ~isobject(simOut) || ~isa(simOut, 'Simulink.SimulationOutput')
+                        fprintf('DEBUG: Invalid simulation output for trial %d - treating as failed\n', trial);
+                        batch_results{i} = struct('success', false, 'error', 'Invalid simulation output');
+                        continue;
+                    end
+                    
                     fprintf('DEBUG: About to call isSimulationSuccessful for trial %d\n', trial);
                     success_result = isSimulationSuccessful(simOut);
                     fprintf('DEBUG: isSimulationSuccessful returned: %s for trial %d\n', mat2str(success_result), trial);
-                    if ~isempty(simOut) && success_result
+                    if success_result
                         fprintf('DEBUG: Simulation successful, calling processSimulationOutput for trial %d\n', trial);
-                        batch_results{i} = processSimulationOutput(trial, config, simOut);
+                        batch_results{i} = processSimulationOutput(trial, config, simOut, capture_workspace);
                     else
                         fprintf('DEBUG: Simulation failed for trial %d\n', trial);
                         batch_results{i} = struct('success', false, 'error', 'Simulation failed');
                     end
                 catch ME
+                    fprintf('DEBUG: Error processing trial %d: %s\n', trial, ME.message);
                     batch_results{i} = struct('success', false, 'error', ME.message);
                 end
             end
@@ -509,6 +531,13 @@ function success = isSimulationSuccessful(simOut)
     fprintf('=== DEBUG: ENTERING isSimulationSuccessful FUNCTION ===\n');
     fprintf('DEBUG: Checking simulation success...\n');
     fprintf('DEBUG: simOut class: %s\n', class(simOut));
+    
+    % Early return if simOut is not a valid simulation output object
+    if isempty(simOut) || ~isobject(simOut) || ~isa(simOut, 'Simulink.SimulationOutput')
+        fprintf('DEBUG: simOut is not a valid Simulink.SimulationOutput object\n');
+        return;
+    end
+    
     fprintf('DEBUG: simOut properties: ');
     if isobject(simOut)
         props = properties(simOut);
@@ -520,6 +549,7 @@ function success = isSimulationSuccessful(simOut)
     try
         % Check for error message
         if isprop(simOut, 'ErrorMessage') && ~isempty(simOut.ErrorMessage)
+            fprintf('DEBUG: Simulation has error message: %s\n', simOut.ErrorMessage);
             return;
         end
         
@@ -530,7 +560,10 @@ function success = isSimulationSuccessful(simOut)
             execInfo = simOut.SimulationMetadata.ExecutionInfo;
             if isfield(execInfo, 'StopEvent') && execInfo.StopEvent == "CompletedNormally"
                 success = true;
+                fprintf('DEBUG: Simulation completed normally\n');
                 return;
+            else
+                fprintf('DEBUG: Simulation did not complete normally\n');
             end
         end
         
@@ -549,8 +582,9 @@ function success = isSimulationSuccessful(simOut)
             fprintf('DEBUG: No data sources found (logsout, simlog, or CombinedSignalBus)\n');
         end
         
-    catch
+    catch ME
         % If we can't determine, assume failure
+        fprintf('DEBUG: Error checking simulation success: %s\n', ME.message);
         success = false;
     end
 end
