@@ -2572,7 +2572,7 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
         if capture_workspace
             data_table = addModelWorkspaceData(data_table, simOut, num_rows);
         else
-            logWorkspaceCapture(false, 0);
+            fprintf('Debug: Model workspace capture disabled by user setting\n');
         end
         
         % Save to file in selected format(s)
@@ -2900,7 +2900,7 @@ function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
         
         % Check if model is loaded
         if ~bdIsLoaded(model_name)
-            logMessage('warning', 'Model %s not loaded, skipping workspace data', model_name);
+            fprintf('Warning: Model %s not loaded, skipping workspace data\n', model_name);
             return;
         end
         
@@ -2913,15 +2913,15 @@ function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
                         variables = model_workspace.whos;
                         variables = {variables.name};
                     catch
-                        logMessage('warning', 'Could not retrieve model workspace variable names');
+                        fprintf('Warning: Could not retrieve model workspace variable names\n');
                         return;
                     end
                 end
         
         if length(variables) > 0
-            logWorkspaceCapture(true, length(variables));
+            fprintf('Adding %d model workspace variables to CSV...\n', length(variables));
         else
-            logMessage('info', 'No model workspace variables found');
+            fprintf('No model workspace variables found\n');
             return;
         end
         
@@ -2965,12 +2965,12 @@ function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
                 
             catch ME
                 % Skip variables that can't be extracted
-                logMessage('warning', 'Could not extract variable %s: %s', var_name, ME.message);
+                fprintf('Warning: Could not extract variable %s: %s\n', var_name, ME.message);
             end
         end
         
     catch ME
-        logMessage('warning', 'Could not access model workspace: %s', ME.message);
+        fprintf('Warning: Could not access model workspace: %s\n', ME.message);
     end
 end
 
