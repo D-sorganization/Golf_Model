@@ -399,6 +399,14 @@ function batch_results = processBatch(config, trial_indices, pool, capture_works
             % Prepare simulation inputs for this batch
             simInputs = prepareBatchSimulationInputs(config, trial_indices);
             
+            % Set up parallel workers with required functions
+            fprintf('Setting up parallel workers with required functions...\n');
+            current_dir = pwd;
+            % Add current directory to parallel workers' path
+            spmd
+                addpath(current_dir);
+            end
+            
             % Run parallel simulations
             simOuts = parsim(simInputs, 'ShowProgress', true, ...
                            'ShowSimulationManager', 'off', ...
@@ -1210,31 +1218,28 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
         
         % Extract from CombinedSignalBus if enabled and available
         if options.extract_combined_bus && (isprop(simOut, 'CombinedSignalBus') || isfield(simOut, 'CombinedSignalBus'))
-            if options.verbose
-                fprintf('Extracting from CombinedSignalBus...\n');
-            end
+            fprintf('DEBUG: Extracting from CombinedSignalBus...\n');
             
-                try
-                    combinedBus = simOut.CombinedSignalBus;
-                    if ~isempty(combinedBus)
-                        signal_bus_data = extractCombinedSignalBusData(combinedBus);
-                        
-                        if ~isempty(signal_bus_data)
-                            all_data{end+1} = signal_bus_data;
-                            if options.verbose
-                                fprintf('CombinedSignalBus: %d columns extracted\n', width(signal_bus_data));
-                            end
-                        end
-                    end
-                catch ME
-                if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
-                    if options.verbose
-                        fprintf('Warning: Brace indexing error accessing CombinedSignalBus: %s\n', ME.message);
+            try
+                combinedBus = simOut.CombinedSignalBus;
+                if ~isempty(combinedBus)
+                    fprintf('DEBUG: Calling extractCombinedSignalBusData...\n');
+                    signal_bus_data = extractCombinedSignalBusData(combinedBus);
+                    
+                    if ~isempty(signal_bus_data)
+                        all_data{end+1} = signal_bus_data;
+                        fprintf('DEBUG: CombinedSignalBus: %d columns extracted\n', width(signal_bus_data));
+                    else
+                        fprintf('DEBUG: CombinedSignalBus extraction returned empty data\n');
                     end
                 else
-                    if options.verbose
-                        fprintf('Warning: Error extracting CombinedSignalBus: %s\n', ME.message);
-                    end
+                    fprintf('DEBUG: CombinedSignalBus is empty\n');
+                end
+            catch ME
+                fprintf('ERROR: Failed to extract CombinedSignalBus data: %s\n', ME.message);
+                fprintf('Stack trace:\n');
+                for i = 1:length(ME.stack)
+                    fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
                 end
             end
         end
@@ -1268,9 +1273,7 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
         
         % Extract from Simscape if enabled and available
         if options.extract_simscape
-            if options.verbose
-                fprintf('Checking for Simscape simlog...\n');
-            end
+            fprintf('DEBUG: Checking for Simscape simlog...\n');
             
             % Enhanced simlog access for parallel execution
             simlog_available = false;
@@ -1281,35 +1284,36 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                     simlog_data = simOut.simlog;
                     if ~isempty(simlog_data)
                         simlog_available = true;
-                        if options.verbose
-                            fprintf('Simscape simlog found and accessible\n');
-                        end
+                        fprintf('DEBUG: Simscape simlog found and accessible\n');
+                    else
+                        fprintf('DEBUG: Simscape simlog is empty\n');
                     end
                 catch ME
-                    if options.verbose
-                        fprintf('Warning: Error accessing simlog: %s\n', ME.message);
-                    end
+                    fprintf('ERROR: Failed to access simlog: %s\n', ME.message);
                 end
+            else
+                fprintf('DEBUG: No simlog property/field found in simOut\n');
             end
             
             if simlog_available
                 try
+                    fprintf('DEBUG: Calling extractSimscapeDataFixed...\n');
                     simscape_data = extractSimscapeDataFixed(simlog_data);
                     if ~isempty(simscape_data)
                         all_data{end+1} = simscape_data;
-                        if options.verbose
-                            fprintf('Simscape: %d columns extracted\n', width(simscape_data));
-                        end
+                        fprintf('DEBUG: Simscape: %d columns extracted\n', width(simscape_data));
+                    else
+                        fprintf('DEBUG: Simscape extraction returned empty data\n');
                     end
                 catch ME
-                    if options.verbose
-                        fprintf('Warning: Error extracting Simscape data: %s\n', ME.message);
+                    fprintf('ERROR: Failed to extract Simscape data: %s\n', ME.message);
+                    fprintf('Stack trace:\n');
+                    for i = 1:length(ME.stack)
+                        fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
                     end
                 end
             else
-                if options.verbose
-                    fprintf('No Simscape simlog data available\n');
-                end
+                fprintf('DEBUG: No Simscape simlog data available\n');
             end
         end
         
