@@ -1073,19 +1073,7 @@ function simIn = setPolynomialCoefficients(simIn, trial_coefficients, config)
     end
 end
 
-function param_info = getPolynomialParameterInfo()
-    % Get polynomial parameter information for coefficient setting
-    param_info = struct();
-    param_info.joint_names = {'Hip', 'Knee', 'Ankle', 'Shoulder', 'Elbow', 'Wrist'};
-    param_info.joint_coeffs = {
-        {'a0', 'a1', 'a2', 'a3', 'a4', 'a5'},  % Hip
-        {'b0', 'b1', 'b2', 'b3', 'b4', 'b5'},  % Knee
-        {'c0', 'c1', 'c2', 'c3', 'c4', 'c5'},  % Ankle
-        {'d0', 'd1', 'd2', 'd3', 'd4', 'd5'},  % Shoulder
-        {'e0', 'e1', 'e2', 'e3', 'e4', 'e5'},  % Elbow
-        {'f0', 'f1', 'f2', 'f3', 'f4', 'f5'}   % Wrist
-    };
-end
+
 
 function result = processSimulationOutput(trial_num, config, simOut, capture_workspace)
     result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
@@ -1207,7 +1195,7 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
             joint_name = param_info.joint_names{j};
             coeffs = param_info.joint_coeffs{j};
             for k = 1:length(coeffs)
-                coeff_name = sprintf('input_%s_%s', getShortenedJointName(joint_name), coeffs(k));
+                coeff_name = sprintf('input_%s_%s', getShortenedJointName(joint_name), coeffs{k});
                 if coeff_idx <= size(config.coefficient_values, 2)
                     data_table.(coeff_name) = repmat(config.coefficient_values(trial_num, coeff_idx), num_rows, 1);
                 end

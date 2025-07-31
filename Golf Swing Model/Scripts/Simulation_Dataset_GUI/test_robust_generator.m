@@ -31,9 +31,10 @@ function test_robust_generator()
     end
     
     % Create a small set of test coefficients (2 trials)
+    % 27 joints × 7 coefficients each = 189 total coefficients
     config.coefficient_values = [
-        0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6;
-        0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7
+        rand(1, 189) * 100 - 50;  % Random values between -50 and +50
+        rand(1, 189) * 100 - 50   % Random values between -50 and +50
     ];
     
     % Set number of simulations

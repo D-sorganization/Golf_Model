@@ -1,13 +1,107 @@
 function param_info = getPolynomialParameterInfo()
     % Get polynomial parameter information for coefficient setting
-    param_info = struct();
-    param_info.joint_names = {'Hip', 'Knee', 'Ankle', 'Shoulder', 'Elbow', 'Wrist'};
-    param_info.joint_coeffs = {
-        {'a0', 'a1', 'a2', 'a3', 'a4', 'a5'},  % Hip
-        {'b0', 'b1', 'b2', 'b3', 'b4', 'b5'},  % Knee
-        {'c0', 'c1', 'c2', 'c3', 'c4', 'c5'},  % Ankle
-        {'d0', 'd1', 'd2', 'd3', 'd4', 'd5'},  % Shoulder
-        {'e0', 'e1', 'e2', 'e3', 'e4', 'e5'},  % Elbow
-        {'f0', 'f1', 'f2', 'f3', 'f4', 'f5'}   % Wrist
+    % The actual model uses 27 joints with 7 coefficients each (ABCDEFG) = 189 total coefficients
+    
+    % Try to load the actual parameter structure from the model file
+    try
+        % Try multiple possible locations for the parameter file
+        possible_paths = {
+            'Model/PolynomialInputValues.mat',
+            'PolynomialInputValues.mat',
+            fullfile(pwd, '..', '..', 'Model', 'PolynomialInputValues.mat'),
+            fullfile(pwd, '..', 'Model', 'PolynomialInputValues.mat'),
+            fullfile(pwd, 'Model', 'PolynomialInputValues.mat'),
+            fullfile(pwd, 'PolynomialInputValues.mat')
+        };
+        
+        model_path = '';
+        for i = 1:length(possible_paths)
+            if exist(possible_paths{i}, 'file')
+                model_path = possible_paths{i};
+                break;
+            end
+        end
+        
+        if ~isempty(model_path)
+            fprintf('Loading parameter structure from: %s\n', model_path);
+            loaded_data = load(model_path);
+            var_names = fieldnames(loaded_data);
+            
+            % Parse variable names to find joints with 7 coefficients (ABCDEFG)
+            joint_map = containers.Map();
+            
+            for i = 1:length(var_names)
+                name = var_names{i};
+                if length(name) > 1
+                    coeff = name(end);
+                    base_name = name(1:end-1);
+                    
+                    if isKey(joint_map, base_name)
+                        joint_map(base_name) = [joint_map(base_name), coeff];
+                    else
+                        joint_map(base_name) = coeff;
+                    end
+                end
+            end
+            
+            % Filter to only 7-coefficient joints
+            all_joint_names = keys(joint_map);
+            filtered_joint_names = {};
+            filtered_coeffs = {};
+            
+            for i = 1:length(all_joint_names)
+                joint_name = all_joint_names{i};
+                coeffs = sort(joint_map(joint_name));
+                
+                if length(coeffs) == 7 && strcmp(coeffs, 'ABCDEFG')
+                    filtered_joint_names{end+1} = joint_name;
+                    filtered_coeffs{end+1} = coeffs;
+                end
+            end
+            
+            param_info.joint_names = sort(filtered_joint_names);
+            param_info.joint_coeffs = cell(size(param_info.joint_names));
+            
+            for i = 1:length(param_info.joint_names)
+                joint_name = param_info.joint_names{i};
+                idx = find(strcmp(filtered_joint_names, joint_name));
+                % Convert string 'ABCDEFG' to cell array {'A', 'B', 'C', 'D', 'E', 'F', 'G'}
+                coeff_string = filtered_coeffs{idx};
+                param_info.joint_coeffs{i} = cellstr(coeff_string')';
+            end
+            
+            param_info.total_params = length(param_info.joint_names) * 7;
+            fprintf('Loaded %d joints with 7 coefficients each = %d total coefficients\n', ...
+                length(param_info.joint_names), param_info.total_params);
+            
+        else
+            fprintf('Warning: PolynomialInputValues.mat not found, using fallback structure\n');
+            param_info = getSimplifiedParameterInfo();
+        end
+        
+    catch ME
+        fprintf('Error loading parameter structure: %s\n', ME.message);
+        fprintf('Using fallback structure\n');
+        param_info = getSimplifiedParameterInfo();
+    end
+end
+
+function param_info = getSimplifiedParameterInfo()
+    % Fallback structure - 27 joints with 7 coefficients each = 189 total
+    joint_names = {
+        'BaseTorqueInputX', 'BaseTorqueInputY', 'BaseTorqueInputZ',
+        'HipInputX', 'HipInputY', 'HipInputZ',
+        'LSInputX', 'LSInputY', 'LSInputZ',
+        'Joint1', 'Joint2', 'Joint3', 'Joint4', 'Joint5', 'Joint6',
+        'Joint7', 'Joint8', 'Joint9', 'Joint10', 'Joint11', 'Joint12',
+        'Joint13', 'Joint14', 'Joint15', 'Joint16', 'Joint17', 'Joint18'
     };
+    
+    param_info.joint_names = joint_names;
+    param_info.joint_coeffs = cell(size(joint_names));
+    for i = 1:length(joint_names)
+        % Convert string 'ABCDEFG' to cell array {'A', 'B', 'C', 'D', 'E', 'F', 'G'}
+        param_info.joint_coeffs{i} = {'A', 'B', 'C', 'D', 'E', 'F', 'G'};
+    end
+    param_info.total_params = length(joint_names) * 7; % 27 * 7 = 189
 end 
