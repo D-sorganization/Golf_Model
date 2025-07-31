@@ -874,6 +874,53 @@ function simIn = setPolynomialCoefficients(simIn, trial_coefficients, config)
     % Set polynomial coefficients for the simulation
     try
         if ~isempty(trial_coefficients)
+            % Handle parallel worker coefficient format issues
+            if iscell(trial_coefficients)
+                fprintf('Debug: Converting cell array coefficients to numeric (parallel worker fix)\n');
+                try
+                    % Check if cells contain strings or numbers
+                    if all(cellfun(@ischar, trial_coefficients))
+                        % Convert string cells to numeric
+                        trial_coefficients = cellfun(@str2double, trial_coefficients);
+                        fprintf('Debug: Converted string cells to numeric\n');
+                    elseif all(cellfun(@isnumeric, trial_coefficients))
+                        % Convert numeric cells to array
+                        trial_coefficients = cell2mat(trial_coefficients);
+                        fprintf('Debug: Converted numeric cells to array\n');
+                    else
+                        % Mixed content or other issues
+                        fprintf('Warning: Mixed cell content, attempting element-wise conversion\n');
+                        numeric_coeffs = zeros(size(trial_coefficients));
+                        for i = 1:numel(trial_coefficients)
+                            if ischar(trial_coefficients{i})
+                                numeric_coeffs(i) = str2double(trial_coefficients{i});
+                            elseif isnumeric(trial_coefficients{i})
+                                numeric_coeffs(i) = trial_coefficients{i};
+                            else
+                                numeric_coeffs(i) = NaN;
+                            end
+                        end
+                        trial_coefficients = numeric_coeffs;
+                    end
+                catch ME
+                    fprintf('Error: Could not convert cell coefficients to numeric: %s\n', ME.message);
+                    % Try one more approach - flatten and convert
+                    try
+                        trial_coefficients = str2double(trial_coefficients(:));
+                        fprintf('Debug: Used str2double on flattened cells\n');
+                    catch
+                        fprintf('Error: All conversion attempts failed\n');
+                        return;
+                    end
+                end
+            end
+            
+            % Ensure coefficients are numeric
+            if ~isnumeric(trial_coefficients)
+                fprintf('Error: Coefficients must be numeric, got %s\n', class(trial_coefficients));
+                return;
+            end
+            
             % Set coefficients for each joint
             param_info = getPolynomialParameterInfo();
             coeff_idx = 1;
