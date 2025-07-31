@@ -946,9 +946,12 @@ function simIn = setPolynomialCoefficients(simIn, trial_coefficients, config)
                 fprintf('DEBUG: Processing joint %d: %s with %d coefficients\n', j, joint_name, length(coeffs));
                 
                 for k = 1:length(coeffs)
+                    fprintf('DEBUG: Processing coefficient %d: %s (class: %s)\n', k, coeffs{k}, class(coeffs{k}));
                     if coeff_idx <= length(trial_coefficients)
-                        param_name = sprintf('%s_%s', joint_name, coeffs(k));
+                        param_name = sprintf('%s_%s', joint_name, coeffs{k});
+                        fprintf('DEBUG: Created param_name: %s\n', param_name);
                         simIn = simIn.setVariable(param_name, trial_coefficients(coeff_idx));
+                        fprintf('DEBUG: Set variable %s = %.3f\n', param_name, trial_coefficients(coeff_idx));
                         coeff_idx = coeff_idx + 1;
                     end
                 end
