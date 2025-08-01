@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-08-01 15:50:27
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 2
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: enabled
+% Logsout Dataset: enabled
+% Simscape Results: enabled
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250801
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: DeskComputer
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 2 trials x 189 coefficients
+% First trial coefficients (first 10): 9.310, 3.350, 22.190, 11.440, -39.700, -19.890, -1.630, -28.220, -32.130, -47.340
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 %% 
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
@@ -2664,7 +2707,12 @@ function simInputs = prepareSimulationInputs(config, handles)
         end
     end
     
-
+    % Add model directory to path for parallel workers
+    [model_dir, ~, ~] = fileparts(config.model_path);
+    if ~isempty(model_dir)
+        addpath(model_dir);
+        fprintf('Added model directory to path: %s\n', model_dir);
+    end
     
     % Create array of SimulationInput objects
     simInputs = Simulink.SimulationInput.empty(0, config.num_simulations);
