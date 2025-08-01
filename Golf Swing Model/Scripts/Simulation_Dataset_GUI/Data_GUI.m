@@ -1365,7 +1365,7 @@ function updateCoefficientsPreview(~, ~, fig)
         if isnan(num_trials) || num_trials <= 0
             num_trials = 5;
         end
-        display_trials = min(num_trials, 100); % Limit for display only
+        display_trials = num_trials; % Show all trials
         % Use actual num_trials for simulation, display_trials for preview
         
         scenario_idx = get(handles.torque_scenario_popup, 'Value');
