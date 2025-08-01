@@ -800,10 +800,12 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                                          'Enable', 'off');
     
     % Coefficient labels row
-    y = y - 0.25;  % Increased spacing to prevent dropdown cutoff
+    y = y - 0.15;  % Reduced spacing to move row up
     coeff_labels = {'A', 'B', 'C', 'D', 'E', 'F', 'G'};
     coeff_powers = {'t⁶', 't⁵', 't⁴', 't³', 't²', 't', '1'};  % Powers for each coefficient
     handles.joint_coeff_edits = gobjects(1, 7);
+    
+
     
     coeffWidth = 0.12;
     coeffSpacing = (0.96 - 7*coeffWidth) / 8;
