@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-08-01 15:22:06
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 10
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: enabled
+% Logsout Dataset: enabled
+% Simscape Results: enabled
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250801
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: DeskComputer
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 10 trials x 189 coefficients
+% First trial coefficients (first 10): 4.860, 43.030, -44.910, 39.430, -26.000, -23.620, 0.020, -40.200, -8.050, -3.330
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 %% 
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
@@ -2236,25 +2279,9 @@ function successful_trials = runParallelSimulations(handles, config)
         
         % Create new pool if needed
         if isempty(existing_pool)
-            % Auto-detect optimal number of workers, but respect cluster limits
+            % Auto-detect optimal number of workers
             max_cores = feature('numcores');
-            
-            % Check cluster limits
-            try
-                cluster = gcp('nocreate');
-                if isempty(cluster)
-                    % Create a temporary cluster to check limits
-                    temp_cluster = parcluster('local');
-                    max_workers = temp_cluster.NumWorkers;
-                else
-                    max_workers = cluster.NumWorkers;
-                end
-            catch
-                max_workers = 6; % Default fallback
-            end
-            
-            % Use the minimum of available cores and cluster limit
-            num_workers = min(max_cores, max_workers);
+            num_workers = max_cores; % Use all available cores for maximum performance
             
             % Try to create the pool with timeout
             fprintf('Starting parallel pool with %d workers...\n', num_workers);
@@ -2268,7 +2295,7 @@ function successful_trials = runParallelSimulations(handles, config)
     end
     
     % Prepare simulation inputs
-    simInputs = prepareSimulationInputs(config, handles);
+    simInputs = prepareSimulationInputs(config);
     
     % Validate simulation inputs before running
     if isempty(simInputs)
@@ -2639,7 +2666,7 @@ function successful_trials = runSequentialSimulations(handles, config)
     fprintf('Successful: %d\n', successful_trials);
     fprintf('Failed: %d\n', config.num_simulations - successful_trials);
 end
-function simInputs = prepareSimulationInputs(config, handles)
+function simInputs = prepareSimulationInputs(config)
     % Load the Simulink model
     model_name = config.model_name;
     if ~bdIsLoaded(model_name)
@@ -2927,9 +2954,7 @@ function simIn = setModelParameters(simIn, config)
             % Only set the essential parameter that actually works
             try
                 simIn = simIn.setModelParameter('SimscapeLogType', 'all');
-                if shouldShowDebug(handles)
-            fprintf('Debug: ✅ Set SimscapeLogType = all (essential parameter)\n');
-        end
+                fprintf('Debug: ✅ Set SimscapeLogType = all (essential parameter)\n');
             catch ME
                 fprintf('Warning: Could not set essential SimscapeLogType parameter: %s\n', ME.message);
                 fprintf('Warning: Simscape data extraction may not work without this parameter\n');
@@ -3568,9 +3593,7 @@ function config = validateInputs(handles)
                     solver_type = get_param(model_name, 'SolverType');
                     if contains(lower(solver_type), 'variable') || contains(lower(solver_type), 'fixed')
                         has_simscape_config = true;
-                        if shouldShowDebug(handles)
-            fprintf('Debug: Model has Simscape-compatible solver configuration\n');
-        end
+                        fprintf('Debug: Model has Simscape-compatible solver configuration\n');
                     end
                 catch
                     % Ignore configuration check errors
@@ -3588,13 +3611,9 @@ function config = validateInputs(handles)
                     end
                     warning('Simscape data extraction is enabled, but no clear Simscape indicators found in model "%s". Simscape logging may still work if components are in referenced subsystems.', model_name);
                 else
-                    if shouldShowDebug(handles)
-            fprintf('Debug: Found %d Simscape indicators in model (blocks + references + config)\n', total_indicators);
-        end
+                    fprintf('Debug: Found %d Simscape indicators in model (blocks + references + config)\n', total_indicators);
                     if ~isempty(subsystem_refs)
-                        if shouldShowDebug(handles)
-                            fprintf('Debug: Model uses referenced subsystems - Simscape components may be inside references\n');
-                        end
+                        fprintf('Debug: Model uses referenced subsystems - Simscape components may be inside references\n');
                     end
                 end
                 
