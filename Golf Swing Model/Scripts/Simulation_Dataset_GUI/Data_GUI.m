@@ -720,15 +720,7 @@ function handles = createModelingPanel(parent, handles, yPos, height)
               'HorizontalAlignment', 'left', ...
               'BackgroundColor', colors.panel);
     
-    handles.constant_value_edit = uicontrol('Parent', panel, ...
-                                           'Style', 'edit', ...
-                                           'String', '10', ...
-                                           'Units', 'normalized', ...
-                                           'Position', [0.75, y, 0.15, rowHeight], ...
-                                           'BackgroundColor', 'white', ...
-                                           'HorizontalAlignment', 'center', ...
-                                           'Enable', 'off', ...
-                                           'Callback', @updateCoefficientsPreview);
+
 end
 function handles = createJointEditorPanel(parent, handles, yPos, height)
     % Joint Editor Panel
@@ -1277,10 +1269,8 @@ function torqueScenarioCallback(src, ~)
             set(handles.constant_value_edit, 'Enable', 'off');
         case 2 % Zero Torque
             set(handles.coeff_range_edit, 'Enable', 'off');
-            set(handles.constant_value_edit, 'Enable', 'off');
         case 3 % Constant Torque
             set(handles.coeff_range_edit, 'Enable', 'off');
-            set(handles.constant_value_edit, 'Enable', 'on');
     end
     
     autoUpdateSummary([], [], gcbf);
@@ -1326,7 +1316,7 @@ function updatePreview(~, ~, fig)
                 'Coefficient Range', ['±' num2str(coeff_range)], 'Random variation bounds'
             }];
         elseif scenario_idx == 3
-            constant_value = str2double(get(handles.constant_value_edit, 'String'));
+            constant_value = 10.0; % Default constant value
             preview_data = [preview_data; {
                 'Constant Value', num2str(constant_value), 'G coefficient value'
             }];
@@ -1902,7 +1892,7 @@ function saveScenario(src, evt)
             scenario.settings = struct();
             scenario.settings.torque_scenario = get(handles.torque_scenario_popup, 'Value');
             scenario.settings.coeff_range = str2double(get(handles.coeff_range_edit, 'String'));
-            scenario.settings.constant_value = str2double(get(handles.constant_value_edit, 'String'));
+            scenario.settings.constant_value = 10.0; % Default constant value
             
             % Save to file
             filename = sprintf('scenario_%s.mat', matlab.lang.makeValidName(answer{1}));
@@ -1926,7 +1916,7 @@ function loadScenario(src, evt)
             set(handles.coefficients_table, 'Data', scenario.coefficients);
             set(handles.torque_scenario_popup, 'Value', scenario.settings.torque_scenario);
             set(handles.coeff_range_edit, 'String', num2str(scenario.settings.coeff_range));
-            set(handles.constant_value_edit, 'String', num2str(scenario.settings.constant_value));
+            % Note: constant_value_edit removed from GUI, using default value
             
             % Trigger scenario callback
             torqueScenarioCallback(handles.torque_scenario_popup, []);
@@ -2052,9 +2042,7 @@ function applyConfiguration(handles, config)
     if isfield(config, 'coeff_range')
         set(handles.coeff_range_edit, 'String', config.coeff_range);
     end
-    if isfield(config, 'constant_value')
-        set(handles.constant_value_edit, 'String', config.constant_value);
-    end
+    % Note: constant_value_edit removed from GUI, using default value
     if isfield(config, 'use_logsout')
         set(handles.use_logsout, 'Value', config.use_logsout);
     end
@@ -3379,7 +3367,7 @@ function config = validateInputs(handles)
         
         scenario_idx = get(handles.torque_scenario_popup, 'Value');
         coeff_range = str2double(get(handles.coeff_range_edit, 'String'));
-        constant_value = str2double(get(handles.constant_value_edit, 'String'));
+        constant_value = 10.0; % Default constant value
         
         if scenario_idx == 1 && (isnan(coeff_range) || coeff_range <= 0)
             error('Coefficient range must be positive for variable torques');
