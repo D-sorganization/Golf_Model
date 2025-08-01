@@ -2243,9 +2243,16 @@ function successful_trials = runParallelSimulations(handles, config)
             try
                 cluster = gcp('nocreate');
                 if isempty(cluster)
-                    % Create a temporary cluster to check limits
-                    temp_cluster = parcluster('local');
-                    max_workers = temp_cluster.NumWorkers;
+                    % Try to get Local_Cluster profile first, fallback to local
+                    try
+                        temp_cluster = parcluster('Local_Cluster');
+                        max_workers = temp_cluster.NumWorkers;
+                        fprintf('Using Local_Cluster profile with max %d workers\n', max_workers);
+                    catch
+                        temp_cluster = parcluster('local');
+                        max_workers = temp_cluster.NumWorkers;
+                        fprintf('Using local profile with max %d workers\n', max_workers);
+                    end
                 else
                     max_workers = cluster.NumWorkers;
                 end
@@ -2258,8 +2265,17 @@ function successful_trials = runParallelSimulations(handles, config)
             
             % Try to create the pool with timeout
             fprintf('Starting parallel pool with %d workers...\n', num_workers);
-            parpool('local', num_workers);
-            fprintf('Successfully started parallel pool with %d workers\n', num_workers);
+            
+            % Try to use Local_Cluster profile first, fallback to local
+            try
+                parpool('Local_Cluster', num_workers);
+                fprintf('Successfully started parallel pool with Local_Cluster profile (%d workers)\n', num_workers);
+            catch ME
+                fprintf('Warning: Could not use Local_Cluster profile: %s\n', ME.message);
+                fprintf('Falling back to default local profile...\n');
+                parpool('local', num_workers);
+                fprintf('Successfully started parallel pool with local profile (%d workers)\n', num_workers);
+            end
         end
     catch ME
         warning('Failed to start parallel pool: %s. Falling back to sequential execution.', ME.message);
@@ -2679,7 +2695,7 @@ function simInputs = prepareSimulationInputs(config, handles)
         simIn = Simulink.SimulationInput(model_name);
         
         % Set simulation parameters safely
-        simIn = setModelParameters(simIn, config);
+        simIn = setModelParameters(simIn, config, handles);
         
         % Set polynomial coefficients
         try
@@ -2876,7 +2892,7 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
         end
     end
 end
-function simIn = setModelParameters(simIn, config)
+function simIn = setModelParameters(simIn, config, handles)
             % Set basic simulation parameters with careful error handling
         try
             % Set stop time
