@@ -553,15 +553,27 @@ function batch_results = processBatch(config, trial_indices, pool, capture_works
 end
 
 function simInputs = prepareBatchSimulationInputs(config, trial_indices)
-    % Prepare simulation inputs for a specific batch
+    % Prepare simulation inputs for a specific batch using the proven working approach
+    % This replaces the previous implementation with the exact working method from main GUI
     
-    % Add model directory to path for parallel workers (like main GUI)
+    % Load the Simulink model
+    model_name = config.model_name;
+    if ~bdIsLoaded(model_name)
+        try
+            load_system(model_name);
+        catch ME
+            error('Could not load Simulink model "%s": %s', model_name, ME.message);
+        end
+    end
+    
+    % Add model directory to path for parallel workers
     [model_dir, ~, ~] = fileparts(config.model_path);
     if ~isempty(model_dir)
         addpath(model_dir);
         fprintf('Added model directory to path: %s\n', model_dir);
     end
     
+    % Create array of SimulationInput objects
     simInputs = Simulink.SimulationInput.empty(0, length(trial_indices));
     
     for i = 1:length(trial_indices)
@@ -574,50 +586,32 @@ function simInputs = prepareBatchSimulationInputs(config, trial_indices)
             trial_coefficients = config.coefficient_values(end, :);
         end
         
-        % Ensure coefficients are numeric
+        % Ensure coefficients are numeric (fix for parallel execution)
         if iscell(trial_coefficients)
             trial_coefficients = cell2mat(trial_coefficients);
         end
-        if ~isnumeric(trial_coefficients)
-            trial_coefficients = double(trial_coefficients);
-        end
-        trial_coefficients = double(trial_coefficients);  % Ensure double precision (like main GUI)
+        trial_coefficients = double(trial_coefficients);  % Ensure double precision
         
-        % Create SimulationInput object with proper error handling
+        % Create SimulationInput object
+        simIn = Simulink.SimulationInput(model_name);
+        
+        % Set simulation parameters safely
+        simIn = setModelParameters(simIn, config);
+        
+        % Set polynomial coefficients
         try
-            simIn = Simulink.SimulationInput(config.model_name);
-            
-            % Set simulation parameters
-            simIn = setModelParameters(simIn, config);
             simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
-            
-            % Load input file if specified
-            if isfield(config, 'input_file') && ~isempty(config.input_file) && exist(config.input_file, 'file')
-                simIn = loadInputFile(simIn, config.input_file);
-            end
-            
-            % Validate the SimulationInput before adding to array
-            if isa(simIn, 'Simulink.SimulationInput')
-                simInputs(i) = simIn;
-            else
-                fprintf('Warning: Invalid SimulationInput created for trial %d\n', trial);
-                % Create a minimal valid SimulationInput as fallback
-                simInputs(i) = Simulink.SimulationInput(config.model_name);
-            end
-            
         catch ME
-            fprintf('Error creating SimulationInput for trial %d: %s\n', trial, ME.message);
-            % Create a minimal valid SimulationInput as fallback
-            simInputs(i) = Simulink.SimulationInput(config.model_name);
+            fprintf('Warning: Could not set polynomial coefficients: %s\n', ME.message);
         end
+        
+        % Load input file if specified
+        if ~isempty(config.input_file) && exist(config.input_file, 'file')
+            simIn = loadInputFile(simIn, config.input_file);
+        end
+        
+        simInputs(i) = simIn;
     end
-    
-    % Validate the entire array
-    if isempty(simInputs)
-        error('No valid SimulationInput objects created');
-    end
-    
-    fprintf('DEBUG: Created %d SimulationInput objects for parsim\n', length(simInputs));
 end
 
 function success = isSimulationSuccessful(simOut)

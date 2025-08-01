@@ -19,6 +19,19 @@ function simIn = setPolynomialCoefficients(simIn, coefficients, config)
         param_info = getPolynomialParameterInfo(max_joints);
         % fprintf('DEBUG: getPolynomialParameterInfo() returned successfully\n');
         
+        % Validate coefficient count
+        expected_coeffs = length(param_info.joint_names) * 7;
+        if length(coefficients) ~= expected_coeffs
+            fprintf('Warning: Coefficient mismatch. Expected %d, got %d. Truncating to match.\n', ...
+                expected_coeffs, length(coefficients));
+            if length(coefficients) > expected_coeffs
+                coefficients = coefficients(1:expected_coeffs);
+            else
+                % Pad with zeros if not enough coefficients
+                coefficients = [coefficients, zeros(1, expected_coeffs - length(coefficients))];
+            end
+        end
+        
         % Set coefficients for each joint
         % fprintf('DEBUG: Starting loop through %d joints\n', length(param_info.joint_names));
         coeff_index = 1;

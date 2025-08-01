@@ -30,12 +30,9 @@ function test_robust_generator()
         mkdir(config.output_folder);
     end
     
-    % Create a minimal set of test coefficients (1 trial with reduced coefficients)
-    % Use only first 10 joints × 7 coefficients = 70 coefficients for faster testing
-    config.coefficient_values = rand(1, 70) * 10 - 5;  % Random values between -5 and +5
-    
-    % Set number of simulations
-    config.num_simulations = size(config.coefficient_values, 1);
+    % Create coefficients for testing (use correct count: 27 joints × 7 coefficients = 189)
+    config.coefficient_values = rand(1, 189) * 10 - 5;  % 189 coefficients (27 joints × 7)
+    config.num_simulations = 1;
     
     % Robust mode settings - optimized for testing
     config.BatchSize = 1;  % Small batch size for testing
