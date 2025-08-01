@@ -2234,7 +2234,7 @@ function successful_trials = runParallelSimulations(handles, config)
         if isempty(existing_pool)
             % Auto-detect optimal number of workers
             max_cores = feature('numcores');
-            num_workers = min(max_cores, 6); % Limit to 6 workers to match MATLAB cluster configuration
+            num_workers = max_cores; % Use all available cores for maximum performance
             
             % Try to create the pool with timeout
             fprintf('Starting parallel pool with %d workers...\n', num_workers);
