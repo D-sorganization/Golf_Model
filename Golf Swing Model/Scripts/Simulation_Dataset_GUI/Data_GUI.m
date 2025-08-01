@@ -853,19 +853,6 @@ function handles = createBatchSettingsPanel(parent, handles, yPos, height)
                                        'FontSize', 9, ...
                                        'TooltipString', 'Output detail level: Silent=minimal, Normal=standard, Verbose=detailed, Debug=all');
     
-    % Robust Generation Mode
-    y = 0.05;
-    handles.use_robust_generator = uicontrol('Parent', panel, ...
-                                            'Style', 'checkbox', ...
-                                            'String', 'Use Robust Generator', ...
-                                            'Value', 1, ...
-                                            'Units', 'normalized', ...
-                                            'Position', [0.02, y, 0.45, rowHeight], ...
-                                            'BackgroundColor', colors.panel, ...
-                                            'ForegroundColor', colors.text, ...
-                                            'FontSize', 9, ...
-                                            'TooltipString', 'Enable crash-resistant batch processing with memory monitoring and checkpointing');
-    
     % Memory Monitoring
     handles.enable_memory_monitoring = uicontrol('Parent', panel, ...
                                                 'Style', 'checkbox', ...
@@ -971,7 +958,7 @@ function handles = createCoefficientsPanel(parent, handles, yPos, height)
         xPos = 0.02 + (i-1) * (buttonWidth + buttonSpacing);
         btn_name = [buttons{i}{2} '_button'];
         handles.(btn_name) = uicontrol('Parent', panel, ...
-                                      'Style', 'pushbutton', ...
+                                      'Style', 'pushbutton',
                                       'String', buttons{i}{1}, ...
                                       'Units', 'normalized', ...
                                       'Position', [xPos, buttonY, buttonWidth, buttonHeight], ...
@@ -1946,38 +1933,15 @@ function runGeneration(handles)
         
         set(handles.status_text, 'String', 'Status: Running trials...');
         
-        % Check if robust generator is enabled AND we're not forcing sequential
+        % Execute dataset generation
         execution_mode = get(handles.execution_mode_popup, 'Value');
-        if config.use_robust_generator && execution_mode ~= 1  % 1 = Sequential
-            % Use robust dataset generator for crash-resistant processing
-            set(handles.status_text, 'String', 'Status: Using robust generator...');
-            drawnow;
-            
-            % Add robust generator parameters to config
-            config.BatchSize = config.batch_size;
-            config.SaveInterval = config.save_interval;
-            config.PerformanceMonitoring = config.enable_performance_monitoring;
-            config.Verbosity = config.verbosity;
-            
-            % Get execution mode and pass to robust generator
-            execution_mode = get(handles.execution_mode_popup, 'Value');
-            config.execution_mode = execution_mode;
-            
-            % Call robust dataset generator
-            successful_trials = robust_dataset_generator(config, ...
-                'MaxMemoryGB', 8, ...  % Default memory limit
-                'CaptureWorkspace', config.capture_workspace);
+        
+        if execution_mode == 2 && license('test', 'Distrib_Computing_Toolbox')
+            % Parallel execution
+            successful_trials = runParallelSimulations(handles, config);
         else
-            % Use traditional execution mode
-            execution_mode = get(handles.execution_mode_popup, 'Value');
-            
-            if execution_mode == 2 && license('test', 'Distrib_Computing_Toolbox')
-                % Parallel execution
-                successful_trials = runParallelSimulations(handles, config);
-            else
-                % Sequential execution
-                successful_trials = runSequentialSimulations(handles, config);
-            end
+            % Sequential execution
+            successful_trials = runSequentialSimulations(handles, config);
         end
         
         % Final status
@@ -3298,7 +3262,7 @@ function config = validateInputs(handles)
         config.save_interval = save_interval;
         config.enable_performance_monitoring = get(handles.enable_performance_monitoring, 'Value');
         config.verbosity = verbosity_level;
-        config.use_robust_generator = get(handles.use_robust_generator, 'Value');
+        % Robust generator removed - using traditional execution modes only
         config.enable_memory_monitoring = get(handles.enable_memory_monitoring, 'Value');
         
     catch ME
@@ -3559,7 +3523,7 @@ function handles = loadUserPreferences(handles)
     handles.preferences.default_save_interval = 25;
     handles.preferences.enable_performance_monitoring = true;
     handles.preferences.default_verbosity = 'Normal';
-    handles.preferences.use_robust_generator = true;
+    % Robust generator removed - using traditional execution modes only
     handles.preferences.enable_memory_monitoring = true;
     
     % Try to load saved preferences
@@ -3638,8 +3602,7 @@ function applyUserPreferences(handles)
             end
         end
         
-        if isfield(handles, 'use_robust_generator') && isfield(prefs, 'use_robust_generator')
-            set(handles.use_robust_generator, 'Value', prefs.use_robust_generator);
+            % Robust generator removed - using traditional execution modes only
         end
         
         if isfield(handles, 'enable_memory_monitoring') && isfield(prefs, 'enable_memory_monitoring')
@@ -3705,8 +3668,7 @@ function saveUserPreferences(handles)
             end
         end
         
-        if isfield(handles, 'use_robust_generator')
-            handles.preferences.use_robust_generator = get(handles.use_robust_generator, 'Value');
+            % Robust generator removed - using traditional execution modes only
         end
         
         if isfield(handles, 'enable_memory_monitoring')
@@ -5519,7 +5481,7 @@ function showBatchSettingsHelp()
         '';
         'Verbosity: Output detail level - Silent=minimal output, Normal=standard progress, Verbose=detailed info, Debug=all messages including technical details.';
         '';
-        'Robust Generator: Enable crash-resistant batch processing with memory monitoring and checkpointing. Automatically recovers from crashes and manages system resources.';
+        'Traditional execution modes with parallel/sequential processing.';
         '';
         'Memory Monitoring: Monitor system memory and automatically manage parallel workers. Helps prevent crashes due to memory exhaustion.';
     };

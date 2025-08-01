@@ -166,14 +166,9 @@ function resumeFromCheckpoint(checkpoint_file)
             return;
         end
         
-        % Use robust dataset generator to resume
-        fprintf('\nResuming dataset generation...\n');
-        robust_dataset_generator(checkpoint.config, ...
-            'ResumeFrom', checkpoint_file, ...
-            'BatchSize', 100, ...
-            'SaveInterval', 50, ...
-            'MaxMemoryGB', 8, ...
-            'MaxWorkers', 4);
+        % Robust dataset generator removed - checkpoint recovery not available
+        fprintf('\nCheckpoint recovery not available - robust dataset generator has been removed.\n');
+        fprintf('Please restart dataset generation from the beginning.\n');
         
     catch ME
         fprintf('Error resuming from checkpoint: %s\n', ME.message);
