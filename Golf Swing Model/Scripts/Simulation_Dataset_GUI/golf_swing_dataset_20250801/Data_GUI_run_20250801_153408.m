@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-08-01 15:34:08
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 10
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: enabled
+% Logsout Dataset: enabled
+% Simscape Results: enabled
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250801
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: DeskComputer
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 10 trials x 189 coefficients
+% First trial coefficients (first 10): 30.100, 25.080, 28.480, -28.980, -34.400, 27.000, 3.310, 40.430, 19.480, 16.560
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 %% 
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
@@ -2311,7 +2354,9 @@ function successful_trials = runParallelSimulations(handles, config)
     
     try
         % Add extra error handling for parallel Simscape parameter issues
-
+        if shouldShowDebug(handles)
+            fprintf('Debug: Running %d simulations in parallel with Simscape logging\n', length(simInputs));
+        end
         
         % Use parsim for parallel simulation with robust error handling
         simOuts = parsim(simInputs, ...
@@ -2941,7 +2986,9 @@ function simIn = setModelParameters(simIn, config, handles)
             % Only set the essential parameter that actually works
             try
                 simIn = simIn.setModelParameter('SimscapeLogType', 'all');
-        
+                if shouldShowDebug(handles)
+            fprintf('Debug: ✅ Set SimscapeLogType = all (essential parameter)\n');
+        end
             catch ME
                 fprintf('Warning: Could not set essential SimscapeLogType parameter: %s\n', ME.message);
                 fprintf('Warning: Simscape data extraction may not work without this parameter\n');
@@ -2952,11 +2999,15 @@ function simIn = setModelParameters(simIn, config, handles)
                 if isfield(config, 'enable_animation') && config.enable_animation
                     % Enable animation (normal mode)
                     simIn = simIn.setModelParameter('SimulationMode', 'normal');
-
+                    if shouldShowDebug(handles)
+                        fprintf('Debug: ⚠️ Animation enabled - using normal mode (slower)\n');
+                    end
                 else
                     % Disable animation for faster simulation
                     simIn = simIn.setModelParameter('SimulationMode', 'accelerator');
-
+                    if shouldShowDebug(handles)
+                        fprintf('Debug: ✅ Animation disabled - using accelerator mode\n');
+                    end
                 end
             catch ME
                 fprintf('Warning: Could not set simulation mode for animation control: %s\n', ME.message);
@@ -3576,7 +3627,9 @@ function config = validateInputs(handles)
                     solver_type = get_param(model_name, 'SolverType');
                     if contains(lower(solver_type), 'variable') || contains(lower(solver_type), 'fixed')
                         has_simscape_config = true;
-                
+                        if shouldShowDebug(handles)
+            fprintf('Debug: Model has Simscape-compatible solver configuration\n');
+        end
                     end
                 catch
                     % Ignore configuration check errors
@@ -4153,13 +4206,23 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
     data_table = [];
     
     try
+        if shouldShowDebug(handles)
+            fprintf('Debug: Processing CombinedSignalBus\n');
+        end
+        
         % CombinedSignalBus should be a struct with time and signals
         if ~isstruct(combinedBus)
+            if shouldShowDebug(handles)
+                fprintf('Debug: CombinedSignalBus is not a struct\n');
+            end
             return;
         end
         
         % Look for time field
         bus_fields = fieldnames(combinedBus);
+        if shouldShowDebug(handles)
+            fprintf('Debug: CombinedSignalBus fields: %s\n', strjoin(bus_fields, ', '));
+        end
         
         time_field = '';
         time_data = [];
@@ -4659,7 +4722,9 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
         
         fprintf('=== SIMSCAPE DIAGNOSTIC END ===\n');
 
-
+        if shouldShowDebug(handles)
+            fprintf('Debug: Starting recursive Simscape extraction from root node.\n');
+        end
 
         % Recursively collect all series data using primary traversal method
         [time_data, all_signals] = traverseSimlogNode(simlog, '');
@@ -4730,9 +4795,16 @@ function [time_data, all_signals] = fallbackSimlogExtraction(simlog)
     all_signals = {};
     
     try
+        if shouldShowDebug(handles)
+            fprintf('Debug: Attempting fallback Simscape extraction...\n');
+        end
+        
         % Method 1: Try direct property enumeration
         try
             props = properties(simlog);
+            if shouldShowDebug(handles)
+                fprintf('Debug: Simlog has %d properties\n', length(props));
+            end
             
             for i = 1:length(props)
                 prop_name = props{i};
