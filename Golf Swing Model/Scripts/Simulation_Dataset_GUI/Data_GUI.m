@@ -2197,9 +2197,53 @@ function successful_trials = runParallelSimulations(handles, config)
         % Summary
         fprintf('\n=== PARALLEL SIMULATION SUMMARY ===\n');
         fprintf('Total trials: %d\n', length(simOuts));
+        fprintf('Successful: %d\n', successful_trials);
+        fprintf('Failed: %d\n', length(simOuts) - successful_trials);
+        
+        if successful_trials == 0
+            fprintf('\n⚠️  All parallel simulations failed. Common causes:\n');
+            fprintf('   • Model path not accessible on workers\n');
+            fprintf('   • Missing workspace variables on workers\n');
+            fprintf('   • Toolbox licensing issues on workers\n');
+            fprintf('   • Model configuration conflicts in parallel mode\n');
+            fprintf('   • Coefficient setting issues on workers\n');
+            fprintf('\n Try sequential mode for detailed debugging\n');
+        end
         
     catch ME
-        fprintf('Error in parallel simulation: %s\n', ME.message);
+        fprintf('\n❌ PARALLEL SIMULATION FRAMEWORK ERROR: %s\n', ME.message);
+        
+        fprintf('Attempting to diagnose the issue...\n');
+        
+        % Try running one simulation sequentially to get detailed error
+        try
+            if ~isempty(simInputs) && length(simInputs) >= 1
+                fprintf('\nRunning single simulation sequentially for debugging...\n');
+                
+                % Ensure model is loaded
+                if ~bdIsLoaded(config.model_name)
+                    load_system(config.model_path);
+                end
+                
+                single_simOut = sim(simInputs(1));
+                fprintf('Single simulation succeeded - issue may be parallel-specific\n');
+                
+                % Check if Simscape logging worked
+                if isprop(single_simOut, 'simlog') || isfield(single_simOut, 'simlog')
+                    fprintf('Simscape logging is available in sequential mode\n');
+                else
+                    fprintf('Warning: No Simscape logging even in sequential mode\n');
+                end
+            end
+        catch singleME
+            fprintf('Single simulation also failed: %s\n', singleME.message);
+            if ~isempty(singleME.cause)
+                for j = 1:length(singleME.cause)
+                    fprintf('  Cause %d: %s\n', j, singleME.cause{j}.message);
+                end
+            end
+        end
+        
         successful_trials = 0;
     end
 end
@@ -2330,57 +2374,6 @@ function coefficients = generateRandomCoefficients(num_coefficients)
             case 7 % G - Very small range
                 coefficients(i) = (rand() - 0.5) * 50;   % -25 to 25
         end
-    end
-end
-
-        fprintf('Successful: %d\n', successful_trials);
-        fprintf('Failed: %d\n', length(simOuts) - successful_trials);
-        
-        if successful_trials == 0
-            fprintf('\n⚠️  All parallel simulations failed. Common causes:\n');
-            fprintf('   • Model path not accessible on workers\n');
-            fprintf('   • Missing workspace variables on workers\n');
-            fprintf('   • Toolbox licensing issues on workers\n');
-            fprintf('   • Model configuration conflicts in parallel mode\n');
-            fprintf('   • Coefficient setting issues on workers\n');
-            fprintf('\n Try sequential mode for detailed debugging\n');
-        end
-        
-    catch ME
-        fprintf('\n❌ PARALLEL SIMULATION FRAMEWORK ERROR: %s\n', ME.message);
-        
-        fprintf('Attempting to diagnose the issue...\n');
-        
-        % Try running one simulation sequentially to get detailed error
-        try
-            if ~isempty(simInputs) && length(simInputs) >= 1
-                fprintf('\nRunning single simulation sequentially for debugging...\n');
-                
-                % Ensure model is loaded
-                if ~bdIsLoaded(config.model_name)
-                    load_system(config.model_path);
-                end
-                
-                single_simOut = sim(simInputs(1));
-                fprintf('Single simulation succeeded - issue may be parallel-specific\n');
-                
-                % Check if Simscape logging worked
-                if isprop(single_simOut, 'simlog') || isfield(single_simOut, 'simlog')
-                    fprintf('Simscape logging is available in sequential mode\n');
-                else
-                    fprintf('Warning: No Simscape logging even in sequential mode\n');
-                end
-            end
-        catch singleME
-            fprintf('Single simulation also failed: %s\n', singleME.message);
-            if ~isempty(singleME.cause)
-                for j = 1:length(singleME.cause)
-                    fprintf('  Cause %d: %s\n', j, singleME.cause{j}.message);
-                end
-            end
-        end
-        
-        successful_trials = 0;
     end
 end
 function successful_trials = runSequentialSimulations(handles, config)
