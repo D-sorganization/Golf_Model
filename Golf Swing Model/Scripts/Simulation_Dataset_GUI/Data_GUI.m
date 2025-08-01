@@ -1,3 +1,4 @@
+%% 
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
     % Fixed polynomial order: At^6 + Bt^5 + Ct^4 + Dt^3 + Et^2 + Ft + G
@@ -958,7 +959,7 @@ function handles = createCoefficientsPanel(parent, handles, yPos, height)
         xPos = 0.02 + (i-1) * (buttonWidth + buttonSpacing);
         btn_name = [buttons{i}{2} '_button'];
         handles.(btn_name) = uicontrol('Parent', panel, ...
-                                      'Style', 'pushbutton',
+                                      'Style', 'pushbutton', ...
                                       'String', buttons{i}{1}, ...
                                       'Units', 'normalized', ...
                                       'Position', [xPos, buttonY, buttonWidth, buttonHeight], ...
@@ -3262,7 +3263,6 @@ function config = validateInputs(handles)
         config.save_interval = save_interval;
         config.enable_performance_monitoring = get(handles.enable_performance_monitoring, 'Value');
         config.verbosity = verbosity_level;
-        % Robust generator removed - using traditional execution modes only
         config.enable_memory_monitoring = get(handles.enable_memory_monitoring, 'Value');
         
     catch ME
@@ -3523,7 +3523,6 @@ function handles = loadUserPreferences(handles)
     handles.preferences.default_save_interval = 25;
     handles.preferences.enable_performance_monitoring = true;
     handles.preferences.default_verbosity = 'Normal';
-    % Robust generator removed - using traditional execution modes only
     handles.preferences.enable_memory_monitoring = true;
     
     % Try to load saved preferences
@@ -3602,9 +3601,6 @@ function applyUserPreferences(handles)
             end
         end
         
-            % Robust generator removed - using traditional execution modes only
-        end
-        
         if isfield(handles, 'enable_memory_monitoring') && isfield(prefs, 'enable_memory_monitoring')
             set(handles.enable_memory_monitoring, 'Value', prefs.enable_memory_monitoring);
         end
@@ -3666,9 +3662,6 @@ function saveUserPreferences(handles)
             if verbosity_idx <= length(verbosity_options)
                 handles.preferences.default_verbosity = verbosity_options{verbosity_idx};
             end
-        end
-        
-            % Robust generator removed - using traditional execution modes only
         end
         
         if isfield(handles, 'enable_memory_monitoring')
