@@ -1280,35 +1280,51 @@ end
 function startGeneration(src, evt)
     handles = guidata(gcbf);
     
+    % Check if already running
+    if isfield(handles, 'is_running') && handles.is_running
+        msgbox('Generation is already running. Please wait for it to complete or use the Stop button.', 'Already Running', 'warn');
+        return;
+    end
+    
     try
+        % Set running state immediately
+        handles.is_running = true;
+        guidata(handles.fig, handles);
+        
+        % Provide immediate visual feedback
+        set(handles.start_button, 'Enable', 'off', 'String', 'Running...');
+        set(handles.stop_button, 'Enable', 'on');
+        set(handles.status_text, 'String', 'Status: Starting generation...');
+        set(handles.progress_text, 'String', 'Initializing...');
+        drawnow; % Force immediate UI update
+        
         % Validate inputs
         config = validateInputs(handles);
         if isempty(config)
+            % Reset state on validation failure
+            handles.is_running = false;
+            set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
+            set(handles.stop_button, 'Enable', 'off');
+            guidata(handles.fig, handles);
             return;
         end
         
-        % Update UI state
-        set(handles.start_button, 'Enable', 'off');
-        set(handles.stop_button, 'Enable', 'on');
-        handles.should_stop = false;
-        
         % Store config
         handles.config = config;
+        handles.should_stop = false;
         guidata(handles.fig, handles);
-        
-        % Update status
-        set(handles.status_text, 'String', 'Status: Starting generation...');
-        set(handles.progress_text, 'String', 'Initializing simulation...');
-        drawnow;
         
         % Start generation
         runGeneration(handles);
         
     catch ME
+        % Reset state on error
         try
-            set(handles.status_text, 'String', ['Status: Error - ' ME.message]);
-            set(handles.start_button, 'Enable', 'on');
+            handles.is_running = false;
+            set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
             set(handles.stop_button, 'Enable', 'off');
+            set(handles.status_text, 'String', ['Status: Error - ' ME.message]);
+            guidata(handles.fig, handles);
         catch
             % GUI might be destroyed, ignore the error
         end
@@ -1322,6 +1338,8 @@ function stopGeneration(src, evt)
     guidata(handles.fig, handles);
     set(handles.status_text, 'String', 'Status: Stopping...');
     set(handles.progress_text, 'String', 'Generation stopped by user');
+    
+    % Note: The actual cleanup will happen in runGeneration when it detects should_stop = true
 end
 % Browse Input File
 function browseInputFile(src, evt)
@@ -1946,53 +1964,91 @@ function runGeneration(handles)
             successful_trials = runSequentialSimulations(handles, config);
         end
         
-        % Final status
-        failed_trials = config.num_simulations - successful_trials;
-        final_msg = sprintf('Complete: %d successful, %d failed', successful_trials, failed_trials);
-        set(handles.status_text, 'String', ['Status: ' final_msg]);
-        set(handles.progress_text, 'String', final_msg);
-        
-        % Compile dataset
-        if successful_trials > 0
-            set(handles.status_text, 'String', 'Status: Compiling master dataset...');
-            drawnow;
-            compileDataset(config);
-            set(handles.status_text, 'String', ['Status: ' final_msg ' - Dataset compiled']);
+        % Check if user requested stop
+        if handles.should_stop
+            set(handles.status_text, 'String', 'Status: Generation stopped by user');
+            set(handles.progress_text, 'String', 'Stopped');
+        else
+            % Final status
+            failed_trials = config.num_simulations - successful_trials;
+            final_msg = sprintf('Complete: %d successful, %d failed', successful_trials, failed_trials);
+            set(handles.status_text, 'String', ['Status: ' final_msg]);
+            set(handles.progress_text, 'String', final_msg);
+            
+            % Compile dataset
+            if successful_trials > 0
+                set(handles.status_text, 'String', 'Status: Compiling master dataset...');
+                drawnow;
+                compileDataset(config);
+                set(handles.status_text, 'String', ['Status: ' final_msg ' - Dataset compiled']);
+            end
+            
+            % Save script and settings for reproducibility
+            try
+                saveScriptAndSettings(config);
+            catch ME
+                fprintf('Warning: Could not save script and settings: %s\n', ME.message);
+            end
         end
-        
-        % Save script and settings for reproducibility
-        try
-            saveScriptAndSettings(config);
-        catch ME
-            fprintf('Warning: Could not save script and settings: %s\n', ME.message);
-        end
-        
-        set(handles.start_button, 'Enable', 'on');
-        set(handles.stop_button, 'Enable', 'off');
         
     catch ME
         try
             set(handles.status_text, 'String', ['Status: Error - ' ME.message]);
-            set(handles.start_button, 'Enable', 'on');
-            set(handles.stop_button, 'Enable', 'off');
         catch
             % GUI might be destroyed, ignore the error
         end
         errordlg(ME.message, 'Generation Failed');
+    finally
+        % Always cleanup state and UI
+        try
+            handles.is_running = false;
+            set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
+            set(handles.stop_button, 'Enable', 'off');
+            guidata(handles.fig, handles);
+        catch
+            % GUI might be destroyed, ignore the error
+        end
     end
 end
 function successful_trials = runParallelSimulations(handles, config)
-    % Initialize parallel pool
+    % Initialize parallel pool with better error handling
     try
-        if isempty(gcp('nocreate'))
+        % First, check if there's an existing pool and clean it up if needed
+        existing_pool = gcp('nocreate');
+        if ~isempty(existing_pool)
+            try
+                % Check if the existing pool is healthy
+                pool_info = existing_pool;
+                fprintf('Found existing parallel pool with %d workers\n', pool_info.NumWorkers);
+                
+                % Test if the pool is responsive
+                try
+                    spmd
+                        test_var = 1;
+                    end
+                    fprintf('Existing pool is healthy, using it\n');
+                catch
+                    fprintf('Existing pool appears unresponsive, deleting it\n');
+                    delete(existing_pool);
+                    existing_pool = [];
+                end
+            catch
+                fprintf('Error checking existing pool, deleting it\n');
+                delete(existing_pool);
+                existing_pool = [];
+            end
+        end
+        
+        % Create new pool if needed
+        if isempty(existing_pool)
             % Auto-detect optimal number of workers
             max_cores = feature('numcores');
             num_workers = min(max_cores, 6); % Limit to 6 workers to match MATLAB cluster configuration
+            
+            % Try to create the pool with timeout
+            fprintf('Starting parallel pool with %d workers...\n', num_workers);
             parpool('local', num_workers);
-            fprintf('Started parallel pool with %d workers\n', num_workers);
-        else
-            current_pool = gcp;
-            fprintf('Using existing parallel pool with %d workers\n', current_pool.NumWorkers);
+            fprintf('Successfully started parallel pool with %d workers\n', num_workers);
         end
     catch ME
         warning('Failed to start parallel pool: %s. Falling back to sequential execution.', ME.message);
@@ -2141,6 +2197,109 @@ function successful_trials = runParallelSimulations(handles, config)
         % Summary
         fprintf('\n=== PARALLEL SIMULATION SUMMARY ===\n');
         fprintf('Total trials: %d\n', length(simOuts));
+        
+    catch ME
+        fprintf('Error in parallel simulation: %s\n', ME.message);
+        successful_trials = 0;
+    end
+end
+
+% Helper function to check for stop requests and update progress
+function shouldStop = checkStopRequest(handles)
+    shouldStop = false;
+    try
+        % Get current handles
+        current_handles = guidata(handles.fig);
+        if isfield(current_handles, 'should_stop') && current_handles.should_stop
+            shouldStop = true;
+        end
+        
+        % Force UI update to prevent freezing
+        drawnow;
+        
+    catch
+        % If we can't access handles, assume we should stop
+        shouldStop = true;
+    end
+end
+
+% Helper function to update progress display
+function updateProgress(handles, current, total, message)
+    try
+        if nargin < 4
+            message = 'Processing...';
+        end
+        
+        progress_percent = round((current / total) * 100);
+        progress_text = sprintf('%s (%d/%d - %d%%)', message, current, total, progress_percent);
+        
+        set(handles.progress_text, 'String', progress_text);
+        drawnow;
+        
+    catch
+        % Silently fail if GUI is not available
+    end
+end
+
+% Helper function to monitor memory usage
+function memoryInfo = getMemoryInfo()
+    try
+        % Get MATLAB memory info
+        memoryInfo = memory;
+        
+        % Calculate memory usage percentage
+        memoryInfo.usage_percent = (memoryInfo.MemUsedMATLAB / memoryInfo.PhysicalMemory.Total) * 100;
+        
+        % Get system memory info if available
+        if ispc
+            try
+                [~, result] = system('wmic OS get TotalVisibleMemorySize,FreePhysicalMemory /Value');
+                lines = strsplit(result, '\n');
+                total_mem = 0;
+                free_mem = 0;
+                
+                for i = 1:length(lines)
+                    line = strtrim(lines{i});
+                    if startsWith(line, 'TotalVisibleMemorySize=')
+                        total_mem = str2double(extractAfter(line, '='));
+                    elseif startsWith(line, 'FreePhysicalMemory=')
+                        free_mem = str2double(extractAfter(line, '='));
+                    end
+                end
+                
+                if total_mem > 0
+                    memoryInfo.system_total_mb = total_mem / 1024;
+                    memoryInfo.system_free_mb = free_mem / 1024;
+                    memoryInfo.system_usage_percent = ((total_mem - free_mem) / total_mem) * 100;
+                end
+            catch
+                % Ignore system memory check errors
+            end
+        end
+        
+    catch
+        memoryInfo = struct('usage_percent', 0);
+    end
+end
+
+% Helper function to check if memory usage is high
+function isHighMemory = checkHighMemoryUsage(threshold_percent)
+    if nargin < 1
+        threshold_percent = 85; % Default threshold
+    end
+    
+    try
+        memoryInfo = getMemoryInfo();
+        isHighMemory = memoryInfo.usage_percent > threshold_percent;
+        
+        if isHighMemory
+            fprintf('Warning: High memory usage detected: %.1f%%\n', memoryInfo.usage_percent);
+        end
+        
+    catch
+        isHighMemory = false;
+    end
+end
         fprintf('Successful: %d\n', successful_trials);
         fprintf('Failed: %d\n', length(simOuts) - successful_trials);
         
@@ -2194,15 +2353,24 @@ end
 function successful_trials = runSequentialSimulations(handles, config)
     successful_trials = 0;
     
+    fprintf('Starting sequential simulation of %d trials...\n', config.num_simulations);
+    
     for trial = 1:config.num_simulations
-        handles = guidata(handles.fig); % Refresh handles
-        if handles.should_stop
+        % Check for stop request and update progress
+        if checkStopRequest(handles)
+            fprintf('Sequential simulation stopped by user at trial %d\n', trial);
             break;
         end
         
-        progress_msg = sprintf('Processing trial %d/%d...', trial, config.num_simulations);
-        set(handles.progress_text, 'String', progress_msg);
-        drawnow;
+        % Update progress with percentage
+        updateProgress(handles, trial, config.num_simulations, 'Sequential simulation');
+        
+        % Check memory usage every 10 trials
+        if mod(trial, 10) == 0
+            if checkHighMemoryUsage(90)
+                fprintf('Warning: High memory usage detected. Consider stopping or reducing batch size.\n');
+            end
+        end
         
         try
             if trial <= size(config.coefficient_values, 1)
@@ -2215,12 +2383,20 @@ function successful_trials = runSequentialSimulations(handles, config)
             
             if result.success
                 successful_trials = successful_trials + 1;
+                fprintf('✓ Trial %d completed successfully\n', trial);
+            else
+                fprintf('✗ Trial %d failed: %s\n', trial, result.error);
             end
             
         catch ME
-            fprintf('Trial %d error: %s\n', trial, ME.message);
+            fprintf('✗ Trial %d error: %s\n', trial, ME.message);
         end
     end
+    
+    fprintf('\n=== SEQUENTIAL SIMULATION SUMMARY ===\n');
+    fprintf('Total trials: %d\n', config.num_simulations);
+    fprintf('Successful: %d\n', successful_trials);
+    fprintf('Failed: %d\n', config.num_simulations - successful_trials);
 end
 function simInputs = prepareSimulationInputs(config)
     % Load the Simulink model
@@ -3684,11 +3860,37 @@ function closeGUICallback(src, evt)
     % Handle GUI close
     try
         handles = guidata(src);
+        
+        % Check if generation is running
+        if isstruct(handles) && isfield(handles, 'is_running') && handles.is_running
+            response = questdlg('Generation is currently running. Do you want to stop it and close the GUI?', ...
+                               'Generation Running', 'Stop and Close', 'Cancel', 'Cancel');
+            if strcmp(response, 'Cancel')
+                return; % Don't close
+            end
+            % Set stop flag
+            handles.should_stop = true;
+            guidata(src, handles);
+        end
+        
+        % Save preferences
         if isstruct(handles) && isfield(handles, 'preferences')
             saveUserPreferences(handles);
         end
-    catch
-        % Silently fail
+        
+        % Clean up parallel pool
+        try
+            existing_pool = gcp('nocreate');
+            if ~isempty(existing_pool)
+                fprintf('Cleaning up parallel pool on GUI close...\n');
+                delete(existing_pool);
+            end
+        catch ME
+            fprintf('Warning: Could not clean up parallel pool: %s\n', ME.message);
+        end
+        
+    catch ME
+        fprintf('Warning: Error during GUI close: %s\n', ME.message);
     end
     
     % Close the figure
