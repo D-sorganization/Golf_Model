@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-08-01 15:08:56
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 10
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: enabled
+% Logsout Dataset: enabled
+% Simscape Results: enabled
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250801
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: DeskComputer
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 10 trials x 189 coefficients
+% First trial coefficients (first 10): 37.010, 7.900, -27.960, 33.630, -23.160, 10.430, 18.070, -7.280, 4.540, -9.440
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 %% 
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
@@ -2162,10 +2205,6 @@ function runGeneration(handles)
         else
             % Final status
             failed_trials = config.num_simulations - successful_trials;
-            
-            % Ensure is_running is reset
-            handles.is_running = false;
-            guidata(handles.fig, handles);
             final_msg = sprintf('Complete: %d successful, %d failed', successful_trials, failed_trials);
             set(handles.status_text, 'String', ['Status: ' final_msg]);
             set(handles.progress_text, 'String', final_msg);
@@ -2279,9 +2318,7 @@ function successful_trials = runParallelSimulations(handles, config)
     
     try
         % Add extra error handling for parallel Simscape parameter issues
-        if shouldShowDebug(handles)
-            fprintf('Debug: Running %d simulations in parallel with Simscape logging\n', length(simInputs));
-        end
+        fprintf('Debug: Running %d simulations in parallel with Simscape logging\n', length(simInputs));
         
         % Use parsim for parallel simulation with robust error handling
         simOuts = parsim(simInputs, ...
@@ -2919,18 +2956,14 @@ function simIn = setModelParameters(simIn, config)
             
             % Set animation control based on user preference
             try
-                if isfield(config, 'enable_animation') && config.enable_animation
-                    % Enable animation (normal mode)
-                    simIn = simIn.setModelParameter('SimulationMode', 'normal');
-                    if shouldShowDebug(handles)
-                        fprintf('Debug: ⚠️ Animation enabled - using normal mode (slower)\n');
-                    end
-                else
+                if isfield(config, 'enable_animation') && ~config.enable_animation
                     % Disable animation for faster simulation
                     simIn = simIn.setModelParameter('SimulationMode', 'accelerator');
-                    if shouldShowDebug(handles)
-                        fprintf('Debug: ✅ Animation disabled - using accelerator mode\n');
-                    end
+                    fprintf('Debug: ✅ Animation disabled - using accelerator mode\n');
+                else
+                    % Enable animation (normal mode)
+                    simIn = simIn.setModelParameter('SimulationMode', 'normal');
+                    fprintf('Debug: ⚠️ Animation enabled - using normal mode (slower)\n');
                 end
             catch ME
                 fprintf('Warning: Could not set simulation mode for animation control: %s\n', ME.message);
@@ -4123,23 +4156,17 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
     data_table = [];
     
     try
-        if shouldShowDebug(handles)
-            fprintf('Debug: Processing CombinedSignalBus\n');
-        end
+        fprintf('Debug: Processing CombinedSignalBus\n');
         
         % CombinedSignalBus should be a struct with time and signals
         if ~isstruct(combinedBus)
-            if shouldShowDebug(handles)
-                fprintf('Debug: CombinedSignalBus is not a struct\n');
-            end
+            fprintf('Debug: CombinedSignalBus is not a struct\n');
             return;
         end
         
         % Look for time field
         bus_fields = fieldnames(combinedBus);
-        if shouldShowDebug(handles)
-            fprintf('Debug: CombinedSignalBus fields: %s\n', strjoin(bus_fields, ', '));
-        end
+        fprintf('Debug: CombinedSignalBus fields: %s\n', strjoin(bus_fields, ', '));
         
         time_field = '';
         time_data = [];
@@ -4639,35 +4666,25 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
         
         fprintf('=== SIMSCAPE DIAGNOSTIC END ===\n');
 
-        if shouldShowDebug(handles)
-            fprintf('Debug: Starting recursive Simscape extraction from root node.\n');
-        end
+        fprintf('Debug: Starting recursive Simscape extraction from root node.\n');
 
         % Recursively collect all series data using primary traversal method
         [time_data, all_signals] = traverseSimlogNode(simlog, '');
 
         if isempty(time_data) || isempty(all_signals)
-            if shouldShowNormal(handles)
-                fprintf('⚠️  Primary method found no data. Trying fallback methods...\n');
-            end
+            fprintf('⚠️  Primary method found no data. Trying fallback methods...\n');
             
             % FALLBACK METHOD: Simple property inspection
             [time_data, all_signals] = fallbackSimlogExtraction(simlog);
             
             if isempty(time_data) || isempty(all_signals)
-                if shouldShowNormal(handles)
-                    fprintf('❌ All extraction methods failed. No usable Simscape data found.\n');
-                end
+                fprintf('❌ All extraction methods failed. No usable Simscape data found.\n');
                 return;
             else
-                if shouldShowNormal(handles)
-                    fprintf('✅ Fallback method found data!\n');
-                end
+                fprintf('✅ Fallback method found data!\n');
             end
         else
-            if shouldShowNormal(handles)
-                fprintf('✅ Primary traversal method found data!\n');
-            end
+            fprintf('✅ Primary traversal method found data!\n');
         end
 
         % Build table
@@ -4680,25 +4697,17 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
             if length(signal.data) == expected_length
                 data_cells{end+1} = signal.data(:);
                 var_names{end+1} = signal.name;
-                if shouldShowDebug(handles)
-                    fprintf('Debug: Added Simscape signal: %s (length: %d)\n', signal.name, expected_length);
-                end
+                fprintf('Debug: Added Simscape signal: %s (length: %d)\n', signal.name, expected_length);
             else
-                if shouldShowDebug(handles)
-                    fprintf('Debug: Skipped %s (length mismatch: %d vs %d)\n', signal.name, length(signal.data), expected_length);
-                end
+                fprintf('Debug: Skipped %s (length mismatch: %d vs %d)\n', signal.name, length(signal.data), expected_length);
             end
         end
 
         if length(data_cells) > 1
             simscape_data = table(data_cells{:}, 'VariableNames', var_names);
-            if shouldShowDebug(handles)
-                fprintf('Debug: Created Simscape table with %d columns, %d rows.\n', width(simscape_data), height(simscape_data));
-            end
+            fprintf('Debug: Created Simscape table with %d columns, %d rows.\n', width(simscape_data), height(simscape_data));
         else
-            if shouldShowDebug(handles)
-                fprintf('Debug: Only time data found in Simscape log.\n');
-            end
+            fprintf('Debug: Only time data found in Simscape log.\n');
         end
 
     catch ME
@@ -4712,16 +4721,12 @@ function [time_data, all_signals] = fallbackSimlogExtraction(simlog)
     all_signals = {};
     
     try
-        if shouldShowDebug(handles)
-            fprintf('Debug: Attempting fallback Simscape extraction...\n');
-        end
+        fprintf('Debug: Attempting fallback Simscape extraction...\n');
         
         % Method 1: Try direct property enumeration
         try
             props = properties(simlog);
-            if shouldShowDebug(handles)
-                fprintf('Debug: Simlog has %d properties\n', length(props));
-            end
+            fprintf('Debug: Simlog has %d properties\n', length(props));
             
             for i = 1:length(props)
                 prop_name = props{i};
@@ -5919,61 +5924,4 @@ function showBatchSettingsHelp()
               'Position', [0.4, 0.05, 0.2, 0.1], ...
               'BackgroundColor', [0.8, 0.8, 0.8], ...
               'Callback', @(src, event) close(help_dialog));
-end
-
-% Helper function to check if debug output should be shown
-function should_show_debug = shouldShowDebug(handles)
-    if ~isfield(handles, 'verbosity_popup')
-        should_show_debug = true; % Default to showing if no verbosity control
-        return;
-    end
-    
-    verbosity_options = {'Normal', 'Silent', 'Verbose', 'Debug'};
-    verbosity_idx = get(handles.verbosity_popup, 'Value');
-    if verbosity_idx <= length(verbosity_options)
-        verbosity_level = verbosity_options{verbosity_idx};
-    else
-        verbosity_level = 'Normal';
-    end
-    
-    % Only show debug output for Debug verbosity level
-    should_show_debug = strcmp(verbosity_level, 'Debug');
-end
-
-% Helper function to check if verbose output should be shown
-function should_show_verbose = shouldShowVerbose(handles)
-    if ~isfield(handles, 'verbosity_popup')
-        should_show_verbose = true; % Default to showing if no verbosity control
-        return;
-    end
-    
-    verbosity_options = {'Normal', 'Silent', 'Verbose', 'Debug'};
-    verbosity_idx = get(handles.verbosity_popup, 'Value');
-    if verbosity_idx <= length(verbosity_options)
-        verbosity_level = verbosity_options{verbosity_idx};
-    else
-        verbosity_level = 'Normal';
-    end
-    
-    % Show verbose output for Verbose and Debug levels
-    should_show_verbose = strcmp(verbosity_level, 'Verbose') || strcmp(verbosity_level, 'Debug');
-end
-
-% Helper function to check if normal output should be shown
-function should_show_normal = shouldShowNormal(handles)
-    if ~isfield(handles, 'verbosity_popup')
-        should_show_normal = true; % Default to showing if no verbosity control
-        return;
-    end
-    
-    verbosity_options = {'Normal', 'Silent', 'Verbose', 'Debug'};
-    verbosity_idx = get(handles.verbosity_popup, 'Value');
-    if verbosity_idx <= length(verbosity_options)
-        verbosity_level = verbosity_options{verbosity_idx};
-    else
-        verbosity_level = 'Normal';
-    end
-    
-    % Show normal output for Normal, Verbose, and Debug levels (not Silent)
-    should_show_normal = ~strcmp(verbosity_level, 'Silent');
 end
