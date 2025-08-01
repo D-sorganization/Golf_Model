@@ -1,6 +1,11 @@
-function param_info = getPolynomialParameterInfo()
+function param_info = getPolynomialParameterInfo(max_joints)
     % Get polynomial parameter information for coefficient setting
     % The actual model uses 27 joints with 7 coefficients each (ABCDEFG) = 189 total coefficients
+    
+    % Default to all joints if not specified
+    if nargin < 1
+        max_joints = 27;
+    end
     
     % Try to load the actual parameter structure from the model file
     try
@@ -59,6 +64,13 @@ function param_info = getPolynomialParameterInfo()
                 end
             end
             
+            % Limit to max_joints for testing
+            if length(filtered_joint_names) > max_joints
+                filtered_joint_names = filtered_joint_names(1:max_joints);
+                filtered_coeffs = filtered_coeffs(1:max_joints);
+                fprintf('Limited to first %d joints for testing\n', max_joints);
+            end
+            
             param_info.joint_names = sort(filtered_joint_names);
             param_info.joint_coeffs = cell(size(param_info.joint_names));
             
@@ -76,19 +88,19 @@ function param_info = getPolynomialParameterInfo()
             
         else
             fprintf('Warning: PolynomialInputValues.mat not found, using fallback structure\n');
-            param_info = getSimplifiedParameterInfo();
+            param_info = getSimplifiedParameterInfo(max_joints);
         end
         
     catch ME
         fprintf('Error loading parameter structure: %s\n', ME.message);
         fprintf('Using fallback structure\n');
-        param_info = getSimplifiedParameterInfo();
+        param_info = getSimplifiedParameterInfo(max_joints);
     end
 end
 
-function param_info = getSimplifiedParameterInfo()
-    % Fallback structure - 27 joints with 7 coefficients each = 189 total
-    joint_names = {
+function param_info = getSimplifiedParameterInfo(max_joints)
+    % Fallback structure - limited joints for testing
+    all_joint_names = {
         'BaseTorqueInputX', 'BaseTorqueInputY', 'BaseTorqueInputZ',
         'HipInputX', 'HipInputY', 'HipInputZ',
         'LSInputX', 'LSInputY', 'LSInputZ',
@@ -97,11 +109,16 @@ function param_info = getSimplifiedParameterInfo()
         'Joint13', 'Joint14', 'Joint15', 'Joint16', 'Joint17', 'Joint18'
     };
     
-    param_info.joint_names = joint_names;
-    param_info.joint_coeffs = cell(size(joint_names));
-    for i = 1:length(joint_names)
+    % Limit to max_joints
+    if length(all_joint_names) > max_joints
+        all_joint_names = all_joint_names(1:max_joints);
+    end
+    
+    param_info.joint_names = all_joint_names;
+    param_info.joint_coeffs = cell(size(all_joint_names));
+    for i = 1:length(all_joint_names)
         % Convert string 'ABCDEFG' to cell array {'A', 'B', 'C', 'D', 'E', 'F', 'G'}
         param_info.joint_coeffs{i} = {'A', 'B', 'C', 'D', 'E', 'F', 'G'};
     end
-    param_info.total_params = length(joint_names) * 7; % 27 * 7 = 189
+    param_info.total_params = length(all_joint_names) * 7;
 end 

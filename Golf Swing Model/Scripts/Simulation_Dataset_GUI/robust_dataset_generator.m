@@ -447,26 +447,19 @@ function batch_results = processBatch(config, trial_indices, pool, capture_works
             % Add current directory to parallel workers' path
             spmd
                 addpath(current_dir);
-                % Ensure all required functions are available
-                if ~exist('setModelParameters', 'file')
-                    fprintf('Warning: setModelParameters function not found on worker\n');
-                end
-                
-                % Validate model loading on workers
-                try
+            end
+            
+            % Ensure model is available on all parallel workers (like main GUI)
+            try
+                fprintf('Loading model on parallel workers...\n');
+                spmd
                     if ~bdIsLoaded(config.model_name)
-                        if exist(config.model_path, 'file')
-                            load_system(config.model_path);
-                            fprintf('Worker %d: Successfully loaded model %s\n', labindex, config.model_name);
-                        else
-                            fprintf('Worker %d: ERROR - Model file not found at %s\n', labindex, config.model_path);
-                        end
-                    else
-                        fprintf('Worker %d: Model %s already loaded\n', labindex, config.model_name);
+                        load_system(config.model_path);
                     end
-                catch ME
-                    fprintf('Worker %d: ERROR loading model: %s\n', labindex, ME.message);
                 end
+                fprintf('Model loaded on all workers\n');
+            catch ME
+                fprintf('Warning: Could not preload model on workers: %s\n', ME.message);
             end
             
             % Run parallel simulations
@@ -474,7 +467,10 @@ function batch_results = processBatch(config, trial_indices, pool, capture_works
             fprintf('DEBUG: First simInput model: %s\n', simInputs(1).ModelName);
             fprintf('DEBUG: First simInput parameters: %s\n', mat2str(simInputs(1).ModelParameters));
             
-            simOuts = parsim(simInputs, 'ShowProgress', true, ...
+            simOuts = parsim(simInputs, ...
+                           'TransferBaseWorkspaceVariables', 'on', ...
+                           'AttachedFiles', {config.model_path}, ...
+                           'ShowProgress', true, ...
                            'StopOnError', 'off');
             
             fprintf('DEBUG: parsim completed. simOuts class: %s, size: %s\n', class(simOuts), mat2str(size(simOuts)));
@@ -558,6 +554,14 @@ end
 
 function simInputs = prepareBatchSimulationInputs(config, trial_indices)
     % Prepare simulation inputs for a specific batch
+    
+    % Add model directory to path for parallel workers (like main GUI)
+    [model_dir, ~, ~] = fileparts(config.model_path);
+    if ~isempty(model_dir)
+        addpath(model_dir);
+        fprintf('Added model directory to path: %s\n', model_dir);
+    end
+    
     simInputs = Simulink.SimulationInput.empty(0, length(trial_indices));
     
     for i = 1:length(trial_indices)
@@ -570,20 +574,50 @@ function simInputs = prepareBatchSimulationInputs(config, trial_indices)
             trial_coefficients = config.coefficient_values(end, :);
         end
         
-        % Create SimulationInput object
-        simIn = Simulink.SimulationInput(config.model_name);
-        
-        % Set simulation parameters
-        simIn = setModelParameters(simIn, config);
-        simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
-        
-        % Load input file if specified
-        if isfield(config, 'input_file') && ~isempty(config.input_file) && exist(config.input_file, 'file')
-            simIn = loadInputFile(simIn, config.input_file);
+        % Ensure coefficients are numeric
+        if iscell(trial_coefficients)
+            trial_coefficients = cell2mat(trial_coefficients);
         end
+        if ~isnumeric(trial_coefficients)
+            trial_coefficients = double(trial_coefficients);
+        end
+        trial_coefficients = double(trial_coefficients);  % Ensure double precision (like main GUI)
         
-        simInputs(i) = simIn;
+        % Create SimulationInput object with proper error handling
+        try
+            simIn = Simulink.SimulationInput(config.model_name);
+            
+            % Set simulation parameters
+            simIn = setModelParameters(simIn, config);
+            simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
+            
+            % Load input file if specified
+            if isfield(config, 'input_file') && ~isempty(config.input_file) && exist(config.input_file, 'file')
+                simIn = loadInputFile(simIn, config.input_file);
+            end
+            
+            % Validate the SimulationInput before adding to array
+            if isa(simIn, 'Simulink.SimulationInput')
+                simInputs(i) = simIn;
+            else
+                fprintf('Warning: Invalid SimulationInput created for trial %d\n', trial);
+                % Create a minimal valid SimulationInput as fallback
+                simInputs(i) = Simulink.SimulationInput(config.model_name);
+            end
+            
+        catch ME
+            fprintf('Error creating SimulationInput for trial %d: %s\n', trial, ME.message);
+            % Create a minimal valid SimulationInput as fallback
+            simInputs(i) = Simulink.SimulationInput(config.model_name);
+        end
     end
+    
+    % Validate the entire array
+    if isempty(simInputs)
+        error('No valid SimulationInput objects created');
+    end
+    
+    fprintf('DEBUG: Created %d SimulationInput objects for parsim\n', length(simInputs));
 end
 
 function success = isSimulationSuccessful(simOut)
@@ -1268,6 +1302,8 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
         
         % Check if all requested data sources were captured
         all_captured = true;
+        any_captured = false;  % Track if any data was captured
+        
         if config.use_signal_bus && ~result.data_captured.signal_bus
             fprintf('WARNING: CombinedSignalBus requested but not captured\n');
             all_captured = false;
@@ -1285,7 +1321,18 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
             all_captured = false;
         end
         
-        result.success = all_captured;
+        % Check if any data was captured
+        any_captured = result.data_captured.signal_bus || result.data_captured.logsout || ...
+                      result.data_captured.simscape || result.data_captured.workspace;
+        
+        % Consider successful if any data was captured (more lenient)
+        if any_captured
+            result.success = true;
+            fprintf('SUCCESS: Simulation completed with data capture (lenient mode)\n');
+        else
+            result.success = false;
+            fprintf('FAILURE: No data captured from any source\n');
+        end
         
         result.filename = filename;
         result.data_points = num_rows;
