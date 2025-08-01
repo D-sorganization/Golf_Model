@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-07-31 21:33:48
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 100
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: enabled
+% Logsout Dataset: disabled
+% Simscape Results: enabled
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250731
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: DeskComputer
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 100 trials x 189 coefficients
+% First trial coefficients (first 10): 45.970, -16.010, 10.830, 7.560, 48.600, 48.660, -4.060, -12.380, -46.820, 21.910
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 %% 
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
@@ -1280,51 +1323,35 @@ end
 function startGeneration(src, evt)
     handles = guidata(gcbf);
     
-    % Check if already running
-    if isfield(handles, 'is_running') && handles.is_running
-        msgbox('Generation is already running. Please wait for it to complete or use the Stop button.', 'Already Running', 'warn');
-        return;
-    end
-    
     try
-        % Set running state immediately
-        handles.is_running = true;
-        guidata(handles.fig, handles);
-        
-        % Provide immediate visual feedback
-        set(handles.start_button, 'Enable', 'off', 'String', 'Running...');
-        set(handles.stop_button, 'Enable', 'on');
-        set(handles.status_text, 'String', 'Status: Starting generation...');
-        set(handles.progress_text, 'String', 'Initializing...');
-        drawnow; % Force immediate UI update
-        
         % Validate inputs
         config = validateInputs(handles);
         if isempty(config)
-            % Reset state on validation failure
-            handles.is_running = false;
-            set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
-            set(handles.stop_button, 'Enable', 'off');
-            guidata(handles.fig, handles);
             return;
         end
         
+        % Update UI state
+        set(handles.start_button, 'Enable', 'off');
+        set(handles.stop_button, 'Enable', 'on');
+        handles.should_stop = false;
+        
         % Store config
         handles.config = config;
-        handles.should_stop = false;
         guidata(handles.fig, handles);
+        
+        % Update status
+        set(handles.status_text, 'String', 'Status: Starting generation...');
+        set(handles.progress_text, 'String', 'Initializing simulation...');
+        drawnow;
         
         % Start generation
         runGeneration(handles);
         
     catch ME
-        % Reset state on error
         try
-            handles.is_running = false;
-            set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
-            set(handles.stop_button, 'Enable', 'off');
             set(handles.status_text, 'String', ['Status: Error - ' ME.message]);
-            guidata(handles.fig, handles);
+            set(handles.start_button, 'Enable', 'on');
+            set(handles.stop_button, 'Enable', 'off');
         catch
             % GUI might be destroyed, ignore the error
         end
@@ -1338,8 +1365,6 @@ function stopGeneration(src, evt)
     guidata(handles.fig, handles);
     set(handles.status_text, 'String', 'Status: Stopping...');
     set(handles.progress_text, 'String', 'Generation stopped by user');
-    
-    % Note: The actual cleanup will happen in runGeneration when it detects should_stop = true
 end
 % Browse Input File
 function browseInputFile(src, evt)
@@ -1964,91 +1989,53 @@ function runGeneration(handles)
             successful_trials = runSequentialSimulations(handles, config);
         end
         
-        % Check if user requested stop
-        if handles.should_stop
-            set(handles.status_text, 'String', 'Status: Generation stopped by user');
-            set(handles.progress_text, 'String', 'Stopped');
-        else
-            % Final status
-            failed_trials = config.num_simulations - successful_trials;
-            final_msg = sprintf('Complete: %d successful, %d failed', successful_trials, failed_trials);
-            set(handles.status_text, 'String', ['Status: ' final_msg]);
-            set(handles.progress_text, 'String', final_msg);
-            
-            % Compile dataset
-            if successful_trials > 0
-                set(handles.status_text, 'String', 'Status: Compiling master dataset...');
-                drawnow;
-                compileDataset(config);
-                set(handles.status_text, 'String', ['Status: ' final_msg ' - Dataset compiled']);
-            end
-            
-            % Save script and settings for reproducibility
-            try
-                saveScriptAndSettings(config);
-            catch ME
-                fprintf('Warning: Could not save script and settings: %s\n', ME.message);
-            end
+        % Final status
+        failed_trials = config.num_simulations - successful_trials;
+        final_msg = sprintf('Complete: %d successful, %d failed', successful_trials, failed_trials);
+        set(handles.status_text, 'String', ['Status: ' final_msg]);
+        set(handles.progress_text, 'String', final_msg);
+        
+        % Compile dataset
+        if successful_trials > 0
+            set(handles.status_text, 'String', 'Status: Compiling master dataset...');
+            drawnow;
+            compileDataset(config);
+            set(handles.status_text, 'String', ['Status: ' final_msg ' - Dataset compiled']);
         end
+        
+        % Save script and settings for reproducibility
+        try
+            saveScriptAndSettings(config);
+        catch ME
+            fprintf('Warning: Could not save script and settings: %s\n', ME.message);
+        end
+        
+        set(handles.start_button, 'Enable', 'on');
+        set(handles.stop_button, 'Enable', 'off');
         
     catch ME
         try
             set(handles.status_text, 'String', ['Status: Error - ' ME.message]);
+            set(handles.start_button, 'Enable', 'on');
+            set(handles.stop_button, 'Enable', 'off');
         catch
             % GUI might be destroyed, ignore the error
         end
         errordlg(ME.message, 'Generation Failed');
-    finally
-        % Always cleanup state and UI
-        try
-            handles.is_running = false;
-            set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
-            set(handles.stop_button, 'Enable', 'off');
-            guidata(handles.fig, handles);
-        catch
-            % GUI might be destroyed, ignore the error
-        end
     end
 end
 function successful_trials = runParallelSimulations(handles, config)
-    % Initialize parallel pool with better error handling
+    % Initialize parallel pool
     try
-        % First, check if there's an existing pool and clean it up if needed
-        existing_pool = gcp('nocreate');
-        if ~isempty(existing_pool)
-            try
-                % Check if the existing pool is healthy
-                pool_info = existing_pool;
-                fprintf('Found existing parallel pool with %d workers\n', pool_info.NumWorkers);
-                
-                % Test if the pool is responsive
-                try
-                    spmd
-                        test_var = 1;
-                    end
-                    fprintf('Existing pool is healthy, using it\n');
-                catch
-                    fprintf('Existing pool appears unresponsive, deleting it\n');
-                    delete(existing_pool);
-                    existing_pool = [];
-                end
-            catch
-                fprintf('Error checking existing pool, deleting it\n');
-                delete(existing_pool);
-                existing_pool = [];
-            end
-        end
-        
-        % Create new pool if needed
-        if isempty(existing_pool)
+        if isempty(gcp('nocreate'))
             % Auto-detect optimal number of workers
             max_cores = feature('numcores');
             num_workers = min(max_cores, 6); % Limit to 6 workers to match MATLAB cluster configuration
-            
-            % Try to create the pool with timeout
-            fprintf('Starting parallel pool with %d workers...\n', num_workers);
             parpool('local', num_workers);
-            fprintf('Successfully started parallel pool with %d workers\n', num_workers);
+            fprintf('Started parallel pool with %d workers\n', num_workers);
+        else
+            current_pool = gcp;
+            fprintf('Using existing parallel pool with %d workers\n', current_pool.NumWorkers);
         end
     catch ME
         warning('Failed to start parallel pool: %s. Falling back to sequential execution.', ME.message);
@@ -2197,142 +2184,6 @@ function successful_trials = runParallelSimulations(handles, config)
         % Summary
         fprintf('\n=== PARALLEL SIMULATION SUMMARY ===\n');
         fprintf('Total trials: %d\n', length(simOuts));
-        
-    catch ME
-        fprintf('Error in parallel simulation: %s\n', ME.message);
-        successful_trials = 0;
-    end
-end
-
-% Helper function to check for stop requests and update progress
-function shouldStop = checkStopRequest(handles)
-    shouldStop = false;
-    try
-        % Get current handles
-        current_handles = guidata(handles.fig);
-        if isfield(current_handles, 'should_stop') && current_handles.should_stop
-            shouldStop = true;
-        end
-        
-        % Force UI update to prevent freezing
-        drawnow;
-        
-    catch
-        % If we can't access handles, assume we should stop
-        shouldStop = true;
-    end
-end
-
-% Helper function to update progress display
-function updateProgress(handles, current, total, message)
-    try
-        if nargin < 4
-            message = 'Processing...';
-        end
-        
-        progress_percent = round((current / total) * 100);
-        progress_text = sprintf('%s (%d/%d - %d%%)', message, current, total, progress_percent);
-        
-        set(handles.progress_text, 'String', progress_text);
-        drawnow;
-        
-    catch
-        % Silently fail if GUI is not available
-    end
-end
-
-% Helper function to monitor memory usage
-function memoryInfo = getMemoryInfo()
-    try
-        % Get MATLAB memory info
-        memoryInfo = memory;
-        
-        % Calculate memory usage percentage
-        memoryInfo.usage_percent = (memoryInfo.MemUsedMATLAB / memoryInfo.PhysicalMemory.Total) * 100;
-        
-        % Get system memory info if available
-        if ispc
-            try
-                [~, result] = system('wmic OS get TotalVisibleMemorySize,FreePhysicalMemory /Value');
-                lines = strsplit(result, '\n');
-                total_mem = 0;
-                free_mem = 0;
-                
-                for i = 1:length(lines)
-                    line = strtrim(lines{i});
-                    if startsWith(line, 'TotalVisibleMemorySize=')
-                        total_mem = str2double(extractAfter(line, '='));
-                    elseif startsWith(line, 'FreePhysicalMemory=')
-                        free_mem = str2double(extractAfter(line, '='));
-                    end
-                end
-                
-                if total_mem > 0
-                    memoryInfo.system_total_mb = total_mem / 1024;
-                    memoryInfo.system_free_mb = free_mem / 1024;
-                    memoryInfo.system_usage_percent = ((total_mem - free_mem) / total_mem) * 100;
-                end
-            catch
-                % Ignore system memory check errors
-            end
-        end
-        
-    catch
-        memoryInfo = struct('usage_percent', 0);
-    end
-end
-
-% Helper function to check if memory usage is high
-function isHighMemory = checkHighMemoryUsage(threshold_percent)
-    if nargin < 1
-        threshold_percent = 85; % Default threshold
-    end
-    
-    try
-        memoryInfo = getMemoryInfo();
-        isHighMemory = memoryInfo.usage_percent > threshold_percent;
-        
-        if isHighMemory
-            fprintf('Warning: High memory usage detected: %.1f%%\n', memoryInfo.usage_percent);
-        end
-        
-    catch
-        isHighMemory = false;
-    end
-end
-
-% Helper function to generate random coefficients
-function coefficients = generateRandomCoefficients(num_coefficients)
-    % Generate random coefficients with reasonable ranges for golf swing parameters
-    % These ranges are based on typical golf swing polynomial coefficients
-    
-    % Different ranges for different coefficient types (A, B, C, D, E, F, G)
-    % A (t^6): Large range for major motion
-    % B (t^5): Large range for major motion  
-    % C (t^4): Medium range for control
-    % D (t^3): Medium range for control
-    % E (t^2): Small range for fine control
-    % F (t^1): Small range for fine control
-    % G (constant): Small range for offset
-    
-    coefficients = zeros(1, num_coefficients);
-    
-    for i = 1:num_coefficients
-        coeff_type = mod(i-1, 7) + 1; % A=1, B=2, C=3, D=4, E=5, F=6, G=7
-        
-        switch coeff_type
-            case {1, 2} % A, B - Large range
-                coefficients(i) = (rand() - 0.5) * 2000; % -1000 to 1000
-            case {3, 4} % C, D - Medium range
-                coefficients(i) = (rand() - 0.5) * 1000; % -500 to 500
-            case {5, 6} % E, F - Small range
-                coefficients(i) = (rand() - 0.5) * 200;  % -100 to 100
-            case 7 % G - Very small range
-                coefficients(i) = (rand() - 0.5) * 50;   % -25 to 25
-        end
-    end
-end
-
         fprintf('Successful: %d\n', successful_trials);
         fprintf('Failed: %d\n', length(simOuts) - successful_trials);
         
@@ -2386,52 +2237,33 @@ end
 function successful_trials = runSequentialSimulations(handles, config)
     successful_trials = 0;
     
-    fprintf('Starting sequential simulation of %d trials...\n', config.num_simulations);
-    
     for trial = 1:config.num_simulations
-        % Check for stop request and update progress
-        if checkStopRequest(handles)
-            fprintf('Sequential simulation stopped by user at trial %d\n', trial);
+        handles = guidata(handles.fig); % Refresh handles
+        if handles.should_stop
             break;
         end
         
-        % Update progress with percentage
-        updateProgress(handles, trial, config.num_simulations, 'Sequential simulation');
-        
-        % Check memory usage every 10 trials
-        if mod(trial, 10) == 0
-            if checkHighMemoryUsage(90)
-                fprintf('Warning: High memory usage detected. Consider stopping or reducing batch size.\n');
-            end
-        end
+        progress_msg = sprintf('Processing trial %d/%d...', trial, config.num_simulations);
+        set(handles.progress_text, 'String', progress_msg);
+        drawnow;
         
         try
             if trial <= size(config.coefficient_values, 1)
                 trial_coefficients = config.coefficient_values(trial, :);
             else
-                % Generate random coefficients for additional trials
-                fprintf('Generating random coefficients for trial %d (beyond available data)\n', trial);
-                trial_coefficients = generateRandomCoefficients(size(config.coefficient_values, 2));
+                trial_coefficients = config.coefficient_values(end, :);
             end
             
             result = runSingleTrial(trial, config, trial_coefficients, config.capture_workspace);
             
             if result.success
                 successful_trials = successful_trials + 1;
-                fprintf('✓ Trial %d completed successfully\n', trial);
-            else
-                fprintf('✗ Trial %d failed: %s\n', trial, result.error);
             end
             
         catch ME
-            fprintf('✗ Trial %d error: %s\n', trial, ME.message);
+            fprintf('Trial %d error: %s\n', trial, ME.message);
         end
     end
-    
-    fprintf('\n=== SEQUENTIAL SIMULATION SUMMARY ===\n');
-    fprintf('Total trials: %d\n', config.num_simulations);
-    fprintf('Successful: %d\n', successful_trials);
-    fprintf('Failed: %d\n', config.num_simulations - successful_trials);
 end
 function simInputs = prepareSimulationInputs(config)
     % Load the Simulink model
@@ -2459,8 +2291,7 @@ function simInputs = prepareSimulationInputs(config)
         if trial <= size(config.coefficient_values, 1)
             trial_coefficients = config.coefficient_values(trial, :);
         else
-            % Generate random coefficients for additional trials
-            trial_coefficients = generateRandomCoefficients(size(config.coefficient_values, 2));
+            trial_coefficients = config.coefficient_values(end, :);
         end
         
         % Ensure coefficients are numeric (fix for parallel execution)
@@ -2491,6 +2322,17 @@ function simInputs = prepareSimulationInputs(config)
     end
 end
 function simIn = setPolynomialCoefficients(simIn, coefficients, config)
+    % DEBUG: Print what we're receiving
+    fprintf('DEBUG: setPolynomialCoefficients called with:\n');
+    fprintf('  coefficients class: %s\n', class(coefficients));
+    fprintf('  coefficients size: %s\n', mat2str(size(coefficients)));
+    if iscell(coefficients)
+        fprintf('  coefficients is cell array with %d elements\n', numel(coefficients));
+        if numel(coefficients) > 0
+            fprintf('  first element class: %s\n', class(coefficients{1}));
+        end
+    end
+    
     % Get parameter info for coefficient mapping
     param_info = getPolynomialParameterInfo();
     
@@ -2501,16 +2343,20 @@ function simIn = setPolynomialCoefficients(simIn, coefficients, config)
     
     % Handle parallel worker coefficient format issues
     if iscell(coefficients)
+        fprintf('Debug: Converting cell array coefficients to numeric (parallel worker fix)\n');
         try
             % Check if cells contain strings or numbers
             if all(cellfun(@ischar, coefficients))
                 % Convert string cells to numeric
                 coefficients = cellfun(@str2double, coefficients);
+                fprintf('Debug: Converted string cells to numeric\n');
             elseif all(cellfun(@isnumeric, coefficients))
                 % Convert numeric cells to array
                 coefficients = cell2mat(coefficients);
+                fprintf('Debug: Converted numeric cells to array\n');
             else
                 % Mixed content or other issues
+                fprintf('Warning: Mixed cell content, attempting element-wise conversion\n');
                 numeric_coeffs = zeros(size(coefficients));
                 for i = 1:numel(coefficients)
                     if ischar(coefficients{i})
@@ -2528,6 +2374,7 @@ function simIn = setPolynomialCoefficients(simIn, coefficients, config)
             % Try one more approach - flatten and convert
             try
                 coefficients = str2double(coefficients(:));
+                fprintf('Debug: Used str2double on flattened cells\n');
             catch
                 fprintf('Error: All conversion attempts failed\n');
                 return;
@@ -2544,7 +2391,10 @@ function simIn = setPolynomialCoefficients(simIn, coefficients, config)
     % Ensure coefficients are a row vector if needed
     if size(coefficients, 1) > 1 && size(coefficients, 2) == 1
         coefficients = coefficients';
+        fprintf('Debug: Transposed coefficients to row vector\n');
     end
+    
+    fprintf('Setting %d coefficients for %d joints\n', length(coefficients), length(param_info.joint_names));
     
     % Set coefficients as model variables
     global_coeff_idx = 1;
@@ -2562,6 +2412,13 @@ function simIn = setPolynomialCoefficients(simIn, coefficients, config)
                 try
                     simIn = simIn.setVariable(var_name, coefficients(global_coeff_idx));
                     variables_set = variables_set + 1;
+                    
+                    % Show first few for debugging (but not too verbose)
+                    if global_coeff_idx <= 3
+                        fprintf('  Set %s = %.3f\n', var_name, coefficients(global_coeff_idx));
+                    elseif global_coeff_idx == 4
+                        fprintf('  ... (and %d more variables)\n', length(coefficients) - 3);
+                    end
                 catch ME
                     fprintf('  Warning: Failed to set %s: %s\n', var_name, ME.message);
                 end
@@ -2571,6 +2428,8 @@ function simIn = setPolynomialCoefficients(simIn, coefficients, config)
             global_coeff_idx = global_coeff_idx + 1;
         end
     end
+    
+    fprintf('Successfully set %d model variables\n', variables_set);
 end
 function simIn = loadInputFile(simIn, input_file)
     try
@@ -2620,6 +2479,17 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
         
         % Run simulation with progress indicator and visualization suppression
         fprintf('Running trial %d simulation...', trial_num);
+        
+        % Debug: Check what simulation mode is set
+        try
+            current_mode = simIn.getModelParameter('SimulationMode');
+            fprintf('Debug: Sequential mode - SimulationMode set to: %s\n', current_mode);
+        catch
+            fprintf('Debug: Sequential mode - Could not get SimulationMode parameter\n');
+        end
+        
+        % Visualization suppression (problematic parameters removed for compatibility)
+        % Note: ShowSimulationManager and ShowProgress don't exist for block diagrams
         
         simOut = sim(simIn);
         fprintf(' Done.\n');
@@ -3857,37 +3727,11 @@ function closeGUICallback(src, evt)
     % Handle GUI close
     try
         handles = guidata(src);
-        
-        % Check if generation is running
-        if isstruct(handles) && isfield(handles, 'is_running') && handles.is_running
-            response = questdlg('Generation is currently running. Do you want to stop it and close the GUI?', ...
-                               'Generation Running', 'Stop and Close', 'Cancel', 'Cancel');
-            if strcmp(response, 'Cancel')
-                return; % Don't close
-            end
-            % Set stop flag
-            handles.should_stop = true;
-            guidata(src, handles);
-        end
-        
-        % Save preferences
         if isstruct(handles) && isfield(handles, 'preferences')
             saveUserPreferences(handles);
         end
-        
-        % Clean up parallel pool
-        try
-            existing_pool = gcp('nocreate');
-            if ~isempty(existing_pool)
-                fprintf('Cleaning up parallel pool on GUI close...\n');
-                delete(existing_pool);
-            end
-        catch ME
-            fprintf('Warning: Could not clean up parallel pool: %s\n', ME.message);
-        end
-        
-    catch ME
-        fprintf('Warning: Error during GUI close: %s\n', ME.message);
+    catch
+        % Silently fail
     end
     
     % Close the figure
