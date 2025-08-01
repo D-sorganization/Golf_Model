@@ -744,8 +744,9 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                    'BackgroundColor', colors.panel, ...
                    'ForegroundColor', colors.text);
     
-    % Selection row
-    y = 0.90;
+    % Selection row - leave a little more room for the panel title so the
+    % controls do not overlap with it
+    y = 0.88;
     rowHeight = 0.08;
     
     uicontrol('Parent', panel, ...
@@ -797,8 +798,9 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                                          'HorizontalAlignment', 'center', ...
                                          'Enable', 'off');
     
-    % Coefficient edit boxes
-    y = 0.75;
+    % Coefficient edit boxes - spaced a bit lower to avoid crowding the
+    % selector row
+    y = 0.68;
     coeff_labels = {'A', 'B', 'C', 'D', 'E', 'F', 'G'};
     coeff_powers = {'t⁶', 't⁵', 't⁴', 't³', 't²', 't', '1'};  % Powers for each coefficient
     handles.joint_coeff_edits = gobjects(1, 7);
@@ -839,7 +841,8 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
     end
     
     % Action buttons - positioned after the coefficient section (label + text box)
-    y = y - 0.08 - 0.06 - 0.04;  % Start after coefficient text boxes, minus label height, minus spacing
+    % Extra spacing keeps all elements comfortably within the panel
+    y = y - 0.08 - 0.06 - 0.05;  % Start after coefficient text boxes, minus label height, minus spacing
     
     % Action buttons
     buttonHeight = 0.08;
@@ -878,7 +881,7 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                                        'Style', 'text', ...
                                        'String', 'τ(t) = At⁶ + Bt⁵ + Ct⁴ + Dt³ + Et² + Ft + G', ...
                                        'Units', 'normalized', ...
-                                       'Position', [0.02, y - buttonHeight - 0.04, 0.96, 0.08], ...
+                                       'Position', [0.02, y - buttonHeight - 0.05, 0.96, 0.08], ...
                                        'FontSize', 11, ...
                                        'FontWeight', 'normal', ...
                                        'ForegroundColor', colors.primary, ...
