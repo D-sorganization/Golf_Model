@@ -1548,6 +1548,9 @@ function startGeneration(src, evt)
         handles.should_stop = false;
         guidata(handles.fig, handles);
         
+        % Create script backup before starting generation
+        backupScripts(handles);
+        
         % Start generation
         runGeneration(handles);
         
@@ -5656,4 +5659,54 @@ function clearAllCheckpoints(src, event)
     catch ME
         fprintf('Error clearing checkpoints: %s\n', ME.message);
     end
+end
+
+% Backup Scripts Function
+function backupScripts(handles)
+    % Create a backup of all scripts used in the current run
+    timestamp = datestr(now, 'yyyymmdd_HHMMSS');
+    backup_folder = sprintf('Backup_Scripts/Run_Backup_%s', timestamp);
+    
+    % Create backup directory
+    if ~exist(backup_folder, 'dir')
+        mkdir(backup_folder);
+    end
+    
+    % Get the directory where this script is located
+    [script_dir, ~, ~] = fileparts(mfilename('fullpath'));
+    
+    % List of scripts to backup (all .m files in the Simulation_Dataset_GUI folder)
+    script_files = dir(fullfile(script_dir, '*.m'));
+    
+    % Copy each script to backup folder
+    copied_count = 0;
+    for i = 1:length(script_files)
+        script_path = fullfile(script_dir, script_files(i).name);
+        if exist(script_path, 'file')
+            backup_path = fullfile(backup_folder, script_files(i).name);
+            copyfile(script_path, backup_path);
+            copied_count = copied_count + 1;
+        end
+    end
+    
+    % Create a README file with backup information
+    readme_content = sprintf(['Script Backup Created: %s\n', ...
+                             'This backup contains all scripts used in the current simulation run.\n', ...
+                             'Backup includes:\n', ...
+                             '- Main GUI script\n', ...
+                             '- Data extraction functions\n', ...
+                             '- Utility functions\n', ...
+                             '- All supporting scripts\n\n', ...
+                             'Total scripts backed up: %d\n', ...
+                             'Backup location: %s\n'], ...
+                             timestamp, copied_count, backup_folder);
+    
+    readme_path = fullfile(backup_folder, 'README_BACKUP.txt');
+    fid = fopen(readme_path, 'w');
+    if fid ~= -1
+        fprintf(fid, '%s', readme_content);
+        fclose(fid);
+    end
+    
+    fprintf('Script backup created: %s (%d files)\n', backup_folder, copied_count);
 end
