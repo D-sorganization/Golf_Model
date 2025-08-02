@@ -1,40 +1,83 @@
 function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
-    % External function for adding model workspace data - can be used in parallel processing
-    % This function doesn't rely on config.verbosity
+    % Extract model workspace variables and add as constant columns
+    % These include segment lengths, masses, inertias, and other model parameters
     
     try
-        % Extract workspace outputs if available
-        workspace_data = extractWorkspaceOutputs(simOut);
+        % Get model workspace from simulation output
+        model_name = simOut.SimulationMetadata.ModelInfo.ModelName;
         
-        if ~isempty(workspace_data)
-            % Add workspace variables to the data table
-            workspace_fields = fieldnames(workspace_data);
+        % Check if model is loaded
+        if ~bdIsLoaded(model_name)
+            fprintf('Warning: Model %s not loaded, skipping workspace data\n', model_name);
+            return;
+        end
+        
+        model_workspace = get_param(model_name, 'ModelWorkspace');
+        try
+            variables = model_workspace.getVariableNames;
+        catch
+            % For older MATLAB versions, try alternative method
+            try
+                variables = model_workspace.whos;
+                variables = {variables.name};
+            catch
+                fprintf('Warning: Could not retrieve model workspace variable names\n');
+                return;
+            end
+        end
+        
+        if length(variables) > 0
+            fprintf('Adding %d model workspace variables to CSV...\n', length(variables));
+        else
+            fprintf('No model workspace variables found\n');
+            return;
+        end
+        
+        for i = 1:length(variables)
+            var_name = variables{i};
             
-            for i = 1:length(workspace_fields)
-                field_name = workspace_fields{i};
-                field_value = workspace_data.(field_name);
+            try
+                var_value = model_workspace.getVariable(var_name);
                 
-                % Handle different data types
-                if isnumeric(field_value)
-                    if isscalar(field_value)
-                        % Scalar value - replicate for all rows
-                        data_table.(field_name) = repmat(field_value, num_rows, 1);
-                    elseif isvector(field_value)
-                        % Vector value - replicate for all rows
-                        data_table.(field_name) = repmat(field_value(:)', num_rows, 1);
-                    elseif ismatrix(field_value)
-                        % Matrix value - flatten and replicate
-                        flat_value = field_value(:)';
-                        data_table.(field_name) = repmat(flat_value, num_rows, 1);
+                % Handle different variable types
+                if isnumeric(var_value) && isscalar(var_value)
+                    % Scalar numeric values (lengths, masses, etc.)
+                    column_name = sprintf('model_%s', var_name);
+                    data_table.(column_name) = repmat(var_value, num_rows, 1);
+                    
+                elseif isnumeric(var_value) && isvector(var_value)
+                    % Vector values (3D coordinates, etc.)
+                    for j = 1:length(var_value)
+                        column_name = sprintf('model_%s_%d', var_name, j);
+                        data_table.(column_name) = repmat(var_value(j), num_rows, 1);
                     end
-                elseif ischar(field_value)
-                    % String value - replicate for all rows
-                    data_table.(field_name) = repmat({field_value}, num_rows, 1);
+                    
+                elseif isnumeric(var_value) && ismatrix(var_value)
+                    % Matrix values (inertia matrices, etc.)
+                    [rows, cols] = size(var_value);
+                    for r = 1:rows
+                        for c = 1:cols
+                            column_name = sprintf('model_%s_%d_%d', var_name, r, c);
+                            data_table.(column_name) = repmat(var_value(r,c), num_rows, 1);
+                        end
+                    end
+                    
+                elseif isa(var_value, 'Simulink.Parameter')
+                    % Handle Simulink Parameters
+                    param_val = var_value.Value;
+                    if isnumeric(param_val) && isscalar(param_val)
+                        column_name = sprintf('model_%s', var_name);
+                        data_table.(column_name) = repmat(param_val, num_rows, 1);
+                    end
                 end
+                
+            catch ME
+                % Skip variables that can't be extracted
+                fprintf('Warning: Could not extract variable %s: %s\n', var_name, ME.message);
             end
         end
         
     catch ME
-        fprintf('Error adding model workspace data: %s\n', ME.message);
+        fprintf('Warning: Could not access model workspace: %s\n', ME.message);
     end
 end 

@@ -26,7 +26,7 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
                 extracted_time = node.time;
                 extracted_data = node.values;
                 
-                if ~isempty(extracted_time) && ~isempty(extracted_data) && length(extracted_time) > 0
+                if ~isempty(extracted_time) && ~isempty(extracted_data) && numel(extracted_time) > 0
                     if isempty(time_data)
                         time_data = extracted_time;
                     end
@@ -68,7 +68,7 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
                     end
                 end
                 
-                if ~isempty(extracted_time) && ~isempty(extracted_data) && length(extracted_time) > 0
+                if ~isempty(extracted_time) && ~isempty(extracted_data) && numel(extracted_time) > 0
                     if isempty(time_data)
                         time_data = extracted_time;
                     end
@@ -136,6 +136,9 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
         end
         
     catch ME
-        fprintf('Error traversing Simscape node: %s\n', ME.message);
+        % Only show error if it's not a normal "no data" case
+        if ~contains(ME.message, 'brace indexing') && ~contains(ME.message, 'comma separated list')
+            fprintf('Error traversing Simscape node: %s\n', ME.message);
+        end
     end
 end 

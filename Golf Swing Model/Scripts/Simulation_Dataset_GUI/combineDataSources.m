@@ -1,8 +1,6 @@
 function combined_table = combineDataSources(data_sources)
-    % External function for combining data sources - can be used in parallel processing
-    % This function doesn't rely on config.verbosity
-    
-    combined_table = table();
+    % Combine multiple data tables into one
+    combined_table = [];
     
     try
         if isempty(data_sources)
@@ -13,20 +11,25 @@ function combined_table = combineDataSources(data_sources)
         combined_table = data_sources{1};
         
         % Merge additional data sources
+        % Alternative: Use Grok's cleaner mergeTables function if all sources have time:
+        % combined_table = mergeTables(data_sources{:});
+        
         for i = 2:length(data_sources)
-            try
-                source_table = data_sources{i};
-                
-                if ~isempty(source_table) && height(source_table) == height(combined_table)
-                    % Merge tables by adding new columns
-                    combined_table = [combined_table, source_table];
-                elseif ~isempty(source_table) && height(source_table) ~= height(combined_table)
-                    fprintf('Warning: Data source %d has different number of rows (%d vs %d)\n', ...
-                        i, height(source_table), height(combined_table));
+            if ~isempty(data_sources{i})
+                % Find common time column
+                if ismember('time', combined_table.Properties.VariableNames) && ...
+                   ismember('time', data_sources{i}.Properties.VariableNames)
+                    
+                    % Merge on time column (same as Grok's mergeTables)
+                    combined_table = outerjoin(combined_table, data_sources{i}, 'Keys', 'time', 'MergeKeys', true);
+                else
+                    % Robust fallback for edge cases without time columns
+                    common_vars = intersect(combined_table.Properties.VariableNames, ...
+                                          data_sources{i}.Properties.VariableNames);
+                    if ~isempty(common_vars)
+                        combined_table = [combined_table(:, common_vars); data_sources{i}(:, common_vars)];
+                    end
                 end
-                
-            catch ME
-                fprintf('Error merging data source %d: %s\n', i, ME.message);
             end
         end
         
