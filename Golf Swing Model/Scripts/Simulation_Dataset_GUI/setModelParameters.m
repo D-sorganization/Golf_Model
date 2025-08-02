@@ -1,4 +1,7 @@
 function simIn = setModelParameters(simIn, config)
+    % External function for setting model parameters - can be used in parallel processing
+    % This function accepts config as a parameter instead of relying on handles
+    
     % Set basic simulation parameters with careful error handling
     try
         % Set stop time
@@ -57,17 +60,25 @@ function simIn = setModelParameters(simIn, config)
         
         % Set animation control based on user preference
         try
-            if isfield(config, 'enable_animation') && ~config.enable_animation
-                % Disable animation for faster simulation
-                simIn = simIn.setModelParameter('SimulationMode', 'accelerator');
-                fprintf('Debug: Animation disabled (accelerator mode)\n');
-            else
+            if isfield(config, 'enable_animation') && config.enable_animation
                 % Enable animation (normal mode)
                 simIn = simIn.setModelParameter('SimulationMode', 'normal');
                 fprintf('Debug: Animation enabled (normal mode)\n');
+            else
+                % Disable animation for faster simulation
+                simIn = simIn.setModelParameter('SimulationMode', 'accelerator');
+                fprintf('Debug: Animation disabled (accelerator mode)\n');
             end
+        catch ME
+            fprintf('Warning: Could not set simulation mode for animation control: %s\n', ME.message);
+        end
+        
+        % Set other model parameters to suppress unconnected port warnings
+        try
+            simIn = simIn.setModelParameter('UnconnectedInputMsg', 'none');
+            simIn = simIn.setModelParameter('UnconnectedOutputMsg', 'none');
         catch
-            fprintf('Warning: Could not set simulation mode\n');
+            % These parameters might not exist in all model types
         end
         
     catch ME

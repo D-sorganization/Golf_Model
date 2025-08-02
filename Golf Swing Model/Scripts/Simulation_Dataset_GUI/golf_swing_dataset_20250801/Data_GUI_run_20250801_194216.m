@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-08-01 19:42:16
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 9
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: enabled
+% Logsout Dataset: enabled
+% Simscape Results: enabled
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250801
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: DeskComputer
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 9 trials x 189 coefficients
+% First trial coefficients (first 10): -19.420, -48.450, 8.750, 46.260, 34.980, -49.210, 13.400, -14.070, -38.590, 4.080
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 %% 
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
@@ -4958,7 +5001,7 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
 
 
         % Recursively collect all series data using primary traversal method
-        [time_data, all_signals] = traverseSimlogNode(simlog, '', handles);
+        [time_data, all_signals] = traverseSimlogNode(simlog, '');
 
         if isempty(time_data) || isempty(all_signals)
             if shouldShowNormal(handles)
@@ -5216,7 +5259,7 @@ function [constant_signals] = extractConstantMatrixData(data_value, signal_name,
 end
 
 % Simscape Multibody specific traversal (different API than generic Simscape)
-function [time_data, signals] = traverseSimlogNode(node, parent_path, handles)
+function [time_data, signals] = traverseSimlogNode(node, parent_path)
     time_data = [];
     signals = {};
 
@@ -5229,9 +5272,7 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path, handles)
             node_name = 'UnnamedNode';
         end
         current_path = fullfile(parent_path, node_name);
-        if shouldShowDebug(handles)
-            fprintf('Debug: Traversing Multibody node: %s\n', current_path);
-        end
+        fprintf('Debug: Traversing Multibody node: %s\n', current_path);
 
         % SIMSCAPE MULTIBODY APPROACH: Try multiple extraction methods
         node_has_data = false;
@@ -5260,10 +5301,8 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path, handles)
         end
         
         % Method 2: Extract data from 5-level Multibody hierarchy (regardless of exportable flag)
-        if shouldShowDebug(handles)
-            fprintf('Debug: Method 2 check - node_has_data=%s, has_series=%s\n', ...
-                mat2str(node_has_data), mat2str(isprop(node, 'series')));
-        end
+        fprintf('Debug: Method 2 check - node_has_data=%s, has_series=%s\n', ...
+            mat2str(node_has_data), mat2str(isprop(node, 'series')));
         if ~node_has_data && isprop(node, 'series')
             try
                 % Get the signal ID (e.g., 'w' for angular velocity, 'q' for position)
@@ -5271,9 +5310,7 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path, handles)
                 if isprop(node, 'id') && ~isempty(node.id)
                     signal_id = node.id;
                 end
-                if shouldShowDebug(handles)
-                    fprintf('Debug: Method 2 attempting series access at %s.%s\n', current_path, signal_id);
-                end
+                fprintf('Debug: Method 2 attempting series access at %s.%s\n', current_path, signal_id);
                 
                 % Try to get time and data directly from node.series (the correct API)
                 try
@@ -5284,24 +5321,18 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path, handles)
                     if ~isempty(extracted_time) && ~isempty(extracted_data) && length(extracted_time) > 0
                         if isempty(time_data)
                             time_data = extracted_time;
-                            if shouldShowDebug(handles)
-                                fprintf('Debug: Using time from %s.%s (length: %d)\n', current_path, signal_id, length(time_data));
-                            end
+                            fprintf('Debug: Using time from %s.%s (length: %d)\n', current_path, signal_id, length(time_data));
                         end
                         
                         % Create meaningful signal name: Body_Joint_Component_Axis_Signal
                         signal_name = matlab.lang.makeValidName(sprintf('%s_%s', current_path, signal_id));
                         signals{end+1} = struct('name', signal_name, 'data', extracted_data);
-                        if shouldShowDebug(handles)
-                            fprintf('Debug: ✅ Found Multibody data: %s (length: %d)\n', signal_name, length(extracted_data));
-                        end
+                        fprintf('Debug: ✅ Found Multibody data: %s (length: %d)\n', signal_name, length(extracted_data));
                         node_has_data = true;
                     else
                         % Debug: Show what we found even if empty
-                        if shouldShowDebug(handles)
-                            fprintf('Debug: Empty data at %s.%s (time length: %d, data size: %s)\n', ...
-                                current_path, signal_id, length(extracted_time), mat2str(size(extracted_data)));
-                        end
+                        fprintf('Debug: Empty data at %s.%s (time length: %d, data size: %s)\n', ...
+                            current_path, signal_id, length(extracted_time), mat2str(size(extracted_data)));
                     end
                 catch ME
                     % Series access failed - this is normal for non-data nodes
@@ -5349,7 +5380,7 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path, handles)
                 try
                     child_node = node.(child_ids{i});
                     fprintf('Debug: → Recursing into child %s (%d/%d)\n', child_ids{i}, i, length(child_ids));
-                    [child_time, child_signals] = traverseSimlogNode(child_node, current_path, handles);
+                    [child_time, child_signals] = traverseSimlogNode(child_node, current_path);
                     % Merge time (use first valid)
                     if isempty(time_data) && ~isempty(child_time)
                         time_data = child_time;

@@ -1,30 +1,20 @@
 function simIn = loadInputFile(simIn, input_file)
-    % Load input file data into simulation
     try
-        if ~exist(input_file, 'file')
-            fprintf('Warning: Input file %s not found\n', input_file);
-            return;
-        end
-        
-        % Load the input file
+        % Load input data
         input_data = load(input_file);
         
-        % Set variables from input file
+        % Get field names and set as model variables
         field_names = fieldnames(input_data);
         for i = 1:length(field_names)
             field_name = field_names{i};
             field_value = input_data.(field_name);
             
-            try
+            % Only set scalar values or small arrays
+            if isscalar(field_value) || (isnumeric(field_value) && numel(field_value) <= 100)
                 simIn = simIn.setVariable(field_name, field_value);
-                fprintf('Loaded variable %s from input file\n', field_name);
-            catch ME
-                fprintf('Warning: Could not set variable %s: %s\n', field_name, ME.message);
             end
         end
-        
     catch ME
-        fprintf('ERROR: Failed to load input file %s: %s\n', input_file, ME.message);
-        rethrow(ME);
+        warning('Could not load input file %s: %s', input_file, ME.message);
     end
 end 
