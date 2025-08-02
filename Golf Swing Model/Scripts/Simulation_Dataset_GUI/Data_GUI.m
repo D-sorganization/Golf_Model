@@ -921,7 +921,7 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
     y = y - 0.195;  % Increased by 30%
     
     % Action buttons
-    buttonHeight = 0.088;  % Increased by 10%
+    buttonHeight = 0.097;  % Increased by 10% (0.088 * 1.1 = 0.097)
     
     handles.apply_joint_button = uicontrol('Parent', panel, ...
                                           'Style', 'pushbutton', ...
@@ -2189,6 +2189,8 @@ function runGeneration(handles)
         if handles.should_stop
             set(handles.status_text, 'String', 'Status: Generation stopped by user');
             set(handles.progress_text, 'String', 'Stopped');
+            % Reset GUI state for next run
+            resetGUIState(handles);
         else
             % Final status
             failed_trials = config.num_simulations - successful_trials;
@@ -2214,6 +2216,9 @@ function runGeneration(handles)
             catch ME
                 fprintf('Warning: Could not save script and settings: %s\n', ME.message);
             end
+            
+            % Reset GUI state for next run
+            resetGUIState(handles);
         end
         
     catch ME
@@ -5709,4 +5714,40 @@ function backupScripts(handles)
     end
     
     fprintf('Script backup created: %s (%d files)\n', backup_folder, copied_count);
+end
+
+
+
+% Reset GUI State Function
+function resetGUIState(handles)
+    % Reset the GUI to its startup state for running another test
+    
+    % Reset running state
+    handles.is_running = false;
+    handles.should_stop = false;
+    
+    % Reset button states
+    set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
+    set(handles.stop_button, 'Enable', 'off');
+    
+    % Reset progress and status displays
+    set(handles.progress_text, 'String', 'Ready to start generation...');
+    set(handles.status_text, 'String', 'Status: Ready');
+    
+    % Clear any stored configuration
+    if isfield(handles, 'config')
+        handles = rmfield(handles, 'config');
+    end
+    
+    % Reset coefficients table to default state
+    updateCoefficientsPreview([], [], handles.fig);
+    
+    % Update summary display
+    updatePreview([], [], handles.fig);
+    
+    % Force GUI update
+    drawnow;
+    
+    % Store updated handles
+    guidata(handles.fig, handles);
 end
