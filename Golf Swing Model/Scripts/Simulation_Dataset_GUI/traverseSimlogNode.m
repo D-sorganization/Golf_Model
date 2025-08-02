@@ -8,9 +8,9 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
     try
         % Get current node name
         node_name = '';
-        if isprop(node, 'Name') && all(~isempty(node.Name))
+        if all(isprop(node, 'Name')) && all(~isempty(node.Name))
             node_name = node.Name;
-        elseif isprop(node, 'id') && all(~isempty(node.id))
+        elseif all(isprop(node, 'id')) && all(~isempty(node.id))
             node_name = node.id;
         else
             node_name = 'UnnamedNode';
@@ -46,7 +46,7 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
             try
                 % Get the signal ID (e.g., 'w' for angular velocity, 'q' for position)
                 signal_id = 'data';
-                if isprop(node, 'id') && all(~isempty(node.id))
+                if all(isprop(node, 'id')) && all(~isempty(node.id))
                     signal_id = node.id;
                 end
                 
@@ -56,12 +56,12 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
                     extracted_data = node.series.values;
                 catch
                     % Fallback: try to access as properties
-                    if isprop(node.series, 'time')
+                    if all(isprop(node.series, 'time'))
                         extracted_time = node.series.time;
                     else
                         extracted_time = [];
                     end
-                    if isprop(node.series, 'values')
+                    if all(isprop(node.series, 'values'))
                         extracted_data = node.series.values;
                     else
                         extracted_data = [];
@@ -96,7 +96,7 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
                 catch
                     % Method 3b: Try direct children access
                     try
-                        if isprop(node, 'children')
+                        if all(isprop(node, 'children'))
                             child_ids = node.children;
                         end
                     catch
