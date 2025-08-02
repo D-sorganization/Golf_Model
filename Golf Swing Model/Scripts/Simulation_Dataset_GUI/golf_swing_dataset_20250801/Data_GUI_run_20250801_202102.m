@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-08-01 20:21:02
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 9
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: enabled
+% Logsout Dataset: enabled
+% Simscape Results: enabled
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250801
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: DeskComputer
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 9 trials x 189 coefficients
+% First trial coefficients (first 10): 47.340, 0.020, 8.950, 23.230, 49.550, 45.200, -49.540, 39.030, -25.610, -41.310
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 %% 
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
@@ -2938,7 +2981,60 @@ function simInputs = prepareSimulationInputs(config, handles)
     end
 end
 
-
+function simInputs = prepareSimulationInputsForBatch(config, handles, start_trial, end_trial)
+    % Prepare simulation inputs for a specific batch of trials
+    % Load the Simulink model
+    model_name = config.model_name;
+    if ~bdIsLoaded(model_name)
+        try
+            load_system(model_name);
+        catch ME
+            error('Could not load Simulink model "%s": %s', model_name, ME.message);
+        end
+    end
+    
+    % Create array of SimulationInput objects for this batch
+    batch_size = end_trial - start_trial + 1;
+    simInputs = Simulink.SimulationInput.empty(0, batch_size);
+    
+    for i = 1:batch_size
+        trial = start_trial + i - 1;
+        
+        % Get coefficients for this trial
+        if trial <= size(config.coefficient_values, 1)
+            trial_coefficients = config.coefficient_values(trial, :);
+        else
+            % Generate random coefficients for additional trials
+            trial_coefficients = generateRandomCoefficients(size(config.coefficient_values, 2));
+        end
+        
+        % Ensure coefficients are numeric (fix for parallel execution)
+        if iscell(trial_coefficients)
+            trial_coefficients = cell2mat(trial_coefficients);
+        end
+        trial_coefficients = double(trial_coefficients);  % Ensure double precision
+        
+        % Create SimulationInput object
+        simIn = Simulink.SimulationInput(model_name);
+        
+        % Set simulation parameters safely
+        simIn = setModelParameters(simIn, config, handles);
+        
+        % Set polynomial coefficients
+        try
+            simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
+        catch ME
+            fprintf('Warning: Could not set polynomial coefficients: %s\n', ME.message);
+        end
+        
+        % Load input file if specified
+        if ~isempty(config.input_file) && exist(config.input_file, 'file')
+            simIn = loadInputFile(simIn, config.input_file);
+        end
+        
+        simInputs(i) = simIn;
+    end
+end
 
 function restoreWorkspace(initial_vars)
     % Restore workspace to initial state by clearing new variables
@@ -2950,8 +3046,108 @@ function restoreWorkspace(initial_vars)
     end
 end
 
-
-
+function simIn = setPolynomialCoefficients(simIn, coefficients, config)
+    % Get parameter info for coefficient mapping
+    param_info = getPolynomialParameterInfo();
+    
+    % Basic validation
+    if isempty(param_info.joint_names)
+        error('No joint names found in polynomial parameter info');
+    end
+    
+    % Handle parallel worker coefficient format issues
+    if iscell(coefficients)
+        try
+            % Check if cells contain strings or numbers
+            if all(cellfun(@ischar, coefficients))
+                % Convert string cells to numeric
+                coefficients = cellfun(@str2double, coefficients);
+            elseif all(cellfun(@isnumeric, coefficients))
+                % Convert numeric cells to array
+                coefficients = cell2mat(coefficients);
+            else
+                % Mixed content or other issues
+                numeric_coeffs = zeros(size(coefficients));
+                for i = 1:numel(coefficients)
+                    if ischar(coefficients{i})
+                        numeric_coeffs(i) = str2double(coefficients{i});
+                    elseif isnumeric(coefficients{i})
+                        numeric_coeffs(i) = coefficients{i};
+                    else
+                        numeric_coeffs(i) = NaN;
+                    end
+                end
+                coefficients = numeric_coeffs;
+            end
+        catch ME
+            fprintf('Error: Could not convert cell coefficients to numeric: %s\n', ME.message);
+            % Try one more approach - flatten and convert
+            try
+                coefficients = str2double(coefficients(:));
+            catch
+                fprintf('Error: All conversion attempts failed\n');
+                return;
+            end
+        end
+    end
+    
+    % Ensure coefficients are numeric
+    if ~isnumeric(coefficients)
+        fprintf('Error: Coefficients must be numeric, got %s\n', class(coefficients));
+        return;
+    end
+    
+    % Ensure coefficients are a row vector if needed
+    if size(coefficients, 1) > 1 && size(coefficients, 2) == 1
+        coefficients = coefficients';
+    end
+    
+    % Set coefficients as model variables
+    global_coeff_idx = 1;
+    variables_set = 0;
+    
+    for joint_idx = 1:length(param_info.joint_names)
+        joint_name = param_info.joint_names{joint_idx};
+        coeffs = param_info.joint_coeffs{joint_idx};
+        
+        for local_coeff_idx = 1:length(coeffs)
+            coeff_letter = coeffs(local_coeff_idx);
+            var_name = sprintf('%s%s', joint_name, coeff_letter);
+            
+            if global_coeff_idx <= length(coefficients)
+                try
+                    simIn = simIn.setVariable(var_name, coefficients(global_coeff_idx));
+                    variables_set = variables_set + 1;
+                catch ME
+                    fprintf('  Warning: Failed to set %s: %s\n', var_name, ME.message);
+                end
+            else
+                fprintf('  Warning: Not enough coefficients for %s (need %d, have %d)\n', var_name, global_coeff_idx, length(coefficients));
+            end
+            global_coeff_idx = global_coeff_idx + 1;
+        end
+    end
+end
+function simIn = loadInputFile(simIn, input_file)
+    try
+        % Load input data
+        input_data = load(input_file);
+        
+        % Get field names and set as model variables
+        field_names = fieldnames(input_data);
+        for i = 1:length(field_names)
+            field_name = field_names{i};
+            field_value = input_data.(field_name);
+            
+            % Only set scalar values or small arrays
+            if isscalar(field_value) || (isnumeric(field_value) && numel(field_value) <= 100)
+                simIn = simIn.setVariable(field_name, field_value);
+            end
+        end
+    catch ME
+        warning('Could not load input file %s: %s', input_file, ME.message);
+    end
+end
 % Real Simulation Function - Replaces Mock
 function result = runSingleTrial(trial_num, config, trial_coefficients, capture_workspace)
     result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
@@ -3030,9 +3226,213 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
         end
     end
 end
+function simIn = setModelParameters(simIn, config, handles)
+            % Set basic simulation parameters with careful error handling
+        try
+            % Set stop time
+            if isfield(config, 'simulation_time') && ~isempty(config.simulation_time)
+                simIn = simIn.setModelParameter('StopTime', num2str(config.simulation_time));
+            end
+            
+            % Set solver carefully
+            try
+                simIn = simIn.setModelParameter('Solver', 'ode23t');
+            catch
+                fprintf('Warning: Could not set solver to ode23t\n');
+            end
+            
+            % Set tolerances carefully
+            try
+                simIn = simIn.setModelParameter('RelTol', '1e-3');
+                simIn = simIn.setModelParameter('AbsTol', '1e-5');
+            catch
+                fprintf('Warning: Could not set solver tolerances\n');
+            end
+            
+            % CRITICAL: Set output options for data logging
+            try
+                simIn = simIn.setModelParameter('SaveOutput', 'on');
+                simIn = simIn.setModelParameter('SaveFormat', 'Structure');
+                simIn = simIn.setModelParameter('ReturnWorkspaceOutputs', 'on');
+            catch ME
+                fprintf('Warning: Could not set output options: %s\n', ME.message);
+            end
+            
+            % Additional logging settings
+            try
+                simIn = simIn.setModelParameter('SignalLogging', 'on');
+                simIn = simIn.setModelParameter('SaveTime', 'on');
+            catch
+                fprintf('Warning: Could not set logging options\n');
+            end
+            
+            % To Workspace block settings
+            try
+                simIn = simIn.setModelParameter('LimitDataPoints', 'off');
+            catch
+                fprintf('Warning: Could not set LimitDataPoints\n');
+            end
+            
+            % MINIMAL SIMSCAPE LOGGING CONFIGURATION (Essential Only)
+            % Only set the essential parameter that actually works
+            try
+                simIn = simIn.setModelParameter('SimscapeLogType', 'all');
+        
+            catch ME
+                fprintf('Warning: Could not set essential SimscapeLogType parameter: %s\n', ME.message);
+                fprintf('Warning: Simscape data extraction may not work without this parameter\n');
+            end
+            
+            % Set animation control based on user preference
+            try
+                if isfield(config, 'enable_animation') && config.enable_animation
+                    % Enable animation (normal mode)
+                    simIn = simIn.setModelParameter('SimulationMode', 'normal');
 
+                else
+                    % Disable animation for faster simulation
+                    simIn = simIn.setModelParameter('SimulationMode', 'accelerator');
 
-
+                end
+            catch ME
+                fprintf('Warning: Could not set simulation mode for animation control: %s\n', ME.message);
+            end
+            
+            % Set other model parameters to suppress unconnected port warnings
+            try
+                simIn = simIn.setModelParameter('UnconnectedInputMsg', 'none');
+                simIn = simIn.setModelParameter('UnconnectedOutputMsg', 'none');
+            catch
+                % These parameters might not exist in all model types
+            end
+            
+        catch ME
+            fprintf('Error setting model parameters: %s\n', ME.message);
+            rethrow(ME);
+        end
+end
+function result = processSimulationOutput(trial_num, config, simOut, capture_workspace)
+    result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
+    
+    try
+        fprintf('Processing simulation output for trial %d...\n', trial_num);
+        
+        % Extract data using the enhanced signal extraction system
+        options = struct();
+        options.extract_combined_bus = config.use_signal_bus;
+        options.extract_logsout = config.use_logsout;
+        options.extract_simscape = config.use_simscape;
+        options.verbose = false; % Set to true for debugging
+        
+        [data_table, signal_info] = extractSignalsFromSimOut(simOut, options);
+        
+        if isempty(data_table)
+            result.error = 'No data extracted from simulation';
+            fprintf('No data extracted from simulation output\n');
+            return;
+        end
+        
+        fprintf('Extracted %d rows of data\n', height(data_table));
+        
+        % Resample data to desired frequency if specified
+        if isfield(config, 'sample_rate') && ~isempty(config.sample_rate) && config.sample_rate > 0
+            data_table = resampleDataToFrequency(data_table, config.sample_rate, config.simulation_time);
+            fprintf('Resampled to %d rows at %g Hz\n', height(data_table), config.sample_rate);
+        end
+        
+        % Add trial metadata
+        num_rows = height(data_table);
+        data_table.trial_id = repmat(trial_num, num_rows, 1);
+        
+        % Add coefficient columns
+        param_info = getPolynomialParameterInfo();
+        coeff_idx = 1;
+        for j = 1:length(param_info.joint_names)
+            joint_name = param_info.joint_names{j};
+            coeffs = param_info.joint_coeffs{j};
+            for k = 1:length(coeffs)
+                coeff_name = sprintf('input_%s_%s', getShortenedJointName(joint_name), coeffs(k));
+                if coeff_idx <= size(config.coefficient_values, 2)
+                    data_table.(coeff_name) = repmat(config.coefficient_values(trial_num, coeff_idx), num_rows, 1);
+                end
+                coeff_idx = coeff_idx + 1;
+            end
+        end
+        
+        % Add model workspace variables (segment lengths, masses, inertias, etc.)
+        % Use the capture_workspace parameter passed to this function
+        if nargin < 4
+            capture_workspace = true; % Default to true if not provided
+        end
+        
+        if capture_workspace
+            data_table = addModelWorkspaceData(data_table, simOut, num_rows);
+        else
+            fprintf('Debug: Model workspace capture disabled by user setting\n');
+        end
+        
+        % Save to file in selected format(s)
+        timestamp = datestr(now, 'yyyymmdd_HHMMSS');
+        saved_files = {};
+        
+        % Determine file format from config (handle both field names for compatibility)
+        file_format = 1; % Default to CSV
+        if isfield(config, 'file_format')
+            file_format = config.file_format;
+        elseif isfield(config, 'format')
+            file_format = config.format;
+        end
+        
+        % Save based on selected format
+        switch file_format
+            case 1 % CSV Files
+                filename = sprintf('trial_%03d_%s.csv', trial_num, timestamp);
+                filepath = fullfile(config.output_folder, filename);
+                writetable(data_table, filepath);
+                saved_files{end+1} = filename;
+                
+            case 2 % MAT Files
+                filename = sprintf('trial_%03d_%s.mat', trial_num, timestamp);
+                filepath = fullfile(config.output_folder, filename);
+                save(filepath, 'data_table', 'config');
+                saved_files{end+1} = filename;
+                
+            case 3 % Both CSV and MAT
+                % Save CSV
+                csv_filename = sprintf('trial_%03d_%s.csv', trial_num, timestamp);
+                csv_filepath = fullfile(config.output_folder, csv_filename);
+                writetable(data_table, csv_filepath);
+                saved_files{end+1} = csv_filename;
+                
+                % Save MAT
+                mat_filename = sprintf('trial_%03d_%s.mat', trial_num, timestamp);
+                mat_filepath = fullfile(config.output_folder, mat_filename);
+                save(mat_filepath, 'data_table', 'config');
+                saved_files{end+1} = mat_filename;
+        end
+        
+        % Update result with primary filename
+        filename = saved_files{1};
+        
+        result.success = true;
+        result.filename = filename;
+        result.data_points = num_rows;
+        result.columns = width(data_table);
+        
+        fprintf('Trial %d completed: %d data points, %d columns\n', trial_num, num_rows, width(data_table));
+        
+    catch ME
+        result.success = false;
+        result.error = ME.message;
+        fprintf('Error processing trial %d output: %s\n', trial_num, ME.message);
+        
+        % Print stack trace for debugging
+        fprintf('Processing error details:\n');
+        for i = 1:length(ME.stack)
+            fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
+        end
+    end
+end
 
 function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
     % Extract signals from simulation output based on specified options
@@ -4893,8 +5293,165 @@ function [constant_signals] = extractConstantMatrixData(data_value, signal_name,
     end
 end
 
+% Simscape Multibody specific traversal (different API than generic Simscape)
+function [time_data, signals] = traverseSimlogNode(node, parent_path, handles)
+    time_data = [];
+    signals = {};
 
+    try
+        % Get current node name
+        node_name = '';
+        try
+            node_name = node.id;  % Preferred for simscape.logging.Node
+        catch
+            node_name = 'UnnamedNode';
+        end
+        current_path = fullfile(parent_path, node_name);
+        if shouldShowDebug(handles)
+            fprintf('Debug: Traversing Multibody node: %s\n', current_path);
+        end
 
+        % SIMSCAPE MULTIBODY APPROACH: Try multiple extraction methods
+        node_has_data = false;
+        
+        % Method 1: Try generic Simscape series API (RESTORED WORKING VERSION)
+        try
+            series_names = node.series.children();  % Original working method
+            for i = 1:length(series_names)
+                series_node = node.series.(series_names{i});
+                if series_node.hasData()
+                    [data, time] = series_node.values('');
+                    if ~isempty(data) && ~isempty(time)
+                        if isempty(time_data)
+                            time_data = time;
+                            fprintf('Debug: Using time from %s (length: %d)\n', current_path, length(time_data));
+                        end
+                        signal_name = matlab.lang.makeValidName(fullfile(current_path, series_names{i}));
+                        signals{end+1} = struct('name', signal_name, 'data', data);
+                        fprintf('Debug: Found series data in %s.%s (length: %d)\n', current_path, series_names{i}, length(data));
+                        node_has_data = true;
+                    end
+                end
+            end
+        catch
+            % Series API failed - this is expected for Multibody
+        end
+        
+        % Method 2: Extract data from 5-level Multibody hierarchy (regardless of exportable flag)
+        if shouldShowDebug(handles)
+            fprintf('Debug: Method 2 check - node_has_data=%s, has_series=%s\n', ...
+                mat2str(node_has_data), mat2str(isprop(node, 'series')));
+        end
+        if ~node_has_data && isprop(node, 'series')
+            try
+                % Get the signal ID (e.g., 'w' for angular velocity, 'q' for position)
+                signal_id = 'unknown';
+                if isprop(node, 'id') && ~isempty(node.id)
+                    signal_id = node.id;
+                end
+                if shouldShowDebug(handles)
+                    fprintf('Debug: Method 2 attempting series access at %s.%s\n', current_path, signal_id);
+                end
+                
+                % Try to get time and data directly from node.series (the correct API)
+                try
+                    extracted_time = node.series.time;
+                    extracted_data = node.series.values;
+                    
+                    % Check if we actually got data (length > 0)
+                    if ~isempty(extracted_time) && ~isempty(extracted_data) && length(extracted_time) > 0
+                        if isempty(time_data)
+                            time_data = extracted_time;
+                            if shouldShowDebug(handles)
+                                fprintf('Debug: Using time from %s.%s (length: %d)\n', current_path, signal_id, length(time_data));
+                            end
+                        end
+                        
+                        % Create meaningful signal name: Body_Joint_Component_Axis_Signal
+                        signal_name = matlab.lang.makeValidName(sprintf('%s_%s', current_path, signal_id));
+                        signals{end+1} = struct('name', signal_name, 'data', extracted_data);
+                        if shouldShowDebug(handles)
+                            fprintf('Debug: ✅ Found Multibody data: %s (length: %d)\n', signal_name, length(extracted_data));
+                        end
+                        node_has_data = true;
+                    else
+                        % Debug: Show what we found even if empty
+                        if shouldShowDebug(handles)
+                            fprintf('Debug: Empty data at %s.%s (time length: %d, data size: %s)\n', ...
+                                current_path, signal_id, length(extracted_time), mat2str(size(extracted_data)));
+                        end
+                    end
+                catch ME
+                    % Series access failed - this is normal for non-data nodes
+                    fprintf('Debug: No series data at %s.%s: %s\n', current_path, signal_id, ME.message);
+                end
+            catch
+                % Node doesn't have series property
+            end
+        end
+
+        % Recurse into child nodes
+        child_ids = [];
+        try
+            child_ids = node.children();
+        catch
+            % children() method doesn't exist - use properties as children (Multibody)
+            try
+                all_props = properties(node);
+                child_ids = {};
+                for i = 1:length(all_props)
+                    prop_name = all_props{i};
+                    % Skip system properties, keep actual joint/body names
+                    if ~ismember(prop_name, {'id', 'savable', 'exportable'})
+                        % Check if this property is actually a child node
+                        try
+                            prop_value = node.(prop_name);
+                            if isa(prop_value, 'simscape.logging.Node')
+                                child_ids{end+1} = prop_name;
+                            end
+                        catch
+                            % Skip properties that can't be accessed
+                        end
+                    end
+                end
+            catch
+                % Property enumeration failed
+                child_ids = [];
+            end
+        end
+        
+        % Process child nodes
+        fprintf('Debug: Processing %d child nodes at %s\n', length(child_ids), current_path);
+        if ~isempty(child_ids)
+            for i = 1:length(child_ids)
+                try
+                    child_node = node.(child_ids{i});
+                    fprintf('Debug: → Recursing into child %s (%d/%d)\n', child_ids{i}, i, length(child_ids));
+                    [child_time, child_signals] = traverseSimlogNode(child_node, current_path, handles);
+                    % Merge time (use first valid)
+                    if isempty(time_data) && ~isempty(child_time)
+                        time_data = child_time;
+                        fprintf('Debug: ← Got time data from child %s (length: %d)\n', child_ids{i}, length(child_time));
+                    end
+                    % Append child signals
+                    if ~isempty(child_signals)
+                        signals = [signals, child_signals];
+                        fprintf('Debug: ← Got %d signals from child %s\n', length(child_signals), child_ids{i});
+                    end
+                catch ME
+                    fprintf('Debug: Error accessing child %s: %s\n', child_ids{i}, ME.message);
+                end
+            end
+        end
+        
+        % Final summary for this node
+        fprintf('Debug: Node %s summary: time=%s, signals=%d\n', current_path, ...
+            mat2str(~isempty(time_data)), length(signals));
+
+    catch ME
+        fprintf('Debug: Error traversing Multibody node %s: %s\n', current_path, ME.message);
+    end
+end
 
 % Helper function to extract time series data from various formats
 function [time_data, values_data] = extractTimeSeriesData(data_obj, signal_path)
