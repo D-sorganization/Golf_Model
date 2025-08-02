@@ -457,6 +457,41 @@ function startGeneration(handles)
         updateLog(handles, sprintf('Warning: Could not create script backup: %s', ME.message));
     end
     
+    % Configure model for animation control
+    try
+        model_name = get(handles.model, 'String');
+        enable_animation = get(handles.enable_animation, 'Value');
+        
+        % Load the model if not already loaded
+        if ~bdIsLoaded(model_name)
+            load_system(model_name);
+        end
+        
+        % Set initial simulation mode and animation display based on animation setting
+        if ~enable_animation
+            % Try accelerator mode first, but fall back to normal if not available
+            try
+                set_param(model_name, 'SimulationMode', 'accelerator');
+                updateLog(handles, 'Model configured for accelerator mode (no animation)');
+            catch ME
+                % Fall back to normal mode but disable animation display
+                set_param(model_name, 'SimulationMode', 'normal');
+                % Disable animation display in normal mode
+                set_param(model_name, 'AnimationMode', 'off');
+                updateLog(handles, 'Model configured for normal mode with animation display off');
+            end
+        else
+            % Use normal mode for animation
+            set_param(model_name, 'SimulationMode', 'normal');
+            % Enable animation display
+            set_param(model_name, 'AnimationMode', 'on');
+            updateLog(handles, 'Model configured for normal mode with animation display on');
+        end
+        
+    catch ME
+        updateLog(handles, sprintf('Warning: Could not configure model: %s', ME.message));
+    end
+    
     % Get current settings
     num_trials = str2double(get(handles.num_trials, 'String'));
     duration = str2double(get(handles.duration, 'String'));
@@ -561,11 +596,23 @@ function stopGeneration(handles)
     
     % Try to stop any running simulation
     try
+        % Get the model name from the GUI
+        model_name = get(handles.model, 'String');
+        
         % Stop the Simulink model if it's running
-        if bdIsLoaded('GolfSwing3D_Kinetic')
-            set_param('GolfSwing3D_Kinetic', 'SimulationCommand', 'stop');
-            updateLog(handles, 'Simulation stopped.');
+        if bdIsLoaded(model_name)
+            set_param(model_name, 'SimulationCommand', 'stop');
+            updateLog(handles, sprintf('Simulation %s stopped.', model_name));
         end
+        
+        % Also try to stop any running parsim processes
+        if exist('gcp', 'file') && ~isempty(gcp('nocreate'))
+            pool = gcp('nocreate');
+            if ~isempty(pool)
+                updateLog(handles, 'Parallel pool detected - stopping parallel processes...');
+            end
+        end
+        
     catch ME
         updateLog(handles, sprintf('Warning: Could not stop simulation: %s', ME.message));
     end
@@ -680,21 +727,44 @@ function trial_data = runSingleTrialWithSignalBus(trial_num, handles)
     % Get animation setting
     enable_animation = get(handles.enable_animation, 'Value');
     
-    % Set simulation mode based on animation setting
-    if ~enable_animation
-        % Use accelerator mode for speed
-        set_param('GolfSwing3D_Kinetic', 'SimulationMode', 'accelerator');
-        updateLog(handles, 'Animation disabled - using accelerator mode for speed');
-    else
-        % Use normal mode for animation
-        set_param('GolfSwing3D_Kinetic', 'SimulationMode', 'normal');
-        updateLog(handles, 'Animation enabled - using normal mode');
-    end
-    
-    % Call the actual simulation function
+    % Create simulation input with proper animation control
     try
-        % This would call the actual Simulink model
-        out = sim('GolfSwing3D_Kinetic');
+        % Load the model if not already loaded
+        model_name = get(handles.model, 'String');
+        if ~bdIsLoaded(model_name)
+            load_system(model_name);
+        end
+        
+        % Set simulation mode and animation display based on animation setting
+        if ~enable_animation
+            % Try accelerator mode first, but fall back to normal if not available
+            try
+                set_param(model_name, 'SimulationMode', 'accelerator');
+                updateLog(handles, 'Animation disabled - using accelerator mode for speed');
+            catch ME
+                % Fall back to normal mode but disable animation display
+                set_param(model_name, 'SimulationMode', 'normal');
+                % Disable animation display in normal mode
+                set_param(model_name, 'AnimationMode', 'off');
+                updateLog(handles, 'Animation disabled - using normal mode with animation display off');
+            end
+        else
+            % Use normal mode for animation
+            set_param(model_name, 'SimulationMode', 'normal');
+            % Enable animation display
+            set_param(model_name, 'AnimationMode', 'on');
+            updateLog(handles, 'Animation enabled - using normal mode with animation display on');
+        end
+        
+        % Create simulation input
+        simIn = Simulink.SimulationInput(model_name);
+        
+        % Set simulation parameters
+        duration = str2double(get(handles.duration, 'String'));
+        simIn = simIn.setModelParameter('StopTime', num2str(duration));
+        
+        % Run the simulation
+        out = sim(simIn);
         
         % Extract data from CombinedSignalBus if present
         trial_data = struct();
@@ -706,6 +776,11 @@ function trial_data = runSingleTrialWithSignalBus(trial_num, handles)
         % Add other data sources as needed
         if isfield(out, 'logsout')
             trial_data.logsout = out.logsout;
+        end
+        
+        % Add simlog if available
+        if isfield(out, 'simlog')
+            trial_data.simlog = out.simlog;
         end
         
     catch ME

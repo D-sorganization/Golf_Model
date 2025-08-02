@@ -23,6 +23,10 @@ This document summarizes all the changes made to fix issues and improve the golf
 - Added animation control checkbox to the GUI
 - Default setting: Animation disabled for speed
 - Added logic to switch between accelerator mode (fast) and normal mode (with animation)
+- **FIXED**: Updated `runSingleTrialWithSignalBus` function to properly use `Simulink.SimulationInput` with animation control
+- **FIXED**: Added model configuration in `startGeneration` to set initial simulation mode
+- **FIXED**: Enhanced stop button to properly handle model-specific stopping
+- **FIXED**: Added fallback logic for licenses that don't support accelerator mode - uses normal mode with `AnimationMode` set to 'off'
 
 **Files Modified**:
 - `GolfSwingDataGeneratorGUI.m`
