@@ -100,78 +100,144 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                             fprintf('Debug: Generated time vector for %s.%s, length: %d\n', field_name, sub_field_name, length(time_data));
                             break;
                         end
-                    end
-                end
-            end
-        end
-        
-        % If we still don't have time data, try to generate it from the first signal
-        if isempty(time_data)
-            for i = 1:length(bus_fields)
-                field_name = bus_fields{i};
-                field_value = combinedBus.(field_name);
-                
-                if isstruct(field_value)
-                    sub_fields = fieldnames(field_value);
-                    for j = 1:length(sub_fields)
-                        sub_field_name = sub_fields{j};
-                        signal_data = field_value.(sub_field_name);
-                        
-                        if isnumeric(signal_data) && ~isempty(signal_data)
-                            % Generate time vector based on signal length
-                            time_data = (0:length(signal_data)-1)' * 0.001; % Default 1ms sampling
-                            fprintf('Debug: Generated time vector from %s.%s, length: %d\n', field_name, sub_field_name, length(time_data));
-                            break;
-                        end
-                    end
-                    if ~isempty(time_data)
+                    elseif isnumeric(signal_data) && length(signal_data) > 1
+                        % Just numeric data, we'll need to generate time
+                        time_data = (0:length(signal_data)-1)' * 0.001; % Default 1ms sampling
+                        fprintf('Debug: Generated time vector from %s.%s numeric data, length: %d\n', field_name, sub_field_name, length(time_data));
                         break;
                     end
-                elseif isnumeric(field_value) && ~isempty(field_value)
-                    % Direct numeric field
-                    time_data = (0:length(field_value)-1)' * 0.001; % Default 1ms sampling
-                    fprintf('Debug: Generated time vector from %s, length: %d\n', field_name, length(time_data));
-                    break;
                 end
             end
         end
         
-        % If we still don't have time data, we can't proceed
         if isempty(time_data)
-            fprintf('Debug: Could not find or generate time data from CombinedSignalBus\n');
+            fprintf('Debug: No time data found in any signals\n');
             return;
         end
         
-        fprintf('Debug: Starting data extraction with time vector length: %d\n', length(time_data));
+        % Now extract all signals using this time reference
+        data_cells = {time_data};
+        var_names = {'time'};
+        expected_length = length(time_data);
         
-        % Now extract all signal data
-        all_signals = {};
-        signal_names = {};
-        
-        % Add time as the first column
-        all_signals{end+1} = time_data;
-        signal_names{end+1} = 'time';
+        fprintf('Debug: Starting data extraction with time vector length: %d\n', expected_length);
         
         % Process each field in the bus
         for i = 1:length(bus_fields)
             field_name = bus_fields{i};
             field_value = combinedBus.(field_name);
             
-            % Extract data from this field
-            extracted_data = extractDataFromField(field_value, length(time_data));
-            
-            if ~isempty(extracted_data)
-                all_signals = [all_signals, extracted_data];
-                signal_names = [signal_names, field_name];
+            if isstruct(field_value)
+                % This field contains sub-signals
+                sub_fields = fieldnames(field_value);
+                
+                for j = 1:length(sub_fields)
+                    sub_field_name = sub_fields{j};
+                    signal_data = field_value.(sub_field_name);
+                    
+                    % Extract numeric data from various formats
+                    numeric_data = [];
+                    
+                    if isa(signal_data, 'timeseries')
+                        numeric_data = signal_data.Data;
+                    elseif isstruct(signal_data) && isfield(signal_data, 'Data')
+                        numeric_data = signal_data.Data;
+                    elseif isstruct(signal_data) && isfield(signal_data, 'Values')
+                        numeric_data = signal_data.Values;
+                    elseif isnumeric(signal_data)
+                        numeric_data = signal_data;
+                    end
+                    
+                    % Add the data - handle both time series and constant properties
+                    if ~isempty(numeric_data)
+                        data_size = size(numeric_data);
+                        num_elements = numel(numeric_data);
+                        
+                        if size(numeric_data, 1) == expected_length
+                            % TIME SERIES DATA - matches expected length
+                            if size(numeric_data, 2) == 1
+                                % Single column time series
+                                data_cells{end+1} = numeric_data(:);
+                                var_names{end+1} = sprintf('%s_%s', field_name, sub_field_name);
+                                fprintf('Debug: Added time series %s_%s\n', field_name, sub_field_name);
+                            elseif size(numeric_data, 2) > 1
+                                % Multi-column time series
+                                for col = 1:size(numeric_data, 2)
+                                    data_cells{end+1} = numeric_data(:, col);
+                                    var_names{end+1} = sprintf('%s_%s_%d', field_name, sub_field_name, col);
+                                    fprintf('Debug: Added time series %s_%s_%d\n', field_name, sub_field_name, col);
+                                end
+                            end
+                            
+                        elseif num_elements == 3
+                            % 3D VECTOR (e.g., COM position [x, y, z])
+                            vector_data = numeric_data(:);  % Ensure column vector
+                            for dim = 1:3
+                                % Replicate constant value for all time steps
+                                replicated_data = repmat(vector_data(dim), expected_length, 1);
+                                data_cells{end+1} = replicated_data;
+                                dim_labels = {'x', 'y', 'z'};
+                                var_names{end+1} = sprintf('%s_%s_%s', field_name, sub_field_name, dim_labels{dim});
+                                fprintf('Debug: Added 3D vector %s_%s_%s (replicated %g for %d timesteps)\n', ...
+                                    field_name, sub_field_name, dim_labels{dim}, vector_data(dim), expected_length);
+                            end
+                            
+                        elseif num_elements == 9
+                            % 3x3 MATRIX (e.g., inertia matrix)
+                            if isequal(data_size, [3, 3])
+                                % Already 3x3 matrix
+                                matrix_data = numeric_data;
+                            else
+                                % Reshape to 3x3 if it's a 9x1 vector
+                                matrix_data = reshape(numeric_data, 3, 3);
+                            end
+                            
+                            % Extract all 9 elements and replicate for each time step
+                            for row = 1:3
+                                for col = 1:3
+                                    matrix_element = matrix_data(row, col);
+                                    replicated_data = repmat(matrix_element, expected_length, 1);
+                                    data_cells{end+1} = replicated_data;
+                                    var_names{end+1} = sprintf('%s_%s_I%d%d', field_name, sub_field_name, row, col);
+                                    fprintf('Debug: Added 3x3 matrix %s_%s_I%d%d (replicated %g for %d timesteps)\n', ...
+                                        field_name, sub_field_name, row, col, matrix_element, expected_length);
+                                end
+                            end
+                            
+                        elseif num_elements == 6
+                            % 6 ELEMENT DATA (e.g., 6DOF pose/twist)
+                            vector_data = numeric_data(:);  % Ensure column vector
+                            for dim = 1:6
+                                replicated_data = repmat(vector_data(dim), expected_length, 1);
+                                data_cells{end+1} = replicated_data;
+                                var_names{end+1} = sprintf('%s_%s_dof%d', field_name, sub_field_name, dim);
+                                fprintf('Debug: Added 6DOF data %s_%s_dof%d (replicated %g for %d timesteps)\n', ...
+                                    field_name, sub_field_name, dim, vector_data(dim), expected_length);
+                            end
+                            
+                        else
+                            % UNHANDLED SIZE - still skip but with better diagnostic
+                            fprintf('Debug: Skipping %s.%s (size [%s] not supported - need time series, 3D vector, 3x3 matrix, or 6DOF)\n', ...
+                                field_name, sub_field_name, num2str(data_size));
+                        end
+                    end
+                end
+            elseif isnumeric(field_value) && length(field_value) == expected_length
+                % Direct numeric field
+                data_cells{end+1} = field_value(:);
+                var_names{end+1} = field_name;
+                fprintf('Debug: Added direct field %s\n', field_name);
             end
         end
         
-        % Create the data table
-        if length(all_signals) > 1  % At least time + one signal
-            data_table = table(all_signals{:}, 'VariableNames', signal_names);
-            fprintf('Debug: Created table with %d columns and %d rows\n', width(data_table), height(data_table));
+        % Create table if we have data
+        if length(data_cells) > 1
+            data_table = table(data_cells{:}, 'VariableNames', var_names);
+            fprintf('Debug: Created CombinedSignalBus table with %d columns, %d rows\n', width(data_table), height(data_table));
         else
-            fprintf('Debug: No valid signals found in CombinedSignalBus\n');
+            fprintf('Debug: No valid data found in CombinedSignalBus\n');
+            fprintf('Debug: Total data_cells collected: %d\n', length(data_cells));
+            fprintf('Debug: Variable names: %s\n', strjoin(var_names, ', '));
         end
         
     catch ME
