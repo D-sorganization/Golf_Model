@@ -2283,14 +2283,43 @@ function successful_trials = runParallelSimulations(handles, config)
         return;
     end
     
-    % Prepare simulation inputs
-    simInputs = prepareSimulationInputs(config, handles);
+            % Get batch processing parameters
+        batch_size = config.batch_size;
+        save_interval = config.save_interval;
+        total_trials = config.num_simulations;
+        
+        % Debug print to confirm settings
+        fprintf('[RUNTIME] Using batch size: %d, save interval: %d, verbosity: %s\n', config.batch_size, config.save_interval, config.verbosity);
+        
+        if ~strcmp(config.verbosity, 'Silent')
+            fprintf('Starting parallel batch processing:\n');
+            fprintf('  Total trials: %d\n', total_trials);
+            fprintf('  Batch size: %d\n', batch_size);
+            fprintf('  Save interval: %d batches\n', save_interval);
+        end
     
-    % Validate simulation inputs before running
-    if isempty(simInputs)
-        error('No simulation inputs prepared');
+    % Calculate number of batches
+    num_batches = ceil(total_trials / batch_size);
+    successful_trials = 0;
+    
+    % Store initial workspace state for restoration
+    initial_vars = who;
+    
+    % Check for existing checkpoint
+    checkpoint_file = fullfile(config.output_folder, 'parallel_checkpoint.mat');
+    start_batch = 1;
+    if exist(checkpoint_file, 'file')
+        try
+            checkpoint_data = load(checkpoint_file);
+            if isfield(checkpoint_data, 'completed_trials')
+                successful_trials = checkpoint_data.completed_trials;
+                start_batch = checkpoint_data.next_batch;
+                fprintf('Found checkpoint: %d trials completed, resuming from batch %d\n', successful_trials, start_batch);
+            end
+        catch ME
+            fprintf('Warning: Could not load checkpoint: %s\n', ME.message);
+        end
     end
-    fprintf('Prepared %d simulation inputs\n', length(simInputs));
     
     % Ensure model is available on all parallel workers
     try
@@ -2305,173 +2334,233 @@ function successful_trials = runParallelSimulations(handles, config)
         fprintf('Warning: Could not preload model on workers: %s\n', ME.message);
     end
     
-    % Run parallel simulations
-    set(handles.progress_text, 'String', 'Running parallel simulations...');
-    drawnow;
-    
-    try
-        % Add extra error handling for parallel Simscape parameter issues
-
-        
-        % Use parsim for parallel simulation with robust error handling
-        simOuts = parsim(simInputs, ...
-                        'TransferBaseWorkspaceVariables', 'on', ...
-                        'AttachedFiles', {config.model_path}, ...
-                        'StopOnError', 'off');  % Don't stop on individual simulation errors
-        
-        % Process results
-        successful_trials = 0;
-        
-        % Check if parsim succeeded
-        if isempty(simOuts)
-            error('Parallel simulation failed - no results returned');
+    % Process batches
+    for batch_idx = start_batch:num_batches
+        % Check for stop request
+        if checkStopRequest(handles)
+            fprintf('Parallel simulation stopped by user at batch %d\n', batch_idx);
+            break;
         end
         
-        for i = 1:length(simOuts)
-            % Safely access simOuts(i) to handle potential brace indexing issues
-            try
-                current_simOut = simOuts(i);
+        % Calculate trials for this batch
+        start_trial = (batch_idx - 1) * batch_size + 1;
+        end_trial = min(batch_idx * batch_size, total_trials);
+        batch_trials = end_trial - start_trial + 1;
+        
+        if strcmp(config.verbosity, 'Verbose') || strcmp(config.verbosity, 'Debug')
+            fprintf('\n--- Batch %d/%d (Trials %d-%d) ---\n', batch_idx, num_batches, start_trial, end_trial);
+        end
+        
+        % Update progress
+        progress_msg = sprintf('Batch %d/%d: Processing trials %d-%d...', batch_idx, num_batches, start_trial, end_trial);
+        set(handles.progress_text, 'String', progress_msg);
+        drawnow;
+        
+        % Prepare simulation inputs for this batch
+        try
+            batch_simInputs = prepareSimulationInputsForBatch(config, handles, start_trial, end_trial);
+            
+            if isempty(batch_simInputs)
+                fprintf('✗ Failed to prepare simulation inputs for batch %d\n', batch_idx);
+                continue;
+            end
+            
+            if strcmp(config.verbosity, 'Verbose') || strcmp(config.verbosity, 'Debug')
+                fprintf('Prepared %d simulation inputs for batch %d\n', length(batch_simInputs), batch_idx);
+            end
+            
+        catch ME
+            fprintf('✗ Error preparing batch %d inputs: %s\n', batch_idx, ME.message);
+            continue;
+        end
+        
+        % Run batch simulations
+        try
+            if strcmp(config.verbosity, 'Verbose') || strcmp(config.verbosity, 'Debug')
+                fprintf('Running batch %d with parsim...\n', batch_idx);
+            end
+            
+            % Use parsim for parallel simulation with robust error handling
+            batch_simOuts = parsim(batch_simInputs, ...
+                                'TransferBaseWorkspaceVariables', 'on', ...
+                                'AttachedFiles', {config.model_path}, ...
+                                'StopOnError', 'off');  % Don't stop on individual simulation errors
+            
+            % Check if parsim succeeded
+            if isempty(batch_simOuts)
+                fprintf('✗ Batch %d failed - no results returned\n', batch_idx);
+                continue;
+            end
+            
+            % Process batch results
+            batch_successful = 0;
+            for i = 1:length(batch_simOuts)
+                trial_num = start_trial + i - 1;
                 
-                % Check if we got a valid single simulation output object
-                if isempty(current_simOut)
-                    fprintf('✗ Trial %d: Empty simulation output\n', i);
-                    continue;
-                end
-                
-                % Handle case where simOuts(i) returns multiple values (brace indexing issue)
-                if ~isscalar(current_simOut)
-                    fprintf('✗ Trial %d: Multiple simulation outputs returned (brace indexing issue)\n', i);
-                    continue;
-                end
-                
-                % Check if simulation completed successfully
-                simulation_success = false;
-                has_error = false;
-                
-                % Try multiple ways to check simulation status
                 try
-                    % Method 1: Check SimulationMetadata (standard way)
-                    if isprop(current_simOut, 'SimulationMetadata') && ...
-                       isfield(current_simOut.SimulationMetadata, 'ExecutionInfo')
-                        
-                        execInfo = current_simOut.SimulationMetadata.ExecutionInfo;
-                        
-                        if isfield(execInfo, 'StopEvent') && execInfo.StopEvent == "CompletedNormally"
-                            simulation_success = true;
-                        else
-                            has_error = true;
-                            fprintf('✗ Trial %d simulation failed (metadata)\n', i);
+                    current_simOut = batch_simOuts(i);
+                    
+                    % Check if we got a valid single simulation output object
+                    if isempty(current_simOut)
+                        fprintf('✗ Trial %d: Empty simulation output\n', trial_num);
+                        continue;
+                    end
+                    
+                    % Handle case where simOuts(i) returns multiple values (brace indexing issue)
+                    if ~isscalar(current_simOut)
+                        fprintf('✗ Trial %d: Multiple simulation outputs returned (brace indexing issue)\n', trial_num);
+                        continue;
+                    end
+                    
+                    % Check if simulation completed successfully
+                    simulation_success = false;
+                    has_error = false;
+                    
+                    % Try multiple ways to check simulation status
+                    try
+                        % Method 1: Check SimulationMetadata (standard way)
+                        if isprop(current_simOut, 'SimulationMetadata') && ...
+                           isfield(current_simOut.SimulationMetadata, 'ExecutionInfo')
                             
-                            if isfield(execInfo, 'ErrorDiagnostic') && ~isempty(execInfo.ErrorDiagnostic)
-                                fprintf('  Error: %s\n', execInfo.ErrorDiagnostic.message);
-                            end
-                        end
-                    else
-                        % Method 2: Check for ErrorMessage property (indicates failure)
-                        if isprop(current_simOut, 'ErrorMessage') && ~isempty(current_simOut.ErrorMessage)
-                            has_error = true;
-                            fprintf('✗ Trial %d simulation failed: %s\n', i, current_simOut.ErrorMessage);
-                        else
-                            % Method 3: If no metadata but we have output data, assume success
-                            % Check if we have expected output fields (logsout, simlog, etc.)
-                            has_data = false;
-                            if isprop(current_simOut, 'logsout') || isfield(current_simOut, 'logsout') || ...
-                               isprop(current_simOut, 'simlog') || isfield(current_simOut, 'simlog') || ...
-                               isprop(current_simOut, 'CombinedSignalBus') || isfield(current_simOut, 'CombinedSignalBus')
-                                has_data = true;
-                            end
+                            execInfo = current_simOut.SimulationMetadata.ExecutionInfo;
                             
-                            if has_data
-                                fprintf('✓ Trial %d: Assuming success (has output data, no error message)\n', i);
+                            if isfield(execInfo, 'StopEvent') && execInfo.StopEvent == "CompletedNormally"
                                 simulation_success = true;
                             else
-                                fprintf('✗ Trial %d: No metadata, no data, assuming failure\n', i);
                                 has_error = true;
+                                fprintf('✗ Trial %d simulation failed (metadata)\n', trial_num);
+                                
+                                if isfield(execInfo, 'ErrorDiagnostic') && ~isempty(execInfo.ErrorDiagnostic)
+                                    fprintf('  Error: %s\n', execInfo.ErrorDiagnostic.message);
+                                end
+                            end
+                        else
+                            % Method 2: Check for ErrorMessage property (indicates failure)
+                            if isprop(current_simOut, 'ErrorMessage') && ~isempty(current_simOut.ErrorMessage)
+                                has_error = true;
+                                fprintf('✗ Trial %d simulation failed: %s\n', trial_num, current_simOut.ErrorMessage);
+                            else
+                                % Method 3: If no metadata but we have output data, assume success
+                                % Check if we have expected output fields (logsout, simlog, etc.)
+                                has_data = false;
+                                if isprop(current_simOut, 'logsout') || isfield(current_simOut, 'logsout') || ...
+                                   isprop(current_simOut, 'simlog') || isfield(current_simOut, 'simlog') || ...
+                                   isprop(current_simOut, 'CombinedSignalBus') || isfield(current_simOut, 'CombinedSignalBus')
+                                    has_data = true;
+                                end
+                                
+                                if has_data
+                                    fprintf('✓ Trial %d: Assuming success (has output data, no error message)\n', trial_num);
+                                    simulation_success = true;
+                                else
+                                    fprintf('✗ Trial %d: No metadata, no data, assuming failure\n', trial_num);
+                                    has_error = true;
+                                end
                             end
                         end
-                    end
-                catch ME
-                    fprintf('✗ Trial %d: Error checking simulation status: %s\n', i, ME.message);
-                    has_error = true;
-                end
-                
-                % Process simulation if it succeeded
-                if simulation_success && ~has_error
-                    try
-                        result = processSimulationOutput(i, config, current_simOut, config.capture_workspace);
-                        if result.success
-                            successful_trials = successful_trials + 1;
-                            fprintf('✓ Trial %d completed successfully\n', i);
-                        else
-                            fprintf('✗ Trial %d processing failed: %s\n', i, result.error);
-                        end
                     catch ME
-                        fprintf('Error processing trial %d: %s\n', i, ME.message);
+                        fprintf('✗ Trial %d: Error checking simulation status: %s\n', trial_num, ME.message);
+                        has_error = true;
+                    end
+                    
+                    % Process simulation if it succeeded
+                    if simulation_success && ~has_error
+                        try
+                            result = processSimulationOutput(trial_num, config, current_simOut, config.capture_workspace);
+                            if result.success
+                                batch_successful = batch_successful + 1;
+                                successful_trials = successful_trials + 1;
+                                fprintf('✓ Trial %d completed successfully\n', trial_num);
+                            else
+                                fprintf('✗ Trial %d processing failed: %s\n', trial_num, result.error);
+                            end
+                        catch ME
+                            fprintf('Error processing trial %d: %s\n', trial_num, ME.message);
+                        end
+                    end
+                    
+                catch ME
+                    % Handle brace indexing errors specifically
+                    if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
+                        fprintf('✗ Trial %d: Brace indexing error - simulation output corrupted\n', trial_num);
+                        fprintf('  Error: %s\n', ME.message);
+                    else
+                        fprintf('✗ Trial %d: Unexpected error accessing simulation output: %s\n', trial_num, ME.message);
                     end
                 end
+            end
+            
+            fprintf('Batch %d completed: %d/%d trials successful\n', batch_idx, batch_successful, batch_trials);
+            
+        catch ME
+            fprintf('✗ Batch %d failed: %s\n', batch_idx, ME.message);
+        end
+        
+        % Memory cleanup after each batch
+        fprintf('Performing memory cleanup after batch %d...\n', batch_idx);
+        restoreWorkspace(initial_vars);
+        java.lang.System.gc();  % Force garbage collection
+        
+        % Check memory usage if monitoring is enabled
+        if config.enable_memory_monitoring
+            try
+                memoryInfo = getMemoryInfo();
+                fprintf('Memory usage after batch %d: %.1f%%\n', batch_idx, memoryInfo.usage_percent);
                 
+                if memoryInfo.usage_percent > 85
+                    fprintf('Warning: High memory usage detected. Consider reducing batch size.\n');
+                end
             catch ME
-                % Handle brace indexing errors specifically
-                if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
-                    fprintf('✗ Trial %d: Brace indexing error - simulation output corrupted\n', i);
-                    fprintf('  Error: %s\n', ME.message);
-                else
-                    fprintf('✗ Trial %d: Unexpected error accessing simulation output: %s\n', i, ME.message);
-                end
+                fprintf('Warning: Could not check memory usage: %s\n', ME.message);
             end
         end
         
-        % Summary
-        fprintf('\n=== PARALLEL SIMULATION SUMMARY ===\n');
-        fprintf('Total trials: %d\n', length(simOuts));
-        fprintf('Successful: %d\n', successful_trials);
-        fprintf('Failed: %d\n', length(simOuts) - successful_trials);
-        
-        if successful_trials == 0
-            fprintf('\n⚠️  All parallel simulations failed. Common causes:\n');
-            fprintf('   • Model path not accessible on workers\n');
-            fprintf('   • Missing workspace variables on workers\n');
-            fprintf('   • Toolbox licensing issues on workers\n');
-            fprintf('   • Model configuration conflicts in parallel mode\n');
-            fprintf('   • Coefficient setting issues on workers\n');
-            fprintf('\n Try sequential mode for detailed debugging\n');
+        % Save checkpoint if needed
+        if mod(batch_idx, save_interval) == 0 || batch_idx == num_batches
+            try
+                checkpoint_data = struct();
+                checkpoint_data.completed_trials = successful_trials;
+                checkpoint_data.next_batch = batch_idx + 1;
+                checkpoint_data.timestamp = datestr(now, 'yyyy-mm-dd HH:MM:SS');
+                checkpoint_data.batch_idx = batch_idx;
+                checkpoint_data.total_batches = num_batches;
+                
+                save(checkpoint_file, '-struct', 'checkpoint_data');
+                fprintf('✓ Checkpoint saved after batch %d (%d trials completed)\n', batch_idx, successful_trials);
+            catch ME
+                fprintf('Warning: Could not save checkpoint: %s\n', ME.message);
+            end
         end
         
-    catch ME
-        fprintf('\n❌ PARALLEL SIMULATION FRAMEWORK ERROR: %s\n', ME.message);
-        
-        fprintf('Attempting to diagnose the issue...\n');
-        
-        % Try running one simulation sequentially to get detailed error
+        % Small pause to let system recover
+        pause(1);
+    end
+    
+    % Final summary
+    fprintf('\n=== PARALLEL BATCH PROCESSING SUMMARY ===\n');
+    fprintf('Total trials: %d\n', total_trials);
+    fprintf('Successful: %d\n', successful_trials);
+    fprintf('Failed: %d\n', total_trials - successful_trials);
+    fprintf('Success rate: %.1f%%\n', (successful_trials / total_trials) * 100);
+    
+    if successful_trials == 0
+        fprintf('\n⚠️  All parallel simulations failed. Common causes:\n');
+        fprintf('   • Model path not accessible on workers\n');
+        fprintf('   • Missing workspace variables on workers\n');
+        fprintf('   • Toolbox licensing issues on workers\n');
+        fprintf('   • Model configuration conflicts in parallel mode\n');
+        fprintf('   • Coefficient setting issues on workers\n');
+        fprintf('\n Try sequential mode for detailed debugging\n');
+    end
+    
+    % Clean up checkpoint file if completed successfully
+    if successful_trials == total_trials && exist(checkpoint_file, 'file')
         try
-            if ~isempty(simInputs) && length(simInputs) >= 1
-                fprintf('\nRunning single simulation sequentially for debugging...\n');
-                
-                % Ensure model is loaded
-                if ~bdIsLoaded(config.model_name)
-                    load_system(config.model_path);
-                end
-                
-                single_simOut = sim(simInputs(1));
-                fprintf('Single simulation succeeded - issue may be parallel-specific\n');
-                
-                % Check if Simscape logging worked
-                if isprop(single_simOut, 'simlog') || isfield(single_simOut, 'simlog')
-                    fprintf('Simscape logging is available in sequential mode\n');
-                else
-                    fprintf('Warning: No Simscape logging even in sequential mode\n');
-                end
-            end
-        catch singleME
-            fprintf('Single simulation also failed: %s\n', singleME.message);
-            if ~isempty(singleME.cause)
-                for j = 1:length(singleME.cause)
-                    fprintf('  Cause %d: %s\n', j, singleME.cause{j}.message);
-                end
-            end
+            delete(checkpoint_file);
+            fprintf('✓ Checkpoint file cleaned up (all trials completed)\n');
+        catch ME
+            fprintf('Warning: Could not clean up checkpoint file: %s\n', ME.message);
         end
-        
-        successful_trials = 0;
     end
 end
 
@@ -2604,54 +2693,162 @@ function coefficients = generateRandomCoefficients(num_coefficients)
     end
 end
 function successful_trials = runSequentialSimulations(handles, config)
+            % Get batch processing parameters
+        batch_size = config.batch_size;
+        save_interval = config.save_interval;
+        total_trials = config.num_simulations;
+        
+        % Debug print to confirm settings
+        fprintf('[RUNTIME] Using batch size: %d, save interval: %d, verbosity: %s\n', config.batch_size, config.save_interval, config.verbosity);
+        
+        if ~strcmp(config.verbosity, 'Silent')
+            fprintf('Starting sequential batch processing:\n');
+            fprintf('  Total trials: %d\n', total_trials);
+            fprintf('  Batch size: %d\n', batch_size);
+            fprintf('  Save interval: %d batches\n', save_interval);
+        end
+    
+    % Calculate number of batches
+    num_batches = ceil(total_trials / batch_size);
     successful_trials = 0;
     
-    fprintf('Starting sequential simulation of %d trials...\n', config.num_simulations);
+    % Store initial workspace state for restoration
+    initial_vars = who;
     
-    for trial = 1:config.num_simulations
-        % Check for stop request and update progress
-        if checkStopRequest(handles)
-            fprintf('Sequential simulation stopped by user at trial %d\n', trial);
-            break;
-        end
-        
-        % Update progress with percentage
-        updateProgress(handles, trial, config.num_simulations, 'Sequential simulation');
-        
-        % Check memory usage every 10 trials
-        if mod(trial, 10) == 0
-            if checkHighMemoryUsage(90)
-                fprintf('Warning: High memory usage detected. Consider stopping or reducing batch size.\n');
-            end
-        end
-        
+    % Check for existing checkpoint
+    checkpoint_file = fullfile(config.output_folder, 'sequential_checkpoint.mat');
+    start_batch = 1;
+    if exist(checkpoint_file, 'file')
         try
-            if trial <= size(config.coefficient_values, 1)
-                trial_coefficients = config.coefficient_values(trial, :);
-            else
-                % Generate random coefficients for additional trials
-                fprintf('Generating random coefficients for trial %d (beyond available data)\n', trial);
-                trial_coefficients = generateRandomCoefficients(size(config.coefficient_values, 2));
+            checkpoint_data = load(checkpoint_file);
+            if isfield(checkpoint_data, 'completed_trials')
+                successful_trials = checkpoint_data.completed_trials;
+                start_batch = checkpoint_data.next_batch;
+                fprintf('Found checkpoint: %d trials completed, resuming from batch %d\n', successful_trials, start_batch);
             end
-            
-            result = runSingleTrial(trial, config, trial_coefficients, config.capture_workspace);
-            
-            if result.success
-                successful_trials = successful_trials + 1;
-                fprintf('✓ Trial %d completed successfully\n', trial);
-            else
-                fprintf('✗ Trial %d failed: %s\n', trial, result.error);
-            end
-            
         catch ME
-            fprintf('✗ Trial %d error: %s\n', trial, ME.message);
+            fprintf('Warning: Could not load checkpoint: %s\n', ME.message);
         end
     end
     
-    fprintf('\n=== SEQUENTIAL SIMULATION SUMMARY ===\n');
-    fprintf('Total trials: %d\n', config.num_simulations);
+    % Process batches
+    for batch_idx = start_batch:num_batches
+        % Check for stop request
+        if checkStopRequest(handles)
+            fprintf('Sequential simulation stopped by user at batch %d\n', batch_idx);
+            break;
+        end
+        
+        % Calculate trials for this batch
+        start_trial = (batch_idx - 1) * batch_size + 1;
+        end_trial = min(batch_idx * batch_size, total_trials);
+        batch_trials = end_trial - start_trial + 1;
+        
+        if strcmp(config.verbosity, 'Verbose') || strcmp(config.verbosity, 'Debug')
+            fprintf('\n--- Batch %d/%d (Trials %d-%d) ---\n', batch_idx, num_batches, start_trial, end_trial);
+        end
+        
+        % Update progress
+        progress_msg = sprintf('Batch %d/%d: Processing trials %d-%d...', batch_idx, num_batches, start_trial, end_trial);
+        set(handles.progress_text, 'String', progress_msg);
+        drawnow;
+        
+        % Process trials in this batch
+        batch_successful = 0;
+        for trial = start_trial:end_trial
+            % Check for stop request
+            if checkStopRequest(handles)
+                fprintf('Sequential simulation stopped by user at trial %d\n', trial);
+                break;
+            end
+            
+            % Update progress with percentage
+            updateProgress(handles, trial, total_trials, 'Sequential simulation');
+            
+            try
+                if trial <= size(config.coefficient_values, 1)
+                    trial_coefficients = config.coefficient_values(trial, :);
+                else
+                    % Generate random coefficients for additional trials
+                    fprintf('Generating random coefficients for trial %d (beyond available data)\n', trial);
+                    trial_coefficients = generateRandomCoefficients(size(config.coefficient_values, 2));
+                end
+                
+                result = runSingleTrial(trial, config, trial_coefficients, config.capture_workspace);
+                
+                if result.success
+                    batch_successful = batch_successful + 1;
+                    successful_trials = successful_trials + 1;
+                    fprintf('✓ Trial %d completed successfully\n', trial);
+                else
+                    fprintf('✗ Trial %d failed: %s\n', trial, result.error);
+                end
+                
+            catch ME
+                fprintf('✗ Trial %d error: %s\n', trial, ME.message);
+            end
+        end
+        
+        if strcmp(config.verbosity, 'Verbose') || strcmp(config.verbosity, 'Debug')
+            fprintf('Batch %d completed: %d/%d trials successful\n', batch_idx, batch_successful, batch_trials);
+        end
+        
+        % Memory cleanup after each batch
+        fprintf('Performing memory cleanup after batch %d...\n', batch_idx);
+        restoreWorkspace(initial_vars);
+        java.lang.System.gc();  % Force garbage collection
+        
+        % Check memory usage if monitoring is enabled
+        if config.enable_memory_monitoring
+            try
+                memoryInfo = getMemoryInfo();
+                fprintf('Memory usage after batch %d: %.1f%%\n', batch_idx, memoryInfo.usage_percent);
+                
+                if memoryInfo.usage_percent > 85
+                    fprintf('Warning: High memory usage detected. Consider reducing batch size.\n');
+                end
+            catch ME
+                fprintf('Warning: Could not check memory usage: %s\n', ME.message);
+            end
+        end
+        
+        % Save checkpoint if needed
+        if mod(batch_idx, save_interval) == 0 || batch_idx == num_batches
+            try
+                checkpoint_data = struct();
+                checkpoint_data.completed_trials = successful_trials;
+                checkpoint_data.next_batch = batch_idx + 1;
+                checkpoint_data.timestamp = datestr(now, 'yyyy-mm-dd HH:MM:SS');
+                checkpoint_data.batch_idx = batch_idx;
+                checkpoint_data.total_batches = num_batches;
+                
+                save(checkpoint_file, '-struct', 'checkpoint_data');
+                fprintf('✓ Checkpoint saved after batch %d (%d trials completed)\n', batch_idx, successful_trials);
+            catch ME
+                fprintf('Warning: Could not save checkpoint: %s\n', ME.message);
+            end
+        end
+        
+        % Small pause to let system recover
+        pause(1);
+    end
+    
+    % Final summary
+    fprintf('\n=== SEQUENTIAL BATCH PROCESSING SUMMARY ===\n');
+    fprintf('Total trials: %d\n', total_trials);
     fprintf('Successful: %d\n', successful_trials);
-    fprintf('Failed: %d\n', config.num_simulations - successful_trials);
+    fprintf('Failed: %d\n', total_trials - successful_trials);
+    fprintf('Success rate: %.1f%%\n', (successful_trials / total_trials) * 100);
+    
+    % Clean up checkpoint file if completed successfully
+    if successful_trials == total_trials && exist(checkpoint_file, 'file')
+        try
+            delete(checkpoint_file);
+            fprintf('✓ Checkpoint file cleaned up (all trials completed)\n');
+        catch ME
+            fprintf('Warning: Could not clean up checkpoint file: %s\n', ME.message);
+        end
+    end
 end
 function simInputs = prepareSimulationInputs(config, handles)
     % Load the Simulink model
@@ -2705,6 +2902,72 @@ function simInputs = prepareSimulationInputs(config, handles)
         simInputs(trial) = simIn;
     end
 end
+
+function simInputs = prepareSimulationInputsForBatch(config, handles, start_trial, end_trial)
+    % Prepare simulation inputs for a specific batch of trials
+    % Load the Simulink model
+    model_name = config.model_name;
+    if ~bdIsLoaded(model_name)
+        try
+            load_system(model_name);
+        catch ME
+            error('Could not load Simulink model "%s": %s', model_name, ME.message);
+        end
+    end
+    
+    % Create array of SimulationInput objects for this batch
+    batch_size = end_trial - start_trial + 1;
+    simInputs = Simulink.SimulationInput.empty(0, batch_size);
+    
+    for i = 1:batch_size
+        trial = start_trial + i - 1;
+        
+        % Get coefficients for this trial
+        if trial <= size(config.coefficient_values, 1)
+            trial_coefficients = config.coefficient_values(trial, :);
+        else
+            % Generate random coefficients for additional trials
+            trial_coefficients = generateRandomCoefficients(size(config.coefficient_values, 2));
+        end
+        
+        % Ensure coefficients are numeric (fix for parallel execution)
+        if iscell(trial_coefficients)
+            trial_coefficients = cell2mat(trial_coefficients);
+        end
+        trial_coefficients = double(trial_coefficients);  % Ensure double precision
+        
+        % Create SimulationInput object
+        simIn = Simulink.SimulationInput(model_name);
+        
+        % Set simulation parameters safely
+        simIn = setModelParameters(simIn, config, handles);
+        
+        % Set polynomial coefficients
+        try
+            simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
+        catch ME
+            fprintf('Warning: Could not set polynomial coefficients: %s\n', ME.message);
+        end
+        
+        % Load input file if specified
+        if ~isempty(config.input_file) && exist(config.input_file, 'file')
+            simIn = loadInputFile(simIn, config.input_file);
+        end
+        
+        simInputs(i) = simIn;
+    end
+end
+
+function restoreWorkspace(initial_vars)
+    % Restore workspace to initial state by clearing new variables
+    current_vars = who;
+    new_vars = setdiff(current_vars, initial_vars);
+    
+    if ~isempty(new_vars)
+        clear(new_vars{:});
+    end
+end
+
 function simIn = setPolynomialCoefficients(simIn, coefficients, config)
     % Get parameter info for coefficient mapping
     param_info = getPolynomialParameterInfo();
@@ -4304,13 +4567,17 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                                 % Single column time series
                                 data_cells{end+1} = numeric_data(:);
                                 var_names{end+1} = sprintf('%s_%s', field_name, sub_field_name);
-                                fprintf('Debug: Added time series %s_%s\n', field_name, sub_field_name);
+                                if strcmp(config.verbosity, 'Debug')
+                                    fprintf('Debug: Added time series %s_%s\n', field_name, sub_field_name);
+                                end
                             elseif size(numeric_data, 2) > 1
                                 % Multi-column time series
                                 for col = 1:size(numeric_data, 2)
                                     data_cells{end+1} = numeric_data(:, col);
                                     var_names{end+1} = sprintf('%s_%s_%d', field_name, sub_field_name, col);
-                                    fprintf('Debug: Added time series %s_%s_%d\n', field_name, sub_field_name, col);
+                                    if strcmp(config.verbosity, 'Debug')
+                                        fprintf('Debug: Added time series %s_%s_%d\n', field_name, sub_field_name, col);
+                                    end
                                 end
                             end
                             
@@ -4323,8 +4590,10 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                                 data_cells{end+1} = replicated_data;
                                 dim_labels = {'x', 'y', 'z'};
                                 var_names{end+1} = sprintf('%s_%s_%s', field_name, sub_field_name, dim_labels{dim});
-                                fprintf('Debug: Added 3D vector %s_%s_%s (replicated %g for %d timesteps)\n', ...
-                                    field_name, sub_field_name, dim_labels{dim}, vector_data(dim), expected_length);
+                                if strcmp(config.verbosity, 'Debug')
+                                    fprintf('Debug: Added 3D vector %s_%s_%s (replicated %g for %d timesteps)\n', ...
+                                        field_name, sub_field_name, dim_labels{dim}, vector_data(dim), expected_length);
+                                end
                             end
                             
                         elseif num_elements == 9
@@ -4344,8 +4613,30 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                                     replicated_data = repmat(matrix_element, expected_length, 1);
                                     data_cells{end+1} = replicated_data;
                                     var_names{end+1} = sprintf('%s_%s_I%d%d', field_name, sub_field_name, row, col);
-                                    fprintf('Debug: Added 3x3 matrix %s_%s_I%d%d (replicated %g for %d timesteps)\n', ...
-                                        field_name, sub_field_name, row, col, matrix_element, expected_length);
+                                    if strcmp(config.verbosity, 'Debug')
+                                        fprintf('Debug: Added 3x3 matrix %s_%s_I%d%d (replicated %g for %d timesteps)\n', ...
+                                            field_name, sub_field_name, row, col, matrix_element, expected_length);
+                                    end
+                                end
+                            end
+                            
+                        % Handle 3x3xN time series (e.g., inertia over time)
+                        elseif ndims(numeric_data) == 3 && all(size(numeric_data,1:2) == [3 3])
+                            n_steps = size(numeric_data,3);
+                            if n_steps ~= expected_length
+                                if strcmp(config.verbosity, 'Debug')
+                                    fprintf('Debug: Skipping %s.%s (3x3xN but N=%d, expected %d)\n', field_name, sub_field_name, n_steps, expected_length);
+                                end
+                            else
+                                % Flatten each 3x3 matrix at each timestep into 9 columns
+                                flat_matrix = reshape(permute(numeric_data, [3 1 2]), n_steps, 9);
+                                for idx = 1:9
+                                    [row, col] = ind2sub([3,3], idx);
+                                    data_cells{end+1} = flat_matrix(:,idx);
+                                    var_names{end+1} = sprintf('%s_%s_I%d%d', field_name, sub_field_name, row, col);
+                                    if strcmp(config.verbosity, 'Debug')
+                                        fprintf('Debug: Added 3x3xN matrix %s_%s_I%d%d (N=%d)\n', field_name, sub_field_name, row, col, n_steps);
+                                    end
                                 end
                             end
                             
@@ -4356,14 +4647,18 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                                 replicated_data = repmat(vector_data(dim), expected_length, 1);
                                 data_cells{end+1} = replicated_data;
                                 var_names{end+1} = sprintf('%s_%s_dof%d', field_name, sub_field_name, dim);
-                                fprintf('Debug: Added 6DOF data %s_%s_dof%d (replicated %g for %d timesteps)\n', ...
-                                    field_name, sub_field_name, dim, vector_data(dim), expected_length);
+                                if strcmp(config.verbosity, 'Debug')
+                                    fprintf('Debug: Added 6DOF data %s_%s_dof%d (replicated %g for %d timesteps)\n', ...
+                                        field_name, sub_field_name, dim, vector_data(dim), expected_length);
+                                end
                             end
                             
                         else
                             % UNHANDLED SIZE - still skip but with better diagnostic
-                            fprintf('Debug: Skipping %s.%s (size [%s] not supported - need time series, 3D vector, 3x3 matrix, or 6DOF)\n', ...
-                                field_name, sub_field_name, num2str(data_size));
+                            if strcmp(config.verbosity, 'Debug')
+                                fprintf('Debug: Skipping %s.%s (size [%s] not supported - need time series, 3D vector, 3x3 matrix, or 6DOF)\n', ...
+                                    field_name, sub_field_name, num2str(data_size));
+                            end
                         end
                     end
                 end
@@ -4371,18 +4666,24 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                 % Direct numeric field
                 data_cells{end+1} = field_value(:);
                 var_names{end+1} = field_name;
-                fprintf('Debug: Added direct field %s\n', field_name);
+                if strcmp(config.verbosity, 'Debug')
+                    fprintf('Debug: Added direct field %s\n', field_name);
+                end
             end
         end
         
         % Create table if we have data
         if length(data_cells) > 1
             data_table = table(data_cells{:}, 'VariableNames', var_names);
-            fprintf('Debug: Created CombinedSignalBus table with %d columns, %d rows\n', width(data_table), height(data_table));
+            if strcmp(config.verbosity, 'Debug')
+                fprintf('Debug: Created CombinedSignalBus table with %d columns, %d rows\n', width(data_table), height(data_table));
+            end
         else
-            fprintf('Debug: No valid data found in CombinedSignalBus\n');
-            fprintf('Debug: Total data_cells collected: %d\n', length(data_cells));
-            fprintf('Debug: Variable names: %s\n', strjoin(var_names, ', '));
+            if strcmp(config.verbosity, 'Debug')
+                fprintf('Debug: No valid data found in CombinedSignalBus\n');
+                fprintf('Debug: Total data_cells collected: %d\n', length(data_cells));
+                fprintf('Debug: Variable names: %s\n', strjoin(var_names, ', '));
+            end
         end
         
     catch ME

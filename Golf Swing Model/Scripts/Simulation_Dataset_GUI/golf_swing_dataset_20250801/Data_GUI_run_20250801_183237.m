@@ -1,5 +1,5 @@
 % GOLF SWING DATA GENERATION RUN RECORD
-% Generated: 2025-07-30 22:31:33
+% Generated: 2025-08-01 18:32:37
 % This file contains the exact script and settings used for this data generation run
 %
 % =================================================================
@@ -7,7 +7,7 @@
 % =================================================================
 %
 % SIMULATION PARAMETERS:
-% Number of trials: 2
+% Number of trials: 10
 % Simulation time: 0.300 seconds
 % Sample rate: 100.0 Hz
 %
@@ -25,7 +25,7 @@
 % Simscape Results: enabled
 %
 % OUTPUT SETTINGS:
-% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250730
+% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250801
 % File format: CSV Files
 %
 % SYSTEM INFORMATION:
@@ -34,13 +34,14 @@
 % Hostname: DeskComputer
 %
 % POLYNOMIAL COEFFICIENTS:
-% Coefficient matrix size: 2 trials x 189 coefficients
-% First trial coefficients (first 10): 43.350, 9.890, 15.390, -12.460, -17.190, -46.790, -6.160, 32.110, 15.230, 49.450
+% Coefficient matrix size: 10 trials x 189 coefficients
+% First trial coefficients (first 10): 31.470, 40.580, -37.300, 41.340, 13.240, -40.250, -22.150, 4.690, 45.750, 46.490
 %
 % =================================================================
 % END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
 % =================================================================
 
+%% 
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
     % Fixed polynomial order: At^6 + Bt^5 + Ct^4 + Dt^3 + Et^2 + Ft + G
@@ -117,14 +118,66 @@ function handles = createMainLayout(fig, handles)
               'Style', 'text', ...
               'String', 'Golf Swing Data Generator', ...
               'Units', 'normalized', ...
-              'Position', [0.02, 0.2, 0.96, 0.6], ...
+              'Position', [0.02, 0.2, 0.4, 0.6], ...
               'FontSize', 14, ...
               'FontWeight', 'normal', ...
               'ForegroundColor', 'white', ...
               'BackgroundColor', colors.primary, ...
               'HorizontalAlignment', 'left');
     
-
+    % Control buttons in title bar
+    buttonWidth = 0.08;
+    buttonHeight = 0.6;
+    buttonSpacing = 0.01;
+    buttonY = 0.2;
+    
+    % Calculate positions to right-align Load Config button
+    totalButtonWidth = 4 * buttonWidth + 3 * buttonSpacing + 0.04;  % 4 buttons + spacing + extra width for Save/Load
+    startX = 1.0 - totalButtonWidth - 0.02;  % Right-align with 0.02 margin
+    
+    % Start button
+    handles.start_button = uicontrol('Parent', titlePanel, ...
+                                    'Style', 'pushbutton', ...
+                                    'String', 'Start', ...
+                                    'Units', 'normalized', ...
+                                    'Position', [startX, buttonY, buttonWidth, buttonHeight], ...
+                                    'BackgroundColor', colors.success, ...
+                                    'ForegroundColor', 'white', ...
+                                    'FontWeight', 'bold', ...
+                                    'Callback', @startGeneration);
+    
+    % Stop button
+    handles.stop_button = uicontrol('Parent', titlePanel, ...
+                                   'Style', 'pushbutton', ...
+                                   'String', 'Stop', ...
+                                   'Units', 'normalized', ...
+                                   'Position', [startX + buttonWidth + buttonSpacing, buttonY, buttonWidth, buttonHeight], ...
+                                   'BackgroundColor', colors.danger, ...
+                                   'ForegroundColor', 'white', ...
+                                   'FontWeight', 'bold', ...
+                                   'Callback', @stopGeneration);
+    
+    % Save config button
+    handles.save_config_button = uicontrol('Parent', titlePanel, ...
+                                          'Style', 'pushbutton', ...
+                                          'String', 'Save Config', ...
+                                          'Units', 'normalized', ...
+                                          'Position', [startX + 2*(buttonWidth + buttonSpacing), buttonY, buttonWidth + 0.02, buttonHeight], ...
+                                          'BackgroundColor', colors.secondary, ...
+                                          'ForegroundColor', 'white', ...
+                                          'FontWeight', 'bold', ...
+                                          'Callback', @saveConfiguration);
+    
+    % Load config button
+    handles.load_config_button = uicontrol('Parent', titlePanel, ...
+                                          'Style', 'pushbutton', ...
+                                          'String', 'Load Config', ...
+                                          'Units', 'normalized', ...
+                                          'Position', [startX + 3*(buttonWidth + buttonSpacing) + 0.02, buttonY, buttonWidth + 0.02, buttonHeight], ...
+                                          'BackgroundColor', colors.secondary, ...
+                                          'ForegroundColor', 'white', ...
+                                          'FontWeight', 'bold', ...
+                                          'Callback', @loadConfiguration);
     
     % Content area
     contentTop = 1 - titleHeight - 0.01;
@@ -134,13 +187,15 @@ function handles = createMainLayout(fig, handles)
                           'BorderType', 'none', ...
                           'BackgroundColor', colors.background);
     
-    % Two columns
+    % Two columns - left 10% narrower, right 10% wider
     columnPadding = 0.01;
     columnWidth = (1 - 3*columnPadding) / 2;
+    leftColumnWidth = columnWidth * 0.9;  % 10% narrower
+    rightColumnWidth = columnWidth * 1.1; % 10% wider
     
     leftPanel = uipanel('Parent', contentPanel, ...
                        'Units', 'normalized', ...
-                       'Position', [columnPadding, columnPadding, columnWidth, 1-2*columnPadding], ...
+                       'Position', [columnPadding, columnPadding, leftColumnWidth, 1-2*columnPadding], ...
                        'BackgroundColor', colors.panel, ...
                        'BorderType', 'line', ...
                        'BorderWidth', 0.5, ...
@@ -148,7 +203,7 @@ function handles = createMainLayout(fig, handles)
     
     rightPanel = uipanel('Parent', contentPanel, ...
                         'Units', 'normalized', ...
-                        'Position', [2*columnPadding + columnWidth, columnPadding, columnWidth, 1-2*columnPadding], ...
+                        'Position', [columnPadding + leftColumnWidth + columnPadding, columnPadding, rightColumnWidth, 1-2*columnPadding], ...
                         'BackgroundColor', colors.panel, ...
                         'BorderType', 'line', ...
                         'BorderWidth', 0.5, ...
@@ -168,29 +223,17 @@ function handles = createLeftColumnContent(parent, handles)
     panelPadding = 0.01;
     
     % Calculate heights
-    numPanels = 5;  % Added batch settings panel
+    numPanels = 1;  % Just Configuration (includes modeling and progress)
     totalSpacing = panelPadding + (numPanels-1)*panelSpacing + panelPadding;
     availableHeight = 1 - totalSpacing;
     
-    h1 = 0.25 * availableHeight;  % Configuration panel
-    h2 = 0.12 * availableHeight;  % Modeling panel (reduced)
-    h3 = 0.31 * availableHeight;  % Joint editor panel (increased)
-    h4 = 0.16 * availableHeight;  % Output settings panel
-    h5 = 0.16 * availableHeight;  % Batch settings panel
+    h1 = 1.0 * availableHeight;  % Configuration panel takes full height (increased to show all elements)
     
     % Calculate positions
-    y5 = panelPadding;
-    y4 = y5 + h5 + panelSpacing;
-    y3 = y4 + h4 + panelSpacing;
-    y2 = y3 + h3 + panelSpacing;
-    y1 = y2 + h2 + panelSpacing;
+    y1 = panelPadding;
     
     % Create panels
     handles = createTrialAndDataPanel(parent, handles, y1, h1);
-    handles = createModelingPanel(parent, handles, y2, h2);
-    handles = createJointEditorPanel(parent, handles, y3, h3);
-    handles = createOutputPanel(parent, handles, y4, h4);
-    handles = createBatchSettingsPanel(parent, handles, y5, h5);
 end
 function handles = createRightColumnContent(parent, handles)
     % Create right column panels
@@ -202,10 +245,10 @@ function handles = createRightColumnContent(parent, handles)
     totalSpacing = panelPadding + (numPanels-1)*panelSpacing + panelPadding;
     availableHeight = 1 - totalSpacing;
     
-    h1 = 0.40 * availableHeight;
-    h2 = 0.30 * availableHeight;
-    h3 = 0.15 * availableHeight;
-    h4 = 0.15 * availableHeight;
+    h1 = 0.35 * availableHeight;  % Summary section height
+    h2 = 0.252 * availableHeight;  % Joint editor height increased by 5% more (0.24 * 1.05 = 0.252)
+    h3 = 0.36 * availableHeight;  % Coefficients panel height increased by 20% (0.30 * 1.2 = 0.36)
+    h4 = 0.05 * availableHeight;  % Reduced batch settings to make room
     
     % Calculate positions
     y4 = panelPadding;
@@ -215,9 +258,8 @@ function handles = createRightColumnContent(parent, handles)
     
     % Create panels
     handles = createPreviewPanel(parent, handles, y1, h1);
-    handles = createCoefficientsPanel(parent, handles, y2, h2);
-    handles = createProgressPanel(parent, handles, y3, h3);
-    handles = createControlPanel(parent, handles, y4, h4);
+    handles = createJointEditorPanel(parent, handles, y2, h2);
+    handles = createCoefficientsPanel(parent, handles, y3, h3);
 end
 function handles = createTrialAndDataPanel(parent, handles, yPos, height)
     % Configuration panel
@@ -233,15 +275,17 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                    'ForegroundColor', colors.text);
     
     % Layout
-    rowHeight = 0.15;
+    rowHeight = 0.030;  % Slightly smaller to fit more elements
     labelWidth = 0.22;
     fieldSpacing = 0.02;
-    y = 0.80;
+    textBoxStart = 0.20;  % Move text boxes slightly to the right to avoid cutting off titles
+    textBoxWidth = 0.48;  % Consistent width
+    y = 0.95;  % Start higher to fit more elements
     
-    % Starting Point File
+    % Input File
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
-              'String', 'Starting Point:', ...
+              'String', 'Input File:', ...
               'Units', 'normalized', ...
               'Position', [0.02, y, labelWidth, rowHeight], ...
               'HorizontalAlignment', 'left', ...
@@ -252,7 +296,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                        'Style', 'edit', ...
                                        'String', 'No file selected', ...
                                        'Units', 'normalized', ...
-                                       'Position', [labelWidth + fieldSpacing, y, 0.48, rowHeight], ...
+                                       'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                        'Enable', 'inactive', ...
                                        'BackgroundColor', [0.97, 0.97, 0.97], ...
                                        'FontSize', 9);
@@ -266,24 +310,145 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                         'ForegroundColor', 'white', ...
                                         'Callback', @browseInputFile);
     
-    handles.clear_input_btn = uicontrol('Parent', panel, ...
-                                       'Style', 'pushbutton', ...
-                                       'String', 'Clear', ...
-                                       'Units', 'normalized', ...
-                                       'Position', [0.85, y, 0.08, rowHeight], ...
-                                       'BackgroundColor', colors.danger, ...
-                                       'ForegroundColor', 'white', ...
-                                       'Callback', @clearInputFile);
+    % Simulink Model
+    y = y - 0.05;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Simulink Model:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, labelWidth, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
     
-
+    handles.model_display = uicontrol('Parent', panel, ...
+                                     'Style', 'edit', ...
+                                     'String', 'GolfSwing3D_Kinetic', ...
+                                     'Units', 'normalized', ...
+                                     'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
+                                     'Enable', 'inactive', ...
+                                     'BackgroundColor', [0.97, 0.97, 0.97], ...
+                                     'FontSize', 9);
+    
+    handles.model_browse_btn = uicontrol('Parent', panel, ...
+                                        'Style', 'pushbutton', ...
+                                        'String', 'Browse', ...
+                                        'Units', 'normalized', ...
+                                        'Position', [0.72, y, 0.12, rowHeight], ...
+                                        'BackgroundColor', colors.secondary, ...
+                                        'ForegroundColor', 'white', ...
+                                        'Callback', @selectSimulinkModel);
+    
+    % Output Folder
+    y = y - 0.05;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Output Folder:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, labelWidth, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.output_folder_edit = uicontrol('Parent', panel, ...
+                                          'Style', 'edit', ...
+                                          'String', pwd, ...
+                                          'Units', 'normalized', ...
+                                          'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
+                                          'BackgroundColor', 'white', ...
+                                          'FontSize', 9);
+    
+    handles.browse_button = uicontrol('Parent', panel, ...
+                                     'Style', 'pushbutton', ...
+                                     'String', 'Browse', ...
+                                     'Units', 'normalized', ...
+                                     'Position', [0.72, y, 0.12, rowHeight], ...
+                                     'BackgroundColor', colors.secondary, ...
+                                     'ForegroundColor', 'white', ...
+                                     'Callback', @browseOutputFolder);
+    
+    % Dataset Name
+    y = y - 0.05;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Dataset Name:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, labelWidth, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.folder_name_edit = uicontrol('Parent', panel, ...
+                                        'Style', 'edit', ...
+                                        'String', sprintf('golf_swing_dataset_%s', datestr(now, 'yyyymmdd')), ...
+                                        'Units', 'normalized', ...
+                                        'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
+                                        'BackgroundColor', 'white', ...
+                                        'FontSize', 9);
+    
+    % Output Format
+    y = y - 0.05;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Output Format:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, labelWidth, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.format_popup = uicontrol('Parent', panel, ...
+                                    'Style', 'popupmenu', ...
+                                    'String', {'CSV Files', 'MAT Files', 'Both CSV and MAT'}, ...
+                                    'Units', 'normalized', ...
+                                    'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
+                                    'BackgroundColor', 'white');
+    
+    % Execution Mode
+    y = y - 0.05;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Execution Mode:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, labelWidth, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    % Check if parallel computing toolbox is available
+    if license('test', 'Distrib_Computing_Toolbox')
+        mode_options = {'Series', 'Parallel'};
+    else
+        mode_options = {'Series', 'Parallel (Toolbox Required)'};
+    end
+    
+    handles.execution_mode_popup = uicontrol('Parent', panel, ...
+                                            'Style', 'popupmenu', ...
+                                            'String', mode_options, ...
+                                            'Units', 'normalized', ...
+                                            'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
+                                            'BackgroundColor', 'white', ...
+                                            'Callback', @autoUpdateSummary);
+    
+    % Verbosity
+    y = y - 0.05;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Verbosity:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, labelWidth, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.verbosity_popup = uicontrol('Parent', panel, ...
+                                       'Style', 'popupmenu', ...
+                                       'String', {'Minimal', 'Standard', 'Detailed', 'Debug'}, ...
+                                       'Units', 'normalized', ...
+                                       'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
+                                       'BackgroundColor', 'white');
     
     % Trial Parameters
-    y = y - 0.20;
+    y = y - 0.05;
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
               'String', 'Trials:', ...
               'Units', 'normalized', ...
-              'Position', [0.02, y, 0.08, rowHeight], ...
+              'Position', [0.02, y, labelWidth, rowHeight], ...
               'HorizontalAlignment', 'left', ...
               'BackgroundColor', colors.panel);
     
@@ -291,16 +456,18 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                        'Style', 'edit', ...
                                        'String', '10', ...
                                        'Units', 'normalized', ...
-                                       'Position', [0.11, y, 0.08, rowHeight], ...
+                                       'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                        'BackgroundColor', 'white', ...
                                        'HorizontalAlignment', 'center', ...
                                        'Callback', @updateCoefficientsPreview);
     
+    % Duration
+    y = y - 0.05;
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
-              'String', 'Duration:', ...
+              'String', 'Duration (s):', ...
               'Units', 'normalized', ...
-              'Position', [0.21, y, 0.10, rowHeight], ...
+              'Position', [0.02, y, labelWidth, rowHeight], ...
               'HorizontalAlignment', 'left', ...
               'BackgroundColor', colors.panel);
     
@@ -308,23 +475,18 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                      'Style', 'edit', ...
                                      'String', '0.3', ...
                                      'Units', 'normalized', ...
-                                     'Position', [0.32, y, 0.08, rowHeight], ...
+                                     'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                      'BackgroundColor', 'white', ...
-                                     'HorizontalAlignment', 'center');
+                                     'HorizontalAlignment', 'center', ...
+                                     'Callback', @autoUpdateSummary);
     
+    % Sample Rate
+    y = y - 0.05;
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
-              'String', 's', ...
+              'String', 'Sample Rate (Hz):', ...
               'Units', 'normalized', ...
-              'Position', [0.41, y, 0.02, rowHeight], ...
-              'HorizontalAlignment', 'left', ...
-              'BackgroundColor', colors.panel);
-    
-    uicontrol('Parent', panel, ...
-              'Style', 'text', ...
-              'String', 'Rate:', ...
-              'Units', 'normalized', ...
-              'Position', [0.46, y, 0.06, rowHeight], ...
+              'Position', [0.02, y, labelWidth, rowHeight], ...
               'HorizontalAlignment', 'left', ...
               'BackgroundColor', colors.panel);
     
@@ -332,42 +494,50 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                         'Style', 'edit', ...
                                         'String', '100', ...
                                         'Units', 'normalized', ...
-                                        'Position', [0.53, y, 0.08, rowHeight], ...
+                                        'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                         'BackgroundColor', 'white', ...
-                                        'HorizontalAlignment', 'center');
+                                        'HorizontalAlignment', 'center', ...
+                                        'Callback', @autoUpdateSummary);
     
+    % Torque Scenario
+    y = y - 0.05;
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
-              'String', 'Hz', ...
+              'String', 'Torque Scenario:', ...
               'Units', 'normalized', ...
-              'Position', [0.62, y, 0.03, rowHeight], ...
+              'Position', [0.02, y, labelWidth, rowHeight], ...
               'HorizontalAlignment', 'left', ...
               'BackgroundColor', colors.panel);
     
+    handles.torque_scenario_popup = uicontrol('Parent', panel, ...
+                                             'Style', 'popupmenu', ...
+                                             'String', {'Variable Torques', 'Zero Torque', 'Constant Torque'}, ...
+                                             'Units', 'normalized', ...
+                                             'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
+                                             'BackgroundColor', 'white', ...
+                                             'Callback', @torqueScenarioCallback);
+    
+    % Coefficient Range
+    y = y - 0.05;
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
-              'String', 'Mode:', ...
+              'String', 'Coefficient Range (±):', ...
               'Units', 'normalized', ...
-              'Position', [0.68, y, 0.06, rowHeight], ...
+              'Position', [0.02, y, labelWidth, rowHeight], ...
               'HorizontalAlignment', 'left', ...
               'BackgroundColor', colors.panel);
     
-    % Check if parallel computing toolbox is available
-    if license('test', 'Distrib_Computing_Toolbox')
-        mode_options = {'Sequential', 'Parallel'};
-    else
-        mode_options = {'Sequential', 'Parallel (Toolbox Required)'};
-    end
-    
-    handles.execution_mode_popup = uicontrol('Parent', panel, ...
-                                            'Style', 'popupmenu', ...
-                                            'String', mode_options, ...
-                                            'Units', 'normalized', ...
-                                            'Position', [0.75, y, 0.18, rowHeight], ...
-                                            'BackgroundColor', 'white');
+    handles.coeff_range_edit = uicontrol('Parent', panel, ...
+                                        'Style', 'edit', ...
+                                        'String', '50', ...
+                                        'Units', 'normalized', ...
+                                        'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
+                                        'BackgroundColor', 'white', ...
+                                        'HorizontalAlignment', 'center', ...
+                                        'Callback', @updateCoefficientsPreview);
     
     % Data Sources
-    y = y - 0.20;
+    y = y - 0.05;
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
               'String', 'Data Sources:', ...
@@ -376,11 +546,12 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
               'HorizontalAlignment', 'left', ...
               'BackgroundColor', colors.panel);
     
+    % First row of checkboxes
     handles.use_signal_bus = uicontrol('Parent', panel, ...
                                       'Style', 'checkbox', ...
                                       'String', 'CombinedSignalBus', ...
                                       'Units', 'normalized', ...
-                                      'Position', [0.18, y, 0.20, rowHeight], ...
+                                      'Position', [textBoxStart, y, 0.30, rowHeight], ...
                                       'Value', 1, ...
                                       'BackgroundColor', colors.panel);
     
@@ -388,15 +559,17 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                    'Style', 'checkbox', ...
                                    'String', 'Logsout Dataset', ...
                                    'Units', 'normalized', ...
-                                   'Position', [0.39, y, 0.20, rowHeight], ...
+                                   'Position', [textBoxStart + 0.24, y, 0.30, rowHeight], ...
                                    'Value', 1, ...
                                    'BackgroundColor', colors.panel);
     
+    % Second row of checkboxes
+    y = y - 0.05;
     handles.use_simscape = uicontrol('Parent', panel, ...
                                     'Style', 'checkbox', ...
                                     'String', 'Simscape Results', ...
                                     'Units', 'normalized', ...
-                                    'Position', [0.60, y, 0.20, rowHeight], ...
+                                    'Position', [textBoxStart, y, 0.30, rowHeight], ...
                                     'Value', 1, ...
                                     'BackgroundColor', colors.panel);
     
@@ -405,49 +578,160 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                                   'String', 'Model Workspace', ...
                                                   'Value', 1, ... % Default to checked
                                                   'Units', 'normalized', ...
-                                                  'Position', [0.81, y, 0.18, rowHeight], ...
+                                                  'Position', [textBoxStart + 0.24, y, 0.30, rowHeight], ...
                                                   'BackgroundColor', colors.panel, ...
                                                   'ForegroundColor', colors.text, ...
                                                   'FontSize', 9, ...
                                                   'TooltipString', 'Include model workspace variables (segment lengths, masses, inertias, etc.) in the output dataset');
     
-    % Animation Option
-    y = y - 0.18;
-    handles.enable_animation = uicontrol('Parent', panel, ...
-                                        'Style', 'checkbox', ...
-                                        'String', 'Enable Animation', ...
-                                        'Units', 'normalized', ...
-                                        'Position', [0.18, y, 0.25, rowHeight], ...
-                                        'Value', 0, ...
-                                        'BackgroundColor', colors.panel);
-    
-    % Model Selection
-    y = y - 0.20;
+    % Animation and Monitoring Options
+    y = y - 0.05;
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
-              'String', 'Simulink Model:', ...
+              'String', 'Options:', ...
               'Units', 'normalized', ...
-              'Position', [0.02, y, 0.18, rowHeight], ...
+              'Position', [0.02, y, 0.15, rowHeight], ...
               'HorizontalAlignment', 'left', ...
               'BackgroundColor', colors.panel);
     
-    handles.model_display = uicontrol('Parent', panel, ...
-                                     'Style', 'text', ...
-                                     'String', 'GolfSwing3D_Kinetic', ...
-                                     'Units', 'normalized', ...
-                                     'Position', [0.21, y, 0.48, rowHeight], ...
-                                     'HorizontalAlignment', 'center', ...
-                                     'BackgroundColor', [0.97, 0.97, 0.97], ...
-                                     'ForegroundColor', colors.text);
-    
-    handles.model_browse_btn = uicontrol('Parent', panel, ...
-                                        'Style', 'pushbutton', ...
-                                        'String', 'Select Model', ...
+    % First row of options
+    handles.enable_animation = uicontrol('Parent', panel, ...
+                                        'Style', 'checkbox', ...
+                                        'String', 'Animation', ...
                                         'Units', 'normalized', ...
-                                        'Position', [0.71, y, 0.22, rowHeight], ...
-                                        'BackgroundColor', colors.secondary, ...
-                                        'ForegroundColor', 'white', ...
-                                        'Callback', @selectSimulinkModel);
+                                        'Position', [textBoxStart, y, 0.30, rowHeight], ...
+                                        'Value', 0, ...
+                                        'BackgroundColor', colors.panel);
+    
+    handles.enable_performance_monitoring = uicontrol('Parent', panel, ...
+                                                     'Style', 'checkbox', ...
+                                                     'String', 'Performance Monitoring', ...
+                                                     'Value', 1, ...
+                                                     'Units', 'normalized', ...
+                                                     'Position', [textBoxStart + 0.24, y, 0.30, rowHeight], ...
+                                                     'BackgroundColor', colors.panel, ...
+                                                     'ForegroundColor', colors.text, ...
+                                                     'FontSize', 9, ...
+                                                     'TooltipString', 'Track execution times, memory usage, and performance metrics');
+    
+    % Second row of options
+    y = y - 0.05;
+    handles.enable_memory_monitoring = uicontrol('Parent', panel, ...
+                                                'Style', 'checkbox', ...
+                                                'String', 'Memory Monitoring', ...
+                                                'Value', 1, ...
+                                                'Units', 'normalized', ...
+                                                'Position', [textBoxStart, y, 0.30, rowHeight], ...
+                                                'BackgroundColor', colors.panel, ...
+                                                'ForegroundColor', colors.text, ...
+                                                'FontSize', 9, ...
+                                                'TooltipString', 'Monitor system memory and automatically manage parallel workers');
+    
+    % Batch Settings Section - Moved to more visible position
+    y = y - 0.04;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Batch Size:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, 0.15, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel, ...
+              'FontWeight', 'bold');  % Make it bold to be more visible
+    
+    handles.batch_size_edit = uicontrol('Parent', panel, ...
+                                       'Style', 'edit', ...
+                                       'String', '50', ...
+                                       'Units', 'normalized', ...
+                                       'Position', [textBoxStart, y, 0.15, rowHeight], ...
+                                       'BackgroundColor', 'white', ...
+                                       'HorizontalAlignment', 'center', ...
+                                       'FontSize', 9, ...
+                                       'TooltipString', 'Number of simulations to process in each batch (recommended: 25-100)');
+    
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'trials', ...
+              'Units', 'normalized', ...
+              'Position', [textBoxStart + 0.16, y, 0.08, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel, ...
+              'FontSize', 9);
+    
+    % Save Interval
+    y = y - 0.04;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Save Interval:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, 0.15, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel, ...
+              'FontWeight', 'bold');  % Make it bold to be more visible
+    
+    handles.save_interval_edit = uicontrol('Parent', panel, ...
+                                          'Style', 'edit', ...
+                                          'String', '25', ...
+                                          'Units', 'normalized', ...
+                                          'Position', [textBoxStart, y, 0.15, rowHeight], ...
+                                          'BackgroundColor', 'white', ...
+                                          'HorizontalAlignment', 'center', ...
+                                          'FontSize', 9, ...
+                                          'TooltipString', 'Save checkpoint every N batches (recommended: 10-50)');
+    
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'batches', ...
+              'Units', 'normalized', ...
+              'Position', [textBoxStart + 0.16, y, 0.08, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel, ...
+              'FontSize', 9);
+    
+    % Progress Section
+    y = y - 0.04;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Progress:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, 0.15, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.progress_text = uicontrol('Parent', panel, ...
+                                     'Style', 'edit', ...
+                                     'String', 'Ready to start generation...', ...
+                                     'Units', 'normalized', ...
+                                     'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
+                                     'FontWeight', 'normal', ...
+                                     'FontSize', 9, ...
+                                     'HorizontalAlignment', 'left', ...
+                                     'BackgroundColor', colors.panel, ...
+                                     'Max', 2, ... % Allow multiple lines
+                                     'Min', 0, ... % Allow selection
+                                     'Enable', 'inactive'); % Read-only but selectable
+    
+    % Status Section
+    y = y - 0.04;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Status:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, 0.15, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.status_text = uicontrol('Parent', panel, ...
+                                   'Style', 'edit', ...
+                                   'String', 'Status: Ready', ...
+                                   'Units', 'normalized', ...
+                                   'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
+                                   'HorizontalAlignment', 'left', ...
+                                   'BackgroundColor', [0.97, 0.97, 0.97], ...
+                                   'ForegroundColor', colors.success, ...
+                                   'FontSize', 9, ...
+                                   'Max', 2, ... % Allow multiple lines
+                                   'Min', 0, ... % Allow selection
+                                   'Enable', 'inactive'); % Read-only but selectable
     
     % Initialize
     handles.model_name = 'GolfSwing3D_Kinetic';
@@ -511,7 +795,7 @@ function handles = createModelingPanel(parent, handles, yPos, height)
                                              'Callback', @torqueScenarioCallback);
     
     % Parameters
-    y = y - 0.30;
+    y = y - 0.35;
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
               'String', 'Coefficient Range (±):', ...
@@ -520,14 +804,7 @@ function handles = createModelingPanel(parent, handles, yPos, height)
               'HorizontalAlignment', 'left', ...
               'BackgroundColor', colors.panel);
     
-    handles.coeff_range_edit = uicontrol('Parent', panel, ...
-                                        'Style', 'edit', ...
-                                        'String', '50', ...
-                                        'Units', 'normalized', ...
-                                        'Position', [labelWidth + 0.02, y, 0.15, rowHeight], ...
-                                        'BackgroundColor', 'white', ...
-                                        'HorizontalAlignment', 'center', ...
-                                        'Callback', @updateCoefficientsPreview);
+    % Note: coeff_range_edit moved to Configuration panel
     
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
@@ -537,15 +814,7 @@ function handles = createModelingPanel(parent, handles, yPos, height)
               'HorizontalAlignment', 'left', ...
               'BackgroundColor', colors.panel);
     
-    handles.constant_value_edit = uicontrol('Parent', panel, ...
-                                           'Style', 'edit', ...
-                                           'String', '10', ...
-                                           'Units', 'normalized', ...
-                                           'Position', [0.75, y, 0.15, rowHeight], ...
-                                           'BackgroundColor', 'white', ...
-                                           'HorizontalAlignment', 'center', ...
-                                           'Enable', 'off', ...
-                                           'Callback', @updateCoefficientsPreview);
+
 end
 function handles = createJointEditorPanel(parent, handles, yPos, height)
     % Joint Editor Panel
@@ -561,9 +830,11 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                    'BackgroundColor', colors.panel, ...
                    'ForegroundColor', colors.text);
     
-    % Selection row
-    y = 0.85;
-    rowHeight = 0.12;
+    % Selection row - leave more room for the panel title
+    y = 0.75;  % Moved down to give more space at top
+    rowHeight = 0.156;  % Increased by 30% (0.12 * 1.3) to prevent dropdown cutoff
+    
+
     
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
@@ -577,7 +848,7 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                                       'Style', 'popupmenu', ...
                                       'String', param_info.joint_names, ...
                                       'Units', 'normalized', ...
-                                      'Position', [0.10, y, 0.35, rowHeight], ...
+                                      'Position', [0.10, y+0.10, 0.35, 0.08], ...
                                       'BackgroundColor', 'white', ...
                                       'Callback', @updateJointCoefficients);
     
@@ -593,7 +864,7 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                                              'Style', 'popupmenu', ...
                                              'String', {'All Trials', 'Specific Trial'}, ...
                                              'Units', 'normalized', ...
-                                             'Position', [0.58, y, 0.20, rowHeight], ...
+                                             'Position', [0.58, y+0.10, 0.20, 0.08], ...
                                              'BackgroundColor', 'white', ...
                                              'Callback', @updateTrialSelectionMode);
     
@@ -609,16 +880,18 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                                          'Style', 'edit', ...
                                          'String', '1', ...
                                          'Units', 'normalized', ...
-                                         'Position', [0.87, y, 0.08, rowHeight], ...
+                                         'Position', [0.87, y+0.10, 0.08, 0.08], ...
                                          'BackgroundColor', 'white', ...
                                          'HorizontalAlignment', 'center', ...
                                          'Enable', 'off');
     
-    % Coefficient edit boxes
-    y = 0.55;
+    % Coefficient labels row
+    y = y - 0.15;  % Reduced spacing to move row up
     coeff_labels = {'A', 'B', 'C', 'D', 'E', 'F', 'G'};
     coeff_powers = {'t⁶', 't⁵', 't⁴', 't³', 't²', 't', '1'};  % Powers for each coefficient
     handles.joint_coeff_edits = gobjects(1, 7);
+    
+
     
     coeffWidth = 0.12;
     coeffSpacing = (0.96 - 7*coeffWidth) / 8;
@@ -638,26 +911,35 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                   'Style', 'text', ...
                   'String', [coeff_labels{i} ' (' coeff_powers{i} ')'], ...
                   'Units', 'normalized', ...
-                  'Position', [xPos, y+0.12, coeffWidth, 0.10], ...
+                  'Position', [xPos, y, coeffWidth, 0.086], ...  % Increased by 30%
                   'FontWeight', 'normal', ...
                   'FontSize', 9, ...
                   'ForegroundColor', labelColor, ...
                   'BackgroundColor', colors.panel, ...
                   'HorizontalAlignment', 'center');
+    end
+    
+    % Coefficient text boxes row
+    y = y - 0.10;  % Reduced spacing between labels and text boxes
+    
+    for i = 1:7
+        xPos = coeffSpacing + (i-1) * (coeffWidth + coeffSpacing);
         
         handles.joint_coeff_edits(i) = uicontrol('Parent', panel, ...
                                                 'Style', 'edit', ...
                                                 'String', '0.00', ...
                                                 'Units', 'normalized', ...
-                                                'Position', [xPos, y, coeffWidth, 0.12], ...
+                                                'Position', [xPos, y, coeffWidth, 0.088], ...  % Increased by 10%
                                                 'BackgroundColor', 'white', ...
                                                 'HorizontalAlignment', 'center', ...
                                                 'Callback', @validateCoefficientInput);
     end
     
+    % Action buttons row
+    y = y - 0.195;  % Increased by 30%
+    
     % Action buttons
-    y = 0.28;
-    buttonHeight = 0.12;
+    buttonHeight = 0.088;  % Increased by 10%
     
     handles.apply_joint_button = uicontrol('Parent', panel, ...
                                           'Style', 'pushbutton', ...
@@ -688,12 +970,13 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                                     'ForegroundColor', colors.textLight, ...
                                     'FontSize', 9);
     
-    % Equation display - FIXED POLYNOMIAL ORDER
+    % Equation display row
+    y = y - 0.195;  % Increased by 30%
     handles.equation_display = uicontrol('Parent', panel, ...
                                        'Style', 'text', ...
                                        'String', 'τ(t) = At⁶ + Bt⁵ + Ct⁴ + Dt³ + Et² + Ft + G', ...
                                        'Units', 'normalized', ...
-                                       'Position', [0.02, 0.02, 0.96, 0.12], ...
+                                       'Position', [0.02, y, 0.96, 0.114], ...  % Increased by 30%
                                        'FontSize', 11, ...
                                        'FontWeight', 'normal', ...
                                        'ForegroundColor', colors.primary, ...
@@ -703,11 +986,11 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
     handles.param_info = param_info;
 end
 function handles = createOutputPanel(parent, handles, yPos, height)
-    % Output Settings Panel
+    % Output Format Panel
     colors = handles.colors;
     
     panel = uipanel('Parent', parent, ...
-                   'Title', 'Output Settings', ...
+                   'Title', 'Output Format', ...
                    'FontSize', 10, ...
                    'FontWeight', 'normal', ...
                    'Units', 'normalized', ...
@@ -715,58 +998,17 @@ function handles = createOutputPanel(parent, handles, yPos, height)
                    'BackgroundColor', colors.panel, ...
                    'ForegroundColor', colors.text);
     
-    rowHeight = 0.20;
-    y = 0.65;
+    rowHeight = 0.15;
+    labelWidth = 0.22;
+    fieldSpacing = 0.02;
+    y = 0.80;
     
-    % Output folder
+    % Output format
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
-              'String', 'Output Folder:', ...
+              'String', 'Output Format:', ...
               'Units', 'normalized', ...
-              'Position', [0.02, y, 0.15, rowHeight], ...
-              'HorizontalAlignment', 'left', ...
-              'BackgroundColor', colors.panel);
-    
-    handles.output_folder_edit = uicontrol('Parent', panel, ...
-                                          'Style', 'edit', ...
-                                          'String', pwd, ...
-                                          'Units', 'normalized', ...
-                                          'Position', [0.18, y, 0.60, rowHeight], ...
-                                          'BackgroundColor', 'white', ...
-                                          'FontSize', 9);
-    
-    handles.browse_button = uicontrol('Parent', panel, ...
-                                     'Style', 'pushbutton', ...
-                                     'String', 'Browse', ...
-                                     'Units', 'normalized', ...
-                                     'Position', [0.80, y, 0.16, rowHeight], ...
-                                     'BackgroundColor', colors.secondary, ...
-                                     'ForegroundColor', 'white', ...
-                                     'Callback', @browseOutputFolder);
-    
-    % Dataset name
-    y = 0.30;
-    uicontrol('Parent', panel, ...
-              'Style', 'text', ...
-              'String', 'Dataset Name:', ...
-              'Units', 'normalized', ...
-              'Position', [0.02, y, 0.15, rowHeight], ...
-              'HorizontalAlignment', 'left', ...
-              'BackgroundColor', colors.panel);
-    
-    handles.folder_name_edit = uicontrol('Parent', panel, ...
-                                        'Style', 'edit', ...
-                                        'String', sprintf('golf_swing_dataset_%s', datestr(now, 'yyyymmdd')), ...
-                                        'Units', 'normalized', ...
-                                        'Position', [0.18, y, 0.35, rowHeight], ...
-                                        'BackgroundColor', 'white', ...
-                                        'FontSize', 9);
-    
-    uicontrol('Parent', panel, ...
-              'Style', 'text', ...
-              'String', 'Format:', ...
-              'Units', 'normalized', ...
-              'Position', [0.56, y, 0.08, rowHeight], ...
+              'Position', [0.02, y, labelWidth, rowHeight], ...
               'HorizontalAlignment', 'left', ...
               'BackgroundColor', colors.panel);
     
@@ -774,7 +1016,7 @@ function handles = createOutputPanel(parent, handles, yPos, height)
                                     'Style', 'popupmenu', ...
                                     'String', {'CSV Files', 'MAT Files', 'Both CSV and MAT'}, ...
                                     'Units', 'normalized', ...
-                                    'Position', [0.65, y, 0.31, rowHeight], ...
+                                    'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                     'BackgroundColor', 'white');
     
 
@@ -864,25 +1106,13 @@ function handles = createBatchSettingsPanel(parent, handles, yPos, height)
               'BackgroundColor', colors.panel, ...
               'FontSize', 9);
     
-    % Performance Monitoring
-    y = 0.35;
-    handles.enable_performance_monitoring = uicontrol('Parent', panel, ...
-                                                     'Style', 'checkbox', ...
-                                                     'String', 'Enable Performance Monitoring', ...
-                                                     'Value', 1, ...
-                                                     'Units', 'normalized', ...
-                                                     'Position', [0.02, y, 0.45, rowHeight], ...
-                                                     'BackgroundColor', colors.panel, ...
-                                                     'ForegroundColor', colors.text, ...
-                                                     'FontSize', 9, ...
-                                                     'TooltipString', 'Track execution times, memory usage, and performance metrics');
-    
     % Verbosity Level
+    y = 0.35;
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
               'String', 'Verbosity:', ...
               'Units', 'normalized', ...
-              'Position', [0.48, y, 0.12, rowHeight], ...
+              'Position', [0.02, y, 0.12, rowHeight], ...
               'HorizontalAlignment', 'left', ...
               'BackgroundColor', colors.panel);
     
@@ -891,42 +1121,17 @@ function handles = createBatchSettingsPanel(parent, handles, yPos, height)
                                        'String', {'Normal', 'Silent', 'Verbose', 'Debug'}, ...
                                        'Value', 1, ...
                                        'Units', 'normalized', ...
-                                       'Position', [0.61, y, 0.35, rowHeight], ...
+                                       'Position', [0.15, y, 0.35, rowHeight], ...
                                        'BackgroundColor', 'white', ...
                                        'FontSize', 9, ...
                                        'TooltipString', 'Output detail level: Silent=minimal, Normal=standard, Verbose=detailed, Debug=all');
-    
-    % Robust Generation Mode
-    y = 0.05;
-    handles.use_robust_generator = uicontrol('Parent', panel, ...
-                                            'Style', 'checkbox', ...
-                                            'String', 'Use Robust Generator', ...
-                                            'Value', 1, ...
-                                            'Units', 'normalized', ...
-                                            'Position', [0.02, y, 0.45, rowHeight], ...
-                                            'BackgroundColor', colors.panel, ...
-                                            'ForegroundColor', colors.text, ...
-                                            'FontSize', 9, ...
-                                            'TooltipString', 'Enable crash-resistant batch processing with memory monitoring and checkpointing');
-    
-    % Memory Monitoring
-    handles.enable_memory_monitoring = uicontrol('Parent', panel, ...
-                                                'Style', 'checkbox', ...
-                                                'String', 'Memory Monitoring', ...
-                                                'Value', 1, ...
-                                                'Units', 'normalized', ...
-                                                'Position', [0.48, y, 0.45, rowHeight], ...
-                                                'BackgroundColor', colors.panel, ...
-                                                'ForegroundColor', colors.text, ...
-                                                'FontSize', 9, ...
-                                                'TooltipString', 'Monitor system memory and automatically manage parallel workers');
 end
 function handles = createPreviewPanel(parent, handles, yPos, height)
-    % Parameters Preview Panel
+    % Parameters Summary Panel
     colors = handles.colors;
     
     panel = uipanel('Parent', parent, ...
-                   'Title', 'Parameters Preview', ...
+                   'Title', 'Summary', ...
                    'FontSize', 10, ...
                    'FontWeight', 'normal', ...
                    'Units', 'normalized', ...
@@ -934,20 +1139,10 @@ function handles = createPreviewPanel(parent, handles, yPos, height)
                    'BackgroundColor', colors.panel, ...
                    'ForegroundColor', colors.text);
     
-    % Update button
-    handles.update_preview_button = uicontrol('Parent', panel, ...
-                                             'Style', 'pushbutton', ...
-                                             'String', 'Update Preview', ...
-                                             'Units', 'normalized', ...
-                                             'Position', [0.02, 0.88, 0.25, 0.10], ...
-                                             'BackgroundColor', colors.success, ...
-                                             'ForegroundColor', 'white', ...
-                                             'Callback', @updatePreview);
-    
-    % Preview table
+    % Summary table (full height since no button needed)
     handles.preview_table = uitable('Parent', panel, ...
                                    'Units', 'normalized', ...
-                                   'Position', [0.02, 0.05, 0.96, 0.80], ...
+                                   'Position', [0.02, 0.02, 0.96, 0.96], ...
                                    'ColumnName', {'Parameter', 'Value', 'Description'}, ...
                                    'ColumnWidth', {150, 150, 'auto'}, ...
                                    'RowStriping', 'on', ...
@@ -1044,13 +1239,15 @@ function handles = createCoefficientsPanel(parent, handles, yPos, height)
     
     handles.coefficients_table = uitable('Parent', panel, ...
                                         'Units', 'normalized', ...
-                                        'Position', [0.02, 0.05, 0.96, 0.68], ...
+                                        'Position', [0.02, 0.05, 0.96, 0.80], ...
                                         'ColumnName', col_names, ...
                                         'ColumnWidth', col_widths, ...
                                         'RowStriping', 'on', ...
                                         'ColumnEditable', col_editable, ...
                                         'FontSize', 8, ...
                                         'CellEditCallback', @coefficientCellEditCallback);
+    
+
     
     % Initialize tracking
     handles.edited_cells = {};
@@ -1136,20 +1333,11 @@ function handles = createControlPanel(parent, handles, yPos, height)
                                    'Callback', @stopGeneration);
     
     % Utility buttons
-    handles.validate_button = uicontrol('Parent', panel, ...
-                                       'Style', 'pushbutton', ...
-                                       'String', 'Validate', ...
-                                       'Units', 'normalized', ...
-                                       'Position', [0.42, buttonY, 0.15, buttonHeight], ...
-                                       'BackgroundColor', colors.primary, ...
-                                       'ForegroundColor', 'white', ...
-                                       'Callback', @validateSettings);
-    
     handles.save_config_button = uicontrol('Parent', panel, ...
                                           'Style', 'pushbutton', ...
                                           'String', 'Save', ...
                                           'Units', 'normalized', ...
-                                          'Position', [0.59, buttonY, 0.13, buttonHeight], ...
+                                          'Position', [0.42, buttonY, 0.13, buttonHeight], ...
                                           'BackgroundColor', colors.secondary, ...
                                           'ForegroundColor', 'white', ...
                                           'Callback', @saveConfiguration);
@@ -1158,7 +1346,7 @@ function handles = createControlPanel(parent, handles, yPos, height)
                                           'Style', 'pushbutton', ...
                                           'String', 'Load', ...
                                           'Units', 'normalized', ...
-                                          'Position', [0.74, buttonY, 0.13, buttonHeight], ...
+                                          'Position', [0.57, buttonY, 0.13, buttonHeight], ...
                                           'BackgroundColor', colors.secondary, ...
                                           'ForegroundColor', 'white', ...
                                           'Callback', @loadConfiguration);
@@ -1175,14 +1363,11 @@ function torqueScenarioCallback(src, ~)
             set(handles.constant_value_edit, 'Enable', 'off');
         case 2 % Zero Torque
             set(handles.coeff_range_edit, 'Enable', 'off');
-            set(handles.constant_value_edit, 'Enable', 'off');
         case 3 % Constant Torque
             set(handles.coeff_range_edit, 'Enable', 'off');
-            set(handles.constant_value_edit, 'Enable', 'on');
     end
     
-    updatePreview([], [], gcbf);
-    updateCoefficientsPreview([], [], gcbf);
+    autoUpdateSummary([], [], gcbf);
     guidata(handles.fig, handles);
 end
 function browseOutputFolder(src, ~)
@@ -1190,7 +1375,7 @@ function browseOutputFolder(src, ~)
     folder = uigetdir(get(handles.output_folder_edit, 'String'), 'Select Output Folder');
     if folder ~= 0
         set(handles.output_folder_edit, 'String', folder);
-        updatePreview([], [], gcbf);
+        autoUpdateSummary([], [], gcbf);
         guidata(handles.fig, handles);
         saveUserPreferences(handles);
     end
@@ -1225,7 +1410,7 @@ function updatePreview(~, ~, fig)
                 'Coefficient Range', ['±' num2str(coeff_range)], 'Random variation bounds'
             }];
         elseif scenario_idx == 3
-            constant_value = str2double(get(handles.constant_value_edit, 'String'));
+            constant_value = 10.0; % Default constant value
             preview_data = [preview_data; {
                 'Constant Value', num2str(constant_value), 'G coefficient value'
             }];
@@ -1251,6 +1436,17 @@ function updatePreview(~, ~, fig)
         set(handles.preview_table, 'Data', error_data);
     end
 end
+function autoUpdateSummary(~, ~, fig)
+    if nargin < 3 || isempty(fig)
+        fig = gcbf;
+    end
+    handles = guidata(fig);
+    
+    % Update both summary and coefficients preview
+    updatePreview([], [], fig);
+    updateCoefficientsPreview([], [], fig);
+end
+
 function updateCoefficientsPreview(~, ~, fig)
     if nargin < 3 || isempty(fig)
         fig = gcbf;
@@ -1263,12 +1459,12 @@ function updateCoefficientsPreview(~, ~, fig)
         if isnan(num_trials) || num_trials <= 0
             num_trials = 5;
         end
-        display_trials = min(num_trials, 100); % Limit for display only
+        display_trials = num_trials; % Show all trials
         % Use actual num_trials for simulation, display_trials for preview
         
         scenario_idx = get(handles.torque_scenario_popup, 'Value');
         coeff_range = str2double(get(handles.coeff_range_edit, 'String'));
-        constant_value = str2double(get(handles.constant_value_edit, 'String'));
+        constant_value = 10.0; % Default constant value since we removed the input field
         
         % Get parameter info
         param_info = getPolynomialParameterInfo();
@@ -1334,35 +1530,51 @@ end
 function startGeneration(src, evt)
     handles = guidata(gcbf);
     
+    % Check if already running
+    if isfield(handles, 'is_running') && handles.is_running
+        msgbox('Generation is already running. Please wait for it to complete or use the Stop button.', 'Already Running', 'warn');
+        return;
+    end
+    
     try
+        % Set running state immediately
+        handles.is_running = true;
+        guidata(handles.fig, handles);
+        
+        % Provide immediate visual feedback
+        set(handles.start_button, 'Enable', 'off', 'String', 'Running...');
+        set(handles.stop_button, 'Enable', 'on');
+        set(handles.status_text, 'String', 'Status: Starting generation...');
+        set(handles.progress_text, 'String', 'Initializing...');
+        drawnow; % Force immediate UI update
+        
         % Validate inputs
         config = validateInputs(handles);
         if isempty(config)
+            % Reset state on validation failure
+            handles.is_running = false;
+            set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
+            set(handles.stop_button, 'Enable', 'off');
+            guidata(handles.fig, handles);
             return;
         end
         
-        % Update UI state
-        set(handles.start_button, 'Enable', 'off');
-        set(handles.stop_button, 'Enable', 'on');
-        handles.should_stop = false;
-        
         % Store config
         handles.config = config;
+        handles.should_stop = false;
         guidata(handles.fig, handles);
-        
-        % Update status
-        set(handles.status_text, 'String', 'Status: Starting generation...');
-        set(handles.progress_text, 'String', 'Initializing simulation...');
-        drawnow;
         
         % Start generation
         runGeneration(handles);
         
     catch ME
+        % Reset state on error
         try
-            set(handles.status_text, 'String', ['Status: Error - ' ME.message]);
-            set(handles.start_button, 'Enable', 'on');
+            handles.is_running = false;
+            set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
             set(handles.stop_button, 'Enable', 'off');
+            set(handles.status_text, 'String', ['Status: Error - ' ME.message]);
+            guidata(handles.fig, handles);
         catch
             % GUI might be destroyed, ignore the error
         end
@@ -1376,6 +1588,8 @@ function stopGeneration(src, evt)
     guidata(handles.fig, handles);
     set(handles.status_text, 'String', 'Status: Stopping...');
     set(handles.progress_text, 'String', 'Generation stopped by user');
+    
+    % Note: The actual cleanup will happen in runGeneration when it detects should_stop = true
 end
 % Browse Input File
 function browseInputFile(src, evt)
@@ -1421,21 +1635,7 @@ function browseInputFile(src, evt)
         guidata(handles.fig, handles);
     end
 end
-% Clear Input File
-function clearInputFile(src, evt)
-    handles = guidata(gcbf);
-    handles.selected_input_file = '';
-    set(handles.input_file_edit, 'String', 'No file selected');
-    
-    % Clear saved preference
-    if isfield(handles, 'preferences')
-        handles.preferences.last_input_file = '';
-        handles.preferences.last_input_file_path = '';
-        saveUserPreferences(handles);
-    end
-    
-    guidata(handles.fig, handles);
-end
+
 % Select Simulink Model
 function selectSimulinkModel(src, evt)
     handles = guidata(gcbf);
@@ -1786,7 +1986,7 @@ function saveScenario(src, evt)
             scenario.settings = struct();
             scenario.settings.torque_scenario = get(handles.torque_scenario_popup, 'Value');
             scenario.settings.coeff_range = str2double(get(handles.coeff_range_edit, 'String'));
-            scenario.settings.constant_value = str2double(get(handles.constant_value_edit, 'String'));
+            scenario.settings.constant_value = 10.0; % Default constant value
             
             % Save to file
             filename = sprintf('scenario_%s.mat', matlab.lang.makeValidName(answer{1}));
@@ -1810,7 +2010,7 @@ function loadScenario(src, evt)
             set(handles.coefficients_table, 'Data', scenario.coefficients);
             set(handles.torque_scenario_popup, 'Value', scenario.settings.torque_scenario);
             set(handles.coeff_range_edit, 'String', num2str(scenario.settings.coeff_range));
-            set(handles.constant_value_edit, 'String', num2str(scenario.settings.constant_value));
+            % Note: constant_value_edit removed from GUI, using default value
             
             % Trigger scenario callback
             torqueScenarioCallback(handles.torque_scenario_popup, []);
@@ -1936,9 +2136,7 @@ function applyConfiguration(handles, config)
     if isfield(config, 'coeff_range')
         set(handles.coeff_range_edit, 'String', config.coeff_range);
     end
-    if isfield(config, 'constant_value')
-        set(handles.constant_value_edit, 'String', config.constant_value);
-    end
+    % Note: constant_value_edit removed from GUI, using default value
     if isfield(config, 'use_logsout')
         set(handles.use_logsout, 'Value', config.use_logsout);
     end
@@ -1989,87 +2187,138 @@ function runGeneration(handles)
         
         set(handles.status_text, 'String', 'Status: Running trials...');
         
-        % Check if robust generator is enabled AND we're not forcing sequential
+        % Execute dataset generation
         execution_mode = get(handles.execution_mode_popup, 'Value');
-        if config.use_robust_generator && execution_mode ~= 1  % 1 = Sequential
-            % Use robust dataset generator for crash-resistant processing
-            set(handles.status_text, 'String', 'Status: Using robust generator...');
-            drawnow;
-            
-            % Add robust generator parameters to config
-            config.BatchSize = config.batch_size;
-            config.SaveInterval = config.save_interval;
-            config.PerformanceMonitoring = config.enable_performance_monitoring;
-            config.Verbosity = config.verbosity;
-            
-            % Get execution mode and pass to robust generator
-            execution_mode = get(handles.execution_mode_popup, 'Value');
-            config.execution_mode = execution_mode;
-            
-            % Call robust dataset generator
-            successful_trials = robust_dataset_generator(config, ...
-                'MaxMemoryGB', 8, ...  % Default memory limit
-                'CaptureWorkspace', config.capture_workspace);
+        
+        if execution_mode == 2 && license('test', 'Distrib_Computing_Toolbox')
+            % Parallel execution
+            successful_trials = runParallelSimulations(handles, config);
         else
-            % Use traditional execution mode
-            execution_mode = get(handles.execution_mode_popup, 'Value');
+            % Sequential execution
+            successful_trials = runSequentialSimulations(handles, config);
+        end
+        
+        % Check if user requested stop
+        if handles.should_stop
+            set(handles.status_text, 'String', 'Status: Generation stopped by user');
+            set(handles.progress_text, 'String', 'Stopped');
+        else
+            % Final status
+            failed_trials = config.num_simulations - successful_trials;
             
-            if execution_mode == 2 && license('test', 'Distrib_Computing_Toolbox')
-                % Parallel execution
-                successful_trials = runParallelSimulations(handles, config);
-            else
-                % Sequential execution
-                successful_trials = runSequentialSimulations(handles, config);
+            % Ensure is_running is reset
+            handles.is_running = false;
+            guidata(handles.fig, handles);
+            final_msg = sprintf('Complete: %d successful, %d failed', successful_trials, failed_trials);
+            set(handles.status_text, 'String', ['Status: ' final_msg]);
+            set(handles.progress_text, 'String', final_msg);
+            
+            % Compile dataset
+            if successful_trials > 0
+                set(handles.status_text, 'String', 'Status: Compiling master dataset...');
+                drawnow;
+                compileDataset(config);
+                set(handles.status_text, 'String', ['Status: ' final_msg ' - Dataset compiled']);
+            end
+            
+            % Save script and settings for reproducibility
+            try
+                saveScriptAndSettings(config);
+            catch ME
+                fprintf('Warning: Could not save script and settings: %s\n', ME.message);
             end
         end
-        
-        % Final status
-        failed_trials = config.num_simulations - successful_trials;
-        final_msg = sprintf('Complete: %d successful, %d failed', successful_trials, failed_trials);
-        set(handles.status_text, 'String', ['Status: ' final_msg]);
-        set(handles.progress_text, 'String', final_msg);
-        
-        % Compile dataset
-        if successful_trials > 0
-            set(handles.status_text, 'String', 'Status: Compiling master dataset...');
-            drawnow;
-            compileDataset(config);
-            set(handles.status_text, 'String', ['Status: ' final_msg ' - Dataset compiled']);
-        end
-        
-        % Save script and settings for reproducibility
-        try
-            saveScriptAndSettings(config);
-        catch ME
-            fprintf('Warning: Could not save script and settings: %s\n', ME.message);
-        end
-        
-        set(handles.start_button, 'Enable', 'on');
-        set(handles.stop_button, 'Enable', 'off');
         
     catch ME
         try
             set(handles.status_text, 'String', ['Status: Error - ' ME.message]);
-            set(handles.start_button, 'Enable', 'on');
-            set(handles.stop_button, 'Enable', 'off');
         catch
             % GUI might be destroyed, ignore the error
         end
         errordlg(ME.message, 'Generation Failed');
+    finally
+        % Always cleanup state and UI
+        try
+            handles.is_running = false;
+            set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
+            set(handles.stop_button, 'Enable', 'off');
+            guidata(handles.fig, handles);
+        catch
+            % GUI might be destroyed, ignore the error
+        end
     end
 end
 function successful_trials = runParallelSimulations(handles, config)
-    % Initialize parallel pool
+    % Initialize parallel pool with better error handling
     try
-        if isempty(gcp('nocreate'))
-            % Auto-detect optimal number of workers
+        % First, check if there's an existing pool and clean it up if needed
+        existing_pool = gcp('nocreate');
+        if ~isempty(existing_pool)
+            try
+                % Check if the existing pool is healthy
+                pool_info = existing_pool;
+                fprintf('Found existing parallel pool with %d workers\n', pool_info.NumWorkers);
+                
+                % Test if the pool is responsive
+                try
+                    spmd
+                        test_var = 1;
+                    end
+                    fprintf('Existing pool is healthy, using it\n');
+                catch
+                    fprintf('Existing pool appears unresponsive, deleting it\n');
+                    delete(existing_pool);
+                    existing_pool = [];
+                end
+            catch
+                fprintf('Error checking existing pool, deleting it\n');
+                delete(existing_pool);
+                existing_pool = [];
+            end
+        end
+        
+        % Create new pool if needed
+        if isempty(existing_pool)
+            % Auto-detect optimal number of workers, but respect cluster limits
             max_cores = feature('numcores');
-            num_workers = min(max_cores, 6); % Limit to 6 workers to match MATLAB cluster configuration
-            parpool('local', num_workers);
-            fprintf('Started parallel pool with %d workers\n', num_workers);
-        else
-            current_pool = gcp;
-            fprintf('Using existing parallel pool with %d workers\n', current_pool.NumWorkers);
+            
+            % Check cluster limits
+            try
+                cluster = gcp('nocreate');
+                if isempty(cluster)
+                    % Try to get Local_Cluster profile first, fallback to local
+                    try
+                        temp_cluster = parcluster('Local_Cluster');
+                        max_workers = temp_cluster.NumWorkers;
+                        fprintf('Using Local_Cluster profile with max %d workers\n', max_workers);
+                    catch
+                        temp_cluster = parcluster('local');
+                        max_workers = temp_cluster.NumWorkers;
+                        fprintf('Using local profile with max %d workers\n', max_workers);
+                    end
+                else
+                    max_workers = cluster.NumWorkers;
+                end
+            catch
+                max_workers = 6; % Default fallback
+            end
+            
+            % Use the minimum of available cores and cluster limit
+            num_workers = min(max_cores, max_workers);
+            
+            % Try to create the pool with timeout
+            fprintf('Starting parallel pool with %d workers...\n', num_workers);
+            
+            % Try to use Local_Cluster profile first, fallback to local
+            try
+                parpool('Local_Cluster', num_workers);
+                fprintf('Successfully started parallel pool with Local_Cluster profile (%d workers)\n', num_workers);
+            catch ME
+                fprintf('Warning: Could not use Local_Cluster profile: %s\n', ME.message);
+                fprintf('Falling back to default local profile...\n');
+                parpool('local', num_workers);
+                fprintf('Successfully started parallel pool with local profile (%d workers)\n', num_workers);
+            end
         end
     catch ME
         warning('Failed to start parallel pool: %s. Falling back to sequential execution.', ME.message);
@@ -2077,14 +2326,38 @@ function successful_trials = runParallelSimulations(handles, config)
         return;
     end
     
-    % Prepare simulation inputs
-    simInputs = prepareSimulationInputs(config);
+    % Get batch processing parameters
+    batch_size = config.batch_size;
+    save_interval = config.save_interval;
+    total_trials = config.num_simulations;
     
-    % Validate simulation inputs before running
-    if isempty(simInputs)
-        error('No simulation inputs prepared');
+    fprintf('Starting parallel batch processing:\n');
+    fprintf('  Total trials: %d\n', total_trials);
+    fprintf('  Batch size: %d\n', batch_size);
+    fprintf('  Save interval: %d batches\n', save_interval);
+    
+    % Calculate number of batches
+    num_batches = ceil(total_trials / batch_size);
+    successful_trials = 0;
+    
+    % Store initial workspace state for restoration
+    initial_vars = who;
+    
+    % Check for existing checkpoint
+    checkpoint_file = fullfile(config.output_folder, 'parallel_checkpoint.mat');
+    start_batch = 1;
+    if exist(checkpoint_file, 'file')
+        try
+            checkpoint_data = load(checkpoint_file);
+            if isfield(checkpoint_data, 'completed_trials')
+                successful_trials = checkpoint_data.completed_trials;
+                start_batch = checkpoint_data.next_batch;
+                fprintf('Found checkpoint: %d trials completed, resuming from batch %d\n', successful_trials, start_batch);
+            end
+        catch ME
+            fprintf('Warning: Could not load checkpoint: %s\n', ME.message);
+        end
     end
-    fprintf('Prepared %d simulation inputs\n', length(simInputs));
     
     % Ensure model is available on all parallel workers
     try
@@ -2099,207 +2372,508 @@ function successful_trials = runParallelSimulations(handles, config)
         fprintf('Warning: Could not preload model on workers: %s\n', ME.message);
     end
     
-    % Run parallel simulations
-    set(handles.progress_text, 'String', 'Running parallel simulations...');
-    drawnow;
-    
-    try
-        % Add extra error handling for parallel Simscape parameter issues
-        fprintf('Debug: Running %d simulations in parallel with Simscape logging\n', length(simInputs));
-        
-        % Use parsim for parallel simulation with robust error handling
-        simOuts = parsim(simInputs, ...
-                        'TransferBaseWorkspaceVariables', 'on', ...
-                        'AttachedFiles', {config.model_path}, ...
-                        'StopOnError', 'off');  % Don't stop on individual simulation errors
-        
-        % Process results
-        successful_trials = 0;
-        
-        % Check if parsim succeeded
-        if isempty(simOuts)
-            error('Parallel simulation failed - no results returned');
-        end
-        
-        for i = 1:length(simOuts)
-            % Safely access simOuts(i) to handle potential brace indexing issues
-            try
-                current_simOut = simOuts(i);
-                
-                % Check if we got a valid single simulation output object
-                if isempty(current_simOut)
-                    fprintf('✗ Trial %d: Empty simulation output\n', i);
-                    continue;
-                end
-                
-                % Handle case where simOuts(i) returns multiple values (brace indexing issue)
-                if ~isscalar(current_simOut)
-                    fprintf('✗ Trial %d: Multiple simulation outputs returned (brace indexing issue)\n', i);
-                    continue;
-                end
-                
-                % Check if simulation completed successfully
-                simulation_success = false;
-                has_error = false;
-                
-                % Try multiple ways to check simulation status
-                try
-                    % Method 1: Check SimulationMetadata (standard way)
-                    if isprop(current_simOut, 'SimulationMetadata') && ...
-                       isfield(current_simOut.SimulationMetadata, 'ExecutionInfo')
-                        
-                        execInfo = current_simOut.SimulationMetadata.ExecutionInfo;
-                        
-                        if isfield(execInfo, 'StopEvent') && execInfo.StopEvent == "CompletedNormally"
-                            simulation_success = true;
-                        else
-                            has_error = true;
-                            fprintf('✗ Trial %d simulation failed (metadata)\n', i);
-                            
-                            if isfield(execInfo, 'ErrorDiagnostic') && ~isempty(execInfo.ErrorDiagnostic)
-                                fprintf('  Error: %s\n', execInfo.ErrorDiagnostic.message);
-                            end
-                        end
-                    else
-                        % Method 2: Check for ErrorMessage property (indicates failure)
-                        if isprop(current_simOut, 'ErrorMessage') && ~isempty(current_simOut.ErrorMessage)
-                            has_error = true;
-                            fprintf('✗ Trial %d simulation failed: %s\n', i, current_simOut.ErrorMessage);
-                        else
-                            % Method 3: If no metadata but we have output data, assume success
-                            % Check if we have expected output fields (logsout, simlog, etc.)
-                            has_data = false;
-                            if isprop(current_simOut, 'logsout') || isfield(current_simOut, 'logsout') || ...
-                               isprop(current_simOut, 'simlog') || isfield(current_simOut, 'simlog') || ...
-                               isprop(current_simOut, 'CombinedSignalBus') || isfield(current_simOut, 'CombinedSignalBus')
-                                has_data = true;
-                            end
-                            
-                            if has_data
-                                fprintf('✓ Trial %d: Assuming success (has output data, no error message)\n', i);
-                                simulation_success = true;
-                            else
-                                fprintf('✗ Trial %d: No metadata, no data, assuming failure\n', i);
-                                has_error = true;
-                            end
-                        end
-                    end
-                catch ME
-                    fprintf('✗ Trial %d: Error checking simulation status: %s\n', i, ME.message);
-                    has_error = true;
-                end
-                
-                % Process simulation if it succeeded
-                if simulation_success && ~has_error
-                    try
-                        result = processSimulationOutput(i, config, current_simOut, config.capture_workspace);
-                        if result.success
-                            successful_trials = successful_trials + 1;
-                            fprintf('✓ Trial %d completed successfully\n', i);
-                        else
-                            fprintf('✗ Trial %d processing failed: %s\n', i, result.error);
-                        end
-                    catch ME
-                        fprintf('Error processing trial %d: %s\n', i, ME.message);
-                    end
-                end
-                
-            catch ME
-                % Handle brace indexing errors specifically
-                if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
-                    fprintf('✗ Trial %d: Brace indexing error - simulation output corrupted\n', i);
-                    fprintf('  Error: %s\n', ME.message);
-                else
-                    fprintf('✗ Trial %d: Unexpected error accessing simulation output: %s\n', i, ME.message);
-                end
-            end
-        end
-        
-        % Summary
-        fprintf('\n=== PARALLEL SIMULATION SUMMARY ===\n');
-        fprintf('Total trials: %d\n', length(simOuts));
-        fprintf('Successful: %d\n', successful_trials);
-        fprintf('Failed: %d\n', length(simOuts) - successful_trials);
-        
-        if successful_trials == 0
-            fprintf('\n⚠️  All parallel simulations failed. Common causes:\n');
-            fprintf('   • Model path not accessible on workers\n');
-            fprintf('   • Missing workspace variables on workers\n');
-            fprintf('   • Toolbox licensing issues on workers\n');
-            fprintf('   • Model configuration conflicts in parallel mode\n');
-            fprintf('   • Coefficient setting issues on workers\n');
-            fprintf('\n Try sequential mode for detailed debugging\n');
-        end
-        
-    catch ME
-        fprintf('\n❌ PARALLEL SIMULATION FRAMEWORK ERROR: %s\n', ME.message);
-        
-        fprintf('Attempting to diagnose the issue...\n');
-        
-        % Try running one simulation sequentially to get detailed error
-        try
-            if ~isempty(simInputs) && length(simInputs) >= 1
-                fprintf('\nRunning single simulation sequentially for debugging...\n');
-                
-                % Ensure model is loaded
-                if ~bdIsLoaded(config.model_name)
-                    load_system(config.model_path);
-                end
-                
-                single_simOut = sim(simInputs(1));
-                fprintf('Single simulation succeeded - issue may be parallel-specific\n');
-                
-                % Check if Simscape logging worked
-                if isprop(single_simOut, 'simlog') || isfield(single_simOut, 'simlog')
-                    fprintf('Simscape logging is available in sequential mode\n');
-                else
-                    fprintf('Warning: No Simscape logging even in sequential mode\n');
-                end
-            end
-        catch singleME
-            fprintf('Single simulation also failed: %s\n', singleME.message);
-            if ~isempty(singleME.cause)
-                for j = 1:length(singleME.cause)
-                    fprintf('  Cause %d: %s\n', j, singleME.cause{j}.message);
-                end
-            end
-        end
-        
-        successful_trials = 0;
-    end
-end
-function successful_trials = runSequentialSimulations(handles, config)
-    successful_trials = 0;
-    
-    for trial = 1:config.num_simulations
-        handles = guidata(handles.fig); % Refresh handles
-        if handles.should_stop
+    % Process batches
+    for batch_idx = start_batch:num_batches
+        % Check for stop request
+        if checkStopRequest(handles)
+            fprintf('Parallel simulation stopped by user at batch %d\n', batch_idx);
             break;
         end
         
-        progress_msg = sprintf('Processing trial %d/%d...', trial, config.num_simulations);
+        % Calculate trials for this batch
+        start_trial = (batch_idx - 1) * batch_size + 1;
+        end_trial = min(batch_idx * batch_size, total_trials);
+        batch_trials = end_trial - start_trial + 1;
+        
+        fprintf('\n--- Batch %d/%d (Trials %d-%d) ---\n', batch_idx, num_batches, start_trial, end_trial);
+        
+        % Update progress
+        progress_msg = sprintf('Batch %d/%d: Processing trials %d-%d...', batch_idx, num_batches, start_trial, end_trial);
         set(handles.progress_text, 'String', progress_msg);
         drawnow;
         
+        % Prepare simulation inputs for this batch
         try
-            if trial <= size(config.coefficient_values, 1)
-                trial_coefficients = config.coefficient_values(trial, :);
-            else
-                trial_coefficients = config.coefficient_values(end, :);
+            batch_simInputs = prepareSimulationInputsForBatch(config, handles, start_trial, end_trial);
+            
+            if isempty(batch_simInputs)
+                fprintf('✗ Failed to prepare simulation inputs for batch %d\n', batch_idx);
+                continue;
             end
             
-            result = runSingleTrial(trial, config, trial_coefficients, config.capture_workspace);
-            
-            if result.success
-                successful_trials = successful_trials + 1;
-            end
+            fprintf('Prepared %d simulation inputs for batch %d\n', length(batch_simInputs), batch_idx);
             
         catch ME
-            fprintf('Trial %d error: %s\n', trial, ME.message);
+            fprintf('✗ Error preparing batch %d inputs: %s\n', batch_idx, ME.message);
+            continue;
+        end
+        
+        % Run batch simulations
+        try
+            fprintf('Running batch %d with parsim...\n', batch_idx);
+            
+            % Use parsim for parallel simulation with robust error handling
+            batch_simOuts = parsim(batch_simInputs, ...
+                                'TransferBaseWorkspaceVariables', 'on', ...
+                                'AttachedFiles', {config.model_path}, ...
+                                'StopOnError', 'off');  % Don't stop on individual simulation errors
+            
+            % Check if parsim succeeded
+            if isempty(batch_simOuts)
+                fprintf('✗ Batch %d failed - no results returned\n', batch_idx);
+                continue;
+            end
+            
+            % Process batch results
+            batch_successful = 0;
+            for i = 1:length(batch_simOuts)
+                trial_num = start_trial + i - 1;
+                
+                try
+                    current_simOut = batch_simOuts(i);
+                    
+                    % Check if we got a valid single simulation output object
+                    if isempty(current_simOut)
+                        fprintf('✗ Trial %d: Empty simulation output\n', trial_num);
+                        continue;
+                    end
+                    
+                    % Handle case where simOuts(i) returns multiple values (brace indexing issue)
+                    if ~isscalar(current_simOut)
+                        fprintf('✗ Trial %d: Multiple simulation outputs returned (brace indexing issue)\n', trial_num);
+                        continue;
+                    end
+                    
+                    % Check if simulation completed successfully
+                    simulation_success = false;
+                    has_error = false;
+                    
+                    % Try multiple ways to check simulation status
+                    try
+                        % Method 1: Check SimulationMetadata (standard way)
+                        if isprop(current_simOut, 'SimulationMetadata') && ...
+                           isfield(current_simOut.SimulationMetadata, 'ExecutionInfo')
+                            
+                            execInfo = current_simOut.SimulationMetadata.ExecutionInfo;
+                            
+                            if isfield(execInfo, 'StopEvent') && execInfo.StopEvent == "CompletedNormally"
+                                simulation_success = true;
+                            else
+                                has_error = true;
+                                fprintf('✗ Trial %d simulation failed (metadata)\n', trial_num);
+                                
+                                if isfield(execInfo, 'ErrorDiagnostic') && ~isempty(execInfo.ErrorDiagnostic)
+                                    fprintf('  Error: %s\n', execInfo.ErrorDiagnostic.message);
+                                end
+                            end
+                        else
+                            % Method 2: Check for ErrorMessage property (indicates failure)
+                            if isprop(current_simOut, 'ErrorMessage') && ~isempty(current_simOut.ErrorMessage)
+                                has_error = true;
+                                fprintf('✗ Trial %d simulation failed: %s\n', trial_num, current_simOut.ErrorMessage);
+                            else
+                                % Method 3: If no metadata but we have output data, assume success
+                                % Check if we have expected output fields (logsout, simlog, etc.)
+                                has_data = false;
+                                if isprop(current_simOut, 'logsout') || isfield(current_simOut, 'logsout') || ...
+                                   isprop(current_simOut, 'simlog') || isfield(current_simOut, 'simlog') || ...
+                                   isprop(current_simOut, 'CombinedSignalBus') || isfield(current_simOut, 'CombinedSignalBus')
+                                    has_data = true;
+                                end
+                                
+                                if has_data
+                                    fprintf('✓ Trial %d: Assuming success (has output data, no error message)\n', trial_num);
+                                    simulation_success = true;
+                                else
+                                    fprintf('✗ Trial %d: No metadata, no data, assuming failure\n', trial_num);
+                                    has_error = true;
+                                end
+                            end
+                        end
+                    catch ME
+                        fprintf('✗ Trial %d: Error checking simulation status: %s\n', trial_num, ME.message);
+                        has_error = true;
+                    end
+                    
+                    % Process simulation if it succeeded
+                    if simulation_success && ~has_error
+                        try
+                            result = processSimulationOutput(trial_num, config, current_simOut, config.capture_workspace);
+                            if result.success
+                                batch_successful = batch_successful + 1;
+                                successful_trials = successful_trials + 1;
+                                fprintf('✓ Trial %d completed successfully\n', trial_num);
+                            else
+                                fprintf('✗ Trial %d processing failed: %s\n', trial_num, result.error);
+                            end
+                        catch ME
+                            fprintf('Error processing trial %d: %s\n', trial_num, ME.message);
+                        end
+                    end
+                    
+                catch ME
+                    % Handle brace indexing errors specifically
+                    if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
+                        fprintf('✗ Trial %d: Brace indexing error - simulation output corrupted\n', trial_num);
+                        fprintf('  Error: %s\n', ME.message);
+                    else
+                        fprintf('✗ Trial %d: Unexpected error accessing simulation output: %s\n', trial_num, ME.message);
+                    end
+                end
+            end
+            
+            fprintf('Batch %d completed: %d/%d trials successful\n', batch_idx, batch_successful, batch_trials);
+            
+        catch ME
+            fprintf('✗ Batch %d failed: %s\n', batch_idx, ME.message);
+        end
+        
+        % Memory cleanup after each batch
+        fprintf('Performing memory cleanup after batch %d...\n', batch_idx);
+        restoreWorkspace(initial_vars);
+        java.lang.System.gc();  % Force garbage collection
+        
+        % Check memory usage if monitoring is enabled
+        if config.enable_memory_monitoring
+            try
+                memoryInfo = getMemoryInfo();
+                fprintf('Memory usage after batch %d: %.1f%%\n', batch_idx, memoryInfo.usage_percent);
+                
+                if memoryInfo.usage_percent > 85
+                    fprintf('Warning: High memory usage detected. Consider reducing batch size.\n');
+                end
+            catch ME
+                fprintf('Warning: Could not check memory usage: %s\n', ME.message);
+            end
+        end
+        
+        % Save checkpoint if needed
+        if mod(batch_idx, save_interval) == 0 || batch_idx == num_batches
+            try
+                checkpoint_data = struct();
+                checkpoint_data.completed_trials = successful_trials;
+                checkpoint_data.next_batch = batch_idx + 1;
+                checkpoint_data.timestamp = datestr(now, 'yyyy-mm-dd HH:MM:SS');
+                checkpoint_data.batch_idx = batch_idx;
+                checkpoint_data.total_batches = num_batches;
+                
+                save(checkpoint_file, '-struct', 'checkpoint_data');
+                fprintf('✓ Checkpoint saved after batch %d (%d trials completed)\n', batch_idx, successful_trials);
+            catch ME
+                fprintf('Warning: Could not save checkpoint: %s\n', ME.message);
+            end
+        end
+        
+        % Small pause to let system recover
+        pause(1);
+    end
+    
+    % Final summary
+    fprintf('\n=== PARALLEL BATCH PROCESSING SUMMARY ===\n');
+    fprintf('Total trials: %d\n', total_trials);
+    fprintf('Successful: %d\n', successful_trials);
+    fprintf('Failed: %d\n', total_trials - successful_trials);
+    fprintf('Success rate: %.1f%%\n', (successful_trials / total_trials) * 100);
+    
+    if successful_trials == 0
+        fprintf('\n⚠️  All parallel simulations failed. Common causes:\n');
+        fprintf('   • Model path not accessible on workers\n');
+        fprintf('   • Missing workspace variables on workers\n');
+        fprintf('   • Toolbox licensing issues on workers\n');
+        fprintf('   • Model configuration conflicts in parallel mode\n');
+        fprintf('   • Coefficient setting issues on workers\n');
+        fprintf('\n Try sequential mode for detailed debugging\n');
+    end
+    
+    % Clean up checkpoint file if completed successfully
+    if successful_trials == total_trials && exist(checkpoint_file, 'file')
+        try
+            delete(checkpoint_file);
+            fprintf('✓ Checkpoint file cleaned up (all trials completed)\n');
+        catch ME
+            fprintf('Warning: Could not clean up checkpoint file: %s\n', ME.message);
         end
     end
 end
-function simInputs = prepareSimulationInputs(config)
+
+% Helper function to check for stop requests and update progress
+function shouldStop = checkStopRequest(handles)
+    shouldStop = false;
+    try
+        % Get current handles
+        current_handles = guidata(handles.fig);
+        if isfield(current_handles, 'should_stop') && current_handles.should_stop
+            shouldStop = true;
+        end
+        
+        % Force UI update to prevent freezing
+        drawnow;
+        
+    catch
+        % If we can't access handles, assume we should stop
+        shouldStop = true;
+    end
+end
+
+% Helper function to update progress display
+function updateProgress(handles, current, total, message)
+    try
+        if nargin < 4
+            message = 'Processing...';
+        end
+        
+        progress_percent = round((current / total) * 100);
+        progress_text = sprintf('%s (%d/%d - %d%%)', message, current, total, progress_percent);
+        
+        set(handles.progress_text, 'String', progress_text);
+        drawnow;
+        
+    catch
+        % Silently fail if GUI is not available
+    end
+end
+
+% Helper function to monitor memory usage
+function memoryInfo = getMemoryInfo()
+    try
+        % Get MATLAB memory info
+        memoryInfo = memory;
+        
+        % Calculate memory usage percentage
+        memoryInfo.usage_percent = (memoryInfo.MemUsedMATLAB / memoryInfo.PhysicalMemory.Total) * 100;
+        
+        % Get system memory info if available
+        if ispc
+            try
+                [~, result] = system('wmic OS get TotalVisibleMemorySize,FreePhysicalMemory /Value');
+                lines = strsplit(result, '\n');
+                total_mem = 0;
+                free_mem = 0;
+                
+                for i = 1:length(lines)
+                    line = strtrim(lines{i});
+                    if startsWith(line, 'TotalVisibleMemorySize=')
+                        total_mem = str2double(extractAfter(line, '='));
+                    elseif startsWith(line, 'FreePhysicalMemory=')
+                        free_mem = str2double(extractAfter(line, '='));
+                    end
+                end
+                
+                if total_mem > 0
+                    memoryInfo.system_total_mb = total_mem / 1024;
+                    memoryInfo.system_free_mb = free_mem / 1024;
+                    memoryInfo.system_usage_percent = ((total_mem - free_mem) / total_mem) * 100;
+                end
+            catch
+                % Ignore system memory check errors
+            end
+        end
+        
+    catch
+        memoryInfo = struct('usage_percent', 0);
+    end
+end
+
+% Helper function to check if memory usage is high
+function isHighMemory = checkHighMemoryUsage(threshold_percent)
+    if nargin < 1
+        threshold_percent = 85; % Default threshold
+    end
+    
+    try
+        memoryInfo = getMemoryInfo();
+        isHighMemory = memoryInfo.usage_percent > threshold_percent;
+        
+        if isHighMemory
+            fprintf('Warning: High memory usage detected: %.1f%%\n', memoryInfo.usage_percent);
+        end
+        
+    catch
+        isHighMemory = false;
+    end
+end
+
+% Helper function to generate random coefficients
+function coefficients = generateRandomCoefficients(num_coefficients)
+    % Generate random coefficients with reasonable ranges for golf swing parameters
+    % These ranges are based on typical golf swing polynomial coefficients
+    
+    % Different ranges for different coefficient types (A, B, C, D, E, F, G)
+    % A (t^6): Large range for major motion
+    % B (t^5): Large range for major motion  
+    % C (t^4): Medium range for control
+    % D (t^3): Medium range for control
+    % E (t^2): Small range for fine control
+    % F (t^1): Small range for fine control
+    % G (constant): Small range for offset
+    
+    coefficients = zeros(1, num_coefficients);
+    
+    for i = 1:num_coefficients
+        coeff_type = mod(i-1, 7) + 1; % A=1, B=2, C=3, D=4, E=5, F=6, G=7
+        
+        switch coeff_type
+            case {1, 2} % A, B - Large range
+                coefficients(i) = (rand() - 0.5) * 2000; % -1000 to 1000
+            case {3, 4} % C, D - Medium range
+                coefficients(i) = (rand() - 0.5) * 1000; % -500 to 500
+            case {5, 6} % E, F - Small range
+                coefficients(i) = (rand() - 0.5) * 200;  % -100 to 100
+            case 7 % G - Very small range
+                coefficients(i) = (rand() - 0.5) * 50;   % -25 to 25
+        end
+    end
+end
+function successful_trials = runSequentialSimulations(handles, config)
+    % Get batch processing parameters
+    batch_size = config.batch_size;
+    save_interval = config.save_interval;
+    total_trials = config.num_simulations;
+    
+    fprintf('Starting sequential batch processing:\n');
+    fprintf('  Total trials: %d\n', total_trials);
+    fprintf('  Batch size: %d\n', batch_size);
+    fprintf('  Save interval: %d batches\n', save_interval);
+    
+    % Calculate number of batches
+    num_batches = ceil(total_trials / batch_size);
+    successful_trials = 0;
+    
+    % Store initial workspace state for restoration
+    initial_vars = who;
+    
+    % Check for existing checkpoint
+    checkpoint_file = fullfile(config.output_folder, 'sequential_checkpoint.mat');
+    start_batch = 1;
+    if exist(checkpoint_file, 'file')
+        try
+            checkpoint_data = load(checkpoint_file);
+            if isfield(checkpoint_data, 'completed_trials')
+                successful_trials = checkpoint_data.completed_trials;
+                start_batch = checkpoint_data.next_batch;
+                fprintf('Found checkpoint: %d trials completed, resuming from batch %d\n', successful_trials, start_batch);
+            end
+        catch ME
+            fprintf('Warning: Could not load checkpoint: %s\n', ME.message);
+        end
+    end
+    
+    % Process batches
+    for batch_idx = start_batch:num_batches
+        % Check for stop request
+        if checkStopRequest(handles)
+            fprintf('Sequential simulation stopped by user at batch %d\n', batch_idx);
+            break;
+        end
+        
+        % Calculate trials for this batch
+        start_trial = (batch_idx - 1) * batch_size + 1;
+        end_trial = min(batch_idx * batch_size, total_trials);
+        batch_trials = end_trial - start_trial + 1;
+        
+        fprintf('\n--- Batch %d/%d (Trials %d-%d) ---\n', batch_idx, num_batches, start_trial, end_trial);
+        
+        % Update progress
+        progress_msg = sprintf('Batch %d/%d: Processing trials %d-%d...', batch_idx, num_batches, start_trial, end_trial);
+        set(handles.progress_text, 'String', progress_msg);
+        drawnow;
+        
+        % Process trials in this batch
+        batch_successful = 0;
+        for trial = start_trial:end_trial
+            % Check for stop request
+            if checkStopRequest(handles)
+                fprintf('Sequential simulation stopped by user at trial %d\n', trial);
+                break;
+            end
+            
+            % Update progress with percentage
+            updateProgress(handles, trial, total_trials, 'Sequential simulation');
+            
+            try
+                if trial <= size(config.coefficient_values, 1)
+                    trial_coefficients = config.coefficient_values(trial, :);
+                else
+                    % Generate random coefficients for additional trials
+                    fprintf('Generating random coefficients for trial %d (beyond available data)\n', trial);
+                    trial_coefficients = generateRandomCoefficients(size(config.coefficient_values, 2));
+                end
+                
+                result = runSingleTrial(trial, config, trial_coefficients, config.capture_workspace);
+                
+                if result.success
+                    batch_successful = batch_successful + 1;
+                    successful_trials = successful_trials + 1;
+                    fprintf('✓ Trial %d completed successfully\n', trial);
+                else
+                    fprintf('✗ Trial %d failed: %s\n', trial, result.error);
+                end
+                
+            catch ME
+                fprintf('✗ Trial %d error: %s\n', trial, ME.message);
+            end
+        end
+        
+        fprintf('Batch %d completed: %d/%d trials successful\n', batch_idx, batch_successful, batch_trials);
+        
+        % Memory cleanup after each batch
+        fprintf('Performing memory cleanup after batch %d...\n', batch_idx);
+        restoreWorkspace(initial_vars);
+        java.lang.System.gc();  % Force garbage collection
+        
+        % Check memory usage if monitoring is enabled
+        if config.enable_memory_monitoring
+            try
+                memoryInfo = getMemoryInfo();
+                fprintf('Memory usage after batch %d: %.1f%%\n', batch_idx, memoryInfo.usage_percent);
+                
+                if memoryInfo.usage_percent > 85
+                    fprintf('Warning: High memory usage detected. Consider reducing batch size.\n');
+                end
+            catch ME
+                fprintf('Warning: Could not check memory usage: %s\n', ME.message);
+            end
+        end
+        
+        % Save checkpoint if needed
+        if mod(batch_idx, save_interval) == 0 || batch_idx == num_batches
+            try
+                checkpoint_data = struct();
+                checkpoint_data.completed_trials = successful_trials;
+                checkpoint_data.next_batch = batch_idx + 1;
+                checkpoint_data.timestamp = datestr(now, 'yyyy-mm-dd HH:MM:SS');
+                checkpoint_data.batch_idx = batch_idx;
+                checkpoint_data.total_batches = num_batches;
+                
+                save(checkpoint_file, '-struct', 'checkpoint_data');
+                fprintf('✓ Checkpoint saved after batch %d (%d trials completed)\n', batch_idx, successful_trials);
+            catch ME
+                fprintf('Warning: Could not save checkpoint: %s\n', ME.message);
+            end
+        end
+        
+        % Small pause to let system recover
+        pause(1);
+    end
+    
+    % Final summary
+    fprintf('\n=== SEQUENTIAL BATCH PROCESSING SUMMARY ===\n');
+    fprintf('Total trials: %d\n', total_trials);
+    fprintf('Successful: %d\n', successful_trials);
+    fprintf('Failed: %d\n', total_trials - successful_trials);
+    fprintf('Success rate: %.1f%%\n', (successful_trials / total_trials) * 100);
+    
+    % Clean up checkpoint file if completed successfully
+    if successful_trials == total_trials && exist(checkpoint_file, 'file')
+        try
+            delete(checkpoint_file);
+            fprintf('✓ Checkpoint file cleaned up (all trials completed)\n');
+        catch ME
+            fprintf('Warning: Could not clean up checkpoint file: %s\n', ME.message);
+        end
+    end
+end
+function simInputs = prepareSimulationInputs(config, handles)
     % Load the Simulink model
     model_name = config.model_name;
     if ~bdIsLoaded(model_name)
@@ -2310,12 +2884,7 @@ function simInputs = prepareSimulationInputs(config)
         end
     end
     
-    % Add model directory to path for parallel workers
-    [model_dir, ~, ~] = fileparts(config.model_path);
-    if ~isempty(model_dir)
-        addpath(model_dir);
-        fprintf('Added model directory to path: %s\n', model_dir);
-    end
+
     
     % Create array of SimulationInput objects
     simInputs = Simulink.SimulationInput.empty(0, config.num_simulations);
@@ -2325,7 +2894,8 @@ function simInputs = prepareSimulationInputs(config)
         if trial <= size(config.coefficient_values, 1)
             trial_coefficients = config.coefficient_values(trial, :);
         else
-            trial_coefficients = config.coefficient_values(end, :);
+            % Generate random coefficients for additional trials
+            trial_coefficients = generateRandomCoefficients(size(config.coefficient_values, 2));
         end
         
         % Ensure coefficients are numeric (fix for parallel execution)
@@ -2338,7 +2908,7 @@ function simInputs = prepareSimulationInputs(config)
         simIn = Simulink.SimulationInput(model_name);
         
         % Set simulation parameters safely
-        simIn = setModelParameters(simIn, config);
+        simIn = setModelParameters(simIn, config, handles);
         
         % Set polynomial coefficients
         try
@@ -2355,18 +2925,73 @@ function simInputs = prepareSimulationInputs(config)
         simInputs(trial) = simIn;
     end
 end
-function simIn = setPolynomialCoefficients(simIn, coefficients, config)
-    % DEBUG: Print what we're receiving
-    fprintf('DEBUG: setPolynomialCoefficients called with:\n');
-    fprintf('  coefficients class: %s\n', class(coefficients));
-    fprintf('  coefficients size: %s\n', mat2str(size(coefficients)));
-    if iscell(coefficients)
-        fprintf('  coefficients is cell array with %d elements\n', numel(coefficients));
-        if numel(coefficients) > 0
-            fprintf('  first element class: %s\n', class(coefficients{1}));
+
+function simInputs = prepareSimulationInputsForBatch(config, handles, start_trial, end_trial)
+    % Prepare simulation inputs for a specific batch of trials
+    % Load the Simulink model
+    model_name = config.model_name;
+    if ~bdIsLoaded(model_name)
+        try
+            load_system(model_name);
+        catch ME
+            error('Could not load Simulink model "%s": %s', model_name, ME.message);
         end
     end
     
+    % Create array of SimulationInput objects for this batch
+    batch_size = end_trial - start_trial + 1;
+    simInputs = Simulink.SimulationInput.empty(0, batch_size);
+    
+    for i = 1:batch_size
+        trial = start_trial + i - 1;
+        
+        % Get coefficients for this trial
+        if trial <= size(config.coefficient_values, 1)
+            trial_coefficients = config.coefficient_values(trial, :);
+        else
+            % Generate random coefficients for additional trials
+            trial_coefficients = generateRandomCoefficients(size(config.coefficient_values, 2));
+        end
+        
+        % Ensure coefficients are numeric (fix for parallel execution)
+        if iscell(trial_coefficients)
+            trial_coefficients = cell2mat(trial_coefficients);
+        end
+        trial_coefficients = double(trial_coefficients);  % Ensure double precision
+        
+        % Create SimulationInput object
+        simIn = Simulink.SimulationInput(model_name);
+        
+        % Set simulation parameters safely
+        simIn = setModelParameters(simIn, config, handles);
+        
+        % Set polynomial coefficients
+        try
+            simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
+        catch ME
+            fprintf('Warning: Could not set polynomial coefficients: %s\n', ME.message);
+        end
+        
+        % Load input file if specified
+        if ~isempty(config.input_file) && exist(config.input_file, 'file')
+            simIn = loadInputFile(simIn, config.input_file);
+        end
+        
+        simInputs(i) = simIn;
+    end
+end
+
+function restoreWorkspace(initial_vars)
+    % Restore workspace to initial state by clearing new variables
+    current_vars = who;
+    new_vars = setdiff(current_vars, initial_vars);
+    
+    if ~isempty(new_vars)
+        clear(new_vars{:});
+    end
+end
+
+function simIn = setPolynomialCoefficients(simIn, coefficients, config)
     % Get parameter info for coefficient mapping
     param_info = getPolynomialParameterInfo();
     
@@ -2377,20 +3002,16 @@ function simIn = setPolynomialCoefficients(simIn, coefficients, config)
     
     % Handle parallel worker coefficient format issues
     if iscell(coefficients)
-        fprintf('Debug: Converting cell array coefficients to numeric (parallel worker fix)\n');
         try
             % Check if cells contain strings or numbers
             if all(cellfun(@ischar, coefficients))
                 % Convert string cells to numeric
                 coefficients = cellfun(@str2double, coefficients);
-                fprintf('Debug: Converted string cells to numeric\n');
             elseif all(cellfun(@isnumeric, coefficients))
                 % Convert numeric cells to array
                 coefficients = cell2mat(coefficients);
-                fprintf('Debug: Converted numeric cells to array\n');
             else
                 % Mixed content or other issues
-                fprintf('Warning: Mixed cell content, attempting element-wise conversion\n');
                 numeric_coeffs = zeros(size(coefficients));
                 for i = 1:numel(coefficients)
                     if ischar(coefficients{i})
@@ -2408,7 +3029,6 @@ function simIn = setPolynomialCoefficients(simIn, coefficients, config)
             % Try one more approach - flatten and convert
             try
                 coefficients = str2double(coefficients(:));
-                fprintf('Debug: Used str2double on flattened cells\n');
             catch
                 fprintf('Error: All conversion attempts failed\n');
                 return;
@@ -2425,10 +3045,7 @@ function simIn = setPolynomialCoefficients(simIn, coefficients, config)
     % Ensure coefficients are a row vector if needed
     if size(coefficients, 1) > 1 && size(coefficients, 2) == 1
         coefficients = coefficients';
-        fprintf('Debug: Transposed coefficients to row vector\n');
     end
-    
-    fprintf('Setting %d coefficients for %d joints\n', length(coefficients), length(param_info.joint_names));
     
     % Set coefficients as model variables
     global_coeff_idx = 1;
@@ -2446,13 +3063,6 @@ function simIn = setPolynomialCoefficients(simIn, coefficients, config)
                 try
                     simIn = simIn.setVariable(var_name, coefficients(global_coeff_idx));
                     variables_set = variables_set + 1;
-                    
-                    % Show first few for debugging (but not too verbose)
-                    if global_coeff_idx <= 3
-                        fprintf('  Set %s = %.3f\n', var_name, coefficients(global_coeff_idx));
-                    elseif global_coeff_idx == 4
-                        fprintf('  ... (and %d more variables)\n', length(coefficients) - 3);
-                    end
                 catch ME
                     fprintf('  Warning: Failed to set %s: %s\n', var_name, ME.message);
                 end
@@ -2462,8 +3072,6 @@ function simIn = setPolynomialCoefficients(simIn, coefficients, config)
             global_coeff_idx = global_coeff_idx + 1;
         end
     end
-    
-    fprintf('Successfully set %d model variables\n', variables_set);
 end
 function simIn = loadInputFile(simIn, input_file)
     try
@@ -2514,9 +3122,6 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
         % Run simulation with progress indicator and visualization suppression
         fprintf('Running trial %d simulation...', trial_num);
         
-        % Visualization suppression (problematic parameters removed for compatibility)
-        % Note: ShowSimulationManager and ShowProgress don't exist for block diagrams
-        
         simOut = sim(simIn);
         fprintf(' Done.\n');
         
@@ -2566,7 +3171,7 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
         end
     end
 end
-function simIn = setModelParameters(simIn, config)
+function simIn = setModelParameters(simIn, config, handles)
             % Set basic simulation parameters with careful error handling
         try
             % Set stop time
@@ -2617,7 +3222,7 @@ function simIn = setModelParameters(simIn, config)
             % Only set the essential parameter that actually works
             try
                 simIn = simIn.setModelParameter('SimscapeLogType', 'all');
-                fprintf('Debug: ✅ Set SimscapeLogType = all (essential parameter)\n');
+        
             catch ME
                 fprintf('Warning: Could not set essential SimscapeLogType parameter: %s\n', ME.message);
                 fprintf('Warning: Simscape data extraction may not work without this parameter\n');
@@ -2625,14 +3230,14 @@ function simIn = setModelParameters(simIn, config)
             
             % Set animation control based on user preference
             try
-                if isfield(config, 'enable_animation') && ~config.enable_animation
-                    % Disable animation for faster simulation
-                    simIn = simIn.setModelParameter('SimulationMode', 'accelerator');
-                    fprintf('Debug: ✅ Animation disabled - using accelerator mode\n');
-                else
+                if isfield(config, 'enable_animation') && config.enable_animation
                     % Enable animation (normal mode)
                     simIn = simIn.setModelParameter('SimulationMode', 'normal');
-                    fprintf('Debug: ⚠️ Animation enabled - using normal mode (slower)\n');
+
+                else
+                    % Disable animation for faster simulation
+                    simIn = simIn.setModelParameter('SimulationMode', 'accelerator');
+
                 end
             catch ME
                 fprintf('Warning: Could not set simulation mode for animation control: %s\n', ME.message);
@@ -3130,7 +3735,7 @@ function config = validateInputs(handles)
         
         scenario_idx = get(handles.torque_scenario_popup, 'Value');
         coeff_range = str2double(get(handles.coeff_range_edit, 'String'));
-        constant_value = str2double(get(handles.constant_value_edit, 'String'));
+        constant_value = 10.0; % Default constant value
         
         if scenario_idx == 1 && (isnan(coeff_range) || coeff_range <= 0)
             error('Coefficient range must be positive for variable torques');
@@ -3252,7 +3857,7 @@ function config = validateInputs(handles)
                     solver_type = get_param(model_name, 'SolverType');
                     if contains(lower(solver_type), 'variable') || contains(lower(solver_type), 'fixed')
                         has_simscape_config = true;
-                        fprintf('Debug: Model has Simscape-compatible solver configuration\n');
+                
                     end
                 catch
                     % Ignore configuration check errors
@@ -3270,9 +3875,13 @@ function config = validateInputs(handles)
                     end
                     warning('Simscape data extraction is enabled, but no clear Simscape indicators found in model "%s". Simscape logging may still work if components are in referenced subsystems.', model_name);
                 else
-                    fprintf('Debug: Found %d Simscape indicators in model (blocks + references + config)\n', total_indicators);
+                    if shouldShowDebug(handles)
+            fprintf('Debug: Found %d Simscape indicators in model (blocks + references + config)\n', total_indicators);
+        end
                     if ~isempty(subsystem_refs)
-                        fprintf('Debug: Model uses referenced subsystems - Simscape components may be inside references\n');
+                        if shouldShowDebug(handles)
+                            fprintf('Debug: Model uses referenced subsystems - Simscape components may be inside references\n');
+                        end
                     end
                 end
                 
@@ -3333,7 +3942,6 @@ function config = validateInputs(handles)
         config.save_interval = save_interval;
         config.enable_performance_monitoring = get(handles.enable_performance_monitoring, 'Value');
         config.verbosity = verbosity_level;
-        config.use_robust_generator = get(handles.use_robust_generator, 'Value');
         config.enable_memory_monitoring = get(handles.enable_memory_monitoring, 'Value');
         
     catch ME
@@ -3594,7 +4202,6 @@ function handles = loadUserPreferences(handles)
     handles.preferences.default_save_interval = 25;
     handles.preferences.enable_performance_monitoring = true;
     handles.preferences.default_verbosity = 'Normal';
-    handles.preferences.use_robust_generator = true;
     handles.preferences.enable_memory_monitoring = true;
     
     % Try to load saved preferences
@@ -3673,10 +4280,6 @@ function applyUserPreferences(handles)
             end
         end
         
-        if isfield(handles, 'use_robust_generator') && isfield(prefs, 'use_robust_generator')
-            set(handles.use_robust_generator, 'Value', prefs.use_robust_generator);
-        end
-        
         if isfield(handles, 'enable_memory_monitoring') && isfield(prefs, 'enable_memory_monitoring')
             set(handles.enable_memory_monitoring, 'Value', prefs.enable_memory_monitoring);
         end
@@ -3740,10 +4343,6 @@ function saveUserPreferences(handles)
             end
         end
         
-        if isfield(handles, 'use_robust_generator')
-            handles.preferences.use_robust_generator = get(handles.use_robust_generator, 'Value');
-        end
-        
         if isfield(handles, 'enable_memory_monitoring')
             handles.preferences.enable_memory_monitoring = get(handles.enable_memory_monitoring, 'Value');
         end
@@ -3763,11 +4362,37 @@ function closeGUICallback(src, evt)
     % Handle GUI close
     try
         handles = guidata(src);
+        
+        % Check if generation is running
+        if isstruct(handles) && isfield(handles, 'is_running') && handles.is_running
+            response = questdlg('Generation is currently running. Do you want to stop it and close the GUI?', ...
+                               'Generation Running', 'Stop and Close', 'Cancel', 'Cancel');
+            if strcmp(response, 'Cancel')
+                return; % Don't close
+            end
+            % Set stop flag
+            handles.should_stop = true;
+            guidata(src, handles);
+        end
+        
+        % Save preferences
         if isstruct(handles) && isfield(handles, 'preferences')
             saveUserPreferences(handles);
         end
-    catch
-        % Silently fail
+        
+        % Clean up parallel pool
+        try
+            existing_pool = gcp('nocreate');
+            if ~isempty(existing_pool)
+                fprintf('Cleaning up parallel pool on GUI close...\n');
+                delete(existing_pool);
+            end
+        catch ME
+            fprintf('Warning: Could not clean up parallel pool: %s\n', ME.message);
+        end
+        
+    catch ME
+        fprintf('Warning: Error during GUI close: %s\n', ME.message);
     end
     
     % Close the figure
@@ -3809,17 +4434,13 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
     data_table = [];
     
     try
-        fprintf('Debug: Processing CombinedSignalBus\n');
-        
         % CombinedSignalBus should be a struct with time and signals
         if ~isstruct(combinedBus)
-            fprintf('Debug: CombinedSignalBus is not a struct\n');
             return;
         end
         
         % Look for time field
         bus_fields = fieldnames(combinedBus);
-        fprintf('Debug: CombinedSignalBus fields: %s\n', strjoin(bus_fields, ', '));
         
         time_field = '';
         time_data = [];
@@ -4319,25 +4940,33 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
         
         fprintf('=== SIMSCAPE DIAGNOSTIC END ===\n');
 
-        fprintf('Debug: Starting recursive Simscape extraction from root node.\n');
+
 
         % Recursively collect all series data using primary traversal method
         [time_data, all_signals] = traverseSimlogNode(simlog, '');
 
         if isempty(time_data) || isempty(all_signals)
-            fprintf('⚠️  Primary method found no data. Trying fallback methods...\n');
+            if shouldShowNormal(handles)
+                fprintf('⚠️  Primary method found no data. Trying fallback methods...\n');
+            end
             
             % FALLBACK METHOD: Simple property inspection
             [time_data, all_signals] = fallbackSimlogExtraction(simlog);
             
             if isempty(time_data) || isempty(all_signals)
-                fprintf('❌ All extraction methods failed. No usable Simscape data found.\n');
+                if shouldShowNormal(handles)
+                    fprintf('❌ All extraction methods failed. No usable Simscape data found.\n');
+                end
                 return;
             else
-                fprintf('✅ Fallback method found data!\n');
+                if shouldShowNormal(handles)
+                    fprintf('✅ Fallback method found data!\n');
+                end
             end
         else
-            fprintf('✅ Primary traversal method found data!\n');
+            if shouldShowNormal(handles)
+                fprintf('✅ Primary traversal method found data!\n');
+            end
         end
 
         % Build table
@@ -4350,17 +4979,25 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
             if length(signal.data) == expected_length
                 data_cells{end+1} = signal.data(:);
                 var_names{end+1} = signal.name;
-                fprintf('Debug: Added Simscape signal: %s (length: %d)\n', signal.name, expected_length);
+                if shouldShowDebug(handles)
+                    fprintf('Debug: Added Simscape signal: %s (length: %d)\n', signal.name, expected_length);
+                end
             else
-                fprintf('Debug: Skipped %s (length mismatch: %d vs %d)\n', signal.name, length(signal.data), expected_length);
+                if shouldShowDebug(handles)
+                    fprintf('Debug: Skipped %s (length mismatch: %d vs %d)\n', signal.name, length(signal.data), expected_length);
+                end
             end
         end
 
         if length(data_cells) > 1
             simscape_data = table(data_cells{:}, 'VariableNames', var_names);
-            fprintf('Debug: Created Simscape table with %d columns, %d rows.\n', width(simscape_data), height(simscape_data));
+            if shouldShowDebug(handles)
+                fprintf('Debug: Created Simscape table with %d columns, %d rows.\n', width(simscape_data), height(simscape_data));
+            end
         else
-            fprintf('Debug: Only time data found in Simscape log.\n');
+            if shouldShowDebug(handles)
+                fprintf('Debug: Only time data found in Simscape log.\n');
+            end
         end
 
     catch ME
@@ -4374,12 +5011,9 @@ function [time_data, all_signals] = fallbackSimlogExtraction(simlog)
     all_signals = {};
     
     try
-        fprintf('Debug: Attempting fallback Simscape extraction...\n');
-        
         % Method 1: Try direct property enumeration
         try
             props = properties(simlog);
-            fprintf('Debug: Simlog has %d properties\n', length(props));
             
             for i = 1:length(props)
                 prop_name = props{i};
@@ -5554,7 +6188,7 @@ function showBatchSettingsHelp()
         '';
         'Verbosity: Output detail level - Silent=minimal output, Normal=standard progress, Verbose=detailed info, Debug=all messages including technical details.';
         '';
-        'Robust Generator: Enable crash-resistant batch processing with memory monitoring and checkpointing. Automatically recovers from crashes and manages system resources.';
+        'Traditional execution modes with parallel/sequential processing.';
         '';
         'Memory Monitoring: Monitor system memory and automatically manage parallel workers. Helps prevent crashes due to memory exhaustion.';
     };
@@ -5577,4 +6211,61 @@ function showBatchSettingsHelp()
               'Position', [0.4, 0.05, 0.2, 0.1], ...
               'BackgroundColor', [0.8, 0.8, 0.8], ...
               'Callback', @(src, event) close(help_dialog));
+end
+
+% Helper function to check if debug output should be shown
+function should_show_debug = shouldShowDebug(handles)
+    if ~isfield(handles, 'verbosity_popup')
+        should_show_debug = true; % Default to showing if no verbosity control
+        return;
+    end
+    
+    verbosity_options = {'Normal', 'Silent', 'Verbose', 'Debug'};
+    verbosity_idx = get(handles.verbosity_popup, 'Value');
+    if verbosity_idx <= length(verbosity_options)
+        verbosity_level = verbosity_options{verbosity_idx};
+    else
+        verbosity_level = 'Normal';
+    end
+    
+    % Only show debug output for Debug verbosity level
+    should_show_debug = strcmp(verbosity_level, 'Debug');
+end
+
+% Helper function to check if verbose output should be shown
+function should_show_verbose = shouldShowVerbose(handles)
+    if ~isfield(handles, 'verbosity_popup')
+        should_show_verbose = true; % Default to showing if no verbosity control
+        return;
+    end
+    
+    verbosity_options = {'Normal', 'Silent', 'Verbose', 'Debug'};
+    verbosity_idx = get(handles.verbosity_popup, 'Value');
+    if verbosity_idx <= length(verbosity_options)
+        verbosity_level = verbosity_options{verbosity_idx};
+    else
+        verbosity_level = 'Normal';
+    end
+    
+    % Show verbose output for Verbose and Debug levels
+    should_show_verbose = strcmp(verbosity_level, 'Verbose') || strcmp(verbosity_level, 'Debug');
+end
+
+% Helper function to check if normal output should be shown
+function should_show_normal = shouldShowNormal(handles)
+    if ~isfield(handles, 'verbosity_popup')
+        should_show_normal = true; % Default to showing if no verbosity control
+        return;
+    end
+    
+    verbosity_options = {'Normal', 'Silent', 'Verbose', 'Debug'};
+    verbosity_idx = get(handles.verbosity_popup, 'Value');
+    if verbosity_idx <= length(verbosity_options)
+        verbosity_level = verbosity_options{verbosity_idx};
+    else
+        verbosity_level = 'Normal';
+    end
+    
+    % Show normal output for Normal, Verbose, and Debug levels (not Silent)
+    should_show_normal = ~strcmp(verbosity_level, 'Silent');
 end
