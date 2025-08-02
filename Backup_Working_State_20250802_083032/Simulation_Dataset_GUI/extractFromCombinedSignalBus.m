@@ -169,15 +169,6 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                                 end
                             end
                             
-                        elseif num_elements == 1
-                            % 1x1 MATRIX (scalar value) - replicate for all time steps
-                            scalar_value = numeric_data(1);  % Extract the scalar value
-                            replicated_data = repmat(scalar_value, expected_length, 1);
-                            data_cells{end+1} = replicated_data;
-                            var_names{end+1} = sprintf('%s_%s', field_name, sub_field_name);
-                            fprintf('Debug: Added scalar value %s_%s (replicated %g for %d timesteps)\n', ...
-                                field_name, sub_field_name, scalar_value, expected_length);
-                            
                         elseif num_elements == 3
                             % 3D VECTOR (e.g., COM position [x, y, z])
                             vector_data = numeric_data(:);  % Ensure column vector
@@ -242,7 +233,7 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                             
                         else
                             % UNHANDLED SIZE - still skip but with better diagnostic
-                            fprintf('Debug: Skipping %s.%s (size [%s] not supported - need time series, 3D vector, 3x3 matrix, 6DOF, or scalar)\n', ...
+                            fprintf('Debug: Skipping %s.%s (size [%s] not supported - need time series, 3D vector, 3x3 matrix, or 6DOF)\n', ...
                                 field_name, sub_field_name, num2str(data_size));
                         end
                     end

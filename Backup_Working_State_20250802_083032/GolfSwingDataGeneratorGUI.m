@@ -160,25 +160,6 @@ function createTrialSettings(parent, handles)
                                        'Units', 'normalized', ...
                                        'Position', [0.42, y_pos, 0.35, 0.12], ...
                                        'FontSize', 9);
-    
-    y_pos = y_pos - spacing;
-    
-    % Animation Control
-    uicontrol('Parent', parent, ...
-              'Style', 'text', ...
-              'String', 'Animation:', ...
-              'Units', 'normalized', ...
-              'Position', [0.05, y_pos, 0.35, 0.12], ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 9);
-    
-    handles.enable_animation = uicontrol('Parent', parent, ...
-                                         'Style', 'checkbox', ...
-                                         'String', 'Enable Animation', ...
-                                         'Units', 'normalized', ...
-                                         'Position', [0.42, y_pos, 0.35, 0.12], ...
-                                         'Value', 0, ...  % Default to disabled for speed
-                                         'FontSize', 9);
 end
 
 function createDataSourceSettings(parent, handles)
@@ -425,18 +406,6 @@ function createProgressSection(parent, handles)
                                       'Position', [0.41, 0.1, 0.15, 0.8], ...
                                       'FontSize', 9, ...
                                       'Callback', @(src,evt) clearLog(handles));
-    
-    handles.run_another_btn = uicontrol('Parent', button_panel, ...
-                                        'Style', 'pushbutton', ...
-                                        'String', 'Run Another Trial', ...
-                                        'Units', 'normalized', ...
-                                        'Position', [0.58, 0.1, 0.2, 0.8], ...
-                                        'FontSize', 11, ...
-                                        'FontWeight', 'bold', ...
-                                        'BackgroundColor', [0.2, 0.6, 0.8], ...
-                                        'ForegroundColor', 'white', ...
-                                        'Enable', 'off', ...  % Initially disabled
-                                        'Callback', @(src,evt) runAnotherTrial(handles));
 end
 
 function resizeGUI(src, evt)
@@ -449,13 +418,6 @@ end
 function startGeneration(handles)
     % Start the data generation process
     updateLog(handles, 'Starting data generation...');
-    
-    % Create backup of all scripts before starting
-    try
-        backupScripts(handles);
-    catch ME
-        updateLog(handles, sprintf('Warning: Could not create script backup: %s', ME.message));
-    end
     
     % Get current settings
     num_trials = str2double(get(handles.num_trials, 'String'));
@@ -477,131 +439,20 @@ function startGeneration(handles)
     end
 end
 
-function backupScripts(handles)
-    % Create a backup of all scripts used in the current run
-    timestamp = datestr(now, 'yyyymmdd_HHMMSS');
-    backup_folder = sprintf('Script_Backup_%s', timestamp);
-    
-    % Create backup directory
-    if ~exist(backup_folder, 'dir')
-        mkdir(backup_folder);
-    end
-    
-    % List of scripts to backup
-    scripts_to_backup = {
-        'GolfSwingDataGeneratorGUI.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/extractFromCombinedSignalBus.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/Data_GUI.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/extractFromNestedStruct.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/extractLogsoutDataFixed.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/extractSimscapeDataRecursive.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/traverseSimlogNode.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/extractDataFromField.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/combineDataSources.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/addModelWorkspaceData.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/extractWorkspaceOutputs.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/resampleDataToFrequency.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/getPolynomialParameterInfo.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/getShortenedJointName.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/generateRandomCoefficients.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/prepareSimulationInputsForBatch.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/restoreWorkspace.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/getMemoryInfo.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/checkHighMemoryUsage.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/loadInputFile.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/checkStopRequest.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/extractCoefficientsFromTable.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/shouldShowDebug.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/shouldShowVerbose.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/shouldShowNormal.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/mergeTables.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/logical2str.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/fallbackSimlogExtraction.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/extractTimeSeriesData.m',
-        'Golf Swing Model/Scripts/Simulation_Dataset_GUI/extractConstantMatrixData.m'
-    };
-    
-    % Copy each script to backup folder
-    for i = 1:length(scripts_to_backup)
-        script_path = scripts_to_backup{i};
-        if exist(script_path, 'file')
-            [~, script_name, script_ext] = fileparts(script_path);
-            backup_path = fullfile(backup_folder, [script_name, script_ext]);
-            copyfile(script_path, backup_path);
-        end
-    end
-    
-    % Create a README file with backup information
-    readme_content = sprintf(['Script Backup Created: %s\n', ...
-                             'This backup contains all scripts used in the current simulation run.\n', ...
-                             'Backup includes:\n', ...
-                             '- Main GUI script\n', ...
-                             '- Data extraction functions\n', ...
-                             '- Utility functions\n', ...
-                             '- All supporting scripts\n\n', ...
-                             'Total scripts backed up: %d\n', ...
-                             'Backup location: %s\n'], ...
-                             timestamp, length(scripts_to_backup), backup_folder);
-    
-    readme_path = fullfile(backup_folder, 'README_BACKUP.txt');
-    fid = fopen(readme_path, 'w');
-    if fid ~= -1
-        fprintf(fid, '%s', readme_content);
-        fclose(fid);
-    end
-    
-    updateLog(handles, sprintf('Script backup created: %s', backup_folder));
-end
-
 function stopGeneration(handles)
     % Stop the generation process
     handles.should_stop = true;
     guidata(gcbf, handles);
     updateLog(handles, 'Generation stopped by user.');
     
-    % Try to stop any running simulation
-    try
-        % Stop the Simulink model if it's running
-        if bdIsLoaded('GolfSwing3D_Kinetic')
-            set_param('GolfSwing3D_Kinetic', 'SimulationCommand', 'stop');
-            updateLog(handles, 'Simulation stopped.');
-        end
-    catch ME
-        updateLog(handles, sprintf('Warning: Could not stop simulation: %s', ME.message));
-    end
-    
     set(handles.start_btn, 'Enable', 'on');
     set(handles.stop_btn, 'Enable', 'off');
-    set(handles.run_another_btn, 'Enable', 'on');
     set(handles.status_text, 'String', 'Stopped');
 end
 
 function clearLog(handles)
     % Clear the log display
     set(handles.log_text, 'String', {'Log cleared'});
-end
-
-function runAnotherTrial(handles)
-    % Reset trial counter and run another trial
-    updateLog(handles, 'Starting another trial...');
-    
-    % Reset UI state
-    set(handles.start_btn, 'Enable', 'off');
-    set(handles.stop_btn, 'Enable', 'on');
-    set(handles.run_another_btn, 'Enable', 'off');
-    
-    % Run single trial
-    try
-        trial_data = runSingleTrialWithSignalBus(1, handles);
-        updateLog(handles, 'Additional trial completed successfully');
-    catch ME
-        updateLog(handles, sprintf('Additional trial failed: %s', ME.message));
-    end
-    
-    % Reset UI state
-    set(handles.start_btn, 'Enable', 'on');
-    set(handles.stop_btn, 'Enable', 'off');
-    set(handles.run_another_btn, 'Enable', 'on');
 end
 
 function updateLog(handles, message)
@@ -664,7 +515,6 @@ function runTrials(handles)
     % Finalization
     set(handles.start_btn, 'Enable', 'on');
     set(handles.stop_btn, 'Enable', 'off');
-    set(handles.run_another_btn, 'Enable', 'on');  % Enable run another button
     set(handles.status_text, 'String', 'Generation completed');
     updateLog(handles, 'All trials completed!');
 end
@@ -676,20 +526,6 @@ function trial_data = runSingleTrialWithSignalBus(trial_num, handles)
     % CombinedSignalBus structure: out.CombinedSignalBus.{SignalCategory}.{SignalName}
     
     updateLog(handles, sprintf('Starting simulation for trial %d', trial_num));
-    
-    % Get animation setting
-    enable_animation = get(handles.enable_animation, 'Value');
-    
-    % Set simulation mode based on animation setting
-    if ~enable_animation
-        % Use accelerator mode for speed
-        set_param('GolfSwing3D_Kinetic', 'SimulationMode', 'accelerator');
-        updateLog(handles, 'Animation disabled - using accelerator mode for speed');
-    else
-        % Use normal mode for animation
-        set_param('GolfSwing3D_Kinetic', 'SimulationMode', 'normal');
-        updateLog(handles, 'Animation enabled - using normal mode');
-    end
     
     % Call the actual simulation function
     try
