@@ -215,6 +215,22 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                                     field_name, sub_field_name, dim, vector_data(dim), expected_length);
                             end
                             
+                        % Handle 3x3xN time series (e.g., inertia over time)
+                        elseif ndims(numeric_data) == 3 && all(size(numeric_data,1:2) == [3 3])
+                            n_steps = size(numeric_data,3);
+                            if n_steps ~= expected_length
+                                fprintf('Debug: Skipping %s.%s (3x3xN but N=%d, expected %d)\n', field_name, sub_field_name, n_steps, expected_length);
+                            else
+                                % Flatten each 3x3 matrix at each timestep into 9 columns
+                                flat_matrix = reshape(permute(numeric_data, [3 1 2]), n_steps, 9);
+                                for idx = 1:9
+                                    [row, col] = ind2sub([3,3], idx);
+                                    data_cells{end+1} = flat_matrix(:,idx);
+                                    var_names{end+1} = sprintf('%s_%s_I%d%d', field_name, sub_field_name, row, col);
+                                    fprintf('Debug: Added 3x3xN matrix %s_%s_I%d%d (N=%d)\n', field_name, sub_field_name, row, col, n_steps);
+                                end
+                            end
+                            
                         else
                             % UNHANDLED SIZE - still skip but with better diagnostic
                             fprintf('Debug: Skipping %s.%s (size [%s] not supported - need time series, 3D vector, 3x3 matrix, or 6DOF)\n', ...

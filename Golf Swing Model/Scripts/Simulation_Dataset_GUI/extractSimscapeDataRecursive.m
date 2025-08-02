@@ -92,27 +92,30 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
         else
             fprintf('✅ Primary method found data!\n');
         end
-        
-        % Create table from collected signals
-        if ~isempty(all_signals)
-            % Initialize data arrays
-            all_data = {time_data};
-            var_names = {'time'};
-            
-            % Add each signal
-            for i = 1:length(all_signals)
-                signal = all_signals{i};
-                all_data{end+1} = signal.data;
+
+        % Build table
+        data_cells = {time_data};
+        var_names = {'time'};
+        expected_length = length(time_data);
+
+        for i = 1:length(all_signals)
+            signal = all_signals{i};
+            if length(signal.data) == expected_length
+                data_cells{end+1} = signal.data(:);
                 var_names{end+1} = signal.name;
+                fprintf('Debug: Added Simscape signal: %s (length: %d)\n', signal.name, expected_length);
+            else
+                fprintf('Debug: Skipped %s (length mismatch: %d vs %d)\n', signal.name, length(signal.data), expected_length);
             end
-            
-            % Create table
-            simscape_data = table(all_data{:}, 'VariableNames', var_names);
-            fprintf('✅ Created Simscape table with %d columns and %d rows\n', width(simscape_data), height(simscape_data));
-        else
-            fprintf('❌ No signals found in Simscape data\n');
         end
-        
+
+        if length(data_cells) > 1
+            simscape_data = table(data_cells{:}, 'VariableNames', var_names);
+            fprintf('Debug: Created Simscape table with %d columns, %d rows.\n', width(simscape_data), height(simscape_data));
+        else
+            fprintf('Debug: Only time data found in Simscape log.\n');
+        end
+
     catch ME
         fprintf('Error extracting Simscape data recursively: %s\n', ME.message);
     end
