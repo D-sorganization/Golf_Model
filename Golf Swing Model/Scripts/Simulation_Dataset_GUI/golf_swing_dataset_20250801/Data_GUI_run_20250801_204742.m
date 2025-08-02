@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-08-01 20:47:42
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 9
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: enabled
+% Logsout Dataset: enabled
+% Simscape Results: enabled
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250801
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: DeskComputer
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 9 trials x 189 coefficients
+% First trial coefficients (first 10): -49.400, -7.440, -38.570, -38.930, 10.040, -12.880, -30.220, 4.440, -9.440, 38.660
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 %% 
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
@@ -2332,7 +2375,7 @@ function successful_trials = runParallelSimulations(handles, config)
     % Check for existing checkpoint
     checkpoint_file = fullfile(config.output_folder, 'parallel_checkpoint.mat');
     start_batch = 1;
-    if exist(checkpoint_file, 'file') && get(handles.enable_checkpoint_resume, 'Value')
+    if exist(checkpoint_file, 'file')
         try
             checkpoint_data = load(checkpoint_file);
             if isfield(checkpoint_data, 'completed_trials')
@@ -2343,8 +2386,6 @@ function successful_trials = runParallelSimulations(handles, config)
         catch ME
             fprintf('Warning: Could not load checkpoint: %s\n', ME.message);
         end
-    elseif exist(checkpoint_file, 'file') && ~get(handles.enable_checkpoint_resume, 'Value')
-        fprintf('Checkpoint found but resume disabled - starting fresh\n');
     end
     
     % Ensure model is available on all parallel workers
@@ -2779,7 +2820,7 @@ function successful_trials = runSequentialSimulations(handles, config)
     % Check for existing checkpoint
     checkpoint_file = fullfile(config.output_folder, 'sequential_checkpoint.mat');
     start_batch = 1;
-    if exist(checkpoint_file, 'file') && get(handles.enable_checkpoint_resume, 'Value')
+    if exist(checkpoint_file, 'file')
         try
             checkpoint_data = load(checkpoint_file);
             if isfield(checkpoint_data, 'completed_trials')
@@ -2790,8 +2831,6 @@ function successful_trials = runSequentialSimulations(handles, config)
         catch ME
             fprintf('Warning: Could not load checkpoint: %s\n', ME.message);
         end
-    elseif exist(checkpoint_file, 'file') && ~get(handles.enable_checkpoint_resume, 'Value')
-        fprintf('Checkpoint found but resume disabled - starting fresh\n');
     end
     
     % Process batches
@@ -3667,6 +3706,95 @@ function coefficient_values = extractCoefficientsFromTable(handles)
     end
 end
 % Helper functions
+function param_info = getPolynomialParameterInfo()
+    % Get polynomial parameter structure with dynamic path resolution
+    try
+        % Try multiple possible locations for the parameter file
+        possible_paths = {
+            'Model/PolynomialInputValues.mat',
+            'PolynomialInputValues.mat',
+            fullfile(pwd, 'Model', 'PolynomialInputValues.mat'),
+            fullfile(pwd, 'PolynomialInputValues.mat')
+        };
+        
+        model_path = '';
+        for i = 1:length(possible_paths)
+            if exist(possible_paths{i}, 'file')
+                model_path = possible_paths{i};
+                break;
+            end
+        end
+        
+        if ~isempty(model_path)
+            loaded_data = load(model_path);
+            var_names = fieldnames(loaded_data);
+            
+            % Parse variable names
+            joint_map = containers.Map();
+            
+            for i = 1:length(var_names)
+                name = var_names{i};
+                if length(name) > 1
+                    coeff = name(end);
+                    base_name = name(1:end-1);
+                    
+                    if isKey(joint_map, base_name)
+                        joint_map(base_name) = [joint_map(base_name), coeff];
+                    else
+                        joint_map(base_name) = coeff;
+                    end
+                end
+            end
+            
+            % Filter to only 7-coefficient joints
+            all_joint_names = keys(joint_map);
+            filtered_joint_names = {};
+            filtered_coeffs = {};
+            
+            for i = 1:length(all_joint_names)
+                joint_name = all_joint_names{i};
+                coeffs = sort(joint_map(joint_name));
+                
+                if length(coeffs) == 7 && strcmp(coeffs, 'ABCDEFG')
+                    filtered_joint_names{end+1} = joint_name;
+                    filtered_coeffs{end+1} = coeffs;
+                end
+            end
+            
+            param_info.joint_names = sort(filtered_joint_names);
+            param_info.joint_coeffs = cell(size(param_info.joint_names));
+            
+            for i = 1:length(param_info.joint_names)
+                joint_name = param_info.joint_names{i};
+                idx = find(strcmp(filtered_joint_names, joint_name));
+                param_info.joint_coeffs{i} = filtered_coeffs{idx};
+            end
+            
+            param_info.total_params = length(param_info.joint_names) * 7;
+            
+        else
+            param_info = getSimplifiedParameterInfo();
+        end
+        
+    catch
+        param_info = getSimplifiedParameterInfo();
+    end
+end
+function param_info = getSimplifiedParameterInfo()
+    % Fallback structure
+    joint_names = {
+        'BaseTorqueInputX', 'BaseTorqueInputY', 'BaseTorqueInputZ',
+        'HipInputX', 'HipInputY', 'HipInputZ',
+        'LSInputX', 'LSInputY', 'LSInputZ'
+    };
+    
+    param_info.joint_names = joint_names;
+    param_info.joint_coeffs = cell(size(joint_names));
+    for i = 1:length(joint_names)
+        param_info.joint_coeffs{i} = 'ABCDEFG';
+    end
+    param_info.total_params = length(joint_names) * 7;
+end
 function short_name = getShortenedJointName(joint_name)
     % Create shortened joint names for display
     short_name = strrep(joint_name, 'TorqueInput', 'T');

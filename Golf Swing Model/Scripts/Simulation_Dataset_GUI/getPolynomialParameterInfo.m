@@ -65,9 +65,7 @@ function param_info = getPolynomialParameterInfo()
             for i = 1:length(param_info.joint_names)
                 joint_name = param_info.joint_names{i};
                 idx = find(strcmp(filtered_joint_names, joint_name));
-                % Convert string 'ABCDEFG' to cell array {'A', 'B', 'C', 'D', 'E', 'F', 'G'}
-                coeff_string = filtered_coeffs{idx};
-                param_info.joint_coeffs{i} = cellstr(coeff_string')';
+                param_info.joint_coeffs{i} = filtered_coeffs{idx};
             end
             
             param_info.total_params = length(param_info.joint_names) * 7;
@@ -100,8 +98,7 @@ function param_info = getSimplifiedParameterInfo()
     param_info.joint_names = all_joint_names;
     param_info.joint_coeffs = cell(size(all_joint_names));
     for i = 1:length(all_joint_names)
-        % Convert string 'ABCDEFG' to cell array {'A', 'B', 'C', 'D', 'E', 'F', 'G'}
-        param_info.joint_coeffs{i} = {'A', 'B', 'C', 'D', 'E', 'F', 'G'};
+        param_info.joint_coeffs{i} = 'ABCDEFG';
     end
     param_info.total_params = length(all_joint_names) * 7;
 end 
