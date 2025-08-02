@@ -169,6 +169,15 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                                 end
                             end
                             
+                        elseif num_elements == 1
+                            % 1x1 MATRIX (scalar value) - replicate for all time steps
+                            scalar_value = numeric_data(1);  % Extract the scalar value
+                            replicated_data = repmat(scalar_value, expected_length, 1);
+                            data_cells{end+1} = replicated_data;
+                            var_names{end+1} = sprintf('%s_%s', field_name, sub_field_name);
+                            fprintf('Debug: Added scalar value %s_%s (replicated %g for %d timesteps)\n', ...
+                                field_name, sub_field_name, scalar_value, expected_length);
+                            
                         elseif num_elements == 3
                             % 3D VECTOR (e.g., COM position [x, y, z])
                             vector_data = numeric_data(:);  % Ensure column vector
@@ -183,35 +192,26 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                             end
                             
                         elseif num_elements == 9
-                            % 3x3 MATRIX (e.g., inertia matrix) - treat as potentially time-varying
+                            % 3x3 MATRIX (e.g., inertia matrix)
                             if isequal(data_size, [3, 3])
-                                % Convert constant 3x3 matrix to 3x3xN format for consistent handling
-                                matrix_data = repmat(numeric_data, [1, 1, expected_length]);
+                                % Already 3x3 matrix
+                                matrix_data = numeric_data;
                             else
-                                % Reshape to 3x3 if it's a 9x1 vector, then expand to 3x3xN
+                                % Reshape to 3x3 if it's a 9x1 vector
                                 matrix_data = reshape(numeric_data, 3, 3);
-                                matrix_data = repmat(matrix_data, [1, 1, expected_length]);
                             end
                             
-                            % Now handle as 3x3xN time series (same as below)
-                            n_steps = size(matrix_data,3);
-                            % Flatten each 3x3 matrix at each timestep into 9 columns
-                            flat_matrix = reshape(permute(matrix_data, [3 1 2]), n_steps, 9);
-                            for idx = 1:9
-                                [row, col] = ind2sub([3,3], idx);
-                                data_cells{end+1} = flat_matrix(:,idx);
-                                var_names{end+1} = sprintf('%s_%s_I%d%d', field_name, sub_field_name, row, col);
-                                fprintf('Debug: Added 3x3 matrix %s_%s_I%d%d (N=%d)\n', field_name, sub_field_name, row, col, n_steps);
+                            % Extract all 9 elements and replicate for each time step
+                            for row = 1:3
+                                for col = 1:3
+                                    matrix_element = matrix_data(row, col);
+                                    replicated_data = repmat(matrix_element, expected_length, 1);
+                                    data_cells{end+1} = replicated_data;
+                                    var_names{end+1} = sprintf('%s_%s_I%d%d', field_name, sub_field_name, row, col);
+                                    fprintf('Debug: Added 3x3 matrix %s_%s_I%d%d (replicated %g for %d timesteps)\n', ...
+                                        field_name, sub_field_name, row, col, matrix_element, expected_length);
+                                end
                             end
-                            
-                        elseif num_elements == 1
-                            % 1 ELEMENT DATA (scalar constants)
-                            scalar_value = numeric_data(1);
-                            replicated_data = repmat(scalar_value, expected_length, 1);
-                            data_cells{end+1} = replicated_data;
-                            var_names{end+1} = sprintf('%s_%s', field_name, sub_field_name);
-                            fprintf('Debug: Added scalar data %s_%s (replicated %g for %d timesteps)\n', ...
-                                field_name, sub_field_name, scalar_value, expected_length);
                             
                         elseif num_elements == 6
                             % 6 ELEMENT DATA (e.g., 6DOF pose/twist)
@@ -222,20 +222,6 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                                 var_names{end+1} = sprintf('%s_%s_dof%d', field_name, sub_field_name, dim);
                                 fprintf('Debug: Added 6DOF data %s_%s_dof%d (replicated %g for %d timesteps)\n', ...
                                     field_name, sub_field_name, dim, vector_data(dim), expected_length);
-                            end
-                            
-                        % Handle 3x1xN time series (3D vectors over time)
-                        elseif ndims(numeric_data) == 3 && all(size(numeric_data,1:2) == [3 1])
-                            n_steps = size(numeric_data,3);
-                            if n_steps ~= expected_length
-                                fprintf('Debug: Skipping %s.%s (3x1xN but N=%d, expected %d)\n', field_name, sub_field_name, n_steps, expected_length);
-                            else
-                                % Extract each component of the 3D vector over time
-                                for dim = 1:3
-                                    data_cells{end+1} = squeeze(numeric_data(dim, 1, :));
-                                    var_names{end+1} = sprintf('%s_%s_dim%d', field_name, sub_field_name, dim);
-                                    fprintf('Debug: Added 3x1xN vector %s_%s_dim%d (N=%d)\n', field_name, sub_field_name, dim, n_steps);
-                                end
                             end
                             
                         % Handle 3x3xN time series (e.g., inertia over time)
