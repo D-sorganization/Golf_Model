@@ -2228,16 +2228,16 @@ function runGeneration(handles)
             % GUI might be destroyed, ignore the error
         end
         errordlg(ME.message, 'Generation Failed');
-    finally
-        % Always cleanup state and UI
-        try
-            handles.is_running = false;
-            set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
-            set(handles.stop_button, 'Enable', 'off');
-            guidata(handles.fig, handles);
-        catch
-            % GUI might be destroyed, ignore the error
-        end
+    end
+    
+    % Always cleanup state and UI (replaces finally block)
+    try
+        handles.is_running = false;
+        set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
+        set(handles.stop_button, 'Enable', 'off');
+        guidata(handles.fig, handles);
+    catch
+        % GUI might be destroyed, ignore the error
     end
 end
 function successful_trials = runParallelSimulations(handles, config)
@@ -5722,32 +5722,50 @@ end
 function resetGUIState(handles)
     % Reset the GUI to its startup state for running another test
     
-    % Reset running state
-    handles.is_running = false;
-    handles.should_stop = false;
-    
-    % Reset button states
-    set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
-    set(handles.stop_button, 'Enable', 'off');
-    
-    % Reset progress and status displays
-    set(handles.progress_text, 'String', 'Ready to start generation...');
-    set(handles.status_text, 'String', 'Status: Ready');
-    
-    % Clear any stored configuration
-    if isfield(handles, 'config')
-        handles = rmfield(handles, 'config');
+    try
+        % Reset running state
+        handles.is_running = false;
+        handles.should_stop = false;
+        
+        % Reset button states
+        set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
+        set(handles.stop_button, 'Enable', 'off');
+        
+        % Reset progress and status displays
+        set(handles.progress_text, 'String', 'Ready to start generation...');
+        set(handles.status_text, 'String', 'Status: Ready');
+        
+        % Clear any stored configuration
+        if isfield(handles, 'config')
+            handles = rmfield(handles, 'config');
+        end
+        
+        % Reset coefficients table to default state
+        try
+            updateCoefficientsPreview([], [], handles.fig);
+        catch
+            % GUI might be destroyed, ignore the error
+        end
+        
+        % Update summary display
+        try
+            updatePreview([], [], handles.fig);
+        catch
+            % GUI might be destroyed, ignore the error
+        end
+        
+        % Force GUI update
+        drawnow;
+        
+        % Store updated handles
+        try
+            guidata(handles.fig, handles);
+        catch
+            % GUI might be destroyed, ignore the error
+        end
+        
+    catch ME
+        % If GUI is destroyed or any other error occurs, just log it
+        fprintf('Warning: Could not reset GUI state: %s\n', ME.message);
     end
-    
-    % Reset coefficients table to default state
-    updateCoefficientsPreview([], [], handles.fig);
-    
-    % Update summary display
-    updatePreview([], [], handles.fig);
-    
-    % Force GUI update
-    drawnow;
-    
-    % Store updated handles
-    guidata(handles.fig, handles);
 end
