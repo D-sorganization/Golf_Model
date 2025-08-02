@@ -136,8 +136,6 @@ function handles = createMainLayout(fig, handles)
                                           'FontWeight', 'bold', ...
                                           'Callback', @loadConfiguration);
     
-
-    
     % Content area
     contentTop = 1 - titleHeight - 0.01;
     contentPanel = uipanel('Parent', mainPanel, ...
@@ -313,8 +311,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                           'Units', 'normalized', ...
                                           'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                           'BackgroundColor', 'white', ...
-                                          'FontSize', 9, ...
-                                          'Callback', @autoUpdateSummary);
+                                          'FontSize', 9);
     
     handles.browse_button = uicontrol('Parent', panel, ...
                                      'Style', 'pushbutton', ...
@@ -341,8 +338,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                         'Units', 'normalized', ...
                                         'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                         'BackgroundColor', 'white', ...
-                                        'FontSize', 9, ...
-                                        'Callback', @autoUpdateSummary);
+                                        'FontSize', 9);
     
     % Output Format
     y = y - 0.05;
@@ -359,8 +355,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                     'String', {'CSV Files', 'MAT Files', 'Both CSV and MAT'}, ...
                                     'Units', 'normalized', ...
                                     'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
-                                    'BackgroundColor', 'white', ...
-                                    'Callback', @autoUpdateSummary);
+                                    'BackgroundColor', 'white');
     
     % Execution Mode
     y = y - 0.05;
@@ -402,8 +397,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                        'String', {'Minimal', 'Standard', 'Detailed', 'Debug'}, ...
                                        'Units', 'normalized', ...
                                        'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
-                                       'BackgroundColor', 'white', ...
-                                       'Callback', @autoUpdateSummary);
+                                       'BackgroundColor', 'white');
     
     % Trial Parameters
     y = y - 0.05;
@@ -422,7 +416,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                        'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                        'BackgroundColor', 'white', ...
                                        'HorizontalAlignment', 'center', ...
-                                       'Callback', @autoUpdateSummary);
+                                       'Callback', @updateCoefficientsPreview);
     
     % Duration
     y = y - 0.05;
@@ -497,7 +491,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                         'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                         'BackgroundColor', 'white', ...
                                         'HorizontalAlignment', 'center', ...
-                                        'Callback', @autoUpdateSummary);
+                                        'Callback', @updateCoefficientsPreview);
     
     % Data Sources
     y = y - 0.05;
@@ -516,8 +510,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                       'Units', 'normalized', ...
                                       'Position', [textBoxStart, y, 0.30, rowHeight], ...
                                       'Value', 1, ...
-                                      'BackgroundColor', colors.panel, ...
-                                      'Callback', @autoUpdateSummary);
+                                      'BackgroundColor', colors.panel);
     
     handles.use_logsout = uicontrol('Parent', panel, ...
                                    'Style', 'checkbox', ...
@@ -525,8 +518,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                    'Units', 'normalized', ...
                                    'Position', [textBoxStart + 0.24, y, 0.30, rowHeight], ...
                                    'Value', 1, ...
-                                   'BackgroundColor', colors.panel, ...
-                                   'Callback', @autoUpdateSummary);
+                                   'BackgroundColor', colors.panel);
     
     % Second row of checkboxes
     y = y - 0.025;
@@ -536,8 +528,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                     'Units', 'normalized', ...
                                     'Position', [textBoxStart, y, 0.30, rowHeight], ...
                                     'Value', 1, ...
-                                    'BackgroundColor', colors.panel, ...
-                                    'Callback', @autoUpdateSummary);
+                                    'BackgroundColor', colors.panel);
     
     handles.capture_workspace_checkbox = uicontrol('Parent', panel, ...
                                                   'Style', 'checkbox', ...
@@ -1557,13 +1548,6 @@ function startGeneration(src, evt)
         handles.should_stop = false;
         guidata(handles.fig, handles);
         
-        % Create backup of all scripts before starting
-        try
-            backupScripts(handles);
-        catch ME
-            fprintf('Warning: Could not create script backup: %s\n', ME.message);
-        end
-        
         % Start generation
         runGeneration(handles);
         
@@ -1589,166 +1573,7 @@ function stopGeneration(src, evt)
     set(handles.status_text, 'String', 'Status: Stopping...');
     set(handles.progress_text, 'String', 'Generation stopped by user');
     
-    % Try to stop any running simulation
-    try
-        % Get the model name from the GUI
-        model_name = get(handles.model_popup, 'String');
-        if iscell(model_name)
-            model_name = model_name{get(handles.model_popup, 'Value')};
-        end
-        
-        % Stop the Simulink model if it's running
-        if bdIsLoaded(model_name)
-            set_param(model_name, 'SimulationCommand', 'stop');
-            fprintf('Simulation %s stopped.\n', model_name);
-        end
-        
-        % Also try to stop any running parsim processes
-        if exist('gcp', 'file') && ~isempty(gcp('nocreate'))
-            pool = gcp('nocreate');
-            if ~isempty(pool)
-                fprintf('Parallel pool detected - stopping parallel processes...\n');
-            end
-        end
-        
-    catch ME
-        fprintf('Warning: Could not stop simulation: %s\n', ME.message);
-    end
-    
-    % Reset GUI to startup state after stopping
-    resetGUItoStartupState(handles);
-    
     % Note: The actual cleanup will happen in runGeneration when it detects should_stop = true
-end
-
-% Reset GUI to Startup State
-function resetGUItoStartupState(handles)
-    % Reset the GUI to its initial startup state after completion
-    
-    % Reset UI state
-    set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
-    set(handles.stop_button, 'Enable', 'off');
-    
-    % Reset status and progress
-    set(handles.status_text, 'String', 'Status: Ready to start...');
-    set(handles.progress_text, 'String', 'Enter parameters and click Start Generation');
-    
-    % Reset running state
-    handles.is_running = false;
-    handles.should_stop = false;
-    
-    % Clear any stored configuration
-    if isfield(handles, 'config')
-        handles = rmfield(handles, 'config');
-    end
-    
-    % Update handles
-    guidata(handles.fig, handles);
-    
-    fprintf('GUI reset to startup state - ready for new batch of tests\n');
-end
-
-% Backup Scripts Function
-function backupScripts(handles)
-    % Create a backup of all scripts used in the current run
-    timestamp = datestr(now, 'yyyymmdd_HHMMSS');
-    backup_folder = sprintf('Script_Backup_%s', timestamp);
-    
-    % Create backup directory
-    if ~exist(backup_folder, 'dir')
-        mkdir(backup_folder);
-    end
-    
-    % List of scripts to backup (all scripts in the Simulation_Dataset_GUI folder)
-    scripts_to_backup = {
-        'Data_GUI.m',
-        'extractFromCombinedSignalBus.m',
-        'extractFromNestedStruct.m',
-        'extractLogsoutDataFixed.m',
-        'extractSimscapeDataRecursive.m',
-        'traverseSimlogNode.m',
-        'extractDataFromField.m',
-        'combineDataSources.m',
-        'addModelWorkspaceData.m',
-        'extractWorkspaceOutputs.m',
-        'resampleDataToFrequency.m',
-        'getPolynomialParameterInfo.m',
-        'getShortenedJointName.m',
-        'generateRandomCoefficients.m',
-        'prepareSimulationInputsForBatch.m',
-        'restoreWorkspace.m',
-        'getMemoryInfo.m',
-        'checkHighMemoryUsage.m',
-        'loadInputFile.m',
-        'checkStopRequest.m',
-        'extractCoefficientsFromTable.m',
-        'shouldShowDebug.m',
-        'shouldShowVerbose.m',
-        'shouldShowNormal.m',
-        'mergeTables.m',
-        'logical2str.m',
-        'fallbackSimlogExtraction.m',
-        'extractTimeSeriesData.m',
-        'extractConstantMatrixData.m',
-        'setModelParameters.m',
-        'setPolynomialCoefficients.m',
-        'runSingleTrial.m',
-        'processSimulationOutput.m',
-        'extractSignalsFromSimOut.m',
-        'extractCombinedSignalBusData.m',
-        'extractDataWithOptions.m',
-        'extractAllSignalsFromBus.m',
-        'data_extraction_functions.m',
-        'check_model_configuration.m',
-        'checkModelConfiguration.m',
-        'inspect_simscape_hierarchy.m',
-        'getMemoryUsage.m',
-        'endPhase.m',
-        'logMessage.m',
-        'memory_monitor.m',
-        'performance_monitor.m',
-        'recordBatchTime.m',
-        'recordPhase.m',
-        'verbosity_control.m',
-        'checkpoint_recovery.m',
-        'Clear_Parallel_Cache.m'
-    };
-    
-    % Get the directory where this script is located
-    [script_dir, ~, ~] = fileparts(mfilename('fullpath'));
-    
-    % Copy each script to backup folder
-    for i = 1:length(scripts_to_backup)
-        script_path = fullfile(script_dir, scripts_to_backup{i});
-        if exist(script_path, 'file')
-            [~, script_name, script_ext] = fileparts(scripts_to_backup{i});
-            backup_path = fullfile(backup_folder, [script_name, script_ext]);
-            copyfile(script_path, backup_path);
-        else
-            fprintf('Warning: Script not found: %s\n', script_path);
-        end
-    end
-    
-    % Create a README file with backup information
-    readme_content = sprintf(['Script Backup Created: %s\n', ...
-                             'This backup contains all scripts used in the current simulation run.\n', ...
-                             'Backup includes:\n', ...
-                             '- Main GUI script\n', ...
-                             '- Data extraction functions\n', ...
-                             '- Utility functions\n', ...
-                             '- All supporting scripts\n\n', ...
-                             'Total scripts backed up: %d\n', ...
-                             'Backup location: %s\n'], ...
-                             timestamp, length(scripts_to_backup), backup_folder);
-    
-    readme_path = fullfile(backup_folder, 'README_BACKUP.txt');
-    fid = fopen(readme_path, 'w');
-    if fid ~= -1
-        fprintf(fid, '%s', readme_content);
-        fclose(fid);
-    end
-    
-    fprintf('Script backup created: %s\n', backup_folder);
 end
 % Browse Input File
 function browseInputFile(src, evt)
@@ -2386,9 +2211,6 @@ function runGeneration(handles)
             catch ME
                 fprintf('Warning: Could not save script and settings: %s\n', ME.message);
             end
-            
-            % Reset GUI to startup state for next batch
-            resetGUItoStartupState(handles);
         end
         
     catch ME
@@ -4249,24 +4071,6 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                                 end
                             end
                             
-                        % Handle 3x1xN time series (3D vectors over time)
-                        elseif ndims(numeric_data) == 3 && all(size(numeric_data,1:2) == [3 1])
-                            n_steps = size(numeric_data,3);
-                            if n_steps ~= expected_length
-                                if strcmp(config.verbosity, 'Debug')
-                                    fprintf('Debug: Skipping %s.%s (3x1xN but N=%d, expected %d)\n', field_name, sub_field_name, n_steps, expected_length);
-                                end
-                            else
-                                % Extract each component of the 3D vector over time
-                                for dim = 1:3
-                                    data_cells{end+1} = squeeze(numeric_data(dim, 1, :));
-                                    var_names{end+1} = sprintf('%s_%s_dim%d', field_name, sub_field_name, dim);
-                                    if strcmp(config.verbosity, 'Debug')
-                                        fprintf('Debug: Added 3x1xN vector %s_%s_dim%d (N=%d)\n', field_name, sub_field_name, dim, n_steps);
-                                    end
-                                end
-                            end
-                            
                         % Handle 3x3xN time series (e.g., inertia over time)
                         elseif ndims(numeric_data) == 3 && all(size(numeric_data,1:2) == [3 3])
                             n_steps = size(numeric_data,3);
@@ -4287,17 +4091,6 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                                 end
                             end
                             
-                        elseif num_elements == 1
-                            % 1 ELEMENT DATA (scalar constants)
-                            scalar_value = numeric_data(1);
-                            replicated_data = repmat(scalar_value, expected_length, 1);
-                            data_cells{end+1} = replicated_data;
-                            var_names{end+1} = sprintf('%s_%s', field_name, sub_field_name);
-                            if strcmp(config.verbosity, 'Debug')
-                                fprintf('Debug: Added scalar data %s_%s (replicated %g for %d timesteps)\n', ...
-                                    field_name, sub_field_name, scalar_value, expected_length);
-                            end
-                            
                         elseif num_elements == 6
                             % 6 ELEMENT DATA (e.g., 6DOF pose/twist)
                             vector_data = numeric_data(:);  % Ensure column vector
@@ -4314,7 +4107,7 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                         else
                             % UNHANDLED SIZE - still skip but with better diagnostic
                             if strcmp(config.verbosity, 'Debug')
-                                fprintf('Debug: Skipping %s.%s (size [%s] not supported - need time series, 3D vector, 3x3 matrix, 6DOF, or scalar)\n', ...
+                                fprintf('Debug: Skipping %s.%s (size [%s] not supported - need time series, 3D vector, 3x3 matrix, or 6DOF)\n', ...
                                     field_name, sub_field_name, num2str(data_size));
                             end
                         end
