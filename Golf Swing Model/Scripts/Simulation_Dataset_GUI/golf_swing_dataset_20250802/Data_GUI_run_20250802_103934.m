@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-08-02 10:39:34
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 2
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: enabled
+% Logsout Dataset: enabled
+% Simscape Results: enabled
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250802
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: DeskComputer
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 2 trials x 189 coefficients
+% First trial coefficients (first 10): 1.890, 4.720, 5.490, 18.990, 34.080, -1.720, -43.130, -0.280, -46.200, -6.370
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 %% 
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
@@ -313,8 +356,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                           'Units', 'normalized', ...
                                           'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                           'BackgroundColor', 'white', ...
-                                          'FontSize', 9, ...
-                                          'Callback', @autoUpdateSummary);
+                                          'FontSize', 9);
     
     handles.browse_button = uicontrol('Parent', panel, ...
                                      'Style', 'pushbutton', ...
@@ -341,8 +383,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                         'Units', 'normalized', ...
                                         'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                         'BackgroundColor', 'white', ...
-                                        'FontSize', 9, ...
-                                        'Callback', @autoUpdateSummary);
+                                        'FontSize', 9);
     
     % Output Format
     y = y - 0.05;
@@ -359,8 +400,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                     'String', {'CSV Files', 'MAT Files', 'Both CSV and MAT'}, ...
                                     'Units', 'normalized', ...
                                     'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
-                                    'BackgroundColor', 'white', ...
-                                    'Callback', @autoUpdateSummary);
+                                    'BackgroundColor', 'white');
     
     % Execution Mode
     y = y - 0.05;
@@ -402,8 +442,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                        'String', {'Minimal', 'Standard', 'Detailed', 'Debug'}, ...
                                        'Units', 'normalized', ...
                                        'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
-                                       'BackgroundColor', 'white', ...
-                                       'Callback', @autoUpdateSummary);
+                                       'BackgroundColor', 'white');
     
     % Trial Parameters
     y = y - 0.05;
@@ -422,7 +461,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                        'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                        'BackgroundColor', 'white', ...
                                        'HorizontalAlignment', 'center', ...
-                                       'Callback', @autoUpdateSummary);
+                                       'Callback', @updateCoefficientsPreview);
     
     % Duration
     y = y - 0.05;
@@ -516,8 +555,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                       'Units', 'normalized', ...
                                       'Position', [textBoxStart, y, 0.30, rowHeight], ...
                                       'Value', 1, ...
-                                      'BackgroundColor', colors.panel, ...
-                                      'Callback', @autoUpdateSummary);
+                                      'BackgroundColor', colors.panel);
     
     handles.use_logsout = uicontrol('Parent', panel, ...
                                    'Style', 'checkbox', ...
@@ -525,8 +563,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                    'Units', 'normalized', ...
                                    'Position', [textBoxStart + 0.24, y, 0.30, rowHeight], ...
                                    'Value', 1, ...
-                                   'BackgroundColor', colors.panel, ...
-                                   'Callback', @autoUpdateSummary);
+                                   'BackgroundColor', colors.panel);
     
     % Second row of checkboxes
     y = y - 0.025;
@@ -536,8 +573,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                     'Units', 'normalized', ...
                                     'Position', [textBoxStart, y, 0.30, rowHeight], ...
                                     'Value', 1, ...
-                                    'BackgroundColor', colors.panel, ...
-                                    'Callback', @autoUpdateSummary);
+                                    'BackgroundColor', colors.panel);
     
     handles.capture_workspace_checkbox = uicontrol('Parent', panel, ...
                                                   'Style', 'checkbox', ...
@@ -1714,18 +1750,13 @@ function backupScripts(handles)
         'Clear_Parallel_Cache.m'
     };
     
-    % Get the directory where this script is located
-    [script_dir, ~, ~] = fileparts(mfilename('fullpath'));
-    
     % Copy each script to backup folder
     for i = 1:length(scripts_to_backup)
-        script_path = fullfile(script_dir, scripts_to_backup{i});
+        script_path = scripts_to_backup{i};
         if exist(script_path, 'file')
-            [~, script_name, script_ext] = fileparts(scripts_to_backup{i});
+            [~, script_name, script_ext] = fileparts(script_path);
             backup_path = fullfile(backup_folder, [script_name, script_ext]);
             copyfile(script_path, backup_path);
-        else
-            fprintf('Warning: Script not found: %s\n', script_path);
         end
     end
     
@@ -4249,24 +4280,6 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                                 end
                             end
                             
-                        % Handle 3x1xN time series (3D vectors over time)
-                        elseif ndims(numeric_data) == 3 && all(size(numeric_data,1:2) == [3 1])
-                            n_steps = size(numeric_data,3);
-                            if n_steps ~= expected_length
-                                if strcmp(config.verbosity, 'Debug')
-                                    fprintf('Debug: Skipping %s.%s (3x1xN but N=%d, expected %d)\n', field_name, sub_field_name, n_steps, expected_length);
-                                end
-                            else
-                                % Extract each component of the 3D vector over time
-                                for dim = 1:3
-                                    data_cells{end+1} = squeeze(numeric_data(dim, 1, :));
-                                    var_names{end+1} = sprintf('%s_%s_dim%d', field_name, sub_field_name, dim);
-                                    if strcmp(config.verbosity, 'Debug')
-                                        fprintf('Debug: Added 3x1xN vector %s_%s_dim%d (N=%d)\n', field_name, sub_field_name, dim, n_steps);
-                                    end
-                                end
-                            end
-                            
                         % Handle 3x3xN time series (e.g., inertia over time)
                         elseif ndims(numeric_data) == 3 && all(size(numeric_data,1:2) == [3 3])
                             n_steps = size(numeric_data,3);
@@ -4287,17 +4300,6 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                                 end
                             end
                             
-                        elseif num_elements == 1
-                            % 1 ELEMENT DATA (scalar constants)
-                            scalar_value = numeric_data(1);
-                            replicated_data = repmat(scalar_value, expected_length, 1);
-                            data_cells{end+1} = replicated_data;
-                            var_names{end+1} = sprintf('%s_%s', field_name, sub_field_name);
-                            if strcmp(config.verbosity, 'Debug')
-                                fprintf('Debug: Added scalar data %s_%s (replicated %g for %d timesteps)\n', ...
-                                    field_name, sub_field_name, scalar_value, expected_length);
-                            end
-                            
                         elseif num_elements == 6
                             % 6 ELEMENT DATA (e.g., 6DOF pose/twist)
                             vector_data = numeric_data(:);  % Ensure column vector
@@ -4314,7 +4316,7 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                         else
                             % UNHANDLED SIZE - still skip but with better diagnostic
                             if strcmp(config.verbosity, 'Debug')
-                                fprintf('Debug: Skipping %s.%s (size [%s] not supported - need time series, 3D vector, 3x3 matrix, 6DOF, or scalar)\n', ...
+                                fprintf('Debug: Skipping %s.%s (size [%s] not supported - need time series, 3D vector, 3x3 matrix, or 6DOF)\n', ...
                                     field_name, sub_field_name, num2str(data_size));
                             end
                         end
