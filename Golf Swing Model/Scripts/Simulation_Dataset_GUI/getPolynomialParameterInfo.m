@@ -2,6 +2,12 @@ function param_info = getPolynomialParameterInfo()
     % External function for getting polynomial parameter information - can be used in parallel processing
     % This function reads the actual parameter structure from the model file
     
+    % Use persistent variable to only show loading message once
+    persistent has_shown_loading_message;
+    if isempty(has_shown_loading_message)
+        has_shown_loading_message = false;
+    end
+    
     % Try to load the actual parameter structure from the model file
     try
         % Try multiple possible locations for the parameter file
@@ -23,7 +29,10 @@ function param_info = getPolynomialParameterInfo()
         end
         
         if ~isempty(model_path)
-            fprintf('Loading parameter structure from: %s\n', model_path);
+            if ~has_shown_loading_message
+                fprintf('Loading parameter structure from: %s\n', model_path);
+                has_shown_loading_message = true;
+            end
             loaded_data = load(model_path);
             var_names = fieldnames(loaded_data);
             
@@ -69,8 +78,10 @@ function param_info = getPolynomialParameterInfo()
             end
             
             param_info.total_params = length(param_info.joint_names) * 7;
-            fprintf('Loaded %d joints with 7 coefficients each = %d total coefficients\n', ...
-                length(param_info.joint_names), param_info.total_params);
+            if ~has_shown_loading_message
+                fprintf('Loaded %d joints with 7 coefficients each = %d total coefficients\n', ...
+                    length(param_info.joint_names), param_info.total_params);
+            end
             
         else
             fprintf('Warning: PolynomialInputValues.mat not found, using fallback structure\n');
