@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-08-01 22:58:14
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 2
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: enabled
+% Logsout Dataset: enabled
+% Simscape Results: enabled
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulation_Dataset_GUI\golf_swing_dataset_20250801
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: DeskComputer
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 2 trials x 189 coefficients
+% First trial coefficients (first 10): -40.550, -8.810, 38.890, -34.420, 37.300, 49.660, 3.170, -22.690, -3.850, 48.120
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 %% 
 function Data_GUI()
     % GolfSwingDataGenerator - Modern GUI for generating golf swing training data
@@ -589,7 +632,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
     handles.enable_checkpoint_resume = uicontrol('Parent', panel, ...
                                                 'Style', 'checkbox', ...
                                                 'String', 'Resume from checkpoint', ...
-                                                'Value', 0, ...
+                                                'Value', 1, ...
                                                 'Units', 'normalized', ...
                                                 'Position', [textBoxStart, y, 0.30, rowHeight], ...
                                                 'BackgroundColor', colors.panel, ...
