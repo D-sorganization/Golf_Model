@@ -1,7 +1,4 @@
 function result = processSimulationOutput(trial_num, config, simOut, capture_workspace)
-    % External function for processing simulation output - can be used in parallel processing
-    % This function accepts config as a parameter instead of relying on handles
-    
     result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
     
     try
@@ -91,7 +88,7 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
                 % Save CSV
                 csv_filename = sprintf('trial_%03d_%s.csv', trial_num, timestamp);
                 csv_filepath = fullfile(config.output_folder, csv_filename);
-                writetable(csv_filename, csv_filepath);
+                writetable(data_table, csv_filepath);
                 saved_files{end+1} = csv_filename;
                 
                 % Save MAT
@@ -101,21 +98,23 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
                 saved_files{end+1} = mat_filename;
         end
         
-        % Update result
+        % Update result with primary filename
+        filename = saved_files{1};
+        
         result.success = true;
-        result.filename = saved_files{1}; % Return first saved filename
-        result.data_points = height(data_table);
+        result.filename = filename;
+        result.data_points = num_rows;
         result.columns = width(data_table);
         
-        fprintf('✓ Trial %d completed: %d data points, %d columns\n', trial_num, result.data_points, result.columns);
+        fprintf('Trial %d completed: %d data points, %d columns\n', trial_num, num_rows, width(data_table));
         
     catch ME
         result.success = false;
         result.error = ME.message;
-        fprintf('✗ Trial %d processing failed: %s\n', trial_num, ME.message);
+        fprintf('Error processing trial %d output: %s\n', trial_num, ME.message);
         
         % Print stack trace for debugging
-        fprintf('Error details:\n');
+        fprintf('Processing error details:\n');
         for i = 1:length(ME.stack)
             fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
         end

@@ -1,75 +1,117 @@
+% FIXED: Extract from logsout with proper Signal handling
 function logsout_data = extractLogsoutDataFixed(logsout)
-    % External function for extracting logsout data - can be used in parallel processing
-    % This function doesn't rely on config.verbosity
-    
-    logsout_data = table();
+    logsout_data = [];
     
     try
-        if isempty(logsout)
-            fprintf('Logsout is empty\n');
-            return;
-        end
+        fprintf('Debug: Extracting logsout data, type: %s\n', class(logsout));
         
-        % Initialize data arrays
-        all_data = {};
-        var_names = {};
-        
-        % Get all signal names
-        signal_names = logsout.getElementNames();
-        
-        if isempty(signal_names)
-            fprintf('No signals found in logsout\n');
-            return;
-        end
-        
-        % Get time data from the first signal
-        first_signal = logsout.getElement(signal_names{1});
-        if isprop(first_signal, 'Values') && isprop(first_signal.Values, 'Time')
-            time_data = first_signal.Values.Time;
-            expected_length = length(time_data);
-        else
-            fprintf('Could not determine time data from logsout\n');
-            return;
-        end
-        
-        % Add time column
-        all_data{end+1} = time_data;
-        var_names{end+1} = 'time';
-        
-        % Process each signal
-        for i = 1:length(signal_names)
-            signal_name = signal_names{i};
+        % Handle modern Simulink.SimulationData.Dataset format
+        if isa(logsout, 'Simulink.SimulationData.Dataset')
+            fprintf('Debug: Processing Dataset format with %d elements\n', logsout.numElements);
             
-            try
-                signal = logsout.getElement(signal_name);
-                
-                if isprop(signal, 'Values') && isprop(signal.Values, 'Data')
-                    signal_data = signal.Values.Data;
-                    
-                    % Handle different data types
-                    if isnumeric(signal_data)
-                        if isvector(signal_data) && length(signal_data) == expected_length
-                            all_data{end+1} = signal_data(:);
-                            var_names{end+1} = signal_name;
-                        elseif ismatrix(signal_data) && size(signal_data, 1) == expected_length
-                            % Matrix data - create separate columns
-                            num_cols = size(signal_data, 2);
-                            for col = 1:num_cols
-                                all_data{end+1} = signal_data(:, col);
-                                var_names{end+1} = sprintf('%s_col_%d', signal_name, col);
-                            end
-                        end
-                    end
-                end
-                
-            catch ME
-                fprintf('Error processing signal %s: %s\n', signal_name, ME.message);
+            if logsout.numElements == 0
+                fprintf('Debug: Dataset is empty\n');
+                return;
             end
-        end
-        
-        % Create table
-        if ~isempty(all_data)
-            logsout_data = table(all_data{:}, 'VariableNames', var_names);
+            
+            % Get time from first element
+            first_element = logsout.getElement(1);  % Use getElement instead of {}
+            
+            % Handle Signal objects properly
+            if isa(first_element, 'Simulink.SimulationData.Signal')
+                time = first_element.Values.Time;
+                fprintf('Debug: Using time from Signal object, length: %d\n', length(time));
+            elseif isa(first_element, 'timeseries')
+                time = first_element.Time;
+                fprintf('Debug: Using time from timeseries, length: %d\n', length(time));
+            else
+                fprintf('Debug: Unknown first element type: %s\n', class(first_element));
+                return;
+            end
+            
+            data_cells = {time};
+            var_names = {'time'};
+            expected_length = length(time);
+            
+            % Process each element in the dataset
+            for i = 1:logsout.numElements
+                element = logsout.getElement(i);  % Use getElement
+                
+                if isa(element, 'Simulink.SimulationData.Signal')
+                    signalName = element.Name;
+                    if isempty(signalName)
+                        signalName = sprintf('Signal_%d', i);
+                    end
+                    
+                    % Extract data from Signal object
+                    data = element.Values.Data;
+                    signal_time = element.Values.Time;
+                    
+                    % Ensure data matches time length and is valid
+                    if isnumeric(data) && length(signal_time) == expected_length && ~isempty(data)
+                        % Check if data has the right dimensions
+                        if size(data, 1) == expected_length
+                            if size(data, 2) > 1
+                                % Multi-dimensional signal
+                                for col = 1:size(data, 2)
+                                    col_data = data(:, col);
+                                    % Ensure the column data is the right length
+                                    if length(col_data) == expected_length
+                                        data_cells{end+1} = col_data;
+                                        var_names{end+1} = sprintf('%s_%d', signalName, col);
+                                        fprintf('Debug: Added multi-dim signal %s_%d (length: %d)\n', signalName, col, length(col_data));
+                                    else
+                                        fprintf('Debug: Skipping column %d of signal %s (length mismatch: %d vs %d)\n', col, signalName, length(col_data), expected_length);
+                                    end
+                                end
+                            else
+                                % Single column signal
+                                flat_data = data(:);
+                                if length(flat_data) == expected_length
+                                    data_cells{end+1} = flat_data;
+                                    var_names{end+1} = signalName;
+                                    fprintf('Debug: Added signal %s (length: %d)\n', signalName, length(flat_data));
+                                else
+                                    fprintf('Debug: Skipping signal %s (flattened length mismatch: %d vs %d)\n', signalName, length(flat_data), expected_length);
+                                end
+                            end
+                        else
+                            fprintf('Debug: Skipping signal %s (row dimension mismatch: %d vs %d)\n', signalName, size(data, 1), expected_length);
+                        end
+                    else
+                        fprintf('Debug: Skipping signal %s (time length mismatch: %d vs %d, or empty data)\n', signalName, length(signal_time), expected_length);
+                    end
+                    
+                elseif isa(element, 'timeseries')
+                    signalName = element.Name;
+                    data = element.Data;
+                    if isnumeric(data) && length(data) == expected_length && ~isempty(data)
+                        flat_data = data(:);
+                        if length(flat_data) == expected_length
+                            data_cells{end+1} = flat_data;
+                            var_names{end+1} = signalName;
+                            fprintf('Debug: Added timeseries %s (length: %d)\n', signalName, length(flat_data));
+                        else
+                            fprintf('Debug: Skipping timeseries %s (flattened length mismatch: %d vs %d)\n', signalName, length(flat_data), expected_length);
+                        end
+                    else
+                        fprintf('Debug: Skipping timeseries %s (length mismatch: %d vs %d, or empty data)\n', signalName, length(data), expected_length);
+                    end
+                else
+                    fprintf('Debug: Skipping unknown element type: %s\n', class(element));
+                end
+            end
+            
+            % Create table if we have data
+            if length(data_cells) > 1  % At least time + one signal
+                logsout_data = table(data_cells{:}, 'VariableNames', var_names);
+                fprintf('Debug: Created logsout table with %d columns and %d rows\n', width(logsout_data), height(logsout_data));
+            else
+                fprintf('Debug: No valid signals found in logsout\n');
+            end
+            
+        else
+            fprintf('Debug: Unsupported logsout format: %s\n', class(logsout));
         end
         
     catch ME
