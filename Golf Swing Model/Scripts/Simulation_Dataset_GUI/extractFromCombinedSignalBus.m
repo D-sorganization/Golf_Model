@@ -224,6 +224,20 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                                     field_name, sub_field_name, dim, vector_data(dim), expected_length);
                             end
                             
+                        % Handle 3x1xN time series (3D vectors over time)
+                        elseif ndims(numeric_data) == 3 && all(size(numeric_data,1:2) == [3 1])
+                            n_steps = size(numeric_data,3);
+                            if n_steps ~= expected_length
+                                fprintf('Debug: Skipping %s.%s (3x1xN but N=%d, expected %d)\n', field_name, sub_field_name, n_steps, expected_length);
+                            else
+                                % Extract each component of the 3D vector over time
+                                for dim = 1:3
+                                    data_cells{end+1} = squeeze(numeric_data(dim, 1, :));
+                                    var_names{end+1} = sprintf('%s_%s_dim%d', field_name, sub_field_name, dim);
+                                    fprintf('Debug: Added 3x1xN vector %s_%s_dim%d (N=%d)\n', field_name, sub_field_name, dim, n_steps);
+                                end
+                            end
+                            
                         % Handle 3x3xN time series (e.g., inertia over time)
                         elseif ndims(numeric_data) == 3 && all(size(numeric_data,1:2) == [3 3])
                             n_steps = size(numeric_data,3);
@@ -242,7 +256,7 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                             
                         else
                             % UNHANDLED SIZE - still skip but with better diagnostic
-                            fprintf('Debug: Skipping %s.%s (size [%s] not supported - need time series, 3D vector, 3x3 matrix, or 6DOF)\n', ...
+                            fprintf('Debug: Skipping %s.%s (size [%s] not supported - need time series, 3D vector, 3x3 matrix, 6DOF, or scalar)\n', ...
                                 field_name, sub_field_name, num2str(data_size));
                         end
                     end
