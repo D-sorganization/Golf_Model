@@ -8,9 +8,9 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
     try
         % Get current node name
         node_name = '';
-        if isprop(node, 'Name') && ~isempty(node.Name)
+        if isprop(node, 'Name') && all(~isempty(node.Name))
             node_name = node.Name;
-        elseif isprop(node, 'id') && ~isempty(node.id)
+        elseif isprop(node, 'id') && all(~isempty(node.id))
             node_name = node.id;
         else
             node_name = 'UnnamedNode';
@@ -21,12 +21,12 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
         node_has_data = false;
         
         % Method 1: Check if node has direct data (time series)
-        if isprop(node, 'time') && isprop(node, 'values')
+        if all(isprop(node, 'time')) && all(isprop(node, 'values'))
             try
                 extracted_time = node.time;
                 extracted_data = node.values;
                 
-                if ~isempty(extracted_time) && ~isempty(extracted_data) && numel(extracted_time) > 0
+                if all(~isempty(extracted_time)) && all(~isempty(extracted_data)) && numel(extracted_time) > 0
                     if isempty(time_data)
                         time_data = extracted_time;
                     end
@@ -42,11 +42,11 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
         end
         
         % Method 2: Extract data from 5-level Multibody hierarchy (regardless of exportable flag)
-        if ~node_has_data && isprop(node, 'series')
+        if ~node_has_data && all(isprop(node, 'series'))
             try
                 % Get the signal ID (e.g., 'w' for angular velocity, 'q' for position)
                 signal_id = 'data';
-                if isprop(node, 'id') && ~isempty(node.id)
+                if isprop(node, 'id') && all(~isempty(node.id))
                     signal_id = node.id;
                 end
                 
@@ -68,7 +68,7 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
                     end
                 end
                 
-                if ~isempty(extracted_time) && ~isempty(extracted_data) && numel(extracted_time) > 0
+                if all(~isempty(extracted_time)) && all(~isempty(extracted_data)) && numel(extracted_time) > 0
                     if isempty(time_data)
                         time_data = extracted_time;
                     end
@@ -102,7 +102,7 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
                     catch
                         % Method 3c: Try series.children() if available
                         try
-                            if isprop(node, 'series') && isprop(node.series, 'children')
+                            if all(isprop(node, 'series')) && all(isprop(node.series, 'children'))
                                 child_ids = node.series.children;
                             end
                         catch
@@ -118,7 +118,7 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
                         [child_time, child_signals] = traverseSimlogNode(child_node, current_path);
                         
                         % Merge time (use first valid)
-                        if isempty(time_data) && ~isempty(child_time)
+                        if isempty(time_data) && all(~isempty(child_time))
                             time_data = child_time;
                         end
                         
