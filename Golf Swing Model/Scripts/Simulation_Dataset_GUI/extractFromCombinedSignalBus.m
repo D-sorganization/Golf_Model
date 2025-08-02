@@ -183,7 +183,7 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                             end
                             
                         elseif num_elements == 9
-                            % 3x3 MATRIX (e.g., inertia matrix)
+                            % 3x3 MATRIX (e.g., inertia matrix) - extract at each time point
                             if isequal(data_size, [3, 3])
                                 % Already 3x3 matrix
                                 matrix_data = numeric_data;
@@ -192,14 +192,15 @@ function data_table = extractFromCombinedSignalBus(combinedBus)
                                 matrix_data = reshape(numeric_data, 3, 3);
                             end
                             
-                            % Extract all 9 elements and replicate for each time step
+                            % Extract all 9 elements at each time step (even if constant)
                             for row = 1:3
                                 for col = 1:3
                                     matrix_element = matrix_data(row, col);
-                                    replicated_data = repmat(matrix_element, expected_length, 1);
-                                    data_cells{end+1} = replicated_data;
+                                    % Create a column with the value at each time point
+                                    time_series_data = repmat(matrix_element, expected_length, 1);
+                                    data_cells{end+1} = time_series_data;
                                     var_names{end+1} = sprintf('%s_%s_I%d%d', field_name, sub_field_name, row, col);
-                                    fprintf('Debug: Added 3x3 matrix %s_%s_I%d%d (replicated %g for %d timesteps)\n', ...
+                                    fprintf('Debug: Added 3x3 matrix %s_%s_I%d%d (value %g at each of %d timesteps)\n', ...
                                         field_name, sub_field_name, row, col, matrix_element, expected_length);
                                 end
                             end
