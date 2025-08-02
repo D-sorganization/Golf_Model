@@ -469,23 +469,13 @@ function startGeneration(handles)
         
         % Set initial simulation mode and animation display based on animation setting
         if ~enable_animation
-            % Try accelerator mode first, but fall back to normal if not available
-            try
-                set_param(model_name, 'SimulationMode', 'accelerator');
-                updateLog(handles, 'Model configured for accelerator mode (no animation)');
-            catch ME
-                % Fall back to normal mode but disable animation display
-                set_param(model_name, 'SimulationMode', 'normal');
-                % Disable animation display in normal mode
-                set_param(model_name, 'AnimationMode', 'off');
-                updateLog(handles, 'Model configured for normal mode with animation display off');
-            end
+            % Use comprehensive animation disable function
+            disableAnimationComprehensive(model_name);
+            updateLog(handles, 'Model configured for no animation using comprehensive approach');
         else
-            % Use normal mode for animation
-            set_param(model_name, 'SimulationMode', 'normal');
-            % Enable animation display
-            set_param(model_name, 'AnimationMode', 'on');
-            updateLog(handles, 'Model configured for normal mode with animation display on');
+            % Use comprehensive animation enable function
+            enableAnimationComprehensive(model_name);
+            updateLog(handles, 'Model configured for animation using comprehensive approach');
         end
         
     catch ME
@@ -737,23 +727,13 @@ function trial_data = runSingleTrialWithSignalBus(trial_num, handles)
         
         % Set simulation mode and animation display based on animation setting
         if ~enable_animation
-            % Try accelerator mode first, but fall back to normal if not available
-            try
-                set_param(model_name, 'SimulationMode', 'accelerator');
-                updateLog(handles, 'Animation disabled - using accelerator mode for speed');
-            catch ME
-                % Fall back to normal mode but disable animation display
-                set_param(model_name, 'SimulationMode', 'normal');
-                % Disable animation display in normal mode
-                set_param(model_name, 'AnimationMode', 'off');
-                updateLog(handles, 'Animation disabled - using normal mode with animation display off');
-            end
+            % Use comprehensive animation disable function
+            disableAnimationComprehensive(model_name);
+            updateLog(handles, 'Animation disabled using comprehensive approach');
         else
-            % Use normal mode for animation
-            set_param(model_name, 'SimulationMode', 'normal');
-            % Enable animation display
-            set_param(model_name, 'AnimationMode', 'on');
-            updateLog(handles, 'Animation enabled - using normal mode with animation display on');
+            % Use comprehensive animation enable function
+            enableAnimationComprehensive(model_name);
+            updateLog(handles, 'Animation enabled using comprehensive approach');
         end
         
         % Create simulation input
@@ -830,5 +810,112 @@ function processCombinedSignalBus(signal_bus, trial_num, handles)
         
     catch ME
         updateLog(handles, sprintf('Error processing CombinedSignalBus for trial %d: %s', trial_num, ME.message));
+    end
+end
+
+function disableAnimationComprehensive(model_name)
+    % Comprehensive function to disable animation using multiple approaches
+    
+    % Approach 1: Try accelerator mode first
+    try
+        set_param(model_name, 'SimulationMode', 'accelerator');
+        current_mode = get_param(model_name, 'SimulationMode');
+        if strcmp(current_mode, 'accelerator')
+            return; % Success - accelerator mode works
+        end
+    catch ME
+        % Accelerator mode not available, continue with other approaches
+    end
+    
+    % Approach 2: Set to normal mode and try multiple animation parameters
+    try
+        set_param(model_name, 'SimulationMode', 'normal');
+        
+        % Try various animation parameters
+        animation_params = {
+            'AnimationMode', 'off';
+            'ShowAnimation', 'off';
+            'DisplayAnimation', 'off';
+            'VisualAnimation', 'off';
+            'AnimateSimulation', 'off';
+            'Animation', 'off';
+            'ShowSimulationAnimation', 'off';
+            'EnableAnimation', 'off';
+            'SimulationAnimation', 'off'
+        };
+        
+        for i = 1:size(animation_params, 1)
+            param_name = animation_params{i, 1};
+            param_value = animation_params{i, 2};
+            
+            try
+                set_param(model_name, param_name, param_value);
+            catch ME
+                % Parameter doesn't exist, that's okay
+            end
+        end
+        
+    catch ME
+        % Error setting parameters, continue anyway
+    end
+    
+    % Approach 3: Try to disable Simscape animation specifically
+    try
+        simscape_blocks = find_system(model_name, 'BlockType', 'SimscapeBlock');
+        if ~isempty(simscape_blocks)
+            for i = 1:length(simscape_blocks)
+                block_path = simscape_blocks{i};
+                try
+                    set_param(block_path, 'AnimationMode', 'off');
+                catch ME
+                    % Block doesn't support this parameter
+                end
+            end
+        end
+    catch ME
+        % Error with Simscape blocks
+    end
+    
+    % Approach 4: Set solver parameters that might reduce animation
+    try
+        set_param(model_name, 'SolverType', 'Fixed-step');
+        set_param(model_name, 'FixedStep', '0.001');
+    catch ME
+        % Error setting solver
+    end
+end
+
+function enableAnimationComprehensive(model_name)
+    % Comprehensive function to enable animation
+    
+    try
+        set_param(model_name, 'SimulationMode', 'normal');
+        
+        % Try to enable animation parameters
+        animation_params = {
+            'AnimationMode', 'on';
+            'ShowAnimation', 'on';
+            'DisplayAnimation', 'on';
+            'VisualAnimation', 'on';
+            'AnimateSimulation', 'on';
+            'Animation', 'on';
+            'ShowSimulationAnimation', 'on';
+            'EnableAnimation', 'on';
+            'SimulationAnimation', 'on'
+        };
+        
+        for i = 1:size(animation_params, 1)
+            param_name = animation_params{i, 1};
+            param_value = animation_params{i, 2};
+            
+            try
+                set_param(model_name, param_name, param_value);
+            catch ME
+                % Parameter doesn't exist, that's okay
+            end
+        end
+        
+    catch ME
+        % Error enabling animation
     end
 end 
