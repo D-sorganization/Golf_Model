@@ -2626,35 +2626,9 @@ function saveUserPreferences(handles)
     end
 end
 
-% Helper functions that need to be implemented
-function param_info = getPolynomialParameterInfo()
-    % Get polynomial parameter information for joints
-    % This is a placeholder - implement based on your model structure
-    param_info = struct();
-    param_info.joint_names = {'Hip', 'Knee', 'Ankle', 'Shoulder', 'Elbow', 'Wrist'};
-    param_info.joint_coeffs = {'ABCDEFG', 'ABCDEFG', 'ABCDEFG', 'ABCDEFG', 'ABCDEFG', 'ABCDEFG'};
-    param_info.total_params = 42; % 6 joints * 7 coefficients
-end
-
-function short_name = getShortenedJointName(joint_name)
-    % Get shortened joint name for table columns
-    switch joint_name
-        case 'Hip'
-            short_name = 'H';
-        case 'Knee'
-            short_name = 'K';
-        case 'Ankle'
-            short_name = 'A';
-        case 'Shoulder'
-            short_name = 'S';
-        case 'Elbow'
-            short_name = 'E';
-        case 'Wrist'
-            short_name = 'W';
-        otherwise
-            short_name = joint_name(1);
-    end
-end
+% External functions are now used:
+% - getPolynomialParameterInfo() calls the external getPolynomialParameterInfo.m
+% - getShortenedJointName() calls the external getShortenedJointName.m
 
 function handles = createLeftColumnContent(parent, handles)
     % Create left column panels
