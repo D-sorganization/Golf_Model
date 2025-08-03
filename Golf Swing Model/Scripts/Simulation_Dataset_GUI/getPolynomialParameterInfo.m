@@ -96,14 +96,21 @@ function param_info = getPolynomialParameterInfo()
 end
 
 function param_info = getSimplifiedParameterInfo()
-    % Fallback structure - limited joints for testing
+    % Correct parameter structure based on reference file analysis
+    % These are the actual joint names that should be used
     all_joint_names = {
-        'BaseTorqueInputX', 'BaseTorqueInputY', 'BaseTorqueInputZ',
-        'HipInputX', 'HipInputY', 'HipInputZ',
-        'LSInputX', 'LSInputY', 'LSInputZ',
-        'Joint1', 'Joint2', 'Joint3', 'Joint4', 'Joint5', 'Joint6',
-        'Joint7', 'Joint8', 'Joint9', 'Joint10', 'Joint11', 'Joint12',
-        'Joint13', 'Joint14', 'Joint15', 'Joint16', 'Joint17', 'Joint18'
+        'HipX', 'HipY', 'HipZ',
+        'LE', 'LF',
+        'LSX', 'LSY', 'LSZ',
+        'LScapX', 'LScapY',
+        'LWX', 'LWY',
+        'RE', 'RF',
+        'RSX', 'RSY', 'RSZ',
+        'RScapX', 'RScapY',
+        'RWX', 'RWY',
+        'SpineX', 'SpineY',
+        'Torso',
+        'TranslationX', 'TranslationY', 'TranslationZ'
     };
     
     param_info.joint_names = all_joint_names;
@@ -112,4 +119,7 @@ function param_info = getSimplifiedParameterInfo()
         param_info.joint_coeffs{i} = 'ABCDEFG';
     end
     param_info.total_params = length(all_joint_names) * 7;
+    
+    fprintf('Using correct parameter structure with %d joints and %d total coefficients\n', ...
+        length(all_joint_names), param_info.total_params);
 end 
