@@ -2825,16 +2825,10 @@ function successful_trials = runParallelSimulations(handles, config)
             try
                 cluster = gcp('nocreate');
                 if isempty(cluster)
-                    % Try to get Local_Cluster profile first, fallback to local
-                    try
-                        temp_cluster = parcluster('Local_Cluster');
-                        max_workers = temp_cluster.NumWorkers;
-                        fprintf('Using Local_Cluster profile with max %d workers\n', max_workers);
-                    catch
-                        temp_cluster = parcluster('local');
-                        max_workers = temp_cluster.NumWorkers;
-                        fprintf('Using local profile with max %d workers\n', max_workers);
-                    end
+                    % Use local profile
+                    temp_cluster = parcluster('local');
+                    max_workers = temp_cluster.NumWorkers;
+                    fprintf('Using local profile with max %d workers\n', max_workers);
                 else
                     max_workers = cluster.NumWorkers;
                 end
@@ -2848,16 +2842,9 @@ function successful_trials = runParallelSimulations(handles, config)
             % Try to create the pool with timeout
             fprintf('Starting parallel pool with %d workers...\n', num_workers);
             
-            % Try to use Local_Cluster profile first, fallback to local
-            try
-                parpool('Local_Cluster', num_workers);
-                fprintf('Successfully started parallel pool with Local_Cluster profile (%d workers)\n', num_workers);
-            catch ME
-                fprintf('Warning: Could not use Local_Cluster profile: %s\n', ME.message);
-                fprintf('Falling back to default local profile...\n');
-                parpool('local', num_workers);
-                fprintf('Successfully started parallel pool with local profile (%d workers)\n', num_workers);
-            end
+            % Start parallel pool with local profile
+            parpool('local', num_workers);
+            fprintf('Successfully started parallel pool with local profile (%d workers)\n', num_workers);
         end
     catch ME
         warning('Failed to start parallel pool: %s. Falling back to sequential execution.', ME.message);
@@ -4572,29 +4559,43 @@ function backupScripts(handles)
             mkdir(backup_dir);
         end
         
-        % Copy current GUI script
-        current_script = mfilename('fullpath');
-        [~, script_name, script_ext] = fileparts(current_script);
-        backup_script = fullfile(backup_dir, [script_name script_ext]);
+        % Get the directory where this script is located
+        [script_dir, ~, ~] = fileparts(mfilename('fullpath'));
         
-        if exist(current_script, 'file')
-            copyfile(current_script, backup_script);
-            fprintf('Backup created: %s\n', backup_script);
-        end
+        % List of scripts to backup (all .m files in the Simulation_Dataset_GUI folder)
+        script_files = dir(fullfile(script_dir, '*.m'));
         
-        % Copy other related scripts if they exist
-        related_scripts = {
-            'PostProcessingModule.m',
-            'launch_enhanced_gui.m'
-        };
-        
-        for i = 1:length(related_scripts)
-            script_path = fullfile(pwd, related_scripts{i});
+        % Copy each script to backup folder
+        copied_count = 0;
+        for i = 1:length(script_files)
+            script_path = fullfile(script_dir, script_files(i).name);
             if exist(script_path, 'file')
-                copyfile(script_path, fullfile(backup_dir, related_scripts{i}));
-                fprintf('Backup created: %s\n', fullfile(backup_dir, related_scripts{i}));
+                backup_path = fullfile(backup_dir, script_files(i).name);
+                copyfile(script_path, backup_path);
+                copied_count = copied_count + 1;
             end
         end
+        
+        % Create a README file with backup information
+        readme_content = sprintf(['Script Backup Created: %s\n', ...
+                                 'This backup contains all scripts used in the current simulation run.\n', ...
+                                 'Backup includes:\n', ...
+                                 '- Main GUI script\n', ...
+                                 '- Data extraction functions\n', ...
+                                 '- Utility functions\n', ...
+                                 '- All supporting scripts\n\n', ...
+                                 'Total scripts backed up: %d\n', ...
+                                 'Backup location: %s\n'], ...
+                                 timestamp, copied_count, backup_dir);
+        
+        readme_path = fullfile(backup_dir, 'README_BACKUP.txt');
+        fid = fopen(readme_path, 'w');
+        if fid ~= -1
+            fprintf(fid, '%s', readme_content);
+            fclose(fid);
+        end
+        
+        fprintf('Script backup created: %s (%d files)\n', backup_dir, copied_count);
         
     catch ME
         warning('Failed to create script backup: %s', ME.message);
