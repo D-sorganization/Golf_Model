@@ -1034,14 +1034,60 @@ end
 function startGeneration(~, ~, fig)
     % Start generation
     handles = guidata(fig);
-    handles.should_stop = false;
-    guidata(fig, handles);
     
-    % Update button states
-            set(handles.play_pause_button, 'String', 'Pause', 'BackgroundColor', handles.colors.warning);
+    % Check if already running
+    if isfield(handles, 'is_running') && handles.is_running
+        msgbox('Generation is already running. Please wait for it to complete or use the Stop button.', 'Already Running', 'warn');
+        return;
+    end
     
-    % Start processing logic here
-    fprintf('Starting data generation...\n');
+    try
+        % Set running state immediately
+        handles.is_running = true;
+        guidata(fig, handles);
+        
+        % Provide immediate visual feedback
+        set(handles.start_button, 'Enable', 'off', 'String', 'Running...');
+        set(handles.stop_button, 'Enable', 'on');
+        set(handles.status_text, 'String', 'Status: Starting generation...');
+        set(handles.progress_text, 'String', 'Initializing...');
+        drawnow; % Force immediate UI update
+        
+        % Validate inputs
+        config = validateInputs(handles);
+        if isempty(config)
+            % Reset state on validation failure
+            handles.is_running = false;
+            set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
+            set(handles.stop_button, 'Enable', 'off');
+            guidata(fig, handles);
+            return;
+        end
+        
+        % Store config
+        handles.config = config;
+        handles.should_stop = false;
+        guidata(fig, handles);
+        
+        % Create script backup before starting generation
+        backupScripts(handles);
+        
+        % Start generation
+        runGeneration(handles);
+        
+    catch ME
+        % Reset state on error
+        try
+            handles.is_running = false;
+            set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
+            set(handles.stop_button, 'Enable', 'off');
+            set(handles.status_text, 'String', ['Status: Error - ' ME.message]);
+            guidata(fig, handles);
+        catch
+            % GUI might be destroyed, ignore the error
+        end
+        errordlg(ME.message, 'Generation Failed');
+    end
 end
 
 function stopGeneration(~, ~)
@@ -1049,11 +1095,10 @@ function stopGeneration(~, ~)
     handles = guidata(gcbf);
     handles.should_stop = true;
     guidata(handles.fig, handles);
+    set(handles.status_text, 'String', 'Status: Stopping...');
+    set(handles.progress_text, 'String', 'Generation stopped by user');
     
-    % Update button states
-            set(handles.play_pause_button, 'String', 'Start', 'BackgroundColor', handles.colors.success);
-    
-    fprintf('Stopping data generation...\n');
+    % Note: The actual cleanup will happen in runGeneration when it detects should_stop = true
 end
 
 function saveConfiguration(~, ~)
@@ -4254,4 +4299,330 @@ function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
     catch ME
         fprintf('Warning: Could not access model workspace: %s\n', ME.message);
     end
+end
+
+% Validate inputs
+function config = validateInputs(handles)
+    try
+        num_trials = str2double(get(handles.num_trials_edit, 'String'));
+        sim_time = str2double(get(handles.sim_time_edit, 'String'));
+        sample_rate = str2double(get(handles.sample_rate_edit, 'String'));
+        
+        if isnan(num_trials) || num_trials <= 0 || num_trials > 10000
+            error('Number of trials must be between 1 and 10,000');
+        end
+        if isnan(sim_time) || sim_time <= 0 || sim_time > 60
+            error('Simulation time must be between 0.001 and 60 seconds');
+        end
+        if isnan(sample_rate) || sample_rate <= 0 || sample_rate > 10000
+            error('Sample rate must be between 1 and 10,000 Hz');
+        end
+        
+        scenario_idx = get(handles.torque_scenario_popup, 'Value');
+        coeff_range = str2double(get(handles.coeff_range_edit, 'String'));
+        constant_value = 10.0; % Default constant value
+        
+        if scenario_idx == 1 && (isnan(coeff_range) || coeff_range <= 0)
+            error('Coefficient range must be positive for variable torques');
+        end
+        
+        % Additional validation: check coefficient table bounds
+        if scenario_idx == 1
+            validateCoefficientBounds(handles, coeff_range);
+        end
+        if scenario_idx == 3 && isnan(constant_value)
+            error('Constant value must be numeric for constant torque');
+        end
+        
+        if ~get(handles.use_signal_bus, 'Value') && ...
+           ~get(handles.use_logsout, 'Value') && ...
+           ~get(handles.use_simscape, 'Value')
+            error('Please select at least one data source');
+        end
+        
+        output_folder = get(handles.output_folder_edit, 'String');
+        folder_name = get(handles.folder_name_edit, 'String');
+        
+        if isempty(output_folder) || isempty(folder_name)
+            error('Please specify output folder and dataset name');
+        end
+        
+        % Validate model exists
+        model_name = handles.model_name;
+        model_path = handles.model_path;
+        
+        if isempty(model_path)
+            % Try to find model in current directory or path
+            if exist([model_name '.slx'], 'file')
+                model_path = which([model_name '.slx']);
+            elseif exist([model_name '.mdl'], 'file')
+                model_path = which([model_name '.mdl']);
+            else
+                error('Simulink model "%s" not found. Please select a valid model.', model_name);
+            end
+        end
+        
+        % Validate input file if specified
+        input_file = handles.selected_input_file;
+        if ~isempty(input_file) && ~exist(input_file, 'file')
+            error('Input file "%s" not found', input_file);
+        end
+        
+        % Grok's Simscape validation: Check if Simscape is enabled but model lacks Simscape blocks
+        if get(handles.use_simscape, 'Value')
+            % Check Simscape license
+            if ~license('test', 'Simscape')
+                error('Simscape license not available. Please disable Simscape data extraction or obtain a Simscape license.');
+            end
+            
+            % Check if model has Simscape blocks
+            try
+                if ~bdIsLoaded(model_name)
+                    load_system(model_path);
+                    model_was_loaded = true;
+                else
+                    model_was_loaded = false;
+                end
+                
+                % Look for Simscape blocks including those in referenced subsystems
+                simscape_blocks = [];
+                
+                % Method 1: Direct Simscape blocks in main model
+                try
+                    simscape_blocks = find_system(model_name, 'SimulinkSubDomain', 'Simscape');
+                catch
+                    % SimulinkSubDomain might not work in all MATLAB versions
+                end
+                
+                % Method 2: Look for Simscape Multibody specific blocks
+                if isempty(simscape_blocks)
+                    try
+                        % Look for common Simscape Multibody blocks
+                        multibody_blocks = [
+                            find_system(model_name, 'BlockType', 'SubSystem', 'ReferenceBlock', 'sm_lib/Bodies/Solid');
+                            find_system(model_name, 'BlockType', 'SubSystem', 'ReferenceBlock', 'sm_lib/Joints/Revolute Joint');
+                            find_system(model_name, 'BlockType', 'SubSystem', 'ReferenceBlock', 'sm_lib/Joints/Prismatic Joint');
+                            find_system(model_name, 'BlockType', 'SubSystem', 'ReferenceBlock', 'sm_lib/Joints/Spherical Joint');
+                            find_system(model_name, 'MaskType', 'Solid');
+                            find_system(model_name, 'MaskType', 'Revolute Joint');
+                            find_system(model_name, 'MaskType', 'Prismatic Joint')
+                        ];
+                        simscape_blocks = [simscape_blocks; multibody_blocks];
+                    catch
+                        % Ignore errors in Multibody block search
+                    end
+                end
+                
+                % Method 3: Look for Subsystem Reference blocks (your case!)
+                subsystem_refs = [];
+                try
+                    subsystem_refs = find_system(model_name, 'BlockType', 'SubsystemReference');
+                    if ~isempty(subsystem_refs)
+                        fprintf('Debug: Found %d Subsystem Reference blocks (may contain Simscape components)\n', length(subsystem_refs));
+                        simscape_blocks = [simscape_blocks; subsystem_refs];
+                    end
+                catch
+                    % Ignore subsystem reference search errors
+                end
+                
+                % Method 4: Look for any blocks that suggest Simscape presence
+                if isempty(simscape_blocks)
+                    try
+                        % Look for Simscape solver configuration blocks
+                        solver_blocks = find_system(model_name, 'BlockType', 'SimscapeSolver');
+                        simscape_blocks = [simscape_blocks; solver_blocks];
+                    catch
+                        % Ignore solver block search errors
+                    end
+                end
+                
+                % Method 5: Check model configuration for Simscape settings
+                has_simscape_config = false;
+                try
+                    solver_type = get_param(model_name, 'SolverType');
+                    if contains(lower(solver_type), 'variable') || contains(lower(solver_type), 'fixed')
+                        has_simscape_config = true;
+                
+                    end
+                catch
+                    % Ignore configuration check errors
+                end
+                
+                % Final validation
+                total_indicators = length(simscape_blocks);
+                if has_simscape_config
+                    total_indicators = total_indicators + 1;
+                end
+                
+                if total_indicators == 0
+                    if model_was_loaded
+                        close_system(model_name, 0);
+                    end
+                    warning('Simscape data extraction is enabled, but no clear Simscape indicators found in model "%s". Simscape logging may still work if components are in referenced subsystems.', model_name);
+                else
+                    if shouldShowDebug(handles)
+            fprintf('Debug: Found %d Simscape indicators in model (blocks + references + config)\n', total_indicators);
+        end
+                    if ~isempty(subsystem_refs)
+                        if shouldShowDebug(handles)
+                            fprintf('Debug: Model uses referenced subsystems - Simscape components may be inside references\n');
+                        end
+                    end
+                end
+                
+                if model_was_loaded
+                    close_system(model_name, 0);
+                end
+                
+            catch ME
+                if exist('model_was_loaded', 'var') && model_was_loaded
+                    try
+                        close_system(model_name, 0);
+                    catch
+                        % Ignore close errors
+                    end
+                end
+                rethrow(ME);
+            end
+        end
+        
+        % Create config structure
+        config = struct();
+        config.model_name = model_name;
+        config.model_path = model_path;
+        config.input_file = input_file;
+        config.num_simulations = num_trials;
+        config.simulation_time = sim_time;
+        config.sample_rate = sample_rate;
+        config.modeling_mode = 3;
+        config.torque_scenario = scenario_idx;
+        config.coeff_range = coeff_range;
+        config.constant_value = constant_value;
+        config.use_logsout = get(handles.use_logsout, 'Value');
+        config.use_signal_bus = get(handles.use_signal_bus, 'Value');
+        config.use_simscape = get(handles.use_simscape, 'Value');
+        config.enable_animation = get(handles.enable_animation, 'Value');
+        config.capture_workspace = logical(get(handles.capture_workspace_checkbox, 'Value'));
+        config.output_folder = fullfile(output_folder, folder_name);
+        config.file_format = get(handles.format_popup, 'Value');
+        
+        % Batch settings validation and configuration
+        batch_size = str2double(get(handles.batch_size_edit, 'String'));
+        save_interval = str2double(get(handles.save_interval_edit, 'String'));
+        
+        if isnan(batch_size) || batch_size <= 0 || batch_size > 1000
+            error('Batch size must be between 1 and 1,000');
+        end
+        if isnan(save_interval) || save_interval <= 0 || save_interval > 1000
+            error('Save interval must be between 1 and 1,000');
+        end
+        
+        % Get verbosity level
+        verbosity_options = {'Normal', 'Silent', 'Verbose', 'Debug'};
+        verbosity_idx = get(handles.verbosity_popup, 'Value');
+        verbosity_level = verbosity_options{verbosity_idx};
+        
+        % Add batch settings to config
+        config.batch_size = batch_size;
+        config.save_interval = save_interval;
+        config.enable_performance_monitoring = get(handles.enable_performance_monitoring, 'Value');
+        config.verbosity = verbosity_level;
+        config.enable_memory_monitoring = get(handles.enable_memory_monitoring, 'Value');
+        
+    catch ME
+        errordlg(ME.message, 'Input Validation Error');
+        config = [];
+    end
+end
+
+function backupScripts(handles)
+    % Create backup of current scripts before generation
+    try
+        timestamp = datestr(now, 'yyyymmdd_HHMMSS');
+        backup_dir = fullfile(pwd, 'Backup_Scripts', sprintf('Run_Backup_%s', timestamp));
+        
+        if ~exist(backup_dir, 'dir')
+            mkdir(backup_dir);
+        end
+        
+        % Copy current GUI script
+        current_script = mfilename('fullpath');
+        [~, script_name, script_ext] = fileparts(current_script);
+        backup_script = fullfile(backup_dir, [script_name script_ext]);
+        
+        if exist(current_script, 'file')
+            copyfile(current_script, backup_script);
+            fprintf('Backup created: %s\n', backup_script);
+        end
+        
+        % Copy other related scripts if they exist
+        related_scripts = {
+            'PostProcessingModule.m',
+            'launch_enhanced_gui.m'
+        };
+        
+        for i = 1:length(related_scripts)
+            script_path = fullfile(pwd, related_scripts{i});
+            if exist(script_path, 'file')
+                copyfile(script_path, fullfile(backup_dir, related_scripts{i}));
+                fprintf('Backup created: %s\n', fullfile(backup_dir, related_scripts{i}));
+            end
+        end
+        
+    catch ME
+        warning('Failed to create script backup: %s', ME.message);
+    end
+end
+
+function validateCoefficientBounds(handles, coeff_range)
+    % Validate that coefficient table values are within specified bounds
+    try
+        coeff_data = get(handles.coefficients_table, 'Data');
+        if isempty(coeff_data)
+            return;
+        end
+        
+        % Check each coefficient value
+        out_of_bounds_count = 0;
+        for i = 1:size(coeff_data, 1)
+            for j = 1:size(coeff_data, 2)
+                cell_value = coeff_data{i, j};
+                if ischar(cell_value) || isstring(cell_value)
+                    numeric_value = str2double(cell_value);
+                    if ~isnan(numeric_value)
+                        if abs(numeric_value) > coeff_range
+                            out_of_bounds_count = out_of_bounds_count + 1;
+                        end
+                    end
+                end
+            end
+        end
+        
+        if out_of_bounds_count > 0
+            warning('Found %d coefficient values outside the specified range [±%.2f]. Consider regenerating coefficients.', ...
+                out_of_bounds_count, coeff_range);
+        end
+        
+    catch ME
+        fprintf('Warning: Could not validate coefficient bounds: %s\n', ME.message);
+    end
+end
+
+% Helper function to check if debug output should be shown
+function should_show_debug = shouldShowDebug(handles)
+    if ~isfield(handles, 'verbosity_popup')
+        should_show_debug = true; % Default to showing if no verbosity control
+        return;
+    end
+    
+    verbosity_options = {'Normal', 'Silent', 'Verbose', 'Debug'};
+    verbosity_idx = get(handles.verbosity_popup, 'Value');
+    if verbosity_idx <= length(verbosity_options)
+        verbosity_level = verbosity_options{verbosity_idx};
+    else
+        verbosity_level = 'Normal';
+    end
+    
+    % Only show debug output for Debug verbosity level
+    should_show_debug = strcmp(verbosity_level, 'Debug');
 end
