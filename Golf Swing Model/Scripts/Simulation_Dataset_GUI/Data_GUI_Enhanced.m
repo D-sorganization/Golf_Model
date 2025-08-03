@@ -480,7 +480,7 @@ function handles = createProcessingOptionsContent(parent, handles)
                                             'Position', [0.77, 0.3, 0.18, 0.04], ...
                                             'BackgroundColor', colors.secondary, ...
                                             'ForegroundColor', 'white', ...
-                                            'Callback', @browseOutputFolder);
+                                            'Callback', @browseOutputFolderPostProcessing);
     
     % Start processing button
     handles.start_processing_button = uicontrol('Parent', parent, ...
@@ -682,7 +682,7 @@ function browseDataFolder(~, ~)
     guidata(handles.fig, handles);
 end
 
-function browseOutputFolder(~, ~)
+function browseOutputFolderPostProcessing(~, ~)
     handles = guidata(gcbf);
     
     folder_path = uigetdir('', 'Select Output Folder');
