@@ -4602,6 +4602,332 @@ function backupScripts(handles)
     end
 end
 
+% ENHANCED: Extract from Simscape with detailed diagnostics
+function simscape_data = extractSimscapeDataRecursive(simlog)
+    simscape_data = table();  % Empty table if no data
+
+    try
+        % DETAILED DIAGNOSTICS
+        fprintf('=== SIMSCAPE DIAGNOSTIC START ===\n');
+        
+        if isempty(simlog)
+            fprintf('❌ simlog is EMPTY\n');
+            fprintf('=== SIMSCAPE DIAGNOSTIC END ===\n');
+            return;
+        end
+        
+        fprintf('✅ simlog exists, class: %s\n', class(simlog));
+        
+        if ~isa(simlog, 'simscape.logging.Node')
+            fprintf('❌ simlog is not a simscape.logging.Node\n');
+            fprintf('=== SIMSCAPE DIAGNOSTIC END ===\n');
+            return;
+        end
+        
+        fprintf('✅ simlog is valid simscape.logging.Node\n');
+        
+        % Try to inspect the simlog structure
+        try
+            fprintf(' Inspecting simlog properties...\n');
+            props = properties(simlog);
+            fprintf('   Properties: %s\n', strjoin(props, ', '));
+        catch
+            fprintf('❌ Could not get simlog properties\n');
+        end
+        
+        % Try to get children (properties ARE the children in Multibody)
+        try
+            children_ids = simlog.children();
+            fprintf('✅ Found %d top-level children: %s\n', length(children_ids), strjoin(children_ids, ', '));
+        catch ME
+            fprintf('❌ Could not get children method: %s\n', ME.message);
+            fprintf(' Using properties as children (Multibody approach)\n');
+            
+            % Get properties excluding system properties
+            all_props = properties(simlog);
+            children_ids = {};
+            for i = 1:length(all_props)
+                prop_name = all_props{i};
+                % Skip system properties, keep actual joint/body names
+                if ~ismember(prop_name, {'id', 'savable', 'exportable'})
+                    children_ids{end+1} = prop_name;
+                end
+            end
+            fprintf('✅ Found %d children from properties: %s\n', length(children_ids), strjoin(children_ids, ', '));
+        end
+        
+        % Try to inspect first child
+        if ~isempty(children_ids)
+            try
+                first_child_id = children_ids{1};
+                first_child = simlog.(first_child_id);
+                fprintf(' First child (%s) class: %s\n', first_child_id, class(first_child));
+                
+                % Try to get series from first child
+                try
+                    series_children = first_child.series.children();
+                    fprintf('✅ First child has %d series: %s\n', length(series_children), strjoin(series_children, ', '));
+                catch ME2
+                    fprintf('❌ First child series access failed: %s\n', ME2.message);
+                end
+                
+            catch ME
+                fprintf('❌ Could not inspect first child: %s\n', ME.message);
+            end
+        end
+        
+        fprintf('=== SIMSCAPE DIAGNOSTIC END ===\n');
+
+        % Recursively collect all series data using primary traversal method
+        [time_data, all_signals] = traverseSimlogNode(simlog, '', []);
+
+        if isempty(time_data) || isempty(all_signals)
+            fprintf('⚠️  Primary method found no data. Trying fallback methods...\n');
+            
+            % FALLBACK METHOD: Simple property inspection
+            [time_data, all_signals] = fallbackSimlogExtraction(simlog);
+            
+            if isempty(time_data) || isempty(all_signals)
+                fprintf('❌ All extraction methods failed. No usable Simscape data found.\n');
+                return;
+            else
+                fprintf('✅ Fallback method found data!\n');
+            end
+        else
+            fprintf('✅ Primary traversal method found data!\n');
+        end
+
+        % Build table
+        data_cells = {time_data};
+        var_names = {'time'};
+        expected_length = length(time_data);
+
+        for i = 1:length(all_signals)
+            signal = all_signals{i};
+            if length(signal.data) == expected_length
+                data_cells{end+1} = signal.data(:);
+                var_names{end+1} = signal.name;
+                fprintf('Debug: Added Simscape signal: %s (length: %d)\n', signal.name, expected_length);
+            else
+                fprintf('Debug: Skipped %s (length mismatch: %d vs %d)\n', signal.name, length(signal.data), expected_length);
+            end
+        end
+
+        if length(data_cells) > 1
+            simscape_data = table(data_cells{:}, 'VariableNames', var_names);
+            fprintf('Debug: Created Simscape table with %d columns, %d rows.\n', width(simscape_data), height(simscape_data));
+        else
+            fprintf('Debug: Only time data found in Simscape log.\n');
+        end
+
+    catch ME
+        fprintf('Error extracting Simscape data recursively: %s\n', ME.message);
+    end
+end
+
+% FALLBACK SIMSCAPE EXTRACTION - Simple property inspection method
+function [time_data, all_signals] = fallbackSimlogExtraction(simlog)
+    time_data = [];
+    all_signals = {};
+    
+    try
+        % Method 1: Try direct property enumeration
+        try
+            props = properties(simlog);
+            
+            for i = 1:length(props)
+                prop_name = props{i};
+                if ~ismember(prop_name, {'id', 'savable', 'exportable'})
+                    try
+                        prop_value = simlog.(prop_name);
+                        if isa(prop_value, 'simscape.logging.Node')
+                            % Recursively extract from child nodes
+                            [child_time, child_signals] = fallbackSimlogExtraction(prop_value);
+                            if isempty(time_data) && ~isempty(child_time)
+                                time_data = child_time;
+                            end
+                            all_signals = [all_signals, child_signals];
+                        elseif isstruct(prop_value) || isa(prop_value, 'timeseries')
+                            % Try to extract time series data
+                            [extracted_time, extracted_data] = extractTimeSeriesData(prop_value, prop_name);
+                            if ~isempty(extracted_time) && ~isempty(extracted_data)
+                                if isempty(time_data)
+                                    time_data = extracted_time;
+                                end
+                                signal_name = matlab.lang.makeValidName(prop_name);
+                                all_signals{end+1} = struct('name', signal_name, 'data', extracted_data);
+                                fprintf('Debug: Fallback found data in %s\n', prop_name);
+                            end
+                        elseif isstruct(prop_value)
+                            % Try to extract constant matrix/vector data from struct
+                            [constant_signals] = extractConstantMatrixData(prop_value, prop_name, []);
+                            if ~isempty(constant_signals)
+                                all_signals = [all_signals, constant_signals];
+                                fprintf('Debug: Fallback found constant data in struct %s\n', prop_name);
+                            end
+                        elseif isnumeric(prop_value)
+                            % Handle numeric arrays directly (constant matrices/vectors)
+                            [constant_signals] = extractConstantMatrixData(prop_value, prop_name, []);
+                            if ~isempty(constant_signals)
+                                all_signals = [all_signals, constant_signals];
+                                fprintf('Debug: Fallback found numeric data in %s\n', prop_name);
+                            end
+                        end
+                    catch
+                        continue;
+                    end
+                end
+            end
+        catch ME
+            fprintf('Debug: Property enumeration failed: %s\n', ME.message);
+        end
+        
+        % Method 2: Try common Simscape Multibody patterns
+        if isempty(time_data) || isempty(all_signals)
+            try
+                % Look for common joint/body properties
+                common_props = {'Px', 'Py', 'Pz', 'Vx', 'Vy', 'Vz', 'q', 'w', 'f', 't'};
+                for i = 1:length(common_props)
+                    prop = common_props{i};
+                    if isprop(simlog, prop) || isfield(simlog, prop)
+                        try
+                            prop_data = simlog.(prop);
+                            if isstruct(prop_data) && isfield(prop_data, 'series')
+                                series_data = prop_data.series;
+                                if isstruct(series_data) && isfield(series_data, 'time') && isfield(series_data, 'values')
+                                    if isempty(time_data)
+                                        time_data = series_data.time;
+                                    end
+                                    signal_name = matlab.lang.makeValidName(['fallback_' prop]);
+                                    all_signals{end+1} = struct('name', signal_name, 'data', series_data.values);
+                                    fprintf('Debug: Fallback found %s data\n', prop);
+                                end
+                            end
+                        catch
+                            continue;
+                        end
+                    end
+                end
+            catch ME
+                fprintf('Debug: Common property search failed: %s\n', ME.message);
+            end
+        end
+        
+    catch ME
+        fprintf('Debug: Fallback extraction failed: %s\n', ME.message);
+    end
+    
+    if ~isempty(time_data) && ~isempty(all_signals)
+        fprintf('Debug: Fallback extraction successful - found %d signals\n', length(all_signals));
+    else
+        fprintf('Debug: Fallback extraction found no data\n');
+    end
+end
+
+% Compile dataset
+function compileDataset(config)
+    try
+        fprintf('Compiling dataset from trials...\n');
+        
+        % Find all trial CSV files
+        csv_files = dir(fullfile(config.output_folder, 'trial_*.csv'));
+        
+        if isempty(csv_files)
+            warning('No trial CSV files found in output folder');
+            return;
+        end
+        
+        % THREE-PASS ALGORITHM to preserve ALL columns (union approach)
+        fprintf('Using 3-pass algorithm to preserve all columns...\n');
+        
+        % PASS 1: Discover all unique column names across all files
+        all_unique_columns = {};
+        valid_files = {};
+        
+        for i = 1:length(csv_files)
+            file_path = fullfile(config.output_folder, csv_files(i).name);
+            try
+                trial_data = readtable(file_path);
+                if ~isempty(trial_data)
+                    valid_files{end+1} = file_path;
+                    trial_columns = trial_data.Properties.VariableNames;
+                    all_unique_columns = union(all_unique_columns, trial_columns);
+                    fprintf('  Pass 1 - %s: %d columns found\n', csv_files(i).name, length(trial_columns));
+                end
+            catch ME
+                warning('Failed to read %s during discovery: %s', csv_files(i).name, ME.message);
+            end
+        end
+        
+        fprintf('  Total unique columns discovered: %d\n', length(all_unique_columns));
+        
+        % PASS 2: Standardize each trial to have all columns (with NaN for missing)
+        standardized_tables = {};
+        
+        for i = 1:length(valid_files)
+            file_path = valid_files{i};
+            [~, filename, ~] = fileparts(file_path);
+            
+            try
+                trial_data = readtable(file_path);
+                
+                % Create standardized table with all columns
+                standardized_data = table();
+                for col = 1:length(all_unique_columns)
+                    col_name = all_unique_columns{col};
+                    if ismember(col_name, trial_data.Properties.VariableNames)
+                        standardized_data.(col_name) = trial_data.(col_name);
+                    else
+                        % Fill missing column with NaN
+                        standardized_data.(col_name) = NaN(height(trial_data), 1);
+                    end
+                end
+                
+                standardized_tables{end+1} = standardized_data;
+                fprintf('  Pass 2 - %s: standardized to %d columns\n', filename, width(standardized_data));
+                
+            catch ME
+                warning('Failed to standardize %s: %s', filename, ME.message);
+            end
+        end
+        
+        % PASS 3: Concatenate all standardized tables
+        master_data = [];
+        for i = 1:length(standardized_tables)
+            if isempty(master_data)
+                master_data = standardized_tables{i};
+            else
+                master_data = [master_data; standardized_tables{i}];
+            end
+        end
+        
+        fprintf('✅ 3-pass compilation complete - preserved ALL %d columns!\n', width(master_data));
+        
+        if ~isempty(master_data)
+            % Save master dataset
+            timestamp = datestr(now, 'yyyymmdd_HHMMSS');
+            master_filename = sprintf('master_dataset_%s.csv', timestamp);
+            master_path = fullfile(config.output_folder, master_filename);
+            
+            writetable(master_data, master_path);
+            fprintf('Master dataset saved: %s\n', master_filename);
+            fprintf('  Total rows: %d\n', height(master_data));
+            fprintf('  Total columns: %d\n', width(master_data));
+            
+            % Also save as MAT file if requested
+            if config.file_format == 2 || config.file_format == 3
+                mat_filename = sprintf('master_dataset_%s.mat', timestamp);
+                mat_path = fullfile(config.output_folder, mat_filename);
+                save(mat_path, 'master_data', 'config');
+                fprintf('Master dataset saved as MAT: %s\n', mat_filename);
+            end
+        end
+        
+    catch ME
+        fprintf('Error compiling dataset: %s\n', ME.message);
+    end
+end
+
 function validateCoefficientBounds(handles, coeff_range)
     % Validate that coefficient table values are within specified bounds
     try
