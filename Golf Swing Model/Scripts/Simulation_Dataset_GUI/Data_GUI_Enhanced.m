@@ -602,7 +602,7 @@ function togglePlayPause(~, ~)
     if handles.is_paused
         % Resume from pause
         handles.is_paused = false;
-        set(handles.play_pause_button, 'String', '⏸ Pause', 'BackgroundColor', handles.colors.warning);
+        set(handles.play_pause_button, 'String', 'Pause', 'BackgroundColor', handles.colors.warning);
         % Resume processing logic here
         resumeFromPause(handles);
     else
@@ -610,7 +610,7 @@ function togglePlayPause(~, ~)
         if ~handles.should_stop && ~isempty(handles.checkpoint_data)
             % Pause current operation
             handles.is_paused = true;
-            set(handles.play_pause_button, 'String', '▶ Resume', 'BackgroundColor', handles.colors.success);
+            set(handles.play_pause_button, 'String', 'Resume', 'BackgroundColor', handles.colors.success);
         else
             % Start new operation
             startGeneration([], [], handles.fig);
@@ -635,7 +635,7 @@ function saveCheckpoint(~, ~)
     
     % Update GUI
     handles.checkpoint_data = checkpoint;
-    set(handles.checkpoint_button, 'String', '💾 Saved', 'BackgroundColor', handles.colors.success);
+            set(handles.checkpoint_button, 'String', 'Saved', 'BackgroundColor', handles.colors.success);
     
     % Reset button after 2 seconds
     timer_obj = timer('ExecutionMode', 'singleShot', 'StartDelay', 2);
@@ -646,7 +646,7 @@ function saveCheckpoint(~, ~)
 end
 
 function resetCheckpointButton(handles)
-    set(handles.checkpoint_button, 'String', '💾 Checkpoint', 'BackgroundColor', handles.colors.warning);
+            set(handles.checkpoint_button, 'String', 'Checkpoint', 'BackgroundColor', handles.colors.warning);
 end
 
 function resumeFromPause(handles)
@@ -1038,7 +1038,7 @@ function startGeneration(~, ~, fig)
     guidata(fig, handles);
     
     % Update button states
-    set(handles.play_pause_button, 'String', '⏸ Pause', 'BackgroundColor', handles.colors.warning);
+            set(handles.play_pause_button, 'String', 'Pause', 'BackgroundColor', handles.colors.warning);
     
     % Start processing logic here
     fprintf('Starting data generation...\n');
@@ -1051,7 +1051,7 @@ function stopGeneration(~, ~)
     guidata(handles.fig, handles);
     
     % Update button states
-    set(handles.play_pause_button, 'String', '▶ Start', 'BackgroundColor', handles.colors.success);
+            set(handles.play_pause_button, 'String', 'Start', 'BackgroundColor', handles.colors.success);
     
     fprintf('Stopping data generation...\n');
 end
@@ -1085,15 +1085,7 @@ function loadConfiguration(~, ~)
     end
 end
 
-function updatePreview(~, ~, fig)
-    % Update preview
-    % This is a placeholder - implement preview logic
-end
 
-function updateCoefficientsPreview(~, ~, fig)
-    % Update coefficients preview
-    % This is a placeholder - implement coefficients preview
-end
 
 % Panel creation functions
 function handles = createTrialAndDataPanel(parent, handles, yPos, height)
