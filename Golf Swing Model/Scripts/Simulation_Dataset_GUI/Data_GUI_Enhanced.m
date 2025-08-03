@@ -3403,3 +3403,855 @@ function successful_trials = runSequentialSimulations(handles, config)
         end
     end
 end
+
+% Add missing critical functions from original Data_GUI.m
+
+function simInputs = prepareSimulationInputs(config, handles)
+    % Load the Simulink model
+    model_name = config.model_name;
+    if ~bdIsLoaded(model_name)
+        try
+            load_system(model_name);
+        catch ME
+            error('Could not load Simulink model "%s": %s', model_name, ME.message);
+        end
+    end
+    
+    % Create array of SimulationInput objects
+    simInputs = Simulink.SimulationInput.empty(0, config.num_simulations);
+    
+    for trial = 1:config.num_simulations
+        % Get coefficients for this trial
+        if trial <= size(config.coefficient_values, 1)
+            trial_coefficients = config.coefficient_values(trial, :);
+        else
+            % Generate random coefficients for additional trials
+            trial_coefficients = generateRandomCoefficients(size(config.coefficient_values, 2));
+        end
+        
+        % Ensure coefficients are numeric (fix for parallel execution)
+        if iscell(trial_coefficients)
+            trial_coefficients = cell2mat(trial_coefficients);
+        end
+        trial_coefficients = double(trial_coefficients);  % Ensure double precision
+        
+        % Create SimulationInput object
+        simIn = Simulink.SimulationInput(model_name);
+        
+        % Set simulation parameters safely
+        simIn = setModelParameters(simIn, config, handles);
+        
+        % Set polynomial coefficients
+        try
+            simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
+        catch ME
+            fprintf('Warning: Could not set polynomial coefficients: %s\n', ME.message);
+        end
+        
+        % Load input file if specified
+        if ~isempty(config.input_file) && exist(config.input_file, 'file')
+            simIn = loadInputFile(simIn, config.input_file);
+        end
+        
+        simInputs(trial) = simIn;
+    end
+end
+
+function simIn = setModelParameters(simIn, config, handles)
+    % External function for setting model parameters - can be used in parallel processing
+    % This function accepts config as a parameter instead of relying on handles
+    
+    % Set basic simulation parameters with careful error handling
+    try
+        % Set stop time
+        if isfield(config, 'simulation_time') && ~isempty(config.simulation_time)
+            simIn = simIn.setModelParameter('StopTime', num2str(config.simulation_time));
+        end
+        
+        % Set solver carefully
+        try
+            simIn = simIn.setModelParameter('Solver', 'ode23t');
+        catch
+            fprintf('Warning: Could not set solver to ode23t\n');
+        end
+        
+        % Set tolerances carefully
+        try
+            simIn = simIn.setModelParameter('RelTol', '1e-3');
+            simIn = simIn.setModelParameter('AbsTol', '1e-5');
+        catch
+            fprintf('Warning: Could not set solver tolerances\n');
+        end
+        
+        % CRITICAL: Set output options for data logging
+        try
+            simIn = simIn.setModelParameter('SaveOutput', 'on');
+            simIn = simIn.setModelParameter('SaveFormat', 'Structure');
+            simIn = simIn.setModelParameter('ReturnWorkspaceOutputs', 'on');
+        catch ME
+            fprintf('Warning: Could not set output options: %s\n', ME.message);
+        end
+        
+        % Additional logging settings
+        try
+            simIn = simIn.setModelParameter('SignalLogging', 'on');
+            simIn = simIn.setModelParameter('SaveTime', 'on');
+        catch
+            fprintf('Warning: Could not set logging options\n');
+        end
+        
+        % To Workspace block settings
+        try
+            simIn = simIn.setModelParameter('LimitDataPoints', 'off');
+        catch
+            fprintf('Warning: Could not set LimitDataPoints\n');
+        end
+        
+        % MINIMAL SIMSCAPE LOGGING CONFIGURATION (Essential Only)
+        % Only set the essential parameter that actually works
+        try
+            simIn = simIn.setModelParameter('SimscapeLogType', 'all');
+            fprintf('Debug: ✅ Set SimscapeLogType = all (essential parameter)\n');
+        catch ME
+            fprintf('Warning: Could not set essential SimscapeLogType parameter: %s\n', ME.message);
+            fprintf('Warning: Simscape data extraction may not work without this parameter\n');
+        end
+        
+        % Set simulation mode (animation control removed for now to fix data capture)
+        try
+            simIn = simIn.setModelParameter('SimulationMode', 'normal');
+            fprintf('Debug: Set to normal simulation mode\n');
+        catch ME
+            fprintf('Warning: Could not set simulation mode: %s\n', ME.message);
+        end
+        
+        % Set other model parameters to suppress unconnected port warnings
+        try
+            simIn = simIn.setModelParameter('UnconnectedInputMsg', 'none');
+            simIn = simIn.setModelParameter('UnconnectedOutputMsg', 'none');
+        catch
+            % These parameters might not exist in all model types
+        end
+        
+    catch ME
+        fprintf('Error setting model parameters: %s\n', ME.message);
+        rethrow(ME);
+    end
+end
+
+function simIn = setPolynomialCoefficients(simIn, coefficients, config)
+    % Get parameter info for coefficient mapping
+    param_info = getPolynomialParameterInfo();
+    
+    % Basic validation
+    if isempty(param_info.joint_names)
+        error('No joint names found in polynomial parameter info');
+    end
+    
+    % Handle parallel worker coefficient format issues
+    if iscell(coefficients)
+        try
+            % Check if cells contain strings or numbers
+            if all(cellfun(@ischar, coefficients))
+                % Convert string cells to numeric
+                coefficients = cellfun(@str2double, coefficients);
+            elseif all(cellfun(@isnumeric, coefficients))
+                % Convert numeric cells to array
+                coefficients = cell2mat(coefficients);
+            else
+                % Mixed content or other issues
+                numeric_coeffs = zeros(size(coefficients));
+                for i = 1:numel(coefficients)
+                    if ischar(coefficients{i})
+                        numeric_coeffs(i) = str2double(coefficients{i});
+                    elseif isnumeric(coefficients{i})
+                        numeric_coeffs(i) = coefficients{i};
+                    else
+                        numeric_coeffs(i) = NaN;
+                    end
+                end
+                coefficients = numeric_coeffs;
+            end
+        catch ME
+            fprintf('Error: Could not convert cell coefficients to numeric: %s\n', ME.message);
+            % Try one more approach - flatten and convert
+            try
+                coefficients = str2double(coefficients(:));
+            catch
+                fprintf('Error: All conversion attempts failed\n');
+                return;
+            end
+        end
+    end
+    
+    % Ensure coefficients are numeric
+    if ~isnumeric(coefficients)
+        fprintf('Error: Coefficients must be numeric, got %s\n', class(coefficients));
+        return;
+    end
+    
+    % Ensure coefficients are a row vector if needed
+    if size(coefficients, 1) > 1 && size(coefficients, 2) == 1
+        coefficients = coefficients';
+    end
+    
+    % Set coefficients as model variables
+    global_coeff_idx = 1;
+    variables_set = 0;
+    
+    for joint_idx = 1:length(param_info.joint_names)
+        joint_name = param_info.joint_names{joint_idx};
+        coeffs = param_info.joint_coeffs{joint_idx};
+        
+        for local_coeff_idx = 1:length(coeffs)
+            coeff_letter = coeffs(local_coeff_idx);
+            var_name = sprintf('%s%s', joint_name, coeff_letter);
+            
+            if global_coeff_idx <= length(coefficients)
+                try
+                    simIn = simIn.setVariable(var_name, coefficients(global_coeff_idx));
+                    variables_set = variables_set + 1;
+                catch ME
+                    fprintf('  Warning: Failed to set %s: %s\n', var_name, ME.message);
+                end
+            else
+                fprintf('  Warning: Not enough coefficients for %s (need %d, have %d)\n', var_name, global_coeff_idx, length(coefficients));
+            end
+            global_coeff_idx = global_coeff_idx + 1;
+        end
+    end
+end
+
+function simIn = loadInputFile(simIn, input_file)
+    try
+        % Load input data
+        input_data = load(input_file);
+        
+        % Get field names and set as model variables
+        field_names = fieldnames(input_data);
+        for i = 1:length(field_names)
+            field_name = field_names{i};
+            field_value = input_data.(field_name);
+            
+            % Only set scalar values or small arrays
+            if isscalar(field_value) || (isnumeric(field_value) && numel(field_value) <= 100)
+                simIn = simIn.setVariable(field_name, field_value);
+            end
+        end
+    catch ME
+        warning('Could not load input file %s: %s', input_file, ME.message);
+    end
+end
+
+function result = processSimulationOutput(trial_num, config, simOut, capture_workspace)
+    result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
+    
+    try
+        fprintf('Processing simulation output for trial %d...\n', trial_num);
+        
+        % Extract data using the enhanced signal extraction system
+        options = struct();
+        options.extract_combined_bus = config.use_signal_bus;
+        options.extract_logsout = config.use_logsout;
+        options.extract_simscape = config.use_simscape;
+        options.verbose = false; % Set to true for debugging
+        
+        [data_table, signal_info] = extractSignalsFromSimOut(simOut, options);
+        
+        if isempty(data_table)
+            result.error = 'No data extracted from simulation';
+            fprintf('No data extracted from simulation output\n');
+            return;
+        end
+        
+        fprintf('Extracted %d rows of data\n', height(data_table));
+        
+        % Resample data to desired frequency if specified
+        if isfield(config, 'sample_rate') && ~isempty(config.sample_rate) && config.sample_rate > 0
+            data_table = resampleDataToFrequency(data_table, config.sample_rate, config.simulation_time);
+            fprintf('Resampled to %d rows at %g Hz\n', height(data_table), config.sample_rate);
+        end
+        
+        % Add trial metadata
+        num_rows = height(data_table);
+        data_table.trial_id = repmat(trial_num, num_rows, 1);
+        
+        % Add coefficient columns
+        param_info = getPolynomialParameterInfo();
+        coeff_idx = 1;
+        for j = 1:length(param_info.joint_names)
+            joint_name = param_info.joint_names{j};
+            coeffs = param_info.joint_coeffs{j};
+            for k = 1:length(coeffs)
+                coeff_name = sprintf('input_%s_%s', getShortenedJointName(joint_name), coeffs(k));
+                if coeff_idx <= size(config.coefficient_values, 2)
+                    data_table.(coeff_name) = repmat(config.coefficient_values(trial_num, coeff_idx), num_rows, 1);
+                end
+                coeff_idx = coeff_idx + 1;
+            end
+        end
+        
+        % Add model workspace variables (segment lengths, masses, inertias, etc.)
+        % Use the capture_workspace parameter passed to this function
+        if nargin < 4
+            capture_workspace = true; % Default to true if not provided
+        end
+        
+        if capture_workspace
+            data_table = addModelWorkspaceData(data_table, simOut, num_rows);
+        else
+            fprintf('Debug: Model workspace capture disabled by user setting\n');
+        end
+        
+        % Save to file in selected format(s)
+        timestamp = datestr(now, 'yyyymmdd_HHMMSS');
+        saved_files = {};
+        
+        % Determine file format from config (handle both field names for compatibility)
+        file_format = 1; % Default to CSV
+        if isfield(config, 'file_format')
+            file_format = config.file_format;
+        elseif isfield(config, 'format')
+            file_format = config.format;
+        end
+        
+        % Save based on selected format
+        switch file_format
+            case 1 % CSV Files
+                filename = sprintf('trial_%03d_%s.csv', trial_num, timestamp);
+                filepath = fullfile(config.output_folder, filename);
+                writetable(data_table, filepath);
+                saved_files{end+1} = filename;
+                
+            case 2 % MAT Files
+                filename = sprintf('trial_%03d_%s.mat', trial_num, timestamp);
+                filepath = fullfile(config.output_folder, filename);
+                save(filepath, 'data_table', 'config');
+                saved_files{end+1} = filename;
+                
+            case 3 % Both CSV and MAT
+                % Save CSV
+                csv_filename = sprintf('trial_%03d_%s.csv', trial_num, timestamp);
+                csv_filepath = fullfile(config.output_folder, csv_filename);
+                writetable(data_table, csv_filepath);
+                saved_files{end+1} = csv_filename;
+                
+                % Save MAT
+                mat_filename = sprintf('trial_%03d_%s.mat', trial_num, timestamp);
+                mat_filepath = fullfile(config.output_folder, mat_filename);
+                save(mat_filepath, 'data_table', 'config');
+                saved_files{end+1} = mat_filename;
+        end
+        
+        % Update result with primary filename
+        filename = saved_files{1};
+        
+        result.success = true;
+        result.filename = filename;
+        result.data_points = num_rows;
+        result.columns = width(data_table);
+        
+        fprintf('Trial %d completed: %d data points, %d columns\n', trial_num, num_rows, width(data_table));
+        
+    catch ME
+        result.success = false;
+        result.error = ME.message;
+        fprintf('Error processing trial %d output: %s\n', trial_num, ME.message);
+        
+        % Print stack trace for debugging
+        fprintf('Processing error details:\n');
+        for i = 1:length(ME.stack)
+            fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
+        end
+    end
+end
+
+function [time_data, signals] = traverseSimlogNode(node, parent_path, handles)
+    % External function for traversing Simscape log nodes - can be used in parallel processing
+    % This function doesn't rely on handles
+    
+    time_data = [];
+    signals = {};
+    
+    try
+        % Get current node name
+        node_name = '';
+        if all(isprop(node, 'Name')) && all(~isempty(node.Name))
+            node_name = node.Name;
+        elseif all(isprop(node, 'id')) && all(~isempty(node.id))
+            node_name = node.id;
+        else
+            node_name = 'UnnamedNode';
+        end
+        current_path = fullfile(parent_path, node_name);
+        
+        % SIMSCAPE MULTIBODY APPROACH: Try multiple extraction methods
+        node_has_data = false;
+        
+        % Method 1: Check if node has direct data (time series)
+        if all(isprop(node, 'time')) && all(isprop(node, 'values'))
+            try
+                extracted_time = node.time;
+                extracted_data = node.values;
+                
+                if all(~isempty(extracted_time)) && all(~isempty(extracted_data)) && numel(extracted_time) > 0
+                    if isempty(time_data)
+                        time_data = extracted_time;
+                    end
+                    
+                    % Create meaningful signal name
+                    signal_name = matlab.lang.makeValidName(sprintf('%s_data', current_path));
+                    signals{end+1} = struct('name', signal_name, 'data', extracted_data);
+                    node_has_data = true;
+                end
+            catch ME
+                % Method 1 failed - this is normal for non-data nodes
+            end
+        end
+        
+        % Method 2: Extract data from 5-level Multibody hierarchy (regardless of exportable flag)
+        if ~node_has_data && all(isprop(node, 'series'))
+            try
+                % Get the signal ID (e.g., 'w' for angular velocity, 'q' for position)
+                signal_id = 'data';
+                if all(isprop(node, 'id')) && all(~isempty(node.id))
+                    signal_id = node.id;
+                end
+                
+                % Try to get time and data directly from node.series (the correct API)
+                try
+                    extracted_time = node.series.time;
+                    extracted_data = node.series.values;
+                catch
+                    % Fallback: try to access as properties
+                    if all(isprop(node.series, 'time'))
+                        extracted_time = node.series.time;
+                    else
+                        extracted_time = [];
+                    end
+                    if all(isprop(node.series, 'values'))
+                        extracted_data = node.series.values;
+                    else
+                        extracted_data = [];
+                    end
+                end
+                
+                if all(~isempty(extracted_time)) && all(~isempty(extracted_data)) && numel(extracted_time) > 0
+                    if isempty(time_data)
+                        time_data = extracted_time;
+                    end
+                    
+                    % Create meaningful signal name: Body_Joint_Component_Axis_Signal
+                    signal_name = matlab.lang.makeValidName(sprintf('%s_%s', current_path, signal_id));
+                    signals{end+1} = struct('name', signal_name, 'data', extracted_data);
+                    node_has_data = true;
+                end
+            catch ME
+                % Series access failed - this is normal for non-data nodes
+            end
+        end
+        
+        % Method 3: Try to get children and recurse
+        if ~node_has_data
+            try
+                % Try different methods to get children
+                child_ids = {};
+                
+                % Method 3a: Try properties() approach
+                try
+                    props = properties(node);
+                    child_ids = props;
+                catch
+                    % Method 3b: Try direct children access
+                    try
+                        if all(isprop(node, 'children'))
+                            child_ids = node.children;
+                        end
+                    catch
+                        % Method 3c: Try series.children() if available
+                        try
+                            if all(isprop(node, 'series')) && all(isprop(node.series, 'children'))
+                                child_ids = node.series.children;
+                            end
+                        catch
+                            % No children method available
+                        end
+                    end
+                end
+                
+                % Process children
+                for i = 1:length(child_ids)
+                    try
+                        child_node = node.(child_ids{i});
+                        [child_time, child_signals] = traverseSimlogNode(child_node, current_path, handles);
+                        
+                        % Merge time (use first valid)
+                        if isempty(time_data) && all(~isempty(child_time))
+                            time_data = child_time;
+                        end
+                        
+                        % Merge signals
+                        signals = [signals, child_signals];
+                        
+                    catch ME
+                        % Skip this child if there's an error
+                    end
+                end
+                
+            catch ME
+                % No children method available - this is normal for leaf nodes
+            end
+        end
+        
+    catch ME
+        % Only show error if it's not a normal "no data" case
+        if ~contains(ME.message, 'brace indexing') && ~contains(ME.message, 'comma separated list')
+            fprintf('Error traversing Simscape node: %s\n', ME.message);
+        end
+    end
+end
+
+function restoreWorkspace(initial_vars)
+    % Restore workspace to initial state by clearing new variables
+    current_vars = who;
+    new_vars = setdiff(current_vars, initial_vars);
+    
+    if ~isempty(new_vars)
+        clear(new_vars{:});
+    end
+end
+
+% Real Simulation Function - Replaces Mock
+function result = runSingleTrial(trial_num, config, trial_coefficients, capture_workspace)
+    result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
+    
+    try
+        % Create simulation input
+        simIn = Simulink.SimulationInput(config.model_path);
+        
+        % Set model parameters
+        simIn = setModelParameters(simIn, config);
+        
+        % Set polynomial coefficients for this trial
+        try
+            simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
+        catch ME
+            fprintf('Warning: Could not set polynomial coefficients: %s\n', ME.message);
+        end
+        
+        % Suppress specific warnings that are not critical
+        warning_state = warning('off', 'Simulink:Bus:EditTimeBusPropNotAllowed');
+        warning_state2 = warning('off', 'Simulink:Engine:BlockOutputNotUpdated');
+        warning_state3 = warning('off', 'Simulink:Engine:OutputNotConnected');
+        warning_state4 = warning('off', 'Simulink:Engine:InputNotConnected');
+        warning_state5 = warning('off', 'Simulink:Blocks:UnconnectedOutputPort');
+        warning_state6 = warning('off', 'Simulink:Blocks:UnconnectedInputPort');
+        
+        % Run simulation with progress indicator and visualization suppression
+        fprintf('Running trial %d simulation...', trial_num);
+        
+        simOut = sim(simIn);
+        fprintf(' Done.\n');
+        
+        % Restore warning state
+        warning(warning_state);
+        warning(warning_state2);
+        warning(warning_state3);
+        warning(warning_state4);
+        warning(warning_state5);
+        warning(warning_state6);
+        
+        % Process simulation output
+        result = processSimulationOutput(trial_num, config, simOut, capture_workspace);
+        
+    catch ME
+        % Restore warning state in case of error
+        if exist('warning_state', 'var')
+            warning(warning_state);
+        end
+        if exist('warning_state2', 'var')
+            warning(warning_state2);
+        end
+        if exist('warning_state3', 'var')
+            warning(warning_state3);
+        end
+        if exist('warning_state4', 'var')
+            warning(warning_state4);
+        end
+        if exist('warning_state5', 'var')
+            warning(warning_state5);
+        end
+        if exist('warning_state6', 'var')
+            warning(warning_state6);
+        end
+        
+        fprintf(' Failed.\n');
+        result.success = false;
+        result.error = ME.message;
+        fprintf('Trial %d simulation failed: %s\n', trial_num, ME.message);
+        
+        % Print stack trace for debugging
+        fprintf('Error details:\n');
+        for i = 1:length(ME.stack)
+            fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
+        end
+    end
+end
+
+function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
+    % Extract signals from simulation output based on specified options
+    % This replaces the missing extractAllSignalsFromBus function
+    
+    data_table = [];
+    signal_info = struct();
+    
+    try
+        % Validate simOut input to prevent brace indexing errors
+        if isempty(simOut)
+            if options.verbose
+                fprintf('Warning: Empty simulation output provided\n');
+            end
+            return;
+        end
+        
+        % Check if simOut is a valid simulation output object
+        if ~isobject(simOut) && ~isstruct(simOut)
+            if options.verbose
+                fprintf('Warning: Invalid simulation output type: %s\n', class(simOut));
+            end
+            return;
+        end
+        
+        % Initialize data collection
+        all_data = {};
+        
+        % Extract from CombinedSignalBus if enabled and available
+        if options.extract_combined_bus && (isprop(simOut, 'CombinedSignalBus') || isfield(simOut, 'CombinedSignalBus'))
+            if options.verbose
+                fprintf('Extracting from CombinedSignalBus...\n');
+            end
+            
+            try
+                combinedBus = simOut.CombinedSignalBus;
+                if ~isempty(combinedBus)
+                    signal_bus_data = extractFromCombinedSignalBus(combinedBus);
+                    
+                    if ~isempty(signal_bus_data)
+                        all_data{end+1} = signal_bus_data;
+                        if options.verbose
+                            fprintf('CombinedSignalBus: %d columns extracted\n', width(signal_bus_data));
+                        end
+                    end
+                end
+            catch ME
+                if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
+                    if options.verbose
+                        fprintf('Warning: Brace indexing error accessing CombinedSignalBus: %s\n', ME.message);
+                    end
+                else
+                    if options.verbose
+                        fprintf('Warning: Error extracting CombinedSignalBus: %s\n', ME.message);
+                    end
+                end
+            end
+        end
+        
+        % Extract from logsout if enabled and available
+        if options.extract_logsout && (isprop(simOut, 'logsout') || isfield(simOut, 'logsout'))
+            if options.verbose
+                fprintf('Extracting from logsout...\n');
+            end
+            
+            try
+                logsout_data = extractLogsoutDataFixed(simOut.logsout);
+                if ~isempty(logsout_data)
+                    all_data{end+1} = logsout_data;
+                    if options.verbose
+                        fprintf('Logsout: %d columns extracted\n', width(logsout_data));
+                    end
+                end
+            catch ME
+                if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
+                    if options.verbose
+                        fprintf('Warning: Brace indexing error accessing logsout: %s\n', ME.message);
+                    end
+                else
+                    if options.verbose
+                        fprintf('Warning: Error extracting logsout: %s\n', ME.message);
+                    end
+                end
+            end
+        end
+        
+        % Extract from Simscape if enabled and available
+        if options.extract_simscape
+            if options.verbose
+                fprintf('Checking for Simscape simlog...\n');
+            end
+            
+            % Enhanced simlog access for parallel execution
+            simlog_available = false;
+            simlog_data = [];
+            
+            if isprop(simOut, 'simlog') || isfield(simOut, 'simlog')
+                try
+                    simlog_data = simOut.simlog;
+                    if ~isempty(simlog_data)
+                        simlog_available = true;
+                        if options.verbose
+                            fprintf('Found simlog (type: %s)\n', class(simlog_data));
+                        end
+                    end
+                catch ME
+                    if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
+                        if options.verbose
+                            fprintf('Warning: Brace indexing error accessing simlog: %s\n', ME.message);
+                        end
+                    else
+                        if options.verbose
+                            fprintf('Warning: Could not access simlog: %s\n', ME.message);
+                        end
+                    end
+                end
+            end
+            
+            % Try alternative access methods for parallel workers
+            if ~simlog_available
+                try
+                    if isprop(simOut, 'SimulationMetadata') && isfield(simOut.SimulationMetadata, 'SimscapeLoggingInfo')
+                        if options.verbose
+                            fprintf('Attempting alternative simlog access...\n');
+                        end
+                    end
+                catch
+                    % Continue
+                end
+            end
+            
+            if simlog_available
+                if options.verbose
+                    fprintf('Extracting from Simscape simlog...\n');
+                end
+                
+                simscape_data = extractSimscapeDataRecursive(simlog_data);
+                if ~isempty(simscape_data)
+                    all_data{end+1} = simscape_data;
+                    if options.verbose
+                        fprintf('Simscape: %d columns extracted\n', width(simscape_data));
+                    end
+                else
+                    if options.verbose
+                        fprintf('Warning: No Simscape data extracted despite simlog being available\n');
+                    end
+                end
+            else
+                if options.verbose
+                    fprintf('Warning: No simlog found in simulation output\n');
+                end
+            end
+        end
+        
+        % Combine all data sources
+        if ~isempty(all_data)
+            data_table = combineDataSources(all_data);
+            signal_info.sources_found = length(all_data);
+            signal_info.total_columns = width(data_table);
+        else
+            if options.verbose
+                fprintf('Warning: No data extracted from any source\n');
+            end
+        end
+        
+    catch ME
+        if options.verbose
+            fprintf('Error in extractSignalsFromSimOut: %s\n', ME.message);
+        end
+        % Return empty results on error
+        data_table = [];
+        signal_info = struct();
+    end
+end
+
+function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
+    % Extract model workspace variables and add as constant columns
+    % These include segment lengths, masses, inertias, and other model parameters
+    
+    try
+        % Get model workspace from simulation output
+        model_name = simOut.SimulationMetadata.ModelInfo.ModelName;
+        
+        % Check if model is loaded
+        if ~bdIsLoaded(model_name)
+            fprintf('Warning: Model %s not loaded, skipping workspace data\n', model_name);
+            return;
+        end
+        
+        model_workspace = get_param(model_name, 'ModelWorkspace');
+        try
+            variables = model_workspace.getVariableNames;
+        catch
+            % For older MATLAB versions, try alternative method
+            try
+                variables = model_workspace.whos;
+                variables = {variables.name};
+            catch
+                fprintf('Warning: Could not retrieve model workspace variable names\n');
+                return;
+            end
+        end
+        
+        if length(variables) > 0
+            fprintf('Adding %d model workspace variables to CSV...\n', length(variables));
+        else
+            fprintf('No model workspace variables found\n');
+            return;
+        end
+        
+        for i = 1:length(variables)
+            var_name = variables{i};
+            
+            try
+                var_value = model_workspace.getVariable(var_name);
+                
+                % Handle different variable types
+                if isnumeric(var_value) && isscalar(var_value)
+                    % Scalar numeric values (lengths, masses, etc.)
+                    column_name = sprintf('model_%s', var_name);
+                    data_table.(column_name) = repmat(var_value, num_rows, 1);
+                    
+                elseif isnumeric(var_value) && isvector(var_value)
+                    % Vector values (3D coordinates, etc.)
+                    for j = 1:length(var_value)
+                        column_name = sprintf('model_%s_%d', var_name, j);
+                        data_table.(column_name) = repmat(var_value(j), num_rows, 1);
+                    end
+                    
+                elseif isnumeric(var_value) && ismatrix(var_value)
+                    % Matrix values (inertia matrices, etc.)
+                    [rows, cols] = size(var_value);
+                    for r = 1:rows
+                        for c = 1:cols
+                            column_name = sprintf('model_%s_%d_%d', var_name, r, c);
+                            data_table.(column_name) = repmat(var_value(r,c), num_rows, 1);
+                        end
+                    end
+                    
+                elseif isa(var_value, 'Simulink.Parameter')
+                    % Handle Simulink Parameters
+                    param_val = var_value.Value;
+                    if isnumeric(param_val) && isscalar(param_val)
+                        column_name = sprintf('model_%s', var_name);
+                        data_table.(column_name) = repmat(param_val, num_rows, 1);
+                    end
+                end
+                
+            catch ME
+                % Skip variables that can't be extracted
+                fprintf('Warning: Could not extract variable %s: %s\n', var_name, ME.message);
+            end
+        end
+        
+    catch ME
+        fprintf('Warning: Could not access model workspace: %s\n', ME.message);
+    end
+end
