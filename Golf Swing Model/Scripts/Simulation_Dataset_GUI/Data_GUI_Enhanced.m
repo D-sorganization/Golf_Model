@@ -1023,7 +1023,34 @@ end
 
 function applyUserPreferences(handles)
     % Apply user preferences to UI
-    % This is a simplified version - implement as needed
+    try
+        % Set default number of trials to 2
+        if isfield(handles, 'num_trials_edit')
+            set(handles.num_trials_edit, 'String', '2');
+        end
+        
+        % Set default execution mode to parallel (index 2)
+        if isfield(handles, 'execution_mode_popup')
+            set(handles.execution_mode_popup, 'Value', 2);
+        end
+        
+        % Apply other preferences if they exist
+        if isfield(handles, 'preferences')
+            prefs = handles.preferences;
+            
+            % Apply any other saved preferences here
+            if isfield(prefs, 'default_sim_time') && isfield(handles, 'sim_time_edit')
+                set(handles.sim_time_edit, 'String', num2str(prefs.default_sim_time));
+            end
+            
+            if isfield(prefs, 'default_sample_rate') && isfield(handles, 'sample_rate_edit')
+                set(handles.sample_rate_edit, 'String', num2str(prefs.default_sample_rate));
+            end
+        end
+        
+    catch ME
+        fprintf('Warning: Could not apply user preferences: %s\n', ME.message);
+    end
 end
 
 function closeGUICallback(~, ~)
@@ -1047,7 +1074,7 @@ function startGeneration(~, ~, fig)
         guidata(fig, handles);
         
         % Provide immediate visual feedback
-        set(handles.start_button, 'Enable', 'off', 'String', 'Running...');
+        set(handles.play_pause_button, 'Enable', 'off', 'String', 'Running...');
         set(handles.stop_button, 'Enable', 'on');
         set(handles.status_text, 'String', 'Status: Starting generation...');
         set(handles.progress_text, 'String', 'Initializing...');
@@ -1058,7 +1085,7 @@ function startGeneration(~, ~, fig)
         if isempty(config)
             % Reset state on validation failure
             handles.is_running = false;
-            set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
+            set(handles.play_pause_button, 'Enable', 'on', 'String', 'Start');
             set(handles.stop_button, 'Enable', 'off');
             guidata(fig, handles);
             return;
@@ -1079,7 +1106,7 @@ function startGeneration(~, ~, fig)
         % Reset state on error
         try
             handles.is_running = false;
-            set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
+            set(handles.play_pause_button, 'Enable', 'on', 'String', 'Start');
             set(handles.stop_button, 'Enable', 'off');
             set(handles.status_text, 'String', ['Status: Error - ' ME.message]);
             guidata(fig, handles);
@@ -1326,7 +1353,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
     
     handles.num_trials_edit = uicontrol('Parent', panel, ...
                                        'Style', 'edit', ...
-                                       'String', '10', ...
+                                       'String', '2', ...
                                        'Units', 'normalized', ...
                                        'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                        'BackgroundColor', 'white', ...
