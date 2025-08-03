@@ -84,42 +84,10 @@ function param_info = getPolynomialParameterInfo()
             end
             
         else
-            fprintf('Warning: PolynomialInputValues.mat not found, using fallback structure\n');
-            param_info = getSimplifiedParameterInfo();
+            error('CRITICAL ERROR: PolynomialInputValues.mat not found in any of the expected locations. This file is required for proper data extraction. No fallback data will be used.');
         end
         
     catch ME
-        fprintf('Error loading parameter structure: %s\n', ME.message);
-        fprintf('Using fallback structure\n');
-        param_info = getSimplifiedParameterInfo();
+        error('CRITICAL ERROR loading parameter structure: %s. No fallback data will be used.', ME.message);
     end
-end
-
-function param_info = getSimplifiedParameterInfo()
-    % Correct parameter structure based on reference file analysis
-    % These are the actual joint names that should be used
-    all_joint_names = {
-        'HipX', 'HipY', 'HipZ',
-        'LE', 'LF',
-        'LSX', 'LSY', 'LSZ',
-        'LScapX', 'LScapY',
-        'LWX', 'LWY',
-        'RE', 'RF',
-        'RSX', 'RSY', 'RSZ',
-        'RScapX', 'RScapY',
-        'RWX', 'RWY',
-        'SpineX', 'SpineY',
-        'Torso',
-        'TranslationX', 'TranslationY', 'TranslationZ'
-    };
-    
-    param_info.joint_names = all_joint_names;
-    param_info.joint_coeffs = cell(size(all_joint_names));
-    for i = 1:length(all_joint_names)
-        param_info.joint_coeffs{i} = 'ABCDEFG';
-    end
-    param_info.total_params = length(all_joint_names) * 7;
-    
-    fprintf('Using correct parameter structure with %d joints and %d total coefficients\n', ...
-        length(all_joint_names), param_info.total_params);
 end 
