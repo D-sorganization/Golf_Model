@@ -607,7 +607,7 @@ function togglePlayPause(~, ~)
         resumeFromPause(handles);
     else
         % Start or pause
-        if ~handles.should_stop && ~isempty(handles.checkpoint_data)
+        if isfield(handles, 'is_running') && handles.is_running
             % Pause current operation
             handles.is_paused = true;
             set(handles.play_pause_button, 'String', 'Resume', 'BackgroundColor', handles.colors.success);
@@ -2779,7 +2779,7 @@ function runGeneration(handles)
     % Always cleanup state and UI (replaces finally block)
     try
         handles.is_running = false;
-        set(handles.start_button, 'Enable', 'on', 'String', 'Start Generation');
+        set(handles.play_pause_button, 'Enable', 'on', 'String', 'Start');
         set(handles.stop_button, 'Enable', 'off');
         guidata(handles.fig, handles);
     catch
@@ -4652,4 +4652,31 @@ function should_show_debug = shouldShowDebug(handles)
     
     % Only show debug output for Debug verbosity level
     should_show_debug = strcmp(verbosity_level, 'Debug');
+end
+
+function resetGUIState(handles)
+    % Reset GUI state for next run
+    try
+        % Reset running state
+        handles.is_running = false;
+        handles.is_paused = false;
+        handles.should_stop = false;
+        
+        % Reset button states
+        set(handles.play_pause_button, 'Enable', 'on', 'String', 'Start');
+        set(handles.stop_button, 'Enable', 'off');
+        
+        % Clear checkpoint data
+        handles.checkpoint_data = struct();
+        
+        % Update status
+        set(handles.status_text, 'String', 'Status: Ready');
+        set(handles.progress_text, 'String', 'Ready to start');
+        
+        % Store updated handles
+        guidata(handles.fig, handles);
+        
+    catch ME
+        fprintf('Warning: Could not reset GUI state: %s\n', ME.message);
+    end
 end
