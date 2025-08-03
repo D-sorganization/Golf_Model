@@ -1110,11 +1110,12 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                    'ForegroundColor', colors.text);
     
     % Layout
-    rowHeight = 0.030;
+    rowHeight = 0.030;  % Slightly smaller to fit more elements
     labelWidth = 0.22;
-    textBoxStart = 0.20;
-    textBoxWidth = 0.48;
-    y = 0.95;
+    fieldSpacing = 0.02;
+    textBoxStart = 0.20;  % Move text boxes slightly to the right to avoid cutting off titles
+    textBoxWidth = 0.48;  % Consistent width
+    y = 0.95;  % Start higher to fit more elements
     
     % Input File
     uicontrol('Parent', panel, ...
@@ -1163,6 +1164,15 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                      'BackgroundColor', [0.97, 0.97, 0.97], ...
                                      'FontSize', 9);
     
+    handles.model_browse_btn = uicontrol('Parent', panel, ...
+                                        'Style', 'pushbutton', ...
+                                        'String', 'Browse', ...
+                                        'Units', 'normalized', ...
+                                        'Position', [0.72, y, 0.12, rowHeight], ...
+                                        'BackgroundColor', colors.secondary, ...
+                                        'ForegroundColor', 'white', ...
+                                        'Callback', @selectSimulinkModel);
+    
     % Output Folder
     y = y - 0.05;
     uicontrol('Parent', panel, ...
@@ -1180,6 +1190,15 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                           'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                           'BackgroundColor', 'white', ...
                                           'FontSize', 9);
+    
+    handles.browse_button = uicontrol('Parent', panel, ...
+                                     'Style', 'pushbutton', ...
+                                     'String', 'Browse', ...
+                                     'Units', 'normalized', ...
+                                     'Position', [0.72, y, 0.12, rowHeight], ...
+                                     'BackgroundColor', colors.secondary, ...
+                                     'ForegroundColor', 'white', ...
+                                     'Callback', @browseOutputFolder);
     
     % Dataset Name
     y = y - 0.05;
@@ -1199,7 +1218,66 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                         'BackgroundColor', 'white', ...
                                         'FontSize', 9);
     
-    % Trials
+    % Output Format
+    y = y - 0.05;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Output Format:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, labelWidth, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.format_popup = uicontrol('Parent', panel, ...
+                                    'Style', 'popupmenu', ...
+                                    'String', {'CSV Files', 'MAT Files', 'Both CSV and MAT'}, ...
+                                    'Units', 'normalized', ...
+                                    'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
+                                    'BackgroundColor', 'white');
+    
+    % Execution Mode
+    y = y - 0.05;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Execution Mode:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, labelWidth, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    % Check if parallel computing toolbox is available
+    if license('test', 'Distrib_Computing_Toolbox')
+        mode_options = {'Series', 'Parallel'};
+    else
+        mode_options = {'Series', 'Parallel (Toolbox Required)'};
+    end
+    
+    handles.execution_mode_popup = uicontrol('Parent', panel, ...
+                                            'Style', 'popupmenu', ...
+                                            'String', mode_options, ...
+                                            'Units', 'normalized', ...
+                                            'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
+                                            'BackgroundColor', 'white', ...
+                                            'Callback', @autoUpdateSummary);
+    
+    % Verbosity
+    y = y - 0.05;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Verbosity:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, labelWidth, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.verbosity_popup = uicontrol('Parent', panel, ...
+                                       'Style', 'popupmenu', ...
+                                       'String', {'Minimal', 'Standard', 'Detailed', 'Debug'}, ...
+                                       'Units', 'normalized', ...
+                                       'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
+                                       'BackgroundColor', 'white');
+    
+    % Trial Parameters
     y = y - 0.05;
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
@@ -1215,7 +1293,8 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                        'Units', 'normalized', ...
                                        'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                        'BackgroundColor', 'white', ...
-                                       'HorizontalAlignment', 'center');
+                                       'HorizontalAlignment', 'center', ...
+                                       'Callback', @updateCoefficientsPreview);
     
     % Duration
     y = y - 0.05;
@@ -1233,15 +1312,321 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                      'Units', 'normalized', ...
                                      'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                      'BackgroundColor', 'white', ...
-                                     'HorizontalAlignment', 'center');
+                                     'HorizontalAlignment', 'center', ...
+                                     'Callback', @autoUpdateSummary);
+    
+    % Sample Rate
+    y = y - 0.05;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Sample Rate (Hz):', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, labelWidth, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.sample_rate_edit = uicontrol('Parent', panel, ...
+                                        'Style', 'edit', ...
+                                        'String', '100', ...
+                                        'Units', 'normalized', ...
+                                        'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
+                                        'BackgroundColor', 'white', ...
+                                        'HorizontalAlignment', 'center', ...
+                                        'Callback', @autoUpdateSummary);
+    
+    % Torque Scenario
+    y = y - 0.05;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Torque Scenario:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, labelWidth, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.torque_scenario_popup = uicontrol('Parent', panel, ...
+                                             'Style', 'popupmenu', ...
+                                             'String', {'Variable Torques', 'Zero Torque', 'Constant Torque'}, ...
+                                             'Units', 'normalized', ...
+                                             'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
+                                             'BackgroundColor', 'white', ...
+                                             'Callback', @torqueScenarioCallback);
+    
+    % Coefficient Range
+    y = y - 0.05;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Coefficient Range (±):', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, labelWidth, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.coeff_range_edit = uicontrol('Parent', panel, ...
+                                        'Style', 'edit', ...
+                                        'String', '50', ...
+                                        'Units', 'normalized', ...
+                                        'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
+                                        'BackgroundColor', 'white', ...
+                                        'HorizontalAlignment', 'center', ...
+                                        'Callback', @updateCoefficientsPreview);
+    
+    % Data Sources
+    y = y - 0.05;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Data Sources:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, 0.15, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    % First row of checkboxes
+    handles.use_signal_bus = uicontrol('Parent', panel, ...
+                                      'Style', 'checkbox', ...
+                                      'String', 'CombinedSignalBus', ...
+                                      'Units', 'normalized', ...
+                                      'Position', [textBoxStart, y, 0.30, rowHeight], ...
+                                      'Value', 1, ...
+                                      'BackgroundColor', colors.panel);
+    
+    handles.use_logsout = uicontrol('Parent', panel, ...
+                                   'Style', 'checkbox', ...
+                                   'String', 'Logsout Dataset', ...
+                                   'Units', 'normalized', ...
+                                   'Position', [textBoxStart + 0.24, y, 0.30, rowHeight], ...
+                                   'Value', 1, ...
+                                   'BackgroundColor', colors.panel);
+    
+    % Second row of checkboxes
+    y = y - 0.025;
+    handles.use_simscape = uicontrol('Parent', panel, ...
+                                    'Style', 'checkbox', ...
+                                    'String', 'Simscape Results', ...
+                                    'Units', 'normalized', ...
+                                    'Position', [textBoxStart, y, 0.30, rowHeight], ...
+                                    'Value', 1, ...
+                                    'BackgroundColor', colors.panel);
+    
+    handles.capture_workspace_checkbox = uicontrol('Parent', panel, ...
+                                                  'Style', 'checkbox', ...
+                                                  'String', 'Model Workspace', ...
+                                                  'Value', 1, ... % Default to checked
+                                                  'Units', 'normalized', ...
+                                                  'Position', [textBoxStart + 0.24, y, 0.30, rowHeight], ...
+                                                  'BackgroundColor', colors.panel, ...
+                                                  'ForegroundColor', colors.text, ...
+                                                  'FontSize', 9, ...
+                                                  'TooltipString', 'Include model workspace variables (segment lengths, masses, inertias, etc.) in the output dataset');
+    
+    % Animation and Monitoring Options
+    y = y - 0.05;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Options:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, 0.15, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    % First row of options
+    handles.enable_animation = uicontrol('Parent', panel, ...
+                                        'Style', 'checkbox', ...
+                                        'String', 'Animation', ...
+                                        'Units', 'normalized', ...
+                                        'Position', [textBoxStart, y, 0.30, rowHeight], ...
+                                        'Value', 0, ...
+                                        'BackgroundColor', colors.panel);
+    
+    handles.enable_performance_monitoring = uicontrol('Parent', panel, ...
+                                                     'Style', 'checkbox', ...
+                                                     'String', 'Performance Monitoring', ...
+                                                     'Value', 1, ...
+                                                     'Units', 'normalized', ...
+                                                     'Position', [textBoxStart + 0.24, y, 0.30, rowHeight], ...
+                                                     'BackgroundColor', colors.panel, ...
+                                                     'ForegroundColor', colors.text, ...
+                                                     'FontSize', 9, ...
+                                                     'TooltipString', 'Track execution times, memory usage, and performance metrics');
+    
+    % Second row of options
+    y = y - 0.025;
+    handles.enable_memory_monitoring = uicontrol('Parent', panel, ...
+                                                'Style', 'checkbox', ...
+                                                'String', 'Memory Monitoring', ...
+                                                'Value', 1, ...
+                                                'Units', 'normalized', ...
+                                                'Position', [textBoxStart, y, 0.30, rowHeight], ...
+                                                'BackgroundColor', colors.panel, ...
+                                                'ForegroundColor', colors.text, ...
+                                                'FontSize', 9, ...
+                                                'TooltipString', 'Monitor system memory and automatically manage parallel workers');
+    
+    % Third row of options - Checkpoint Resume
+    y = y - 0.025;
+    handles.enable_checkpoint_resume = uicontrol('Parent', panel, ...
+                                                'Style', 'checkbox', ...
+                                                'String', 'Resume from checkpoint', ...
+                                                'Value', 0, ...
+                                                'Units', 'normalized', ...
+                                                'Position', [textBoxStart, y, 0.30, rowHeight], ...
+                                                'BackgroundColor', colors.panel, ...
+                                                'ForegroundColor', colors.text, ...
+                                                'FontSize', 9, ...
+                                                'TooltipString', 'When checked, resume from existing checkpoint. When unchecked, always start fresh.');
+    
+    % Clear Checkpoints Button
+    handles.clear_checkpoint_button = uicontrol('Parent', panel, ...
+                                              'Style', 'pushbutton', ...
+                                              'String', 'Clear Checkpoints', ...
+                                              'Units', 'normalized', ...
+                                              'Position', [textBoxStart + 0.24, y, 0.20, rowHeight], ...
+                                              'BackgroundColor', colors.danger, ...
+                                              'ForegroundColor', 'white', ...
+                                              'FontSize', 9, ...
+                                              'Callback', @clearAllCheckpoints, ...
+                                              'TooltipString', 'Delete all checkpoint files to force fresh start');
+    
+    % Batch Settings Section - Moved to more visible position
+    y = y - 0.04;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Batch Size:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, 0.15, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel, ...
+              'FontWeight', 'bold');  % Make it bold to be more visible
+    
+    handles.batch_size_edit = uicontrol('Parent', panel, ...
+                                       'Style', 'edit', ...
+                                       'String', '50', ...
+                                       'Units', 'normalized', ...
+                                       'Position', [textBoxStart, y, 0.15, rowHeight], ...
+                                       'BackgroundColor', 'white', ...
+                                       'HorizontalAlignment', 'center', ...
+                                       'FontSize', 9, ...
+                                       'TooltipString', 'Number of simulations to process in each batch (recommended: 25-100)');
+    
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'trials', ...
+              'Units', 'normalized', ...
+              'Position', [textBoxStart + 0.16, y, 0.08, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel, ...
+              'FontSize', 9);
+    
+    % Save Interval
+    y = y - 0.04;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Save Interval:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, 0.15, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel, ...
+              'FontWeight', 'bold');  % Make it bold to be more visible
+    
+    handles.save_interval_edit = uicontrol('Parent', panel, ...
+                                          'Style', 'edit', ...
+                                          'String', '25', ...
+                                          'Units', 'normalized', ...
+                                          'Position', [textBoxStart, y, 0.15, rowHeight], ...
+                                          'BackgroundColor', 'white', ...
+                                          'HorizontalAlignment', 'center', ...
+                                          'FontSize', 9, ...
+                                          'TooltipString', 'Save checkpoint every N batches (recommended: 10-50)');
+    
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'batches', ...
+              'Units', 'normalized', ...
+              'Position', [textBoxStart + 0.16, y, 0.08, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel, ...
+              'FontSize', 9);
+    
+    % Progress Section
+    y = y - 0.04;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Progress:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, 0.15, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.progress_text = uicontrol('Parent', panel, ...
+                                     'Style', 'edit', ...
+                                     'String', 'Ready to start generation...', ...
+                                     'Units', 'normalized', ...
+                                     'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
+                                     'FontWeight', 'normal', ...
+                                     'FontSize', 9, ...
+                                     'HorizontalAlignment', 'left', ...
+                                     'BackgroundColor', colors.panel, ...
+                                     'Max', 2, ... % Allow multiple lines
+                                     'Min', 0, ... % Allow selection
+                                     'Enable', 'inactive'); % Read-only but selectable
+    
+    % Status Section
+    y = y - 0.04;
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Status:', ...
+              'Units', 'normalized', ...
+              'Position', [0.02, y, 0.15, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.status_text = uicontrol('Parent', panel, ...
+                                   'Style', 'edit', ...
+                                   'String', 'Status: Ready', ...
+                                   'Units', 'normalized', ...
+                                   'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
+                                   'HorizontalAlignment', 'left', ...
+                                   'BackgroundColor', [0.97, 0.97, 0.97], ...
+                                   'ForegroundColor', colors.success, ...
+                                   'FontSize', 9, ...
+                                   'Max', 2, ... % Allow multiple lines
+                                   'Min', 0, ... % Allow selection
+                                   'Enable', 'inactive'); % Read-only but selectable
+    
+    % Initialize
+    handles.model_name = 'GolfSwing3D_Kinetic';
+    handles.model_path = '';
+    handles.selected_input_file = '';
+    
+    % Try to find default model in multiple locations
+    possible_paths = {
+        'Model/GolfSwing3D_Kinetic.slx',
+        'GolfSwing3D_Kinetic.slx',
+        fullfile(pwd, 'Model', 'GolfSwing3D_Kinetic.slx'),
+        fullfile(pwd, 'GolfSwing3D_Kinetic.slx'),
+        which('GolfSwing3D_Kinetic.slx'),
+        which('GolfSwing3D_Kinetic')
+    };
+    
+    for i = 1:length(possible_paths)
+        if ~isempty(possible_paths{i}) && exist(possible_paths{i}, 'file')
+            handles.model_path = possible_paths{i};
+            fprintf('Found model at: %s\n', handles.model_path);
+            break;
+        end
+    end
+    
+    if isempty(handles.model_path)
+        fprintf('Warning: Could not find model file automatically\n');
+    end
 end
 
 function handles = createPreviewPanel(parent, handles, yPos, height)
-    % Preview panel
+    % Parameters Summary Panel
     colors = handles.colors;
     
     panel = uipanel('Parent', parent, ...
-                   'Title', 'Preview', ...
+                   'Title', 'Summary', ...
                    'FontSize', 10, ...
                    'FontWeight', 'normal', ...
                    'Units', 'normalized', ...
@@ -1249,34 +1634,23 @@ function handles = createPreviewPanel(parent, handles, yPos, height)
                    'BackgroundColor', colors.panel, ...
                    'ForegroundColor', colors.text);
     
-    % Preview text
-    uicontrol('Parent', panel, ...
-              'Style', 'text', ...
-              'String', 'Preview area - Enhanced GUI loaded successfully!', ...
-              'Units', 'normalized', ...
-              'Position', [0.05, 0.8, 0.9, 0.15], ...
-              'HorizontalAlignment', 'center', ...
-              'FontSize', 12, ...
-              'FontWeight', 'bold', ...
-              'BackgroundColor', colors.panel);
-    
-    % Status text
-    handles.preview_text = uicontrol('Parent', panel, ...
-                                    'Style', 'text', ...
-                                    'String', 'Ready to generate data', ...
-                                    'Units', 'normalized', ...
-                                    'Position', [0.05, 0.6, 0.9, 0.15], ...
-                                    'HorizontalAlignment', 'center', ...
-                                    'FontSize', 10, ...
-                                    'BackgroundColor', colors.panel);
+    % Summary table (full height since no button needed)
+    handles.preview_table = uitable('Parent', panel, ...
+                                   'Units', 'normalized', ...
+                                   'Position', [0.02, 0.02, 0.96, 0.96], ...
+                                   'ColumnName', {'Parameter', 'Value', 'Description'}, ...
+                                   'ColumnWidth', {150, 150, 'auto'}, ...
+                                   'RowStriping', 'on', ...
+                                   'FontSize', 9);
 end
 
 function handles = createJointEditorPanel(parent, handles, yPos, height)
-    % Joint editor panel
+    % Joint Editor Panel
     colors = handles.colors;
+    param_info = getPolynomialParameterInfo();
     
     panel = uipanel('Parent', parent, ...
-                   'Title', 'Joint Editor', ...
+                   'Title', 'Joint Coefficient Editor', ...
                    'FontSize', 10, ...
                    'FontWeight', 'normal', ...
                    'Units', 'normalized', ...
@@ -1284,23 +1658,165 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                    'BackgroundColor', colors.panel, ...
                    'ForegroundColor', colors.text);
     
-    % Joint editor content
+    % Selection row - leave more room for the panel title
+    y = 0.75;  % Moved down to give more space at top
+    rowHeight = 0.156;  % Increased by 30% (0.12 * 1.3) to prevent dropdown cutoff
+    
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
-              'String', 'Joint configuration options will appear here', ...
+              'String', 'Joint:', ...
               'Units', 'normalized', ...
-              'Position', [0.05, 0.4, 0.9, 0.2], ...
-              'HorizontalAlignment', 'center', ...
-              'FontSize', 10, ...
+              'Position', [0.02, y, 0.08, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
               'BackgroundColor', colors.panel);
+    
+    handles.joint_selector = uicontrol('Parent', panel, ...
+                                      'Style', 'popupmenu', ...
+                                      'String', param_info.joint_names, ...
+                                      'Units', 'normalized', ...
+                                      'Position', [0.10, y+0.10, 0.35, 0.08], ...
+                                      'BackgroundColor', 'white', ...
+                                      'Callback', @updateJointCoefficients);
+    
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Apply to:', ...
+              'Units', 'normalized', ...
+              'Position', [0.48, y, 0.10, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.trial_selection_popup = uicontrol('Parent', panel, ...
+                                             'Style', 'popupmenu', ...
+                                             'String', {'All Trials', 'Specific Trial'}, ...
+                                             'Units', 'normalized', ...
+                                             'Position', [0.58, y+0.10, 0.20, 0.08], ...
+                                             'BackgroundColor', 'white', ...
+                                             'Callback', @updateTrialSelectionMode);
+    
+    uicontrol('Parent', panel, ...
+              'Style', 'text', ...
+              'String', 'Trial:', ...
+              'Units', 'normalized', ...
+              'Position', [0.80, y, 0.06, rowHeight], ...
+              'HorizontalAlignment', 'left', ...
+              'BackgroundColor', colors.panel);
+    
+    handles.trial_number_edit = uicontrol('Parent', panel, ...
+                                         'Style', 'edit', ...
+                                         'String', '1', ...
+                                         'Units', 'normalized', ...
+                                         'Position', [0.87, y+0.10, 0.08, 0.08], ...
+                                         'BackgroundColor', 'white', ...
+                                         'HorizontalAlignment', 'center', ...
+                                         'Enable', 'off');
+    
+    % Coefficient labels row
+    y = y - 0.15;  % Reduced spacing to move row up
+    coeff_labels = {'A', 'B', 'C', 'D', 'E', 'F', 'G'};
+    coeff_powers = {'t⁶', 't⁵', 't⁴', 't³', 't²', 't', '1'};  % Powers for each coefficient
+    handles.joint_coeff_edits = gobjects(1, 7);
+    
+    coeffWidth = 0.12;
+    coeffSpacing = (0.96 - 7*coeffWidth) / 8;
+    
+    for i = 1:7
+        xPos = coeffSpacing + (i-1) * (coeffWidth + coeffSpacing);
+        
+        % Color code G coefficient (constant term)
+        if i == 7
+            labelColor = colors.success;  % Highlight G as constant
+        else
+            labelColor = colors.text;
+        end
+        
+        % Coefficient label with power
+        uicontrol('Parent', panel, ...
+                  'Style', 'text', ...
+                  'String', [coeff_labels{i} ' (' coeff_powers{i} ')'], ...
+                  'Units', 'normalized', ...
+                  'Position', [xPos, y, coeffWidth, 0.086], ...  % Increased by 30%
+                  'FontWeight', 'normal', ...
+                  'FontSize', 9, ...
+                  'ForegroundColor', labelColor, ...
+                  'BackgroundColor', colors.panel, ...
+                  'HorizontalAlignment', 'center');
+    end
+    
+    % Coefficient text boxes row
+    y = y - 0.10;  % Reduced spacing between labels and text boxes
+    
+    for i = 1:7
+        xPos = coeffSpacing + (i-1) * (coeffWidth + coeffSpacing);
+        
+        handles.joint_coeff_edits(i) = uicontrol('Parent', panel, ...
+                                                'Style', 'edit', ...
+                                                'String', '0.00', ...
+                                                'Units', 'normalized', ...
+                                                'Position', [xPos, y, coeffWidth, 0.088], ...  % Increased by 10%
+                                                'BackgroundColor', 'white', ...
+                                                'HorizontalAlignment', 'center', ...
+                                                'Callback', @validateCoefficientInput);
+    end
+    
+    % Action buttons row
+    y = y - 0.195;  % Increased by 30%
+    
+    % Action buttons
+    buttonHeight = 0.097;  % Increased by 10% (0.088 * 1.1 = 0.097)
+    
+    handles.apply_joint_button = uicontrol('Parent', panel, ...
+                                          'Style', 'pushbutton', ...
+                                          'String', 'Apply to Table', ...
+                                          'Units', 'normalized', ...
+                                          'Position', [0.02, y, 0.22, buttonHeight], ...
+                                          'BackgroundColor', colors.success, ...
+                                          'ForegroundColor', 'white', ...
+                                          'Callback', @applyJointToTable);
+    
+    handles.load_joint_button = uicontrol('Parent', panel, ...
+                                         'Style', 'pushbutton', ...
+                                         'String', 'Load from Table', ...
+                                         'Units', 'normalized', ...
+                                         'Position', [0.26, y, 0.22, buttonHeight], ...
+                                         'BackgroundColor', colors.warning, ...
+                                         'ForegroundColor', 'white', ...
+                                         'Callback', @loadJointFromTable);
+    
+    % Status
+    handles.joint_status = uicontrol('Parent', panel, ...
+                                    'Style', 'text', ...
+                                    'String', sprintf('Ready - %s selected', param_info.joint_names{1}), ...
+                                    'Units', 'normalized', ...
+                                    'Position', [0.50, y, 0.48, buttonHeight], ...
+                                    'HorizontalAlignment', 'center', ...
+                                    'BackgroundColor', [0.97, 0.97, 0.97], ...
+                                    'ForegroundColor', colors.textLight, ...
+                                    'FontSize', 9);
+    
+    % Equation display row
+    y = y - 0.195;  % Increased by 30%
+    handles.equation_display = uicontrol('Parent', panel, ...
+                                       'Style', 'text', ...
+                                       'String', 'τ(t) = At⁶ + Bt⁵ + Ct⁴ + Dt³ + Et² + Ft + G', ...
+                                       'Units', 'normalized', ...
+                                       'Position', [0.02, y, 0.96, 0.114], ...  % Increased by 30%
+                                       'FontSize', 11, ...
+                                       'FontWeight', 'normal', ...
+                                       'ForegroundColor', colors.primary, ...
+                                       'BackgroundColor', [0.98, 0.98, 1], ...
+                                       'HorizontalAlignment', 'center');
+    
+    handles.param_info = param_info;
 end
 
 function handles = createCoefficientsPanel(parent, handles, yPos, height)
-    % Coefficients panel
+    % Coefficients Table Panel
     colors = handles.colors;
+    param_info = getPolynomialParameterInfo();
     
     panel = uipanel('Parent', parent, ...
-                   'Title', 'Coefficients', ...
+                   'Title', 'Coefficients Table', ...
                    'FontSize', 10, ...
                    'FontWeight', 'normal', ...
                    'Units', 'normalized', ...
@@ -1308,15 +1824,94 @@ function handles = createCoefficientsPanel(parent, handles, yPos, height)
                    'BackgroundColor', colors.panel, ...
                    'ForegroundColor', colors.text);
     
-    % Coefficients content
+    % Search bar
+    searchY = 0.88;
     uicontrol('Parent', panel, ...
               'Style', 'text', ...
-              'String', 'Coefficient settings will appear here', ...
+              'String', 'Search:', ...
               'Units', 'normalized', ...
-              'Position', [0.05, 0.4, 0.9, 0.2], ...
-              'HorizontalAlignment', 'center', ...
-              'FontSize', 10, ...
+              'Position', [0.02, searchY, 0.08, 0.10], ...
               'BackgroundColor', colors.panel);
+    
+    handles.search_edit = uicontrol('Parent', panel, ...
+                                   'Style', 'edit', ...
+                                   'String', '', ...
+                                   'Units', 'normalized', ...
+                                   'Position', [0.11, searchY, 0.20, 0.10], ...
+                                   'BackgroundColor', 'white', ...
+                                   'FontSize', 9, ...
+                                   'Callback', @searchCoefficients);
+    
+    handles.clear_search_button = uicontrol('Parent', panel, ...
+                                           'Style', 'pushbutton', ...
+                                           'String', 'Clear', ...
+                                           'Units', 'normalized', ...
+                                           'Position', [0.32, searchY, 0.08, 0.10], ...
+                                           'BackgroundColor', colors.danger, ...
+                                           'ForegroundColor', 'white', ...
+                                           'Callback', @clearSearch);
+    
+    % Control buttons
+    buttonY = 0.76;
+    buttonHeight = 0.09;
+    buttonWidth = 0.13;
+    buttonSpacing = 0.01;
+    
+    % Button configuration
+    buttons = {
+        {'Reset', 'reset_coeffs', colors.danger, @resetCoefficientsToGenerated},
+        {'Apply Row', 'apply_row', colors.primary, @applyRowToAll},
+        {'Export', 'export', colors.success, @exportCoefficientsToCSV},
+        {'Import', 'import', colors.warning, @importCoefficientsFromCSV},
+        {'Save Set', 'save_scenario', colors.secondary, @saveScenario},
+        {'Load Set', 'load_scenario', colors.secondary, @loadScenario}
+    };
+    
+    for i = 1:length(buttons)
+        xPos = 0.02 + (i-1) * (buttonWidth + buttonSpacing);
+        btn_name = [buttons{i}{2} '_button'];
+        handles.(btn_name) = uicontrol('Parent', panel, ...
+                                      'Style', 'pushbutton', ...
+                                      'String', buttons{i}{1}, ...
+                                      'Units', 'normalized', ...
+                                      'Position', [xPos, buttonY, buttonWidth, buttonHeight], ...
+                                      'BackgroundColor', buttons{i}{3}, ...
+                                      'ForegroundColor', 'white', ...
+                                      'Callback', buttons{i}{4});
+    end
+    
+    % Coefficients table
+    col_names = {'Trial'};
+    col_widths = {50};
+    col_editable = false;
+    
+    % Add columns for joints
+    for i = 1:length(param_info.joint_names)
+        joint_name = param_info.joint_names{i};
+        coeffs = param_info.joint_coeffs{i};
+        short_name = getShortenedJointName(joint_name);
+        
+        for j = 1:length(coeffs)
+            coeff = coeffs(j);
+            col_names{end+1} = sprintf('%s_%s', short_name, coeff);
+            col_widths{end+1} = 55;
+            col_editable(end+1) = true;
+        end
+    end
+    
+    handles.coefficients_table = uitable('Parent', panel, ...
+                                        'Units', 'normalized', ...
+                                        'Position', [0.02, 0.05, 0.96, 0.80], ...
+                                        'ColumnName', col_names, ...
+                                        'ColumnWidth', col_widths, ...
+                                        'RowStriping', 'on', ...
+                                        'ColumnEditable', col_editable, ...
+                                        'FontSize', 8, ...
+                                        'CellEditCallback', @coefficientCellEditCallback);
+    
+    % Initialize tracking
+    handles.edited_cells = {};
+    handles.param_info = param_info;
 end
 
 % Additional callback functions
@@ -1329,14 +1924,672 @@ function browseInputFile(~, ~)
     end
 end
 
-function autoUpdateSummary(~, ~)
-    % Auto update summary
-    % This is a placeholder - implement as needed
+function autoUpdateSummary(~, ~, fig)
+    if nargin < 3 || isempty(fig)
+        fig = gcbf;
+    end
+    handles = guidata(fig);
+    
+    % Update both summary and coefficients preview
+    updatePreview([], [], fig);
+    updateCoefficientsPreview([], [], fig);
 end
 
-function torqueScenarioCallback(~, ~)
-    % Torque scenario callback
-    % This is a placeholder - implement as needed
+function torqueScenarioCallback(src, ~)
+    handles = guidata(gcbf);
+    scenario_idx = get(src, 'Value');
+    
+    % Enable/disable controls
+    switch scenario_idx
+        case 1 % Variable Torques
+            set(handles.coeff_range_edit, 'Enable', 'on');
+        case 2 % Zero Torque
+            set(handles.coeff_range_edit, 'Enable', 'off');
+        case 3 % Constant Torque
+            set(handles.coeff_range_edit, 'Enable', 'off');
+    end
+    
+    autoUpdateSummary([], [], gcbf);
+    guidata(handles.fig, handles);
+end
+
+function browseOutputFolder(src, ~)
+    handles = guidata(gcbf);
+    folder = uigetdir(get(handles.output_folder_edit, 'String'), 'Select Output Folder');
+    if folder ~= 0
+        set(handles.output_folder_edit, 'String', folder);
+        autoUpdateSummary([], [], gcbf);
+        guidata(handles.fig, handles);
+        saveUserPreferences(handles);
+    end
+end
+
+function updatePreview(~, ~, fig)
+    if nargin < 3 || isempty(fig)
+        fig = gcbf;
+    end
+    handles = guidata(fig);
+    
+    try
+        % Get current settings
+        num_trials = str2double(get(handles.num_trials_edit, 'String'));
+        sim_time = str2double(get(handles.sim_time_edit, 'String'));
+        sample_rate = str2double(get(handles.sample_rate_edit, 'String'));
+        scenario_idx = get(handles.torque_scenario_popup, 'Value');
+        
+        % Create preview data
+        scenarios = {'Variable Torques', 'Zero Torque', 'Constant Torque'};
+        preview_data = {
+            'Number of Trials', num2str(num_trials), 'Total simulation runs';
+            'Simulation Time', [num2str(sim_time) ' s'], 'Duration per trial';
+            'Sample Rate', [num2str(sample_rate) ' Hz'], 'Data sampling frequency';
+            'Data Points', num2str(round(sim_time * sample_rate)), 'Per trial time series';
+            'Torque Scenario', scenarios{scenario_idx}, 'Coefficient generation method';
+        };
+        
+        % Add scenario-specific info
+        if scenario_idx == 1
+            coeff_range = str2double(get(handles.coeff_range_edit, 'String'));
+            preview_data = [preview_data; {
+                'Coefficient Range', ['±' num2str(coeff_range)], 'Random variation bounds'
+            }];
+        elseif scenario_idx == 3
+            constant_value = 10.0; % Default constant value
+            preview_data = [preview_data; {
+                'Constant Value', num2str(constant_value), 'G coefficient value'
+            }];
+        end
+        
+        % Add data sampling info
+        expected_points = round(sim_time * sample_rate);
+        preview_data = [preview_data; {
+            'Expected Data Points', num2str(expected_points), 'Per trial after resampling'
+        }];
+        
+        % Add output info
+        output_folder = get(handles.output_folder_edit, 'String');
+        folder_name = get(handles.folder_name_edit, 'String');
+        preview_data = [preview_data; {
+            'Output Location', fullfile(output_folder, folder_name), 'File destination'
+        }];
+        
+        set(handles.preview_table, 'Data', preview_data);
+        
+    catch ME
+        error_data = {'Error', 'Check inputs', ME.message};
+        set(handles.preview_table, 'Data', error_data);
+    end
+end
+
+function updateCoefficientsPreview(~, ~, fig)
+    if nargin < 3 || isempty(fig)
+        fig = gcbf;
+    end
+    handles = guidata(fig);
+    
+    try
+        % Get current settings
+        num_trials = str2double(get(handles.num_trials_edit, 'String'));
+        if isnan(num_trials) || num_trials <= 0
+            num_trials = 5;
+        end
+        display_trials = num_trials; % Show all trials
+        % Use actual num_trials for simulation, display_trials for preview
+        
+        scenario_idx = get(handles.torque_scenario_popup, 'Value');
+        coeff_range = str2double(get(handles.coeff_range_edit, 'String'));
+        constant_value = 10.0; % Default constant value since we removed the input field
+        
+        % Get parameter info
+        param_info = getPolynomialParameterInfo();
+        total_columns = 1 + param_info.total_params;
+        
+        % Generate coefficient data for display (limited to 100 for performance)
+        coeff_data = cell(display_trials, total_columns);
+        
+        for i = 1:display_trials
+            coeff_data{i, 1} = i; % Trial number
+            
+            col_idx = 2;
+            for joint_idx = 1:length(param_info.joint_names)
+                coeffs = param_info.joint_coeffs{joint_idx};
+                for coeff_idx = 1:length(coeffs)
+                    coeff_letter = coeffs(coeff_idx);
+                    
+                    switch scenario_idx
+                        case 1 % Variable Torques
+                            if ~isnan(coeff_range) && coeff_range > 0
+                                % Generate random coefficient within specified range with bounds validation
+                                random_value = (rand - 0.5) * 2 * coeff_range;
+                                % Ensure value is within bounds [-coeff_range, +coeff_range]
+                                random_value = max(-coeff_range, min(coeff_range, random_value));
+                                coeff_data{i, col_idx} = sprintf('%.2f', random_value);
+                            else
+                                coeff_data{i, col_idx} = sprintf('%.2f', (rand - 0.5) * 100);
+                            end
+                        case 2 % Zero Torque
+                            coeff_data{i, col_idx} = '0.00';
+                        case 3 % Constant Torque
+                            % FIXED: G is the constant term (last coefficient)
+                            if coeff_letter == 'G'
+                                if ~isnan(constant_value)
+                                    coeff_data{i, col_idx} = sprintf('%.2f', constant_value);
+                                else
+                                    coeff_data{i, col_idx} = '10.00';
+                                end
+                            else
+                                coeff_data{i, col_idx} = '0.00';
+                            end
+                    end
+                    col_idx = col_idx + 1;
+                end
+            end
+        end
+        
+        % Update table
+        set(handles.coefficients_table, 'Data', coeff_data);
+        handles.edited_cells = {}; % Clear edit tracking
+        
+        % Store original data
+        handles.original_coefficients_data = coeff_data;
+        handles.original_coefficients_columns = get(handles.coefficients_table, 'ColumnName');
+        guidata(handles.fig, handles);
+        
+    catch ME
+        fprintf('Error in updateCoefficientsPreview: %s\n', ME.message);
+    end
+end
+
+% Joint Editor callbacks
+function updateJointCoefficients(src, evt)
+    handles = guidata(gcbf);
+    selected_idx = get(handles.joint_selector, 'Value');
+    joint_names = get(handles.joint_selector, 'String');
+    
+    % Load coefficients from table if available
+    loadJointFromTable([], [], gcbf);
+    
+    % Update status
+    set(handles.joint_status, 'String', sprintf('Ready - %s selected', joint_names{selected_idx}));
+    guidata(handles.fig, handles);
+end
+
+function updateTrialSelectionMode(src, evt)
+    handles = guidata(gcbf);
+    selection_idx = get(handles.trial_selection_popup, 'Value');
+    
+    if selection_idx == 1 % All Trials
+        set(handles.trial_number_edit, 'Enable', 'off');
+    else % Specific Trial
+        set(handles.trial_number_edit, 'Enable', 'on');
+    end
+    
+    guidata(handles.fig, handles);
+end
+
+function validateCoefficientInput(src, evt)
+    value = get(src, 'String');
+    num_value = str2double(value);
+    
+    if isnan(num_value)
+        set(src, 'String', '0.00');
+        msgbox('Please enter a valid number', 'Invalid Input', 'warn');
+    else
+        set(src, 'String', sprintf('%.2f', num_value));
+    end
+end
+
+function applyJointToTable(src, evt)
+    handles = guidata(gcbf);
+    
+    try
+        % Get selected joint
+        joint_idx = get(handles.joint_selector, 'Value');
+        param_info = handles.param_info;
+        
+        % Get coefficient values
+        coeff_values = zeros(1, 7);
+        for i = 1:7
+            coeff_values(i) = str2double(get(handles.joint_coeff_edits(i), 'String'));
+        end
+        
+        % Get current table data
+        table_data = get(handles.coefficients_table, 'Data');
+        
+        % Determine which trials to apply to
+        apply_mode = get(handles.trial_selection_popup, 'Value');
+        if apply_mode == 1 % All Trials
+            trials = 1:size(table_data, 1);
+        else % Specific Trial
+            trial_num = str2double(get(handles.trial_number_edit, 'String'));
+            if isnan(trial_num) || trial_num < 1 || trial_num > size(table_data, 1)
+                msgbox('Invalid trial number', 'Error', 'error');
+                return;
+            end
+            trials = trial_num;
+        end
+        
+        % Calculate column indices
+        col_start = 2 + (joint_idx - 1) * 7;
+        
+        % Apply values
+        for trial = trials
+            for i = 1:7
+                table_data{trial, col_start + i - 1} = sprintf('%.2f', coeff_values(i));
+            end
+        end
+        
+        % Update table
+        set(handles.coefficients_table, 'Data', table_data);
+        
+        % Update status
+        if apply_mode == 1
+            status_msg = sprintf('Applied %s coefficients to all trials', param_info.joint_names{joint_idx});
+        else
+            status_msg = sprintf('Applied %s coefficients to trial %d', param_info.joint_names{joint_idx}, trials);
+        end
+        set(handles.joint_status, 'String', status_msg);
+        
+    catch ME
+        msgbox(['Error applying coefficients: ' ME.message], 'Error', 'error');
+    end
+end
+
+function loadJointFromTable(src, evt, fig)
+    if nargin < 3
+        fig = gcbf;
+    end
+    handles = guidata(fig);
+    
+    try
+        % Get selected joint
+        joint_idx = get(handles.joint_selector, 'Value');
+        
+        % Get table data
+        table_data = get(handles.coefficients_table, 'Data');
+        
+        if isempty(table_data)
+            return;
+        end
+        
+        % Determine which trial to load from
+        apply_mode = get(handles.trial_selection_popup, 'Value');
+        if apply_mode == 2 % Specific Trial
+            trial_num = str2double(get(handles.trial_number_edit, 'String'));
+            if isnan(trial_num) || trial_num < 1 || trial_num > size(table_data, 1)
+                trial_num = 1;
+            end
+        else
+            trial_num = 1; % Default to first trial
+        end
+        
+        % Calculate column indices
+        col_start = 2 + (joint_idx - 1) * 7;
+        
+        % Load values
+        for i = 1:7
+            value_str = table_data{trial_num, col_start + i - 1};
+            if ischar(value_str)
+                value = str2double(value_str);
+            else
+                value = value_str;
+            end
+            set(handles.joint_coeff_edits(i), 'String', sprintf('%.2f', value));
+        end
+        
+    catch ME
+        % Silently fail or set defaults
+        for i = 1:7
+            set(handles.joint_coeff_edits(i), 'String', '0.00');
+        end
+    end
+end
+
+% Coefficients table callbacks
+function resetCoefficientsToGenerated(src, evt)
+    handles = guidata(gcbf);
+    
+    if isfield(handles, 'original_coefficients_data')
+        set(handles.coefficients_table, 'Data', handles.original_coefficients_data);
+        handles.edited_cells = {};
+        guidata(handles.fig, handles);
+        msgbox('Coefficients reset to generated values', 'Reset Complete', 'help');
+    else
+        updateCoefficientsPreview([], [], gcbf);
+    end
+end
+
+function coefficientCellEditCallback(src, evt)
+    handles = guidata(gcbf);
+    
+    if evt.Column > 1 % Only coefficient columns are editable
+        % Validate input
+        new_value = evt.NewData;
+        if ischar(new_value)
+            num_value = str2double(new_value);
+        else
+            num_value = new_value;
+        end
+        
+        if isnan(num_value)
+            % Revert to old value
+            table_data = get(src, 'Data');
+            table_data{evt.Row, evt.Column} = evt.PreviousData;
+            set(src, 'Data', table_data);
+            msgbox('Please enter a valid number', 'Invalid Input', 'warn');
+        else
+            % Format and update
+            table_data = get(src, 'Data');
+            table_data{evt.Row, evt.Column} = sprintf('%.2f', num_value);
+            set(src, 'Data', table_data);
+            
+            % Track edit
+            cell_id = sprintf('%d,%d', evt.Row, evt.Column);
+            if ~ismember(cell_id, handles.edited_cells)
+                handles.edited_cells{end+1} = cell_id;
+            end
+            guidata(handles.fig, handles);
+        end
+    end
+end
+
+function applyRowToAll(src, evt)
+    handles = guidata(gcbf);
+    
+    table_data = get(handles.coefficients_table, 'Data');
+    if isempty(table_data)
+        return;
+    end
+    
+    % Ask which row to copy
+    prompt = sprintf('Enter row number to copy (1-%d):', size(table_data, 1));
+    answer = inputdlg(prompt, 'Apply Row', 1, {'1'});
+    
+    if ~isempty(answer)
+        row_num = str2double(answer{1});
+        if ~isnan(row_num) && row_num >= 1 && row_num <= size(table_data, 1)
+            % Copy row to all others
+            row_data = table_data(row_num, 2:end);
+            for i = 1:size(table_data, 1)
+                if i ~= row_num
+                    table_data(i, 2:end) = row_data;
+                end
+            end
+            set(handles.coefficients_table, 'Data', table_data);
+            msgbox(sprintf('Row %d applied to all trials', row_num), 'Success');
+        else
+            msgbox('Invalid row number', 'Error', 'error');
+        end
+    end
+end
+
+function exportCoefficientsToCSV(src, evt)
+    handles = guidata(gcbf);
+    
+    [filename, pathname] = uiputfile('*.csv', 'Save Coefficients As');
+    if filename ~= 0
+        try
+            % Get table data
+            table_data = get(handles.coefficients_table, 'Data');
+            col_names = get(handles.coefficients_table, 'ColumnName');
+            
+            % Convert to table
+            T = cell2table(table_data, 'VariableNames', col_names);
+            
+            % Write to CSV
+            writetable(T, fullfile(pathname, filename));
+            msgbox('Coefficients exported successfully', 'Success');
+        catch ME
+            msgbox(['Error exporting: ' ME.message], 'Error', 'error');
+        end
+    end
+end
+
+function importCoefficientsFromCSV(src, evt)
+    handles = guidata(gcbf);
+    
+    [filename, pathname] = uigetfile('*.csv', 'Select Coefficients File');
+    if filename ~= 0
+        try
+            % Read CSV
+            T = readtable(fullfile(pathname, filename));
+            
+            % Convert to cell array
+            table_data = table2cell(T);
+            
+            % Update table
+            set(handles.coefficients_table, 'Data', table_data);
+            msgbox('Coefficients imported successfully', 'Success');
+        catch ME
+            msgbox(['Error importing: ' ME.message], 'Error', 'error');
+        end
+    end
+end
+
+function saveScenario(src, evt)
+    handles = guidata(gcbf);
+    
+    prompt = 'Enter name for this scenario:';
+    answer = inputdlg(prompt, 'Save Scenario', 1, {'My Scenario'});
+    
+    if ~isempty(answer)
+        try
+            scenario.name = answer{1};
+            scenario.coefficients = get(handles.coefficients_table, 'Data');
+            scenario.settings = struct();
+            scenario.settings.torque_scenario = get(handles.torque_scenario_popup, 'Value');
+            scenario.settings.coeff_range = str2double(get(handles.coeff_range_edit, 'String'));
+            scenario.settings.constant_value = 10.0; % Default constant value
+            
+            % Save to file
+            filename = sprintf('scenario_%s.mat', matlab.lang.makeValidName(answer{1}));
+            save(filename, 'scenario');
+            msgbox(['Scenario saved as ' filename], 'Success');
+        catch ME
+            msgbox(['Error saving scenario: ' ME.message], 'Error', 'error');
+        end
+    end
+end
+
+function loadScenario(src, evt)
+    handles = guidata(gcbf);
+    
+    [filename, pathname] = uigetfile('scenario_*.mat', 'Select Scenario File');
+    if filename ~= 0
+        try
+            loaded = load(fullfile(pathname, filename));
+            scenario = loaded.scenario;
+            
+            % Apply settings
+            set(handles.coefficients_table, 'Data', scenario.coefficients);
+            set(handles.torque_scenario_popup, 'Value', scenario.settings.torque_scenario);
+            set(handles.coeff_range_edit, 'String', num2str(scenario.settings.coeff_range));
+            % Note: constant_value_edit removed from GUI, using default value
+            
+            % Trigger scenario callback
+            torqueScenarioCallback(handles.torque_scenario_popup, []);
+            
+            msgbox(['Loaded scenario: ' scenario.name], 'Success');
+        catch ME
+            msgbox(['Error loading scenario: ' ME.message], 'Error', 'error');
+        end
+    end
+end
+
+function searchCoefficients(src, evt)
+    handles = guidata(gcbf);
+    search_term = lower(get(handles.search_edit, 'String'));
+    
+    if isempty(search_term)
+        return;
+    end
+    
+    % Get column names
+    col_names = get(handles.coefficients_table, 'ColumnName');
+    
+    % Find matching columns
+    matching_cols = [];
+    for i = 2:length(col_names) % Skip trial column
+        if contains(lower(col_names{i}), search_term)
+            matching_cols(end+1) = i;
+        end
+    end
+    
+    if ~isempty(matching_cols)
+        msgbox(sprintf('Found %d matching columns', length(matching_cols)), 'Search Results');
+        % Could add highlighting functionality here
+    else
+        msgbox('No matching columns found', 'Search Results');
+    end
+end
+
+function clearSearch(src, evt)
+    handles = guidata(gcbf);
+    set(handles.search_edit, 'String', '');
+end
+
+% Additional helper functions
+function selectSimulinkModel(src, evt)
+    handles = guidata(gcbf);
+    
+    % Get list of open models
+    open_models = find_system('type', 'block_diagram');
+    
+    if isempty(open_models)
+        % No models open, try to find models in the project
+        possible_models = {};
+        possible_paths = {};
+        
+        % Check common locations
+        search_paths = {
+            'Model',
+            '.',
+            fullfile(pwd, 'Model'),
+            fullfile(pwd, '..', 'Model')
+        };
+        
+        for i = 1:length(search_paths)
+            if exist(search_paths{i}, 'dir')
+                slx_files = dir(fullfile(search_paths{i}, '*.slx'));
+                mdl_files = dir(fullfile(search_paths{i}, '*.mdl'));
+                
+                for j = 1:length(slx_files)
+                    model_name = slx_files(j).name(1:end-4); % Remove .slx
+                    possible_models{end+1} = model_name;
+                    possible_paths{end+1} = fullfile(search_paths{i}, slx_files(j).name);
+                end
+                
+                for j = 1:length(mdl_files)
+                    model_name = mdl_files(j).name(1:end-4); % Remove .mdl
+                    possible_models{end+1} = model_name;
+                    possible_paths{end+1} = fullfile(search_paths{i}, mdl_files(j).name);
+                end
+            end
+        end
+        
+        if isempty(possible_models)
+            msgbox('No Simulink models found. Please ensure you have .slx or .mdl files in the Model directory or current directory.', 'No Models Found', 'warn');
+            return;
+        end
+        
+        % Let user select from found models
+        [selection, ok] = listdlg('ListString', possible_models, ...
+                                  'SelectionMode', 'single', ...
+                                  'Name', 'Select Model', ...
+                                  'PromptString', 'Select a Simulink model:');
+        
+        if ok
+            handles.model_name = possible_models{selection};
+            handles.model_path = possible_paths{selection};
+            set(handles.model_display, 'String', handles.model_name);
+            guidata(handles.fig, handles);
+        end
+        
+    else
+        % Models are open, let user select from open models
+        [selection, ok] = listdlg('ListString', open_models, ...
+                                  'SelectionMode', 'single', ...
+                                  'Name', 'Select Model', ...
+                                  'PromptString', 'Select a Simulink model:');
+        
+        if ok
+            handles.model_name = open_models{selection};
+            handles.model_path = which(handles.model_name);
+            set(handles.model_display, 'String', handles.model_name);
+            guidata(handles.fig, handles);
+        end
+    end
+end
+
+function clearAllCheckpoints(~, ~)
+    handles = guidata(gcbf);
+    
+    % Find all checkpoint files
+    checkpoint_files = dir('checkpoint_*.mat');
+    
+    if isempty(checkpoint_files)
+        msgbox('No checkpoint files found to clear.', 'No Checkpoints', 'help');
+        return;
+    end
+    
+    % Ask for confirmation
+    answer = questdlg(sprintf('Delete %d checkpoint files? This action cannot be undone.', length(checkpoint_files)), ...
+                     'Clear Checkpoints', 'Yes', 'No', 'No');
+    
+    if strcmp(answer, 'Yes')
+        try
+            for i = 1:length(checkpoint_files)
+                delete(checkpoint_files(i).name);
+            end
+            msgbox(sprintf('Deleted %d checkpoint files.', length(checkpoint_files)), 'Checkpoints Cleared', 'help');
+        catch ME
+            msgbox(['Error clearing checkpoints: ' ME.message], 'Error', 'error');
+        end
+    end
+end
+
+function saveUserPreferences(handles)
+    % Save user preferences to file
+    try
+        preferences = struct();
+        preferences.last_input_file_path = handles.selected_input_file;
+        preferences.output_folder = get(handles.output_folder_edit, 'String');
+        preferences.model_name = handles.model_name;
+        
+        save('user_preferences.mat', 'preferences');
+    catch ME
+        fprintf('Warning: Could not save preferences: %s\n', ME.message);
+    end
+end
+
+% Helper functions that need to be implemented
+function param_info = getPolynomialParameterInfo()
+    % Get polynomial parameter information for joints
+    % This is a placeholder - implement based on your model structure
+    param_info = struct();
+    param_info.joint_names = {'Hip', 'Knee', 'Ankle', 'Shoulder', 'Elbow', 'Wrist'};
+    param_info.joint_coeffs = {'ABCDEFG', 'ABCDEFG', 'ABCDEFG', 'ABCDEFG', 'ABCDEFG', 'ABCDEFG'};
+    param_info.total_params = 42; % 6 joints * 7 coefficients
+end
+
+function short_name = getShortenedJointName(joint_name)
+    % Get shortened joint name for table columns
+    switch joint_name
+        case 'Hip'
+            short_name = 'H';
+        case 'Knee'
+            short_name = 'K';
+        case 'Ankle'
+            short_name = 'A';
+        case 'Shoulder'
+            short_name = 'S';
+        case 'Elbow'
+            short_name = 'E';
+        case 'Wrist'
+            short_name = 'W';
+        otherwise
+            short_name = joint_name(1);
+    end
 end
 
 function handles = createLeftColumnContent(parent, handles)
