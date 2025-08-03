@@ -83,42 +83,24 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
             end
         end
         
-        % Method 3: Handle matrix data (rotation matrices, inertia matrices, etc.)
-        if ~node_has_data
-            try
-                % Check if this node contains matrix data
-                if isstruct(node) || isnumeric(node)
-                    % Try to extract constant matrix/vector data
-                    [constant_signals] = extractConstantMatrixData(node, current_path, time_data);
-                    if ~isempty(constant_signals)
-                        signals = [signals, constant_signals];
-                        node_has_data = true;
-                        fprintf('Debug: Found matrix data in %s (%d signals)\n', current_path, length(constant_signals));
-                    end
-                end
-            catch ME
-                % Matrix extraction failed - this is normal for non-matrix nodes
-            end
-        end
-        
-        % Method 4: Try to get children and recurse
+        % Method 3: Try to get children and recurse
         if ~node_has_data
             try
                 % Try different methods to get children
                 child_ids = {};
                 
-                % Method 4a: Try properties() approach
+                % Method 3a: Try properties() approach
                 try
                     props = properties(node);
                     child_ids = props;
                 catch
-                    % Method 4b: Try direct children access
+                    % Method 3b: Try direct children access
                     try
                         if all(isprop(node, 'children'))
                             child_ids = node.children;
                         end
                     catch
-                        % Method 4c: Try series.children() if available
+                        % Method 3c: Try series.children() if available
                         try
                             if all(isprop(node, 'series')) && all(isprop(node.series, 'children'))
                                 child_ids = node.series.children;
