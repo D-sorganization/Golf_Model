@@ -5007,3 +5007,299 @@ function resetGUIState(handles)
         fprintf('Warning: Could not reset GUI state: %s\n', ME.message);
     end
 end
+
+% Save script and settings for reproducibility
+function saveScriptAndSettings(config)
+    try
+        % Create timestamped filename
+        timestamp = datestr(now, 'yyyymmdd_HHMMSS');
+        script_filename = sprintf('Data_GUI_run_%s.m', timestamp);
+        script_path = fullfile(config.output_folder, script_filename);
+        
+        % Get the current script content
+        current_script_path = mfilename('fullpath');
+        current_script_path = [current_script_path '.m']; % Add .m extension
+        
+        if ~exist(current_script_path, 'file')
+            fprintf('Warning: Could not find current script file: %s\n', current_script_path);
+            return;
+        end
+        
+        % Read current script content
+        fid_in = fopen(current_script_path, 'r');
+        if fid_in == -1
+            fprintf('Warning: Could not open current script file for reading\n');
+            return;
+        end
+        
+        script_content = fread(fid_in, '*char')';
+        fclose(fid_in);
+        
+        % Create output file with settings header
+        fid_out = fopen(script_path, 'w');
+        if fid_out == -1
+            fprintf('Warning: Could not create script copy file: %s\n', script_path);
+            return;
+        end
+        
+        % Write settings header
+        fprintf(fid_out, '%% GOLF SWING DATA GENERATION RUN RECORD\n');
+        fprintf(fid_out, '%% Generated: %s\n', datestr(now, 'yyyy-mm-dd HH:MM:SS'));
+        fprintf(fid_out, '%% This file contains the exact script and settings used for this data generation run\n');
+        fprintf(fid_out, '%%\n');
+        fprintf(fid_out, '%% =================================================================\n');
+        fprintf(fid_out, '%% RUN CONFIGURATION SETTINGS\n');
+        fprintf(fid_out, '%% =================================================================\n');
+        fprintf(fid_out, '%%\n');
+        
+        % Write all configuration settings
+        fprintf(fid_out, '%% SIMULATION PARAMETERS:\n');
+        fprintf(fid_out, '%% Number of trials: %d\n', config.num_simulations);
+        if isfield(config, 'simulation_time')
+            fprintf(fid_out, '%% Simulation time: %.3f seconds\n', config.simulation_time);
+        end
+        if isfield(config, 'sample_rate')
+            fprintf(fid_out, '%% Sample rate: %.1f Hz\n', config.sample_rate);
+        end
+        fprintf(fid_out, '%%\n');
+        
+        % Torque scenario
+        fprintf(fid_out, '%% TORQUE CONFIGURATION:\n');
+        if isfield(config, 'torque_scenario')
+            scenarios = {'Variable Torque', 'Zero Torque', 'Constant Torque'};
+            if config.torque_scenario >= 1 && config.torque_scenario <= length(scenarios)
+                fprintf(fid_out, '%% Torque scenario: %s\n', scenarios{config.torque_scenario});
+            end
+        end
+        if isfield(config, 'coeff_range')
+            fprintf(fid_out, '%% Coefficient range: %.3f\n', config.coeff_range);
+        end
+        if isfield(config, 'constant_torque_value')
+            fprintf(fid_out, '%% Constant torque value: %.3f\n', config.constant_torque_value);
+        end
+        fprintf(fid_out, '%%\n');
+        
+        % Model information
+        fprintf(fid_out, '%% MODEL INFORMATION:\n');
+        if isfield(config, 'model_name')
+            fprintf(fid_out, '%% Model name: %s\n', config.model_name);
+        end
+        if isfield(config, 'model_path')
+            fprintf(fid_out, '%% Model path: %s\n', config.model_path);
+        end
+        fprintf(fid_out, '%%\n');
+        
+        % Data sources
+        fprintf(fid_out, '%% DATA SOURCES ENABLED:\n');
+        if isfield(config, 'use_signal_bus')
+            fprintf(fid_out, '%% CombinedSignalBus: %s\n', logical2str(config.use_signal_bus));
+        end
+        if isfield(config, 'use_logsout')
+            fprintf(fid_out, '%% Logsout Dataset: %s\n', logical2str(config.use_logsout));
+        end
+        if isfield(config, 'use_simscape')
+            fprintf(fid_out, '%% Simscape Results: %s\n', logical2str(config.use_simscape));
+        end
+        fprintf(fid_out, '%%\n');
+        
+        % Output settings
+        fprintf(fid_out, '%% OUTPUT SETTINGS:\n');
+        if isfield(config, 'output_folder')
+            fprintf(fid_out, '%% Output folder: %s\n', config.output_folder);
+        end
+        if isfield(config, 'dataset_name')
+            fprintf(fid_out, '%% Dataset name: %s\n', config.dataset_name);
+        end
+        if isfield(config, 'file_format')
+            formats = {'CSV Files', 'MAT Files', 'Both CSV and MAT'};
+            if config.file_format >= 1 && config.file_format <= length(formats)
+                fprintf(fid_out, '%% File format: %s\n', formats{config.file_format});
+            end
+        end
+        fprintf(fid_out, '%%\n');
+        
+        % System information
+        fprintf(fid_out, '%% SYSTEM INFORMATION:\n');
+        fprintf(fid_out, '%% MATLAB version: %s\n', version);
+        fprintf(fid_out, '%% Computer: %s\n', computer);
+        try
+            [~, hostname] = system('hostname');
+            fprintf(fid_out, '%% Hostname: %s', hostname); % hostname already includes newline
+        catch
+            fprintf(fid_out, '%% Hostname: Unknown\n');
+        end
+        fprintf(fid_out, '%%\n');
+        
+        % Coefficient information if available
+        if isfield(config, 'coefficient_values') && ~isempty(config.coefficient_values)
+            fprintf(fid_out, '%% POLYNOMIAL COEFFICIENTS:\n');
+            fprintf(fid_out, '%% Coefficient matrix size: %d trials x %d coefficients\n', ...
+                size(config.coefficient_values, 1), size(config.coefficient_values, 2));
+            
+            % Show first few coefficients as example
+            if size(config.coefficient_values, 1) > 0
+                fprintf(fid_out, '%% First trial coefficients (first 10): ');
+                coeffs_to_show = min(10, size(config.coefficient_values, 2));
+                for i = 1:coeffs_to_show
+                    fprintf(fid_out, '%.3f', config.coefficient_values(1, i));
+                    if i < coeffs_to_show
+                        fprintf(fid_out, ', ');
+                    end
+                end
+                fprintf(fid_out, '\n');
+            end
+            fprintf(fid_out, '%%\n');
+        end
+        
+        fprintf(fid_out, '%% =================================================================\n');
+        fprintf(fid_out, '%% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS\n');
+        fprintf(fid_out, '%% =================================================================\n');
+        fprintf(fid_out, '\n');
+        
+        % Write the original script content
+        fprintf(fid_out, '%s', script_content);
+        
+        fclose(fid_out);
+        
+        fprintf('Script and settings saved to: %s\n', script_path);
+        
+    catch ME
+        fprintf('Error saving script and settings: %s\n', ME.message);
+    end
+end
+
+% Helper function to convert logical to string
+function str = logical2str(logical_val)
+    if logical_val
+        str = 'enabled';
+    else
+        str = 'disabled';
+    end
+end
+
+% Grok's table merger function for cleaner data merging
+function merged = mergeTables(varargin)
+    merged = table();
+    for i = 1:nargin
+        if ~isempty(varargin{i})
+            if isempty(merged)
+                merged = varargin{i};
+            else
+                % Outer join on 'time', assuming time is consistent
+                merged = outerjoin(merged, varargin{i}, 'Keys', 'time', 'MergeKeys', true);
+            end
+        end
+    end
+end
+
+% Helper function to check if debug output should be shown
+function should_show_debug = shouldShowDebug(handles)
+    if ~isfield(handles, 'verbosity_popup')
+        should_show_debug = true; % Default to showing if no verbosity control
+        return;
+    end
+    
+    verbosity_options = {'Normal', 'Silent', 'Verbose', 'Debug'};
+    verbosity_idx = get(handles.verbosity_popup, 'Value');
+    if verbosity_idx <= length(verbosity_options)
+        verbosity_level = verbosity_options{verbosity_idx};
+    else
+        verbosity_level = 'Normal';
+    end
+    
+    % Only show debug output for Debug verbosity level
+    should_show_debug = strcmp(verbosity_level, 'Debug');
+end
+
+% Helper function to check if verbose output should be shown
+function should_show_verbose = shouldShowVerbose(handles)
+    if ~isfield(handles, 'verbosity_popup')
+        should_show_verbose = true; % Default to showing if no verbosity control
+        return;
+    end
+    
+    verbosity_options = {'Normal', 'Silent', 'Verbose', 'Debug'};
+    verbosity_idx = get(handles.verbosity_popup, 'Value');
+    if verbosity_idx <= length(verbosity_options)
+        verbosity_level = verbosity_options{verbosity_idx};
+    else
+        verbosity_level = 'Normal';
+    end
+    
+    % Show verbose output for Verbose and Debug levels
+    should_show_verbose = strcmp(verbosity_level, 'Verbose') || strcmp(verbosity_level, 'Debug');
+end
+
+% Helper function to check if normal output should be shown
+function should_show_normal = shouldShowNormal(handles)
+    if ~isfield(handles, 'verbosity_popup')
+        should_show_normal = true; % Default to showing if no verbosity control
+        return;
+    end
+    
+    verbosity_options = {'Normal', 'Silent', 'Verbose', 'Debug'};
+    verbosity_idx = get(handles.verbosity_popup, 'Value');
+    if verbosity_idx <= length(verbosity_options)
+        verbosity_level = verbosity_options{verbosity_idx};
+    else
+        verbosity_level = 'Normal';
+    end
+    
+    % Show normal output for Normal, Verbose, and Debug levels (not Silent)
+    should_show_normal = ~strcmp(verbosity_level, 'Silent');
+end
+
+% Helper function to extract time series data
+function [time_data, signal_data] = extractTimeSeriesData(data_obj, signal_name)
+    time_data = [];
+    signal_data = [];
+    
+    try
+        if isa(data_obj, 'timeseries')
+            time_data = data_obj.Time;
+            signal_data = data_obj.Data;
+        elseif isstruct(data_obj)
+            if isfield(data_obj, 'time') && isfield(data_obj, 'values')
+                time_data = data_obj.time;
+                signal_data = data_obj.values;
+            elseif isfield(data_obj, 'Time') && isfield(data_obj, 'Data')
+                time_data = data_obj.Time;
+                signal_data = data_obj.Data;
+            end
+        end
+    catch ME
+        fprintf('Debug: Error extracting time series data from %s: %s\n', signal_name, ME.message);
+    end
+end
+
+% Helper function to extract constant matrix data
+function [constant_signals] = extractConstantMatrixData(data_obj, signal_name, time_data)
+    constant_signals = {};
+    
+    try
+        if isnumeric(data_obj)
+            if isscalar(data_obj)
+                % Single value
+                signal_name_clean = matlab.lang.makeValidName(signal_name);
+                constant_signals{end+1} = struct('name', signal_name_clean, 'data', repmat(data_obj, length(time_data), 1));
+            elseif isvector(data_obj)
+                % Vector - expand each element
+                for i = 1:length(data_obj)
+                    signal_name_clean = matlab.lang.makeValidName(sprintf('%s_%d', signal_name, i));
+                    constant_signals{end+1} = struct('name', signal_name_clean, 'data', repmat(data_obj(i), length(time_data), 1));
+                end
+            elseif ismatrix(data_obj)
+                % Matrix - expand each element
+                [rows, cols] = size(data_obj);
+                for r = 1:rows
+                    for c = 1:cols
+                        signal_name_clean = matlab.lang.makeValidName(sprintf('%s_%d_%d', signal_name, r, c));
+                        constant_signals{end+1} = struct('name', signal_name_clean, 'data', repmat(data_obj(r,c), length(time_data), 1));
+                    end
+                end
+            end
+        end
+    catch ME
+        fprintf('Debug: Error extracting constant matrix data from %s: %s\n', signal_name, ME.message);
+    end
+end
