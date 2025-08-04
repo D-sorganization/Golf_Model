@@ -164,7 +164,7 @@ class GolfVisualizerWidget(QOpenGLWidget):
                 self.ctx.clear(0.3, 0.1, 0.1, 1.0)  # Red background for errors
     
     def load_data(self, baseq_file: str, ztcfq_file: str, delta_file: str) -> bool:
-        """Load golf swing data"""
+        """Load golf swing data from files"""
         try:
             self.statusMessage.emit("Loading data...")
             
@@ -191,6 +191,41 @@ class GolfVisualizerWidget(QOpenGLWidget):
         except Exception as e:
             self.statusMessage.emit(f"Failed to load data: {e}")
             print(f"❌ Data loading failed: {e}")
+            return False
+    
+    def load_data_from_dataframes(self, baseq_df, ztcfq_df, deltaq_df) -> bool:
+        """Load golf swing data from pandas DataFrames"""
+        try:
+            self.statusMessage.emit("Loading data from DataFrames...")
+            
+            # Create datasets dictionary from DataFrames
+            datasets = {
+                'BASEQ': baseq_df,
+                'ZTCFQ': ztcfq_df,
+                'DELTAQ': deltaq_df
+            }
+            
+            # Create frame processor
+            self.frame_processor = FrameProcessor(datasets, self.render_config)
+            self.num_frames = self.frame_processor.num_frames
+            self.current_frame = 0
+            
+            # Update camera to frame the data
+            self._frame_data_in_view()
+            
+            self.statusMessage.emit(f"Loaded {self.num_frames} frames successfully")
+            self.frameChanged.emit(self.current_frame)
+            
+            # Trigger redraw
+            self.update()
+            
+            return True
+            
+        except Exception as e:
+            self.statusMessage.emit(f"Failed to load data: {e}")
+            print(f"❌ DataFrame loading failed: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     def _frame_data_in_view(self):
@@ -960,6 +995,33 @@ class GolfVisualizerMainWindow(QMainWindow):
         self._initialize_data_core()
         
         print("🚀 Golf Visualizer main window created")
+    
+    def load_data_from_dataframes(self, baseq_df, ztcfq_df, deltaq_df) -> bool:
+        """Load golf swing data from pandas DataFrames"""
+        try:
+            self.show_status_message("Loading data from DataFrames...")
+            
+            # Load data into the GL widget
+            success = self.gl_widget.load_data_from_dataframes(baseq_df, ztcfq_df, deltaq_df)
+            
+            if success:
+                # Update control panels
+                self.playback_panel.update_num_frames(self.gl_widget.num_frames)
+                self.playback_panel.update_current_frame(0)
+                self.playback_panel.update_playing_state(False)
+                
+                self.show_status_message(f"Loaded {self.gl_widget.num_frames} frames successfully")
+                return True
+            else:
+                self.show_status_message("Failed to load data")
+                return False
+                
+        except Exception as e:
+            self.show_status_message(f"Failed to load data: {e}")
+            print(f"❌ Main window DataFrame loading failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
     
     def _create_dock_panels(self):
         """Create dockable control panels"""
