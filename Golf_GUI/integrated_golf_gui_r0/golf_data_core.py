@@ -468,111 +468,36 @@ class FrameProcessor:
             'DELTAQ': self.deltaq_df
         }
         
-        for name, df in datasets.items():
-            frame_data.forces[name] = self.get_column_data(df, 'TotalHandForceGlobal', frame_idx)
-            frame_data.torques[name] = self.get_column_data(df, 'EquivalentMidpointCoupleGlobal', frame_idx)
-        
-        # Calculate face normal if we have previous frame
-        if frame_idx > 0:
-            prev_clubhead = self.get_column_data(self.baseq_df, 'Clubhead', frame_idx - 1)
-            frame_data.face_normal = self._calculate_face_normal(
-                frame_data.clubhead, prev_clubhead, frame_data.shaft_direction
-            )
-        
+        for dataset_name, df in datasets.items():
+            if 'Force' in df.columns:
+                frame_data.forces[dataset_name] = self.get_column_data(df, 'Force', frame_idx)
+            if 'Torque' in df.columns:
+                frame_data.torques[dataset_name] = self.get_column_data(df, 'Torque', frame_idx)
+
         return frame_data
 
     def get_column_data(self, df: pd.DataFrame, col_name: str, row_idx: int) -> np.ndarray:
-        """Safely get data from a DataFrame column."""
-        if col_name in df and row_idx < len(df):
-            val = df.at[row_idx, col_name]
-            if isinstance(val, np.ndarray):
-                return val.astype(np.float32)
-        return np.zeros(3, dtype=np.float32)
+        """Extract column data as numpy array with error handling."""
+        try:
+            if col_name in df.columns:
+                data = df.iloc[row_idx][col_name]
+                if isinstance(data, (list, tuple)):
+                    return np.array(data, dtype=np.float32)
+                else:
+                    return np.array([data, 0, 0], dtype=np.float32)
+            else:
+                return np.zeros(3, dtype=np.float32)
+        except Exception as e:
+            print(f"Error extracting {col_name} from row {row_idx}: {e}")
+            return np.zeros(3, dtype=np.float32)
 
     def get_num_frames(self) -> int:
+        """Get total number of frames."""
         return self.num_frames
 
     def get_time_vector(self) -> np.ndarray:
+        """Get time vector."""
         return self.time_vector
-
-    def _calculate_dynamics(self):
-        """Calculate inverse dynamics for the processed data."""
-        if 'GOLF_CLUB_HEAD_POS' in self.processed_data:
-            pos_data = self.processed_data['GOLF_CLUB_HEAD_POS']
-            # Placeholder for orientation data - assuming not available from .mat
-            # A more advanced implementation would load or compute this.
-            num_frames = pos_data.shape[0]
-            orientation_data = np.array([np.identity(3)] * num_frames)
-
-            self.dynamics_data = calculate_inverse_dynamics(
-                pos_data,
-                orientation_data,
-                self.time_vector,
-                club_mass=0.2,  # Example mass
-                eval_offset=0.0
-            )
-
-    @staticmethod
-    @njit
-    def _calculate_face_normal_jit(current_clubhead: np.ndarray, previous_clubhead: np.ndarray, shaft_direction: np.ndarray) -> np.ndarray:
-        """Numba-optimized face normal calculation"""
-        # Velocity-based calculation
-        velocity = current_clubhead - previous_clubhead
-        velocity_magnitude = np.linalg.norm(velocity)
-        
-        if velocity_magnitude > 1e-4:
-            velocity_direction = velocity / velocity_magnitude
-            cross_product = np.cross(shaft_direction, velocity_direction)
-            
-            if np.linalg.norm(cross_product) > 1e-6:
-                # Face normal is perpendicular to both shaft and velocity
-                face_normal_temp = np.cross(np.cross(velocity_direction, shaft_direction), shaft_direction)
-                face_normal_magnitude = np.linalg.norm(face_normal_temp)
-                
-                if face_normal_magnitude > 1e-6:
-                    return face_normal_temp / face_normal_magnitude
-        
-        # Fallback: perpendicular to shaft in XY plane
-        if abs(shaft_direction[2]) < 0.99:  # Not pointing straight up/down
-            fallback = np.array([-shaft_direction[1], shaft_direction[0], 0.0], dtype=np.float32)
-            fallback_magnitude = np.linalg.norm(fallback)
-            if fallback_magnitude > 1e-6:
-                return fallback / fallback_magnitude
-        
-        # Final fallback
-        return np.array([1.0, 0.0, 0.0], dtype=np.float32)
-    
-    def _calculate_face_normal(self, current_clubhead: np.ndarray, previous_clubhead: np.ndarray, shaft_direction: np.ndarray) -> np.ndarray:
-        """Calculate face normal using velocity-based method"""
-        if np.isfinite([current_clubhead, previous_clubhead, shaft_direction]).all():
-            return self._calculate_face_normal_jit(current_clubhead, previous_clubhead, shaft_direction)
-        else:
-            return np.array([1.0, 0.0, 0.0], dtype=np.float32)
-    
-    def get_frame_data(self, frame_idx: int) -> FrameData:
-        """Get processed frame data with intelligent caching"""
-        # Bounds checking
-        frame_idx = max(0, min(frame_idx, self.num_frames - 1))
-        
-        # Check cache first
-        if frame_idx in self.processed_data:
-            return self.processed_data[frame_idx]
-        
-        # Process new frame
-        frame_data = self._process_single_frame(frame_idx)
-        
-        return frame_data
-    
-    def get_frame_range(self, start_frame: int, end_frame: int) -> List[FrameData]:
-        """Get multiple frames efficiently (for trajectory analysis)"""
-        start_frame = max(0, start_frame)
-        end_frame = min(self.num_frames - 1, end_frame)
-        
-        frames = []
-        for i in range(start_frame, end_frame + 1):
-            frames.append(self.get_frame_data(i))
-        
-        return frames
 
     def set_filter_type(self, filter_type: str):
         """Set the current filter type and invalidate cached filtered data"""
@@ -811,7 +736,7 @@ if __name__ == "__main__":
         loader = MatlabDataLoader()
         datasets = loader.load_datasets('BASEQ.mat', 'ZTCFQ.mat', 'DELTAQ.mat')
         
-        processor = FrameProcessor(datasets)
+        processor = FrameProcessor(datasets, config)
         frame_data = processor.get_frame_data(0)
         
         print(f"\n✅ Successfully loaded and processed data:")

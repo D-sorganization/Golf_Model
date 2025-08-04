@@ -9,6 +9,7 @@ import moderngl as mgl
 from typing import Dict, List, Tuple, Optional, Union
 import time
 import warnings
+import traceback
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -35,14 +36,12 @@ class ShaderLibrary:
         
         out vec3 FragPos;
         out vec3 Normal;
-        out vec2 TexCoord;
         out vec3 ViewPos;
         
         void main() {
             vec4 worldPos = model * vec4(position, 1.0);
             FragPos = worldPos.xyz;
             Normal = mat3(normalMatrix) * normal;
-            TexCoord = texCoord;
             ViewPos = (view * worldPos).xyz;
             
             gl_Position = projection * view * worldPos;
@@ -358,27 +357,45 @@ class GeometryManager:
     
     def _create_standard_meshes(self):
         """Create standard mesh library for body parts and club"""
-        # Import geometry utilities from the core module
-        from golf_data_core import GeometryUtils
-        
-        # Create optimized meshes
-        self.mesh_library['cylinder'] = GeometryUtils.create_cylinder_mesh(
-            radius=1.0, height=1.0, segments=16
-        )
-        
-        self.mesh_library['sphere'] = GeometryUtils.create_sphere_mesh(
-            radius=1.0, lat_segments=12, lon_segments=16  
-        )
-        
-        self.mesh_library['arrow'] = GeometryUtils.create_arrow_mesh(
-            shaft_radius=0.02, shaft_length=0.8,
-            head_radius=0.04, head_length=0.2, segments=8
-        )
-        
-        # Ground plane
-        self._create_ground_mesh()
-        
-        print(f"✅ Created {len(self.mesh_library)} standard meshes")
+        try:
+            print("🔧 Creating standard meshes...")
+            
+            # Import geometry utilities from the core module
+            from golf_data_core import GeometryUtils
+            print("  ✅ GeometryUtils imported")
+            
+            # Create optimized meshes
+            print("  Creating cylinder mesh...")
+            self.mesh_library['cylinder'] = GeometryUtils.create_cylinder_mesh(
+                radius=1.0, height=1.0, segments=16
+            )
+            print("  ✅ Cylinder mesh created")
+            
+            print("  Creating sphere mesh...")
+            self.mesh_library['sphere'] = GeometryUtils.create_sphere_mesh(
+                radius=1.0, lat_segments=12, lon_segments=16  
+            )
+            print("  ✅ Sphere mesh created")
+            
+            print("  Creating arrow mesh...")
+            self.mesh_library['arrow'] = GeometryUtils.create_arrow_mesh(
+                shaft_radius=0.02, shaft_length=0.8,
+                head_radius=0.04, head_length=0.2, segments=8
+            )
+            print("  ✅ Arrow mesh created")
+            
+            # Ground plane
+            print("  Creating ground mesh...")
+            self._create_ground_mesh()
+            print("  ✅ Ground mesh created")
+            
+            print(f"✅ Created {len(self.mesh_library)} standard meshes")
+            print(f"  Available meshes: {list(self.mesh_library.keys())}")
+            
+        except Exception as e:
+            print(f"❌ Failed to create standard meshes: {e}")
+            traceback.print_exc()
+            raise
     
     def _create_ground_mesh(self):
         """Create ground plane mesh with proper texture coordinates"""
@@ -401,27 +418,38 @@ class GeometryManager:
     def _compile_shaders(self):
         """Compile all shader programs"""
         try:
+            print("🔧 Compiling shader programs...")
+            
             # Standard PBR shader
+            print("  Compiling standard shader...")
             self.programs['standard'] = self.ctx.program(
                 vertex_shader=ShaderLibrary.get_standard_vertex_shader(),
                 fragment_shader=ShaderLibrary.get_standard_fragment_shader()
             )
+            print(f"  ✅ Standard shader compiled: {type(self.programs['standard'])}")
             
             # Vector shader for forces/torques
+            print("  Compiling vector shader...")
             self.programs['vector'] = self.ctx.program(
                 vertex_shader=ShaderLibrary.get_vector_vertex_shader(),
                 fragment_shader=ShaderLibrary.get_vector_fragment_shader()
             )
+            print(f"  ✅ Vector shader compiled: {type(self.programs['vector'])}")
             
             # Ground shader
+            print("  Compiling ground shader...")
             self.programs['ground'] = self.ctx.program(
                 vertex_shader=ShaderLibrary.get_ground_vertex_shader(),
                 fragment_shader=ShaderLibrary.get_ground_fragment_shader()
             )
+            print(f"  ✅ Ground shader compiled: {type(self.programs['ground'])}")
             
             print(f"✅ Compiled {len(self.programs)} shader programs")
+            print(f"  Available programs: {list(self.programs.keys())}")
             
         except Exception as e:
+            print(f"❌ Failed to compile shaders: {e}")
+            traceback.print_exc()
             raise RuntimeError(f"Failed to compile shaders: {e}")
     
     def create_geometry_object(self, name: str, mesh_type: str, program_name: str = 'standard') -> GeometryObject:
@@ -445,7 +473,7 @@ class GeometryManager:
             # Ground mesh has position + texcoord
             vao = self.ctx.vertex_array(
                 program,
-                [(vertex_buffer, '3f 2f', 0, 2)],  # position at location 0, texCoord at location 2
+                [(vertex_buffer, '3f 2f', 0, 1)],  # position at location 0, texCoord at location 1
                 index_buffer
             )
         else:
@@ -621,7 +649,7 @@ class OpenGLRenderer:
         
         # Rendering state
         self.viewport_size = (1600, 900)
-        self.clear_color = (0.1, 0.2, 0.3, 1.0)
+        self.clear_color = (1.0, 1.0, 1.0, 1.0)  # White background
         
         # Performance tracking
         self.render_stats = {
@@ -650,7 +678,11 @@ class OpenGLRenderer:
         print("✅ OpenGL renderer initialized")
         print(f"   OpenGL Version: {self.ctx.info['GL_VERSION']}")
         print(f"   Renderer: {self.ctx.info['GL_RENDERER']}")
-        print(f"   Extensions: {len(self.ctx.info['GL_EXTENSIONS'].split())}")
+        try:
+            extensions = self.ctx.info.get('GL_EXTENSIONS', '')
+            print(f"   Extensions: {len(extensions.split()) if extensions else 0}")
+        except:
+            print("   Extensions: Unable to retrieve")
     
     def _create_standard_objects(self):
         """Create standard geometry objects for rendering"""
@@ -750,13 +782,31 @@ class OpenGLRenderer:
                       normal_matrix: np.ndarray, view_position: np.ndarray):
         """Render golf course ground with grid"""
         if not self.geometry_manager:
+            print("⚠️ Render error: No geometry manager")
             return
+            
+        if 'ground' not in self.geometry_manager.geometry_objects:
+            print("⚠️ Render error: 'ground' object not found")
+            return
+            
         ground_obj = self.geometry_manager.geometry_objects['ground']
         if not ground_obj.visible:
             return
         
+        if 'ground' not in self.geometry_manager.programs:
+            print(f"⚠️ Render error: 'ground' program not found. Available: {list(self.geometry_manager.programs.keys())}")
+            return
+            
         program = self.geometry_manager.programs['ground']
-        program.use()
+        if program is None:
+            print("⚠️ Render error: 'ground' program is None")
+            return
+            
+        try:
+            program.use()
+        except Exception as e:
+            print(f"⚠️ Render error: 'Program' object has no attribute 'use': {e}")
+            return
         
         # Transformation matrices
         model_matrix = self.geometry_manager.get_model_matrix(ground_obj)
@@ -780,9 +830,23 @@ class OpenGLRenderer:
                              proj_matrix: np.ndarray, normal_matrix: np.ndarray, view_position: np.ndarray):
         """Render all body segments with realistic materials"""
         if not self.geometry_manager:
+            print("⚠️ Render error: No geometry manager")
             return
+        
+        if 'standard' not in self.geometry_manager.programs:
+            print(f"⚠️ Render error: 'standard' program not found. Available: {list(self.geometry_manager.programs.keys())}")
+            return
+            
         program = self.geometry_manager.programs['standard']
-        program.use()
+        if program is None:
+            print("⚠️ Render error: 'standard' program is None")
+            return
+            
+        try:
+            program.use()
+        except Exception as e:
+            print(f"⚠️ Render error: 'Program' object has no attribute 'use': {e}")
+            return
         
         # Apply lighting
         self.lighting_system.apply_lighting_uniforms(program, view_position)

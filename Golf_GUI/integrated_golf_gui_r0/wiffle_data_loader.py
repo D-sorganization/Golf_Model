@@ -69,6 +69,39 @@ class WiffleDataLoader:
         self.config = config or WiffleDataConfig()
         self.data_cache = {}
         
+    def load_data(self) -> Dict[str, pd.DataFrame]:
+        """
+        Load Wiffle_ProV1 data from the default Excel file location
+        
+        Returns:
+            Dictionary with 'ProV1' and 'Wiffle' DataFrames
+        """
+        # Try to find the Excel file in common locations
+        possible_paths = [
+            Path("../Matlab Inverse Dynamics/Wiffle_ProV1_club_3D_data.xlsx"),
+            Path("../../Matlab Inverse Dynamics/Wiffle_ProV1_club_3D_data.xlsx"),
+            Path("../../../Matlab Inverse Dynamics/Wiffle_ProV1_club_3D_data.xlsx"),
+            Path("Matlab Inverse Dynamics/Wiffle_ProV1_club_3D_data.xlsx")
+        ]
+        
+        for path in possible_paths:
+            if path.exists():
+                return self.load_excel_data(str(path))
+        
+        raise FileNotFoundError("Wiffle_ProV1 Excel file not found in any expected location")
+    
+    def load_from_file(self, filepath: str) -> Dict[str, pd.DataFrame]:
+        """
+        Load Wiffle_ProV1 Excel data from a specific file path
+        
+        Args:
+            filepath: Path to the Excel file
+            
+        Returns:
+            Dictionary with 'ProV1' and 'Wiffle' DataFrames
+        """
+        return self.load_excel_data(filepath)
+    
     def load_excel_data(self, filepath: str) -> Dict[str, pd.DataFrame]:
         """
         Load Wiffle_ProV1 Excel data and convert to GUI-compatible format

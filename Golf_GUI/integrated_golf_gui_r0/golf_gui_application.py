@@ -198,15 +198,8 @@ class GolfVisualizerWidget(QOpenGLWidget):
         try:
             self.statusMessage.emit("Loading data from DataFrames...")
             
-            # Create datasets dictionary from DataFrames
-            datasets = {
-                'BASEQ': baseq_df,
-                'ZTCFQ': ztcfq_df,
-                'DELTAQ': deltaq_df
-            }
-            
-            # Create frame processor
-            self.frame_processor = FrameProcessor(datasets, self.render_config)
+            # Create frame processor with tuple of DataFrames
+            self.frame_processor = FrameProcessor((baseq_df, ztcfq_df, deltaq_df), self.render_config)
             self.num_frames = self.frame_processor.num_frames
             self.current_frame = 0
             
@@ -972,6 +965,9 @@ class GolfVisualizerMainWindow(QMainWindow):
         self.setGeometry(100, 100, 1600, 1000)
         self.setMinimumSize(1200, 800)
         
+        # Initialize data storage
+        self.wiffle_data = None  # Store Wiffle data for swing switching
+        
         # Create central widget and layout
         self.gl_widget = GolfVisualizerWidget()
         self.setCentralWidget(self.gl_widget)
@@ -1110,6 +1106,37 @@ class GolfVisualizerMainWindow(QMainWindow):
         """Create toolbar with quick actions"""
         toolbar = self.addToolBar("Main")
         toolbar.setMovable(False)
+        
+        # Swing selection dropdown
+        swing_label = QLabel("Swing:")
+        swing_label.setStyleSheet("color: #333333; margin-right: 5px;")
+        toolbar.addWidget(swing_label)
+        
+        self.swing_combo = QComboBox()
+        self.swing_combo.addItems(["TW Wiffle", "TW ProV1", "GW Wiffle", "GW ProV1"])
+        self.swing_combo.setCurrentText("TW Wiffle")  # Default to Wiffle
+        self.swing_combo.setStyleSheet("""
+            QComboBox {
+                padding: 4px 8px;
+                border: 1px solid #ddd;
+                border-radius: 3px;
+                background: white;
+                min-width: 120px;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox::down-arrow {
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 4px solid #666;
+                margin-right: 8px;
+            }
+        """)
+        self.swing_combo.currentTextChanged.connect(self._on_swing_changed)
+        toolbar.addWidget(self.swing_combo)
+        
+        toolbar.addSeparator()
         
         # Load data
         load_action = QAction("📁", self)
@@ -1256,6 +1283,51 @@ class GolfVisualizerMainWindow(QMainWindow):
             if hasattr(self, 'gl_widget') and self.gl_widget:
                 self.gl_widget.update()
 
+    def _on_swing_changed(self, swing_type: str):
+        """Handle swing type selection change"""
+        if hasattr(self, 'wiffle_data') and self.wiffle_data:
+            # Reload data with the selected swing type
+            self._load_wiffle_data(swing_type)
+    
+    def _load_wiffle_data(self, swing_type: str = "TW Wiffle"):
+        """Load Wiffle data with the specified swing type"""
+        try:
+            from wiffle_data_loader import WiffleDataLoader
+            
+            # Load data
+            loader = WiffleDataLoader()
+            data = loader.load_data()
+            
+            # Store data for swing switching
+            self.wiffle_data = data
+            
+            # Convert to GUI format
+            baseq_data, ztcfq_data, deltaq_data = loader.convert_to_gui_format(data)
+            
+            # Select data based on swing type
+            if swing_type == "TW Wiffle":
+                main_data = ztcfq_data  # Wiffle data as primary
+            elif swing_type == "TW ProV1":
+                main_data = baseq_data  # ProV1 data as primary
+            elif swing_type == "GW Wiffle":
+                main_data = ztcfq_data  # Wiffle data as primary
+            elif swing_type == "GW ProV1":
+                main_data = baseq_data  # ProV1 data as primary
+            else:
+                main_data = ztcfq_data  # Default to Wiffle
+            
+            # Load data into GUI
+            success = self.load_data_from_dataframes(main_data, ztcfq_data, deltaq_data)
+            
+            if success:
+                self.show_status_message(f"Loaded {swing_type} data successfully")
+            else:
+                self.show_status_message(f"Failed to load {swing_type} data")
+                
+        except Exception as e:
+            self.show_status_message(f"Error loading Wiffle data: {str(e)}")
+            print(f"❌ Error loading Wiffle data: {e}")
+
     def _load_data_dialog(self):
         """Open a dialog to select and load data files."""
         self.show_status_message("Select the folder containing BASEQ.mat, ZTCFQ.mat, and DELTAQ.mat")
@@ -1317,60 +1389,60 @@ class GolfVisualizerMainWindow(QMainWindow):
                          """)
     
     def _apply_modern_style(self):
-        """Apply modern dark theme styling"""
+        """Apply modern light theme styling with white background"""
         style = """
         QMainWindow {
-            background-color: #2b2b2b;
-            color: #ffffff;
+            background-color: white;
+            color: #333333;
         }
         
         QDockWidget {
-            color: #ffffff;
-            background-color: #3c3c3c;
-            border: 1px solid #5a5a5a;
+            color: #333333;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
         }
         
         QDockWidget::title {
-            background-color: #4a4a4a;
+            background-color: #e9ecef;
             padding: 8px;
-            border-bottom: 1px solid #5a5a5a;
+            border-bottom: 1px solid #dee2e6;
             font-weight: bold;
         }
         
         QWidget {
-            background-color: #3c3c3c;
-            color: #ffffff;
+            background-color: white;
+            color: #333333;
         }
         
         QPushButton {
-            background-color: #4a4a4a;
-            border: 1px solid #6a6a6a;
-            color: #ffffff;
+            background-color: #0078d4;
+            border: 1px solid #0078d4;
+            color: white;
             padding: 8px 16px;
             border-radius: 6px;
             font-weight: bold;
         }
         
         QPushButton:hover {
-            background-color: #5a5a5a;
-            border-color: #7a7a7a;
+            background-color: #106ebe;
+            border-color: #106ebe;
         }
         
         QPushButton:pressed {
-            background-color: #3a3a3a;
-            border-color: #5a5a5a;
+            background-color: #005a9e;
+            border-color: #005a9e;
         }
         
         QSlider::groove:horizontal {
-            border: 1px solid #5a5a5a;
+            border: 1px solid #dee2e6;
             height: 8px;
-            background: #3a3a3a;
+            background: #e9ecef;
             border-radius: 4px;
         }
         
         QSlider::handle:horizontal {
             background: #0078d4;
-            border: 1px solid #005a9e;
+            border: 1px solid #0078d4;
             width: 18px;
             margin: -5px 0;
             border-radius: 9px;
@@ -1381,7 +1453,7 @@ class GolfVisualizerMainWindow(QMainWindow):
         }
         
         QCheckBox {
-            color: #ffffff;
+            color: #333333;
             spacing: 8px;
             font-weight: normal;
         }
@@ -1393,39 +1465,42 @@ class GolfVisualizerMainWindow(QMainWindow):
         }
         
         QCheckBox::indicator:unchecked {
-            background-color: #3a3a3a;
-            border: 2px solid #6a6a6a;
+            background-color: white;
+            border: 2px solid #dee2e6;
         }
         
         QCheckBox::indicator:checked {
             background-color: #0078d4;
-            border: 2px solid #005a9e;
+            border: 2px solid #0078d4;
         }
         
         QGroupBox {
-            color: #ffffff;
-            border: 2px solid #5a5a5a;
+            color: #333333;
+            border: 2px solid #dee2e6;
             border-radius: 8px;
             margin-top: 12px;
             font-weight: bold;
             padding-top: 8px;
+            background-color: #f8f9fa;
         }
         
         QGroupBox::title {
             subcontrol-origin: margin;
             subcontrol-position: top center;
             padding: 0 8px;
-            background-color: #3c3c3c;
+            background-color: #f8f9fa;
+            font-weight: bold;
+            padding-top: 8px;
         }
         
         QLabel {
-            color: #ffffff;
+            color: #333333;
         }
         
         QMenuBar {
-            background-color: #2b2b2b;
-            color: #ffffff;
-            border-bottom: 1px solid #5a5a5a;
+            background-color: #f8f9fa;
+            color: #333333;
+            border-bottom: 1px solid #dee2e6;
         }
         
         QMenuBar::item {
@@ -1434,13 +1509,13 @@ class GolfVisualizerMainWindow(QMainWindow):
         }
         
         QMenuBar::item:selected {
-            background-color: #4a4a4a;
+            background-color: #e9ecef;
         }
         
         QMenu {
-            background-color: #3c3c3c;
-            color: #ffffff;
-            border: 1px solid #5a5a5a;
+            background-color: white;
+            color: #333333;
+            border: 1px solid #dee2e6;
         }
         
         QMenu::item {
@@ -1449,31 +1524,32 @@ class GolfVisualizerMainWindow(QMainWindow):
         
         QMenu::item:selected {
             background-color: #0078d4;
+            color: white;
         }
         
         QToolBar {
-            background-color: #3c3c3c;
-            border: 1px solid #5a5a5a;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
             spacing: 4px;
             padding: 4px;
         }
         
         QToolBar QToolButton {
-            background-color: #4a4a4a;
-            border: 1px solid #6a6a6a;
+            background-color: white;
+            border: 1px solid #dee2e6;
             padding: 6px;
             border-radius: 4px;
             font-size: 16px;
         }
         
         QToolBar QToolButton:hover {
-            background-color: #5a5a5a;
+            background-color: #e9ecef;
         }
         
         QStatusBar {
-            background-color: #2b2b2b;
-            color: #ffffff;
-            border-top: 1px solid #5a5a5a;
+            background-color: #f8f9fa;
+            color: #333333;
+            border-top: 1px solid #dee2e6;
         }
         """
         
@@ -1497,8 +1573,16 @@ def main():
     window = GolfVisualizerMainWindow()
     window.show()
     
+    # Auto-load Wiffle data
+    try:
+        window._load_wiffle_data("TW Wiffle")
+        print("✅ Auto-loaded Wiffle data successfully")
+    except Exception as e:
+        print(f"⚠️ Auto-load failed: {e}")
+        print("   You can still load data manually using File -> Load Data")
+    
     print("🚀 Golf Swing Visualizer started")
-    print("   Use File -> Load Data to load MATLAB files")
+    print("   Swing selection dropdown in toolbar")
     print("   Mouse controls: Left=orbit, Right=pan, Wheel=zoom")
     print("   Keyboard shortcuts: Space=play/pause, Arrows=navigate, R=reset camera")
     
