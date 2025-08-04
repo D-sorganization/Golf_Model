@@ -12,8 +12,8 @@ import warnings
 from dataclasses import dataclass
 
 @dataclass
-class WiffleDataConfig:
-    """Configuration for Wiffle_ProV1 data processing"""
+class MotionDataConfig:
+    """Configuration for motion capture data processing"""
     # Excel sheet names - updated based on actual file structure
     prov1_sheet: str = "TW_ProV1"  # Top Wood ProV1 data
     wiffle_sheet: str = "TW_wiffle"  # Top Wood Wiffle data
@@ -62,11 +62,11 @@ class WiffleDataConfig:
                 'hub_x': 'Hx', 'hub_y': 'Hy', 'hub_z': 'Hz'
             }
 
-class WiffleDataLoader:
-    """Loader for Wiffle_ProV1 Excel motion capture data"""
+class MotionDataLoader:
+    """Loader for motion capture Excel data"""
     
-    def __init__(self, config: Optional[WiffleDataConfig] = None):
-        self.config = config or WiffleDataConfig()
+    def __init__(self, config: Optional[MotionDataConfig] = None):
+        self.config = config or MotionDataConfig()
         self.data_cache = {}
         
     def load_data(self) -> Dict[str, pd.DataFrame]:

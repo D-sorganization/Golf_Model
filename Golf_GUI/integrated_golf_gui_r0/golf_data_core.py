@@ -449,16 +449,16 @@ class FrameProcessor:
         frame_data = FrameData(
             frame_idx=frame_idx,
             time=self.time_vector[frame_idx],
-            butt=self.get_column_data(self.baseq_df, 'Butt', frame_idx),
-            clubhead=self.get_column_data(self.baseq_df, 'Clubhead', frame_idx),
-            midpoint=self.get_column_data(self.baseq_df, 'MidPoint', frame_idx),
-            left_wrist=self.get_column_data(self.baseq_df, 'LeftWrist', frame_idx),
-            left_elbow=self.get_column_data(self.baseq_df, 'LeftElbow', frame_idx),
-            left_shoulder=self.get_column_data(self.baseq_df, 'LeftShoulder', frame_idx),
-            right_wrist=self.get_column_data(self.baseq_df, 'RightWrist', frame_idx),
-            right_elbow=self.get_column_data(self.baseq_df, 'RightElbow', frame_idx),
-            right_shoulder=self.get_column_data(self.baseq_df, 'RightShoulder', frame_idx),
-            hub=self.get_column_data(self.baseq_df, 'Hub', frame_idx)
+            butt=self._get_position_vector(self.baseq_df, 'B', frame_idx),
+            clubhead=self._get_position_vector(self.baseq_df, 'CH', frame_idx),
+            midpoint=self._get_position_vector(self.baseq_df, 'MP', frame_idx),
+            left_wrist=self._get_position_vector(self.baseq_df, 'LW', frame_idx),
+            left_elbow=self._get_position_vector(self.baseq_df, 'LE', frame_idx),
+            left_shoulder=self._get_position_vector(self.baseq_df, 'LS', frame_idx),
+            right_wrist=self._get_position_vector(self.baseq_df, 'RW', frame_idx),
+            right_elbow=self._get_position_vector(self.baseq_df, 'RE', frame_idx),
+            right_shoulder=self._get_position_vector(self.baseq_df, 'RS', frame_idx),
+            hub=self._get_position_vector(self.baseq_df, 'H', frame_idx)
         )
 
         # Extract forces and torques from all datasets
@@ -476,6 +476,22 @@ class FrameProcessor:
 
         return frame_data
 
+    def _get_position_vector(self, df: pd.DataFrame, prefix: str, row_idx: int) -> np.ndarray:
+        """Get 3D position vector from X, Y, Z columns with given prefix."""
+        try:
+            x_col = f"{prefix}x"
+            y_col = f"{prefix}y" 
+            z_col = f"{prefix}z"
+            
+            x_val = df.iloc[row_idx][x_col] if x_col in df.columns else 0.0
+            y_val = df.iloc[row_idx][y_col] if y_col in df.columns else 0.0
+            z_val = df.iloc[row_idx][z_col] if z_col in df.columns else 0.0
+            
+            return np.array([x_val, y_val, z_val], dtype=np.float32)
+        except Exception as e:
+            print(f"Error extracting position vector for {prefix} from row {row_idx}: {e}")
+            return np.zeros(3, dtype=np.float32)
+
     def get_column_data(self, df: pd.DataFrame, col_name: str, row_idx: int) -> np.ndarray:
         """Extract column data as numpy array with error handling."""
         try:
@@ -484,7 +500,41 @@ class FrameProcessor:
                 if isinstance(data, (list, tuple)):
                     return np.array(data, dtype=np.float32)
                 else:
-                    return np.array([data, 0, 0], dtype=np.float32)
+                    # For single values, we need to get the corresponding X, Y, Z components
+                    # The column name should indicate which component it is
+                    if col_name.endswith('_x') or col_name.endswith('x'):
+                        # Get Y and Z components from corresponding columns
+                        base_name = col_name.replace('_x', '').replace('x', '')
+                        y_col = f"{base_name}_y" if base_name else "CHy"
+                        z_col = f"{base_name}_z" if base_name else "CHz"
+                        
+                        y_val = df.iloc[row_idx][y_col] if y_col in df.columns else 0.0
+                        z_val = df.iloc[row_idx][z_col] if z_col in df.columns else 0.0
+                        
+                        return np.array([data, y_val, z_val], dtype=np.float32)
+                    elif col_name.endswith('_y') or col_name.endswith('y'):
+                        # Get X and Z components from corresponding columns
+                        base_name = col_name.replace('_y', '').replace('y', '')
+                        x_col = f"{base_name}_x" if base_name else "CHx"
+                        z_col = f"{base_name}_z" if base_name else "CHz"
+                        
+                        x_val = df.iloc[row_idx][x_col] if x_col in df.columns else 0.0
+                        z_val = df.iloc[row_idx][z_col] if z_col in df.columns else 0.0
+                        
+                        return np.array([x_val, data, z_val], dtype=np.float32)
+                    elif col_name.endswith('_z') or col_name.endswith('z'):
+                        # Get X and Y components from corresponding columns
+                        base_name = col_name.replace('_z', '').replace('z', '')
+                        x_col = f"{base_name}_x" if base_name else "CHx"
+                        y_col = f"{base_name}_y" if base_name else "CHy"
+                        
+                        x_val = df.iloc[row_idx][x_col] if x_col in df.columns else 0.0
+                        y_val = df.iloc[row_idx][y_col] if y_col in df.columns else 0.0
+                        
+                        return np.array([x_val, y_val, data], dtype=np.float32)
+                    else:
+                        # For non-position data, return as single value with zeros
+                        return np.array([data, 0, 0], dtype=np.float32)
             else:
                 return np.zeros(3, dtype=np.float32)
         except Exception as e:
@@ -571,7 +621,7 @@ class GeometryUtils:
         
         R = np.eye(3, dtype=np.float32) + vx + np.dot(vx, vx) * ((1 - c) / (s * s))
         
-        return R
+        return R.astype(np.float32)
     
     @staticmethod
     def create_cylinder_mesh(radius: float = 1.0, height: float = 1.0, segments: int = 16) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:

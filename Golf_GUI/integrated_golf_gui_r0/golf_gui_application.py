@@ -36,7 +36,7 @@ import moderngl as mgl
 # Local imports
 from golf_data_core import FrameProcessor, FrameData, RenderConfig
 from golf_opengl_renderer import OpenGLRenderer
-from wiffle_data_loader import WiffleDataLoader
+from wiffle_data_loader import MotionDataLoader
 
 # ============================================================================
 # TAB WIDGETS
@@ -88,6 +88,7 @@ class MotionCaptureTab(QWidget):
         
         # Load button
         self.load_button = QPushButton("Load Data")
+        self.load_button.setMaximumWidth(100)  # Make button smaller
         layout.addWidget(self.load_button, 0, 2)
         
         # Playback controls
@@ -140,15 +141,17 @@ class MotionCaptureTab(QWidget):
             swing_type = self.swing_combo.currentText()
             self.status_label.setText(f"Loading {swing_type} data...")
             
-            # Load data using the existing WiffleDataLoader
-            loader = WiffleDataLoader()
-            baseq_data, ztcfq_data, deltaq_data = loader.convert_to_gui_format()
+            # Load data using the existing MotionDataLoader
+            loader = MotionDataLoader()
+            excel_data = loader.load_data()  # Load the Excel data first
+            baseq_data, ztcfq_data, deltaq_data = loader.convert_to_gui_format(excel_data)
             
-            # Create frame processor
-            self.frame_processor = FrameProcessor((baseq_data, ztcfq_data, deltaq_data))
+            # Create frame processor with config
+            config = RenderConfig()
+            self.frame_processor = FrameProcessor((baseq_data, ztcfq_data, deltaq_data), config)
             
             # Update UI
-            total_frames = len(self.frame_processor.time_data)
+            total_frames = len(self.frame_processor.time_vector)
             self.frame_slider.setMaximum(total_frames - 1)
             self.frame_label.setText(f"Frame: 0/{total_frames}")
             
@@ -186,7 +189,7 @@ class MotionCaptureTab(QWidget):
             return
         
         current_frame = self.frame_slider.value()
-        total_frames = len(self.frame_processor.time_data)
+        total_frames = len(self.frame_processor.time_vector)
         
         next_frame = (current_frame + 1) % total_frames
         self.frame_slider.setValue(next_frame)
@@ -196,7 +199,7 @@ class MotionCaptureTab(QWidget):
         if not self.frame_processor:
             return
         
-        total_frames = len(self.frame_processor.time_data)
+        total_frames = len(self.frame_processor.time_vector)
         self.frame_label.setText(f"Frame: {frame_index}/{total_frames}")
         
         # Update visualization
@@ -431,11 +434,12 @@ class GolfVisualizerWidget(QOpenGLWidget):
         try:
             baseq_df, ztcfq_df, deltaq_df = dataframes
             
-            # Create frame processor
-            self.frame_processor = FrameProcessor((baseq_df, ztcfq_df, deltaq_df))
+            # Create frame processor with config
+            config = RenderConfig()
+            self.frame_processor = FrameProcessor((baseq_df, ztcfq_df, deltaq_df), config)
             
             # Get first frame
-            if len(self.frame_processor.time_data) > 0:
+            if len(self.frame_processor.time_vector) > 0:
                 self.current_frame_data = self.frame_processor.get_frame_data(0)
                 self.current_render_config = RenderConfig()
                 
@@ -445,7 +449,7 @@ class GolfVisualizerWidget(QOpenGLWidget):
                 # Trigger redraw
                 self.update()
                 
-                print(f"✅ Loaded {len(self.frame_processor.time_data)} frames")
+                print(f"✅ Loaded {len(self.frame_processor.time_vector)} frames")
             
         except Exception as e:
             print(f"❌ Data loading failed: {e}")
@@ -557,7 +561,7 @@ class GolfVisualizerMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Golf Swing Visualizer - Multi-Data Analysis Platform")
-        self.setGeometry(100, 100, 1600, 1000)
+        self.setGeometry(100, 100, 1200, 800)  # More reasonable window size
         
         # Apply modern white theme
         self._apply_modern_style()
