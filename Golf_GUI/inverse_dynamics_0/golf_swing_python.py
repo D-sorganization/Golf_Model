@@ -115,7 +115,8 @@ class GolfSwingAnalyzer:
             ("Face-On", lambda: self.set_camera_view('face_on')),
             ("Down-the-Line", lambda: self.set_camera_view('down_line')),
             ("Top-Down", lambda: self.set_camera_view('top_down')),
-            ("Isometric", lambda: self.set_camera_view('isometric'))
+            ("Isometric", lambda: self.set_camera_view('isometric')),
+            ("Reset View", lambda: self.reset_view())
         ]
         
         for i, (text, command) in enumerate(camera_buttons):
@@ -149,6 +150,25 @@ class GolfSwingAnalyzer:
                                command=self.on_offset_change)
         offset_scale.pack(fill=tk.X)
         
+        # Data scaling options
+        scaling_frame = ttk.LabelFrame(parent, text="Data Scaling", padding=10)
+        scaling_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(scaling_frame, text="Motion Scale Factor:").pack()
+        self.scale_var = tk.DoubleVar(value=1.0)
+        scale_scale = ttk.Scale(scaling_frame, from_=0.1, to=10.0, 
+                              orient=tk.HORIZONTAL, variable=self.scale_var,
+                              command=self.on_scale_change)
+        scale_scale.pack(fill=tk.X)
+        
+        # Club length override
+        ttk.Label(scaling_frame, text="Club Length (m):").pack()
+        self.club_length_var = tk.DoubleVar(value=0.9)
+        club_length_scale = ttk.Scale(scaling_frame, from_=0.5, to=1.5, 
+                                    orient=tk.HORIZONTAL, variable=self.club_length_var,
+                                    command=self.on_club_length_change)
+        club_length_scale.pack(fill=tk.X)
+        
         # Display options
         display_frame = ttk.LabelFrame(parent, text="Display Options", padding=10)
         display_frame.pack(fill=tk.X, pady=(0, 10))
@@ -176,10 +196,29 @@ class GolfSwingAnalyzer:
         self.info_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         info_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         
+        # Interactive controls help
+        help_frame = ttk.LabelFrame(parent, text="3D Plot Controls", padding=10)
+        help_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        help_text = """3D Plot Interaction:
+• Left-click + drag: Rotate view
+• Right-click + drag: Pan view  
+• Mouse wheel: Zoom in/out
+• Use camera buttons for preset views"""
+        
+        help_label = ttk.Label(help_frame, text=help_text, justify=tk.LEFT)
+        help_label.pack(anchor=tk.W)
+        
     def setup_plot(self, parent):
         """Setup 3D matplotlib plot"""
+        # Enable interactive mode for zoom and rotation
+        plt.ion()
+        
         self.fig = Figure(figsize=(10, 8), dpi=100)
         self.ax = self.fig.add_subplot(111, projection='3d')
+        
+        # Enable interactive features
+        self.ax.mouse_init()
         
         self.canvas = FigureCanvasTkAgg(self.fig, parent)
         self.canvas.draw()
@@ -193,20 +232,31 @@ class GolfSwingAnalyzer:
         self.torque_arrow = None
         self.key_points = []
         
+        # Add mouse event handlers for better interaction
+        self.canvas.mpl_connect('button_press_event', self.on_mouse_press)
+        self.canvas.mpl_connect('button_release_event', self.on_mouse_release)
+        self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
+        self.canvas.mpl_connect('scroll_event', self.on_scroll)
+        
+        # Interaction state
+        self.is_rotating = False
+        self.is_panning = False
+        self.last_mouse_pos = None
+        
         self.setup_3d_scene()
         
     def setup_3d_scene(self):
         """Setup the 3D scene with ground plane and ball"""
         self.ax.clear()
         
-        # Ground plane
-        x_ground = np.linspace(-2, 2, 10)
-        y_ground = np.linspace(-2, 2, 10)
+        # Ground plane - adjusted for golf swing coordinate system
+        x_ground = np.linspace(-3, 3, 10)
+        y_ground = np.linspace(-3, 3, 10)
         X_ground, Y_ground = np.meshgrid(x_ground, y_ground)
         Z_ground = np.zeros_like(X_ground) - 0.1
         self.ax.plot_surface(X_ground, Y_ground, Z_ground, alpha=0.3, color='green')
         
-        # Golf ball
+        # Golf ball - positioned at origin for golf swing analysis
         u = np.linspace(0, 2 * np.pi, 20)
         v = np.linspace(0, np.pi, 20)
         ball_radius = 0.021
@@ -215,16 +265,21 @@ class GolfSwingAnalyzer:
         z_ball = ball_radius * np.outer(np.ones(np.size(u)), np.cos(v)) + ball_radius
         self.ax.plot_surface(x_ball, y_ball, z_ball, color='white')
         
-        # Set labels and limits
-        self.ax.set_xlabel('X (m)')
-        self.ax.set_ylabel('Y (m)')
-        self.ax.set_zlabel('Z (m)')
-        self.ax.set_xlim([-1.5, 1.5])
-        self.ax.set_ylim([-1.5, 1.5])
-        self.ax.set_zlim([-0.5, 2.0])
+        # Set labels and limits - adjusted for golf swing coordinate system
+        self.ax.set_xlabel('X (m) - Target Line')
+        self.ax.set_ylabel('Y (m) - Toward Ball')
+        self.ax.set_zlabel('Z (m) - Vertical')
         
-        # Set initial view
-        self.ax.view_init(elev=20, azim=-60)
+        # Adjust limits based on typical golf swing range
+        self.ax.set_xlim([-2.0, 2.0])  # Target line range
+        self.ax.set_ylim([-1.0, 3.0])  # Ball direction range
+        self.ax.set_zlim([-0.5, 2.5])  # Vertical range
+        
+        # Set initial view - better for golf swing analysis
+        self.ax.view_init(elev=15, azim=-45)
+        
+        # Add grid for better spatial reference
+        self.ax.grid(True, alpha=0.3)
         
     def load_default_data(self):
         """Try to load the default Excel file"""
@@ -281,6 +336,9 @@ class GolfSwingAnalyzer:
                             motion_data.append(row_data)
                     
                     self.swing_data[sheet_name] = pd.DataFrame(motion_data)
+                    
+                    # Debug: Print data statistics
+                    self.print_data_debug(sheet_name)
             
             # Update frame slider maximum
             if self.current_swing in self.swing_data:
@@ -293,6 +351,59 @@ class GolfSwingAnalyzer:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load file: {str(e)}")
             
+    def print_data_debug(self, sheet_name):
+        """Print debug information about the loaded data"""
+        if sheet_name in self.swing_data:
+            data = self.swing_data[sheet_name]
+            if not data.empty:
+                print(f"\n=== Data Debug for {sheet_name} ===")
+                print(f"Number of frames: {len(data)}")
+                print(f"Time range: {data['time'].min():.3f} to {data['time'].max():.3f} seconds")
+                print(f"Position ranges (meters):")
+                print(f"  X: {data['X'].min():.3f} to {data['X'].max():.3f}")
+                print(f"  Y: {data['Y'].min():.3f} to {data['Y'].max():.3f}")
+                print(f"  Z: {data['Z'].min():.3f} to {data['Z'].max():.3f}")
+                
+                # Calculate motion range
+                positions = np.array([[row['X'], row['Y'], row['Z']] for _, row in data.iterrows()])
+                position_range = np.max(positions, axis=0) - np.min(positions, axis=0)
+                total_range = np.linalg.norm(position_range)
+                print(f"Total position range: {total_range:.3f} meters")
+                
+                # Analyze the data characteristics
+                print(f"\nData Analysis:")
+                print(f"  Motion range is very small - this suggests:")
+                print(f"    - Data might be tracking a single point on the club")
+                print(f"    - Possibly near the grip or sensor attachment point")
+                print(f"    - Not the full club head motion")
+                
+                # Check if data might be in different units
+                if total_range < 0.5:
+                    print(f"  WARNING: Very small motion range ({total_range:.3f}m)")
+                    print(f"    - For comparison, a golf swing typically has 2-4m of club head motion")
+                    print(f"    - This data appears to track a fixed point, not the full swing arc")
+                    print(f"    - Using standard club length (0.9m) for visualization")
+                else:
+                    print(f"  Motion range seems reasonable for a golf swing")
+                
+                # Check orientation vectors
+                print(f"\nOrientation vector ranges:")
+                print(f"  Xx: {data['Xx'].min():.3f} to {data['Xx'].max():.3f}")
+                print(f"  Xy: {data['Xy'].min():.3f} to {data['Xy'].max():.3f}")
+                print(f"  Xz: {data['Xz'].min():.3f} to {data['Xz'].max():.3f}")
+                print(f"  Yx: {data['Yx'].min():.3f} to {data['Yx'].max():.3f}")
+                print(f"  Yy: {data['Yy'].min():.3f} to {data['Yy'].max():.3f}")
+                print(f"  Yz: {data['Yz'].min():.3f} to {data['Yz'].max():.3f}")
+                
+                # Check if orientation vectors are unit vectors
+                x_norms = np.sqrt(data['Xx']**2 + data['Xy']**2 + data['Xz']**2)
+                y_norms = np.sqrt(data['Yx']**2 + data['Yy']**2 + data['Yz']**2)
+                print(f"\nOrientation vector validation:")
+                print(f"  X-axis norm range: {x_norms.min():.3f} to {x_norms.max():.3f} (should be ~1.0)")
+                print(f"  Y-axis norm range: {y_norms.min():.3f} to {y_norms.max():.3f} (should be ~1.0)")
+                
+                print("=" * 40)
+        
     def apply_filter(self, data, method):
         """Apply selected filter to the data"""
         if method == "None" or data.empty:
@@ -399,49 +510,111 @@ class GolfSwingAnalyzer:
         # Clear previous club visualization
         self.setup_3d_scene()
         
-        # Mid-hands position (convert coordinates for visualization)
-        mid_hands = np.array([frame_data['X'], frame_data['Z'], -frame_data['Y']])
+        # FIXED: Proper coordinate system conversion
+        # Original data: X (target line), Y (toward ball), Z (vertical)
+        # Visualization: Keep X as X, Y as Y, Z as Z for proper orientation
+        mid_hands = np.array([frame_data['X'], frame_data['Y'], frame_data['Z']])
         
-        # Club coordinate system
-        x_axis = np.array([frame_data['Xx'], frame_data['Xz'], -frame_data['Xy']])
-        y_axis = np.array([frame_data['Yx'], frame_data['Yz'], -frame_data['Yy']])
+        # FIXED: Proper orientation vector handling
+        # The orientation vectors should represent the club's coordinate system
+        x_axis = np.array([frame_data['Xx'], frame_data['Xy'], frame_data['Xz']])
+        y_axis = np.array([frame_data['Yx'], frame_data['Yy'], frame_data['Yz']])
         z_axis = np.cross(x_axis, y_axis)
+        
+        # Normalize vectors to ensure they're unit vectors
+        x_axis = x_axis / np.linalg.norm(x_axis)
+        y_axis = y_axis / np.linalg.norm(y_axis)
+        z_axis = z_axis / np.linalg.norm(z_axis)
+        
+        # FIXED: Better club length estimation based on motion analysis
+        # The data appears to be tracking a single point, so we need to estimate
+        # the full club length based on typical golf club dimensions
+        if len(filtered_data) > 10:
+            # Calculate the range of motion to understand the scale
+            positions = np.array([[row['X'], row['Y'], row['Z']] for _, row in filtered_data.iterrows()])
+            position_range = np.max(positions, axis=0) - np.min(positions, axis=0)
+            
+            # The position data seems to be tracking a point on the club (likely near the grip)
+            # For a typical golf swing, the club head should move much more than the grip
+            # Let's estimate the club length based on typical proportions
+            
+            # Use the user-defined club length if available
+            club_length = self.club_length_var.get()
+            
+            # Apply motion scaling to make the swing arc more realistic
+            motion_scale = self.scale_var.get()
+            if motion_scale != 1.0:
+                # Scale the position data to make the swing arc larger
+                mid_hands = mid_hands * motion_scale
+                # Also scale the trajectory if it's being shown
+                if self.trajectory_var.get() and len(filtered_data) > 1:
+                    trajectory = np.array([[row['X'], row['Y'], row['Z']] for _, row in filtered_data.iterrows()])
+                    trajectory = trajectory * motion_scale
+        else:
+            club_length = self.club_length_var.get()
         
         # Calculate club positions
         eval_offset_m = self.eval_offset * 0.0254  # inches to meters
         eval_point = mid_hands + z_axis * eval_offset_m
-        club_face = mid_hands + z_axis * (-self.shaft_length)
+        club_face = mid_hands + z_axis * (-club_length)
         
         # Draw club shaft
         shaft_points = np.array([mid_hands, club_face])
         self.ax.plot(shaft_points[:, 0], shaft_points[:, 1], shaft_points[:, 2], 
                     'k-', linewidth=4, label='Shaft')
         
-        # Draw club head
-        head_size = 0.05
+        # FIXED: Scale clubhead size relative to club length
+        head_size = club_length * 0.08  # Proportional to club length
+        head_depth = club_length * 0.04  # Proportional to club length
+        
+        # Create a more realistic clubhead shape (driver-like)
         head_vertices = np.array([
+            # Face of the club (front)
             club_face + x_axis * head_size + y_axis * head_size/2,
             club_face - x_axis * head_size + y_axis * head_size/2,
             club_face - x_axis * head_size - y_axis * head_size/2,
-            club_face + x_axis * head_size - y_axis * head_size/2
+            club_face + x_axis * head_size - y_axis * head_size/2,
+            # Back of the club
+            club_face + z_axis * head_depth + x_axis * head_size + y_axis * head_size/2,
+            club_face + z_axis * head_depth - x_axis * head_size + y_axis * head_size/2,
+            club_face + z_axis * head_depth - x_axis * head_size - y_axis * head_size/2,
+            club_face + z_axis * head_depth + x_axis * head_size - y_axis * head_size/2
         ])
         
-        # Draw clubhead outline
+        # Draw clubhead outline (face)
         for i in range(4):
             start = head_vertices[i]
             end = head_vertices[(i+1)%4]
             self.ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], 
                         'gray', linewidth=3)
         
+        # Draw clubhead outline (back)
+        for i in range(4):
+            start = head_vertices[i+4]
+            end = head_vertices[((i+1)%4)+4]
+            self.ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], 
+                        'gray', linewidth=3)
+        
+        # Connect face to back
+        for i in range(4):
+            start = head_vertices[i]
+            end = head_vertices[i+4]
+            self.ax.plot([start[0], end[0]], [start[1], end[1]], [start[2], end[2]], 
+                        'gray', linewidth=2)
+        
         # Draw grip
-        grip_end = mid_hands + z_axis * 0.15
+        grip_end = mid_hands + z_axis * (club_length * 0.15)  # Proportional grip length
         grip_points = np.array([mid_hands, grip_end])
         self.ax.plot(grip_points[:, 0], grip_points[:, 1], grip_points[:, 2], 
                     'brown', linewidth=6, label='Grip')
         
-        # Show trajectory if enabled
+        # FIXED: Proper trajectory plotting with scaling
         if self.trajectory_var.get() and len(filtered_data) > 1:
-            trajectory = np.array([[row['X'], row['Z'], -row['Y']] for _, row in filtered_data.iterrows()])
+            trajectory = np.array([[row['X'], row['Y'], row['Z']] for _, row in filtered_data.iterrows()])
+            # Apply motion scaling if enabled
+            motion_scale = self.scale_var.get()
+            if motion_scale != 1.0:
+                trajectory = trajectory * motion_scale
             self.ax.plot(trajectory[:, 0], trajectory[:, 1], trajectory[:, 2], 
                         'r--', alpha=0.6, linewidth=1, label='Trajectory')
         
@@ -556,6 +729,16 @@ class GolfSwingAnalyzer:
         self.eval_offset = float(value)
         self.update_visualization()
         
+    def on_scale_change(self, value):
+        """Handle motion scale factor change"""
+        self.scale_var.set(float(value))
+        self.update_visualization()
+        
+    def on_club_length_change(self, value):
+        """Handle club length override change"""
+        self.club_length_var.set(float(value))
+        self.update_visualization()
+        
     def update_display_options(self):
         """Handle display option changes"""
         self.show_trajectory = self.trajectory_var.get()
@@ -565,14 +748,106 @@ class GolfSwingAnalyzer:
     def set_camera_view(self, view):
         """Set predefined camera views"""
         if view == 'face_on':
+            # Face-on view: looking at golfer from front
             self.ax.view_init(elev=0, azim=0)
         elif view == 'down_line':
-            self.ax.view_init(elev=0, azim=90)
+            # Down-the-line view: looking from behind golfer toward target
+            self.ax.view_init(elev=0, azim=180)
         elif view == 'top_down':
+            # Top-down view: looking down from above
             self.ax.view_init(elev=90, azim=0)
         elif view == 'isometric':
-            self.ax.view_init(elev=20, azim=-60)
+            # Isometric view: 3D perspective
+            self.ax.view_init(elev=15, azim=-45)
             
+        self.canvas.draw()
+        
+    def reset_view(self):
+        """Reset the 3D view to the default isometric view and limits"""
+        # Reset view angles
+        self.ax.view_init(elev=15, azim=-45)
+        
+        # Reset plot limits to default
+        self.ax.set_xlim([-2.0, 2.0])  # Target line range
+        self.ax.set_ylim([-1.0, 3.0])  # Ball direction range
+        self.ax.set_zlim([-0.5, 2.5])  # Vertical range
+        
+        self.canvas.draw()
+        
+    def on_mouse_press(self, event):
+        """Handle mouse button press for rotation/panning"""
+        if event.inaxes != self.ax:
+            return
+            
+        if event.button == 1:  # Left mouse button - rotation
+            self.is_rotating = True
+        elif event.button == 3:  # Right mouse button - panning
+            self.is_panning = True
+            
+        self.last_mouse_pos = (event.xdata, event.ydata)
+        
+    def on_mouse_release(self, event):
+        """Handle mouse button release"""
+        self.is_rotating = False
+        self.is_panning = False
+        self.last_mouse_pos = None
+        
+    def on_mouse_move(self, event):
+        """Handle mouse movement for rotation/panning"""
+        if event.inaxes != self.ax or self.last_mouse_pos is None:
+            return
+            
+        if not (self.is_rotating or self.is_panning):
+            return
+            
+        dx = event.xdata - self.last_mouse_pos[0]
+        dy = event.ydata - self.last_mouse_pos[1]
+        
+        if self.is_rotating:
+            # Rotate the view
+            self.ax.azim += dx * 2
+            self.ax.elev += dy * 2
+            self.canvas.draw()
+        elif self.is_panning:
+            # Pan the view (adjust limits)
+            x_range = self.ax.get_xlim()[1] - self.ax.get_xlim()[0]
+            y_range = self.ax.get_ylim()[1] - self.ax.get_ylim()[0]
+            z_range = self.ax.get_zlim()[1] - self.ax.get_zlim()[0]
+            
+            pan_factor = 0.1
+            self.ax.set_xlim(self.ax.get_xlim() - dx * x_range * pan_factor)
+            self.ax.set_ylim(self.ax.get_ylim() - dy * y_range * pan_factor)
+            self.canvas.draw()
+            
+        self.last_mouse_pos = (event.xdata, event.ydata)
+        
+    def on_scroll(self, event):
+        """Handle mouse scroll for zooming"""
+        if event.inaxes != self.ax:
+            return
+            
+        # Zoom factor
+        zoom_factor = 1.1 if event.button == 'up' else 0.9
+        
+        # Get current limits
+        x_lim = self.ax.get_xlim()
+        y_lim = self.ax.get_ylim()
+        z_lim = self.ax.get_zlim()
+        
+        # Calculate new limits
+        x_center = (x_lim[0] + x_lim[1]) / 2
+        y_center = (y_lim[0] + y_lim[1]) / 2
+        z_center = (z_lim[0] + z_lim[1]) / 2
+        
+        x_range = (x_lim[1] - x_lim[0]) / 2
+        y_range = (y_lim[1] - y_lim[0]) / 2
+        z_range = (z_lim[1] - z_lim[0]) / 2
+        
+        # Apply zoom
+        self.ax.set_xlim(x_center - x_range * zoom_factor, x_center + x_range * zoom_factor)
+        self.ax.set_ylim(y_center - y_range * zoom_factor, y_center + y_range * zoom_factor)
+        self.ax.set_zlim(z_center - z_range * zoom_factor, z_center + z_range * zoom_factor)
+        
         self.canvas.draw()
         
     def toggle_playback(self):
