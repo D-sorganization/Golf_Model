@@ -31,7 +31,10 @@ class MotionCapturePlotter(QMainWindow):
         
         # Club parameters
         self.shaft_length = 0.9  # meters
-        self.motion_scale = 1.0
+        self.motion_scale = 1.0  # Use actual scale since we have real coordinates
+        
+        # Mouse interaction state
+        self._last_pos = None
         
         # Setup UI
         self.setup_ui()
@@ -39,6 +42,18 @@ class MotionCapturePlotter(QMainWindow):
         # Animation timer
         self.animation_timer = QTimer()
         self.animation_timer.timeout.connect(self.next_frame)
+        
+        # Try to auto-load the Excel file if it exists
+        self.auto_load_excel_file()
+        
+    def auto_load_excel_file(self):
+        """Automatically load the Excel file if it exists in the current directory"""
+        excel_files = [f for f in os.listdir('.') if f.endswith(('.xlsx', '.xls'))]
+        if excel_files:
+            # Try to load the first Excel file found
+            filename = excel_files[0]
+            print(f"Auto-loading Excel file: {filename}")
+            self.load_excel_file(filename)
         
     def setup_ui(self):
         """Setup the main UI"""
@@ -138,11 +153,11 @@ class MotionCapturePlotter(QMainWindow):
         scale_layout = QHBoxLayout()
         scale_layout.addWidget(QLabel("Motion Scale:"))
         self.scale_slider = QSlider(Qt.Orientation.Horizontal)
-        self.scale_slider.setRange(1, 10)
-        self.scale_slider.setValue(3)  # Default 3x scale
+        self.scale_slider.setRange(1, 10)  # Reasonable range for scaling
+        self.scale_slider.setValue(1)  # Default 1x scale
         self.scale_slider.valueChanged.connect(self.on_scale_change)
         scale_layout.addWidget(self.scale_slider)
-        self.scale_label = QLabel("3x")
+        self.scale_label = QLabel("1x")
         scale_layout.addWidget(self.scale_label)
         viz_layout.addLayout(scale_layout)
         
@@ -231,6 +246,9 @@ class MotionCapturePlotter(QMainWindow):
         self.trajectory_line = None
         self.club_path_line = None
         
+        # Show initial 3D scene
+        self.setup_3d_scene()
+        
         return panel
         
     def load_file(self):
@@ -244,8 +262,10 @@ class MotionCapturePlotter(QMainWindow):
     def load_excel_file(self, filename):
         """Load and process Excel file"""
         try:
+            print(f"Loading file: {filename}")
             # Read all sheets
             excel_file = pd.ExcelFile(filename)
+            print(f"Available sheets: {excel_file.sheet_names}")
             
             for sheet_name in ["TW_wiffle", "TW_ProV1", "GW_wiffle", "GW_ProV11"]:
                 if sheet_name in excel_file.sheet_names:
@@ -258,32 +278,57 @@ class MotionCapturePlotter(QMainWindow):
                         if pd.notna(df.iloc[0, col]) and str(df.iloc[0, col]) in ['A', 'T', 'I', 'F']:
                             key_frame_data[str(df.iloc[0, col])] = col
                     
-                    # Process data starting from row 2
-                    if len(df) > 1:
-                        # Extract position and orientation data
+                    # Process data starting from row 3 (actual data starts here)
+                    if len(df) > 3:
+                        # Extract position and orientation data for both mid-hands and club head
                         data = []
-                        for i in range(1, len(df)):
+                        for i in range(3, len(df)):
                             row = df.iloc[i]
-                            if len(row) >= 15:  # Ensure we have enough columns
+                            if len(row) >= 25:  # Ensure we have enough columns for both sets
+                                # Helper function to safely convert to float
+                                def safe_float(value, default=0.0):
+                                    if pd.isna(value):
+                                        return default
+                                    try:
+                                        return float(value)
+                                    except (ValueError, TypeError):
+                                        return default
+                                
+                                # Mid-hands data (columns 2-13) - Convert inches to meters
                                 frame_data = {
-                                    'time': row[0] if pd.notna(row[0]) else i-1,
-                                    'X': row[1] / 1000.0 if pd.notna(row[1]) else 0,  # Convert mm to m
-                                    'Y': row[2] / 1000.0 if pd.notna(row[2]) else 0,
-                                    'Z': row[3] / 1000.0 if pd.notna(row[3]) else 0,
-                                    'Xx': row[4] if pd.notna(row[4]) else 0,
-                                    'Xy': row[5] if pd.notna(row[5]) else 0,
-                                    'Xz': row[6] if pd.notna(row[6]) else 0,
-                                    'Yx': row[7] if pd.notna(row[7]) else 0,
-                                    'Yy': row[8] if pd.notna(row[8]) else 0,
-                                    'Yz': row[9] if pd.notna(row[9]) else 0,
-                                    'Zx': row[10] if pd.notna(row[10]) else 0,
-                                    'Zy': row[11] if pd.notna(row[11]) else 0,
-                                    'Zz': row[12] if pd.notna(row[12]) else 0
+                                    'time': safe_float(row[1], i-3),  # Time is in column 1
+                                    # Mid-hands position (convert inches to meters) and orientation
+                                    'mid_X': safe_float(row[2]) * 0.0254,  # inches to meters
+                                    'mid_Y': safe_float(row[3]) * 0.0254,  # inches to meters
+                                    'mid_Z': safe_float(row[4]) * 0.0254,  # inches to meters
+                                    'mid_Xx': safe_float(row[5]),  # Direction cosines (unitless)
+                                    'mid_Xy': safe_float(row[6]),
+                                    'mid_Xz': safe_float(row[7]),
+                                    'mid_Yx': safe_float(row[8]),
+                                    'mid_Yy': safe_float(row[9]),
+                                    'mid_Yz': safe_float(row[10]),
+                                    'mid_Zx': safe_float(row[11]),
+                                    'mid_Zy': safe_float(row[12]),
+                                    'mid_Zz': safe_float(row[13]),
+                                    # Club head position (convert inches to meters) and orientation (columns 14-25)
+                                    'club_X': safe_float(row[14]) * 0.0254,  # inches to meters
+                                    'club_Y': safe_float(row[15]) * 0.0254,  # inches to meters
+                                    'club_Z': safe_float(row[16]) * 0.0254,  # inches to meters
+                                    'club_Xx': safe_float(row[17]),  # Direction cosines (unitless)
+                                    'club_Xy': safe_float(row[18]),
+                                    'club_Xz': safe_float(row[19]),
+                                    'club_Yx': safe_float(row[20]),
+                                    'club_Yy': safe_float(row[21]),
+                                    'club_Yz': safe_float(row[22]),
+                                    'club_Zx': safe_float(row[23]),
+                                    'club_Zy': safe_float(row[24]),
+                                    'club_Zz': safe_float(row[25])
                                 }
                                 data.append(frame_data)
                         
                         if data:
                             self.swing_data[sheet_name] = pd.DataFrame(data)
+                            print(f"Successfully loaded {len(data)} frames for {sheet_name}")
                             self.print_data_debug(sheet_name)
             
             # Update swing selection
@@ -292,11 +337,15 @@ class MotionCapturePlotter(QMainWindow):
             
             if self.swing_data:
                 self.current_swing = list(self.swing_data.keys())[0]
+                print(f"Selected swing: {self.current_swing}")
                 self.swing_combo.setCurrentText(self.current_swing)
                 self.setup_frame_slider()
                 self.update_visualization()
+            else:
+                print("No valid swing data found in the file")
                 
         except Exception as e:
+            print(f"Error loading file: {str(e)}")
             QMessageBox.critical(self, "Error", f"Failed to load file: {str(e)}")
             
     def print_data_debug(self, sheet_name):
@@ -307,41 +356,33 @@ class MotionCapturePlotter(QMainWindow):
                 print(f"\n=== Data Debug for {sheet_name} ===")
                 print(f"Number of frames: {len(data)}")
                 print(f"Time range: {data['time'].min():.3f} to {data['time'].max():.3f} seconds")
-                print(f"Position ranges (meters):")
-                print(f"  X: {data['X'].min():.3f} to {data['X'].max():.3f}")
-                print(f"  Y: {data['Y'].min():.3f} to {data['Y'].max():.3f}")
-                print(f"  Z: {data['Z'].min():.3f} to {data['Z'].max():.3f}")
+                print(f"Mid-Hands Position ranges:")
+                print(f"  X: {data['mid_X'].min():.3f} to {data['mid_X'].max():.3f}")
+                print(f"  Y: {data['mid_Y'].min():.3f} to {data['mid_Y'].max():.3f}")
+                print(f"  Z: {data['mid_Z'].min():.3f} to {data['mid_Z'].max():.3f}")
                 
-                # Calculate total position range
-                pos_range = np.max([data['X'].max() - data['X'].min(),
-                                  data['Y'].max() - data['Y'].min(),
-                                  data['Z'].max() - data['Z'].min()])
-                print(f"Total position range: {pos_range:.3f} meters")
+                print(f"Club Head Position ranges:")
+                print(f"  X: {data['club_X'].min():.3f} to {data['club_X'].max():.3f}")
+                print(f"  Y: {data['club_Y'].min():.3f} to {data['club_Y'].max():.3f}")
+                print(f"  Z: {data['club_Z'].min():.3f} to {data['club_Z'].max():.3f}")
+                
+                # Calculate total position ranges
+                mid_range = np.max([data['mid_X'].max() - data['mid_X'].min(),
+                                  data['mid_Y'].max() - data['mid_Y'].min(),
+                                  data['mid_Z'].max() - data['mid_Z'].min()])
+                club_range = np.max([data['club_X'].max() - data['club_X'].min(),
+                                   data['club_Y'].max() - data['club_Y'].min(),
+                                   data['club_Z'].max() - data['club_Z'].min()])
+                
+                print(f"Mid-Hands motion range: {mid_range:.3f}")
+                print(f"Club Head motion range: {club_range:.3f}")
                 
                 print("Data Analysis:")
-                print("  Motion range is very small - this suggests:")
-                print("    - Data might be tracking a single point on the club")
-                print("    - Possibly near the grip or sensor attachment point")
-                print("    - Not the full club head motion")
-                print(f"  WARNING: Very small motion range ({pos_range:.3f}m)")
-                print("    - For comparison, a golf swing typically has 2-4m of club head motion")
-                print("    - This data appears to track a fixed point, not the full swing arc")
-                print("    - Using standard club length and motion scaling for visualization")
-                
-                print("Orientation vector ranges:")
-                print(f"  Xx: {data['Xx'].min():.3f} to {data['Xx'].max():.3f}")
-                print(f"  Xy: {data['Xy'].min():.3f} to {data['Xy'].max():.3f}")
-                print(f"  Xz: {data['Xz'].min():.3f} to {data['Xz'].max():.3f}")
-                print(f"  Yx: {data['Yx'].min():.3f} to {data['Yx'].max():.3f}")
-                print(f"  Yy: {data['Yy'].min():.3f} to {data['Yy'].max():.3f}")
-                print(f"  Yz: {data['Yz'].min():.3f} to {data['Yz'].max():.3f}")
-                
-                # Validate orientation vectors
-                x_norms = np.sqrt(data['Xx']**2 + data['Xy']**2 + data['Xz']**2)
-                y_norms = np.sqrt(data['Yx']**2 + data['Yy']**2 + data['Yz']**2)
-                print("Orientation vector validation:")
-                print(f"  X-axis norm range: {x_norms.min():.3f} to {x_norms.max():.3f} (should be ~1.0)")
-                print(f"  Y-axis norm range: {y_norms.min():.3f} to {y_norms.max():.3f} (should be ~1.0)")
+                print("  This data contains both mid-hands and club head positions")
+                print("  Using actual measured positions instead of calculated ones")
+                print("  Original data in inches, converted to meters for visualization")
+                print("  Direction cosines (Xx, Xy, Xz, Yx, Yy, Yz, Zx, Zy, Zz) are unitless")
+                print("  Motion scaling applied to make visualization clearer")
                 print("=" * 40)
                 
     def setup_frame_slider(self):
@@ -458,70 +499,47 @@ class MotionCapturePlotter(QMainWindow):
         # The data appears to track a point on the club (likely near the grip)
         # We need to position the club so that the clubhead points toward the ball
         
-        # Apply motion scaling to the tracked position
+        # Use actual mid-hands and club head positions from the data
         mid_hands = np.array([
-            frame_data['X'] * self.motion_scale,
-            frame_data['Y'] * self.motion_scale,
-            frame_data['Z'] * self.motion_scale
+            frame_data['mid_X'] * self.motion_scale,
+            frame_data['mid_Y'] * self.motion_scale,
+            frame_data['mid_Z'] * self.motion_scale
         ])
         
-        # Get orientation vectors (these define the club's orientation)
-        x_axis = np.array([frame_data['Xx'], frame_data['Xy'], frame_data['Xz']])
-        y_axis = np.array([frame_data['Yx'], frame_data['Yy'], frame_data['Yz']])
-        z_axis = np.array([frame_data['Zx'], frame_data['Zy'], frame_data['Zz']])
+        club_head = np.array([
+            frame_data['club_X'] * self.motion_scale,
+            frame_data['club_Y'] * self.motion_scale,
+            frame_data['club_Z'] * self.motion_scale
+        ])
         
-        # Normalize vectors
-        x_axis = x_axis / np.linalg.norm(x_axis)
-        y_axis = y_axis / np.linalg.norm(y_axis)
-        z_axis = z_axis / np.linalg.norm(z_axis)
-        
-        # The z-axis should point from grip to clubhead
-        # Calculate club head position
-        club_head = mid_hands + z_axis * self.shaft_length
-        
-        # Draw the club shaft
+        # Draw the club shaft (line from mid-hands to club head)
         shaft_points = np.array([mid_hands, club_head])
         self.ax.plot(shaft_points[:, 0], shaft_points[:, 1], shaft_points[:, 2], 
                     'b-', linewidth=8, alpha=0.8, label='Club Shaft')
         
-        # Draw club head (larger and more visible)
-        head_size = self.shaft_length * 0.15  # 15% of club length
-        head_points = []
-        for i in range(8):
-            angle = i * np.pi / 4
-            offset = head_size * np.array([
-                np.cos(angle) * x_axis[0] + np.sin(angle) * y_axis[0],
-                np.cos(angle) * x_axis[1] + np.sin(angle) * y_axis[1],
-                np.cos(angle) * x_axis[2] + np.sin(angle) * y_axis[2]
-            ])
-            head_points.append(club_head + offset)
-        
-        head_points = np.array(head_points)
-        self.ax.plot(head_points[:, 0], head_points[:, 1], head_points[:, 2], 
-                    'r-', linewidth=6, alpha=0.9, label='Club Head')
+        # Draw club head as a sphere at the actual club head position
+        u = np.linspace(0, 2 * np.pi, 8)
+        v = np.linspace(0, np.pi, 8)
+        head_size = 0.05  # Fixed size for club head
+        x_head = head_size * np.outer(np.cos(u), np.sin(v)) + club_head[0]
+        y_head = head_size * np.outer(np.sin(u), np.sin(v)) + club_head[1]
+        z_head = head_size * np.outer(np.ones(np.size(u)), np.cos(v)) + club_head[2]
+        self.ax.plot_surface(x_head, y_head, z_head, color='red', alpha=0.8, label='Club Head')
         
         # Draw trajectory paths
         if self.trajectory_check.isChecked() and len(data) > 1:
             # Mid-hands path (blue dashed)
-            trajectory = np.array([[row['X'] * self.motion_scale, 
-                                  row['Y'] * self.motion_scale, 
-                                  row['Z'] * self.motion_scale] for _, row in data.iterrows()])
+            trajectory = np.array([[row['mid_X'] * self.motion_scale, 
+                                  row['mid_Y'] * self.motion_scale, 
+                                  row['mid_Z'] * self.motion_scale] for _, row in data.iterrows()])
             self.ax.plot(trajectory[:, 0], trajectory[:, 1], trajectory[:, 2], 
                         'b--', alpha=0.6, linewidth=2, label='Mid-Hands Path')
         
         if self.club_path_check.isChecked() and len(data) > 1:
-            # Club head path (red dashed)
-            club_path = []
-            for _, row in data.iterrows():
-                pos = np.array([row['X'] * self.motion_scale, 
-                              row['Y'] * self.motion_scale, 
-                              row['Z'] * self.motion_scale])
-                z_vec = np.array([row['Zx'], row['Zy'], row['Zz']])
-                z_vec = z_vec / np.linalg.norm(z_vec)
-                club_head_pos = pos + z_vec * self.shaft_length
-                club_path.append(club_head_pos)
-            
-            club_path = np.array(club_path)
+            # Club head path (red dashed) - use actual club head positions
+            club_path = np.array([[row['club_X'] * self.motion_scale, 
+                                  row['club_Y'] * self.motion_scale, 
+                                  row['club_Z'] * self.motion_scale] for _, row in data.iterrows()])
             self.ax.plot(club_path[:, 0], club_path[:, 1], club_path[:, 2], 
                         'r--', alpha=0.6, linewidth=2, label='Club Head Path')
         
@@ -535,12 +553,15 @@ class MotionCapturePlotter(QMainWindow):
         """Update the information text display"""
         info = f"Frame: {self.current_frame}\n"
         info += f"Time: {frame_data['time']:.3f}s\n"
-        info += f"Position (m):\n"
-        info += f"  X: {frame_data['X']:.3f}\n"
-        info += f"  Y: {frame_data['Y']:.3f}\n"
-        info += f"  Z: {frame_data['Z']:.3f}\n"
-        info += f"Motion Scale: {self.motion_scale}x\n"
-        info += f"Club Length: {self.shaft_length:.2f}m"
+        info += f"Mid-Hands Position:\n"
+        info += f"  X: {frame_data['mid_X']:.3f}\n"
+        info += f"  Y: {frame_data['mid_Y']:.3f}\n"
+        info += f"  Z: {frame_data['mid_Z']:.3f}\n"
+        info += f"Club Head Position:\n"
+        info += f"  X: {frame_data['club_X']:.3f}\n"
+        info += f"  Y: {frame_data['club_Y']:.3f}\n"
+        info += f"  Z: {frame_data['club_Z']:.3f}\n"
+        info += f"Motion Scale: {self.motion_scale}x"
         
         self.info_text.setText(info)
         
