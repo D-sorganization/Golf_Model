@@ -44,17 +44,13 @@ class MotionCapturePlotter(QMainWindow):
         self.animation_timer = QTimer()
         self.animation_timer.timeout.connect(self.next_frame)
         
-        # Try to auto-load the Excel file if it exists
-        self.auto_load_excel_file()
-        
         # Data source tracking
         self.current_data_source = "Motion Capture (Excel)"
         self.show_motion_capture = True
         self.show_simscape = False
         
-        # Initialize data source combo to match the default
-        if hasattr(self, 'data_source_combo'):
-            self.data_source_combo.setCurrentText(self.current_data_source)
+        # Try to auto-load the Excel file if it exists
+        self.auto_load_excel_file()
         
     def auto_load_excel_file(self):
         """Automatically load the Excel file if it exists in the current directory"""
