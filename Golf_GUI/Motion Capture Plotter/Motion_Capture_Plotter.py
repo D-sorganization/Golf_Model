@@ -52,6 +52,10 @@ class MotionCapturePlotter(QMainWindow):
         self.show_motion_capture = True
         self.show_simscape = False
         
+        # Initialize data source combo to match the default
+        if hasattr(self, 'data_source_combo'):
+            self.data_source_combo.setCurrentText(self.current_data_source)
+        
     def auto_load_excel_file(self):
         """Automatically load the Excel file if it exists in the current directory"""
         excel_files = [f for f in os.listdir('.') if f.endswith(('.xlsx', '.xls'))]
