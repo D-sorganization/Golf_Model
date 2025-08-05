@@ -500,14 +500,15 @@ class MotionCapturePlotter(QMainWindow):
         # We need to position the club so that the clubhead points toward the ball
         
         # Use actual mid-hands and club head positions from the data
+        # For right-handed golfers: X should be flipped to show proper swing direction
         mid_hands = np.array([
-            frame_data['mid_X'] * self.motion_scale,
+            -frame_data['mid_X'] * self.motion_scale,  # Flip X for right-handed swing
             frame_data['mid_Y'] * self.motion_scale,
             frame_data['mid_Z'] * self.motion_scale
         ])
         
         club_head = np.array([
-            frame_data['club_X'] * self.motion_scale,
+            -frame_data['club_X'] * self.motion_scale,  # Flip X for right-handed swing
             frame_data['club_Y'] * self.motion_scale,
             frame_data['club_Z'] * self.motion_scale
         ])
@@ -528,16 +529,16 @@ class MotionCapturePlotter(QMainWindow):
         
         # Draw trajectory paths
         if self.trajectory_check.isChecked() and len(data) > 1:
-            # Mid-hands path (blue dashed)
-            trajectory = np.array([[row['mid_X'] * self.motion_scale, 
+            # Mid-hands path (blue dashed) - flip X for right-handed swing
+            trajectory = np.array([[-row['mid_X'] * self.motion_scale, 
                                   row['mid_Y'] * self.motion_scale, 
                                   row['mid_Z'] * self.motion_scale] for _, row in data.iterrows()])
             self.ax.plot(trajectory[:, 0], trajectory[:, 1], trajectory[:, 2], 
                         'b--', alpha=0.6, linewidth=2, label='Mid-Hands Path')
         
         if self.club_path_check.isChecked() and len(data) > 1:
-            # Club head path (red dashed) - use actual club head positions
-            club_path = np.array([[row['club_X'] * self.motion_scale, 
+            # Club head path (red dashed) - flip X for right-handed swing
+            club_path = np.array([[-row['club_X'] * self.motion_scale, 
                                   row['club_Y'] * self.motion_scale, 
                                   row['club_Z'] * self.motion_scale] for _, row in data.iterrows()])
             self.ax.plot(club_path[:, 0], club_path[:, 1], club_path[:, 2], 
@@ -580,7 +581,9 @@ class MotionCapturePlotter(QMainWindow):
             # Isometric view: 3D perspective
             self.ax.view_init(elev=15, azim=-45)
             
-        self.canvas.draw()
+        # Force redraw
+        self.canvas.draw_idle()
+        self.canvas.flush_events()
         
     def reset_view(self):
         """Reset the 3D view to the default isometric view and limits"""
@@ -592,7 +595,9 @@ class MotionCapturePlotter(QMainWindow):
         self.ax.set_ylim([-1.0, 3.0])
         self.ax.set_zlim([-0.5, 2.5])
         
-        self.canvas.draw()
+        # Force redraw
+        self.canvas.draw_idle()
+        self.canvas.flush_events()
         
     def on_scroll(self, event):
         """Handle mouse scroll for zooming"""
@@ -631,8 +636,8 @@ class MotionCapturePlotter(QMainWindow):
         """Handle mouse button press for rotation/panning"""
         if event.inaxes != self.ax:
             return
-        # Store initial position for rotation/panning
-        self._last_pos = (event.xdata, event.ydata)
+        # Store initial position for rotation/panning (use screen coordinates)
+        self._last_pos = (event.x, event.y)
         
     def on_mouse_release(self, event):
         """Handle mouse button release"""
@@ -648,32 +653,36 @@ class MotionCapturePlotter(QMainWindow):
             elev = self.ax.elev
             azim = self.ax.azim
             
-            # Calculate change in position
-            dx = event.xdata - self._last_pos[0]
-            dy = event.ydata - self._last_pos[1]
+            # Calculate change in position (use screen coordinates for better control)
+            dx = event.x - self._last_pos[0]
+            dy = event.y - self._last_pos[1]
             
-            # Update view angles
-            self.ax.view_init(elev=elev + dy, azim=azim + dx)
+            # Update view angles (scale the movement)
+            self.ax.view_init(elev=elev + dy * 0.5, azim=azim + dx * 0.5)
             self.canvas.draw()
             
         elif event.button == 3:  # Right click - pan
             # Get current limits
             x_lim = self.ax.get_xlim()
             y_lim = self.ax.get_ylim()
+            z_lim = self.ax.get_zlim()
             
-            # Calculate change in position
-            dx = event.xdata - self._last_pos[0]
-            dy = event.ydata - self._last_pos[1]
+            # Calculate change in position (use screen coordinates)
+            dx = event.x - self._last_pos[0]
+            dy = event.y - self._last_pos[1]
             
-            # Update limits
+            # Update limits (scale the movement)
             x_range = x_lim[1] - x_lim[0]
             y_range = y_lim[1] - y_lim[0]
+            z_range = z_lim[1] - z_lim[0]
             
-            self.ax.set_xlim([x_lim[0] - dx * x_range, x_lim[1] - dx * x_range])
-            self.ax.set_ylim([y_lim[0] - dy * y_range, y_lim[1] - dy * y_range])
+            pan_scale = 0.01  # Adjust this for panning sensitivity
+            
+            self.ax.set_xlim([x_lim[0] - dx * x_range * pan_scale, x_lim[1] - dx * x_range * pan_scale])
+            self.ax.set_ylim([y_lim[0] + dy * y_range * pan_scale, y_lim[1] + dy * y_range * pan_scale])
             self.canvas.draw()
             
-        self._last_pos = (event.xdata, event.ydata)
+        self._last_pos = (event.x, event.y)
 
 def main():
     app = QApplication(sys.argv)
