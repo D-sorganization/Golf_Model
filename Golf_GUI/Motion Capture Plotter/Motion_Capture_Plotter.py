@@ -22,8 +22,9 @@ class MotionCapturePlotter(QMainWindow):
         self.setWindowTitle("Motion Capture Plotter - PyQt6")
         self.setGeometry(100, 100, 1400, 900)
         
-        # Data storage
-        self.swing_data = {}
+        # Data storage - now supporting multiple data sources simultaneously
+        self.swing_data = {}  # Motion capture data
+        self.simscape_data = {}  # Simscape data
         self.current_swing = None
         self.current_frame = 0
         self.is_playing = False
@@ -48,6 +49,8 @@ class MotionCapturePlotter(QMainWindow):
         
         # Data source tracking
         self.current_data_source = "Motion Capture (Excel)"
+        self.show_motion_capture = True
+        self.show_simscape = False
         
     def auto_load_excel_file(self):
         """Automatically load the Excel file if it exists in the current directory"""
@@ -97,15 +100,20 @@ class MotionCapturePlotter(QMainWindow):
         self.data_source_combo = QComboBox()
         self.data_source_combo.addItem("Motion Capture (Excel)")
         self.data_source_combo.addItem("Simscape Multibody (CSV)")
+        self.data_source_combo.addItem("Both (Simultaneous)")
         self.data_source_combo.currentTextChanged.connect(self.on_data_source_changed)
         file_layout.addWidget(self.data_source_combo)
         
         # File selection
-        file_layout.addWidget(QLabel("Data File:"))
-        self.file_combo = QComboBox()
-        self.file_combo.addItem("Wiffle_ProV1_club_3D_data.xlsx")
-        self.file_combo.addItem("trial_001_20250802_204903.csv")
-        file_layout.addWidget(self.file_combo)
+        file_layout.addWidget(QLabel("Motion Capture File:"))
+        self.motion_capture_file_combo = QComboBox()
+        self.motion_capture_file_combo.addItem("Wiffle_ProV1_club_3D_data.xlsx")
+        file_layout.addWidget(self.motion_capture_file_combo)
+        
+        file_layout.addWidget(QLabel("Simscape File:"))
+        self.simscape_file_combo = QComboBox()
+        self.simscape_file_combo.addItem("trial_001_20250802_204903.csv")
+        file_layout.addWidget(self.simscape_file_combo)
         
         load_btn = QPushButton("Load File")
         load_btn.clicked.connect(self.load_file)
@@ -167,6 +175,29 @@ class MotionCapturePlotter(QMainWindow):
         self.club_path_check.setChecked(True)
         self.club_path_check.stateChanged.connect(self.update_visualization)
         viz_layout.addWidget(self.club_path_check)
+        
+        # Simscape segment trace options
+        viz_layout.addWidget(QLabel("Simscape Segment Traces:"))
+        self.segment_traces = {}
+        segment_options = [
+            ("club_head", "Club Head"),
+            ("left_hand", "Left Hand"),
+            ("right_hand", "Right Hand"),
+            ("left_elbow", "Left Elbow"),
+            ("right_elbow", "Right Elbow"),
+            ("left_shoulder", "Left Shoulder"),
+            ("right_shoulder", "Right Shoulder"),
+            ("hub", "Hub"),
+            ("spine", "Spine"),
+            ("hip", "Hip")
+        ]
+        
+        for segment_key, segment_name in segment_options:
+            checkbox = QCheckBox(f"Trace {segment_name}")
+            checkbox.setChecked(False)
+            checkbox.stateChanged.connect(self.update_visualization)
+            self.segment_traces[segment_key] = checkbox
+            viz_layout.addWidget(checkbox)
         
         # Motion scaling
         scale_layout = QHBoxLayout()
@@ -294,16 +325,26 @@ class MotionCapturePlotter(QMainWindow):
         self.current_data_source = source
         print(f"Data source changed to: {source}")
         
-        # Update file combo based on data source
-        self.file_combo.clear()
+        # Update visibility flags based on data source
         if source == "Motion Capture (Excel)":
-            self.file_combo.addItem("Wiffle_ProV1_club_3D_data.xlsx")
+            self.show_motion_capture = True
+            self.show_simscape = False
             # Try to auto-load Excel file
             self.auto_load_excel_file()
-        else:  # Simscape Multibody (CSV)
-            self.file_combo.addItem("trial_001_20250802_204903.csv")
+        elif source == "Simscape Multibody (CSV)":
+            self.show_motion_capture = False
+            self.show_simscape = True
             # Try to auto-load CSV file
             self.auto_load_simscape_csv()
+        else:  # Both (Simultaneous)
+            self.show_motion_capture = True
+            self.show_simscape = True
+            # Try to auto-load both files
+            self.auto_load_excel_file()
+            self.auto_load_simscape_csv()
+        
+        # Update visualization
+        self.update_visualization()
     
     def auto_load_simscape_csv(self):
         """Automatically load the Simscape CSV file if it exists"""
@@ -455,7 +496,7 @@ class MotionCapturePlotter(QMainWindow):
             
             # Store the data
             swing_name = "Simscape_Swing"
-            self.swing_data[swing_name] = pd.DataFrame(data)
+            self.simscape_data[swing_name] = pd.DataFrame(data)
             print(f"Successfully loaded {len(data)} frames for {swing_name}")
             
             # Update swing selection
@@ -609,27 +650,29 @@ class MotionCapturePlotter(QMainWindow):
         
     def update_visualization(self):
         """Update the 3D visualization with proper coordinate system"""
-        if self.current_swing not in self.swing_data:
-            return
-            
-        data = self.swing_data[self.current_swing]
-        if data.empty or self.current_frame >= len(data):
-            return
-            
-        # Get current frame data
-        frame_data = data.iloc[self.current_frame]
-        
         # Clear and setup scene
         self.setup_3d_scene()
         
-        # Determine data source and visualize accordingly
-        if self.current_data_source == "Motion Capture (Excel)":
-            self.visualize_motion_capture_data(frame_data, data)
-        else:  # Simscape Multibody (CSV)
-            self.visualize_simscape_data(frame_data, data)
+        # Visualize motion capture data if enabled
+        if self.show_motion_capture and self.swing_data:
+            # Find the first available swing data
+            available_swings = list(self.swing_data.keys())
+            if available_swings and self.current_frame < len(self.swing_data[available_swings[0]]):
+                motion_data = self.swing_data[available_swings[0]]
+                frame_data = motion_data.iloc[self.current_frame]
+                self.visualize_motion_capture_data(frame_data, motion_data)
         
-        # Update info text
-        self.update_info_text(frame_data)
+        # Visualize Simscape data if enabled
+        if self.show_simscape and self.simscape_data:
+            # Find the first available Simscape data
+            available_simscape = list(self.simscape_data.keys())
+            if available_simscape and self.current_frame < len(self.simscape_data[available_simscape[0]]):
+                simscape_data = self.simscape_data[available_simscape[0]]
+                frame_data = simscape_data.iloc[self.current_frame]
+                self.visualize_simscape_data(frame_data, simscape_data)
+        
+        # Update info text with combined data
+        self.update_info_text(None)  # Pass None since we're handling multiple data sources
         
         # Redraw canvas
         self.canvas.draw()
@@ -771,33 +814,68 @@ class MotionCapturePlotter(QMainWindow):
                     self.ax.plot(hands_trajectory[:, 0], hands_trajectory[:, 1], hands_trajectory[:, 2], 
                                 'b--', alpha=0.6, linewidth=2, label='Hands Path')
         
+        # Draw segment traces if enabled
+        for segment_key, checkbox in self.segment_traces.items():
+            if checkbox.isChecked() and f'{segment_key}_X' in frame_data and len(data) > 1:
+                # Create trajectory for this segment
+                segment_trajectory = np.array([[row[f'{segment_key}_X'] * self.motion_scale,
+                                              row[f'{segment_key}_Y'] * self.motion_scale,
+                                              row[f'{segment_key}_Z'] * self.motion_scale] 
+                                             for _, row in data.iterrows() if f'{segment_key}_X' in row])
+                if len(segment_trajectory) > 1:
+                    # Use different colors for different segments
+                    trace_colors = {
+                        'club_head': 'red',
+                        'left_hand': 'blue',
+                        'right_hand': 'cyan',
+                        'left_elbow': 'green',
+                        'right_elbow': 'lime',
+                        'left_shoulder': 'orange',
+                        'right_shoulder': 'yellow',
+                        'hub': 'purple',
+                        'spine': 'magenta',
+                        'hip': 'brown'
+                    }
+                    color = trace_colors.get(segment_key, 'gray')
+                    self.ax.plot(segment_trajectory[:, 0], segment_trajectory[:, 1], segment_trajectory[:, 2], 
+                                color=color, linestyle='--', alpha=0.6, linewidth=2, 
+                                label=f'{segment_key.replace("_", " ").title()} Path')
+        
     def update_info_text(self, frame_data):
         """Update the information text display"""
         info = f"Frame: {self.current_frame}\n"
-        info += f"Time: {frame_data['time']:.3f}s\n"
         info += f"Data Source: {self.current_data_source}\n"
         info += f"Motion Scale: {self.motion_scale}x\n\n"
         
-        if self.current_data_source == "Motion Capture (Excel)":
-            info += f"Mid-Hands Position:\n"
-            info += f"  X: {frame_data['mid_X']:.3f}\n"
-            info += f"  Y: {frame_data['mid_Y']:.3f}\n"
-            info += f"  Z: {frame_data['mid_Z']:.3f}\n"
-            info += f"Club Head Position:\n"
-            info += f"  X: {frame_data['club_X']:.3f}\n"
-            info += f"  Y: {frame_data['club_Y']:.3f}\n"
-            info += f"  Z: {frame_data['club_Z']:.3f}\n"
-        else:  # Simscape Multibody (CSV)
-            info += f"Available Joints:\n"
-            joint_count = 0
-            for joint_name in ['club_head', 'left_hand', 'right_hand', 'left_shoulder', 
-                              'right_shoulder', 'left_elbow', 'right_elbow', 'hub', 'spine', 'hip']:
-                if f'{joint_name}_X' in frame_data:
-                    info += f"  {joint_name}: ✓\n"
-                    joint_count += 1
-                else:
-                    info += f"  {joint_name}: ✗\n"
-            info += f"\nTotal Joints: {joint_count}"
+        # Show motion capture data if available
+        if self.show_motion_capture and self.swing_data:
+            available_swings = list(self.swing_data.keys())
+            if available_swings and self.current_frame < len(self.swing_data[available_swings[0]]):
+                motion_data = self.swing_data[available_swings[0]]
+                motion_frame = motion_data.iloc[self.current_frame]
+                info += f"Motion Capture Data:\n"
+                info += f"  Time: {motion_frame['time']:.3f}s\n"
+                info += f"  Mid-Hands: ({motion_frame['mid_X']:.3f}, {motion_frame['mid_Y']:.3f}, {motion_frame['mid_Z']:.3f})\n"
+                info += f"  Club Head: ({motion_frame['club_X']:.3f}, {motion_frame['club_Y']:.3f}, {motion_frame['club_Z']:.3f})\n\n"
+        
+        # Show Simscape data if available
+        if self.show_simscape and self.simscape_data:
+            available_simscape = list(self.simscape_data.keys())
+            if available_simscape and self.current_frame < len(self.simscape_data[available_simscape[0]]):
+                simscape_data = self.simscape_data[available_simscape[0]]
+                simscape_frame = simscape_data.iloc[self.current_frame]
+                info += f"Simscape Data:\n"
+                info += f"  Time: {simscape_frame['time']:.3f}s\n"
+                info += f"  Available Joints:\n"
+                joint_count = 0
+                for joint_name in ['club_head', 'left_hand', 'right_hand', 'left_shoulder', 
+                                  'right_shoulder', 'left_elbow', 'right_elbow', 'hub', 'spine', 'hip']:
+                                                              if f'{joint_name}_X' in simscape_frame:
+                         info += f"    {joint_name}: ✓\n"
+                         joint_count += 1
+                     else:
+                         info += f"    {joint_name}: ✗\n"
+                 info += f"\nTotal Joints: {joint_count}"
         
         self.info_text.setText(info)
         
