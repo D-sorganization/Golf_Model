@@ -870,12 +870,12 @@ class MotionCapturePlotter(QMainWindow):
                 joint_count = 0
                 for joint_name in ['club_head', 'left_hand', 'right_hand', 'left_shoulder', 
                                   'right_shoulder', 'left_elbow', 'right_elbow', 'hub', 'spine', 'hip']:
-                                                              if f'{joint_name}_X' in simscape_frame:
-                         info += f"    {joint_name}: ✓\n"
-                         joint_count += 1
-                     else:
-                         info += f"    {joint_name}: ✗\n"
-                 info += f"\nTotal Joints: {joint_count}"
+                    if f'{joint_name}_X' in simscape_frame:
+                        info += f"    {joint_name}: ✓\n"
+                        joint_count += 1
+                    else:
+                        info += f"    {joint_name}: ✗\n"
+                info += f"\nTotal Joints: {joint_count}"
         
         self.info_text.setText(info)
         
