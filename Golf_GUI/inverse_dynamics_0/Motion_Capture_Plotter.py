@@ -227,18 +227,24 @@ class MotionCapturePlotter(QMainWindow):
         self.fig = Figure(figsize=(10, 8), dpi=100)
         self.ax = self.fig.add_subplot(111, projection='3d')
         
-        # Enable interactive features
+        # Enable interactive features and 3D navigation
         self.ax.mouse_init()
+        
+        # Enable matplotlib's built-in 3D navigation
+        self.ax.set_navigate(True)
         
         # Create canvas
         self.canvas = FigureCanvas(self.fig)
         layout.addWidget(self.canvas)
         
-        # Connect mouse events for zoom/rotation
+        # Connect mouse events for zoom/rotation with proper event handling
         self.canvas.mpl_connect('scroll_event', self.on_scroll)
         self.canvas.mpl_connect('button_press_event', self.on_mouse_press)
         self.canvas.mpl_connect('button_release_event', self.on_mouse_release)
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
+        
+        # Enable mouse tracking for better interaction
+        self.canvas.setMouseTracking(True)
         
         # Initialize empty plot elements
         self.club_line = None
@@ -604,13 +610,15 @@ class MotionCapturePlotter(QMainWindow):
         if event.inaxes != self.ax:
             return
             
+        print(f"Scroll event: button={event.button}, step={event.step}")
+        
         # Get current view limits
         x_lim = self.ax.get_xlim()
         y_lim = self.ax.get_ylim()
         z_lim = self.ax.get_zlim()
         
         # Determine zoom factor based on scroll direction
-        if event.button == 'up':
+        if event.button == 'up' or event.step > 0:
             zoom_factor = 0.9  # Zoom in
         else:
             zoom_factor = 1.1  # Zoom out
@@ -631,6 +639,7 @@ class MotionCapturePlotter(QMainWindow):
         self.ax.set_zlim([z_center - z_range/2, z_center + z_range/2])
         
         self.canvas.draw()
+        print(f"Zooming: factor={zoom_factor}")
         
     def on_mouse_press(self, event):
         """Handle mouse button press for rotation/panning"""
@@ -638,6 +647,7 @@ class MotionCapturePlotter(QMainWindow):
             return
         # Store initial position for rotation/panning (use screen coordinates)
         self._last_pos = (event.x, event.y)
+        print(f"Mouse press: button={event.button}, pos=({event.x}, {event.y})")
         
     def on_mouse_release(self, event):
         """Handle mouse button release"""
@@ -648,7 +658,7 @@ class MotionCapturePlotter(QMainWindow):
         if event.inaxes != self.ax or self._last_pos is None:
             return
             
-        if event.button == 1:  # Left click - rotate
+        if hasattr(event, 'button') and event.button == 1:  # Left click - rotate
             # Get current view angles
             elev = self.ax.elev
             azim = self.ax.azim
@@ -660,8 +670,9 @@ class MotionCapturePlotter(QMainWindow):
             # Update view angles (scale the movement)
             self.ax.view_init(elev=elev + dy * 0.5, azim=azim + dx * 0.5)
             self.canvas.draw()
+            print(f"Rotating: dx={dx}, dy={dy}, new_elev={elev + dy * 0.5}, new_azim={azim + dx * 0.5}")
             
-        elif event.button == 3:  # Right click - pan
+        elif hasattr(event, 'button') and event.button == 3:  # Right click - pan
             # Get current limits
             x_lim = self.ax.get_xlim()
             y_lim = self.ax.get_ylim()
@@ -681,6 +692,7 @@ class MotionCapturePlotter(QMainWindow):
             self.ax.set_xlim([x_lim[0] - dx * x_range * pan_scale, x_lim[1] - dx * x_range * pan_scale])
             self.ax.set_ylim([y_lim[0] + dy * y_range * pan_scale, y_lim[1] + dy * y_range * pan_scale])
             self.canvas.draw()
+            print(f"Panning: dx={dx}, dy={dy}")
             
         self._last_pos = (event.x, event.y)
 
