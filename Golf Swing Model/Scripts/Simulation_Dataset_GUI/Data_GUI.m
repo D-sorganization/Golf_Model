@@ -609,6 +609,19 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                               'Callback', @clearAllCheckpoints, ...
                                               'TooltipString', 'Delete all checkpoint files to force fresh start');
     
+    % Fourth row of options - Master Dataset Creation
+    y = y - 0.025;
+    handles.enable_master_dataset = uicontrol('Parent', panel, ...
+                                             'Style', 'checkbox', ...
+                                             'String', 'Create master dataset', ...
+                                             'Value', 1, ...
+                                             'Units', 'normalized', ...
+                                             'Position', [textBoxStart, y, 0.30, rowHeight], ...
+                                             'BackgroundColor', colors.panel, ...
+                                             'ForegroundColor', colors.text, ...
+                                             'FontSize', 9, ...
+                                             'TooltipString', 'When checked, combine all trials into a master dataset. Uncheck to skip this step for large datasets that may cause memory issues.');
+    
     % Batch Settings Section - Moved to more visible position
     y = y - 0.04;
     uicontrol('Parent', panel, ...
@@ -2092,7 +2105,7 @@ function config = gatherConfiguration(handles)
     config.execution_mode = get(handles.execution_mode_popup, 'Value');
     config.torque_scenario = get(handles.torque_scenario_popup, 'Value');
     config.coeff_range = get(handles.coeff_range_edit, 'String');
-    config.constant_value = get(handles.constant_value_edit, 'String');
+    config.constant_value = '10.0'; % Default constant value since field was removed from GUI
     config.use_logsout = get(handles.use_logsout, 'Value');
     config.use_signal_bus = get(handles.use_signal_bus, 'Value');
     config.use_simscape = get(handles.use_simscape, 'Value');
@@ -2101,6 +2114,7 @@ function config = gatherConfiguration(handles)
     config.folder_name = get(handles.folder_name_edit, 'String');
     config.file_format = get(handles.format_popup, 'Value');
     config.coefficients_data = get(handles.coefficients_table, 'Data');
+    config.enable_master_dataset = get(handles.enable_master_dataset, 'Value');
 end
 % Helper function to apply configuration
 function applyConfiguration(handles, config)
@@ -2149,6 +2163,9 @@ function applyConfiguration(handles, config)
     end
     if isfield(config, 'coefficients_data')
         set(handles.coefficients_table, 'Data', config.coefficients_data);
+    end
+    if isfield(config, 'enable_master_dataset')
+        set(handles.enable_master_dataset, 'Value', config.enable_master_dataset);
     end
     
     % Update UI state
@@ -2202,12 +2219,22 @@ function runGeneration(handles)
             set(handles.status_text, 'String', ['Status: ' final_msg]);
             set(handles.progress_text, 'String', final_msg);
             
-            % Compile dataset
+            % Compile dataset (only if enabled)
             if successful_trials > 0
-                set(handles.status_text, 'String', 'Status: Compiling master dataset...');
-                drawnow;
-                compileDataset(config);
-                set(handles.status_text, 'String', ['Status: ' final_msg ' - Dataset compiled']);
+                enable_master_dataset = get(handles.enable_master_dataset, 'Value');
+                if enable_master_dataset
+                    set(handles.status_text, 'String', 'Status: Compiling master dataset...');
+                    drawnow;
+                    try
+                        compileDataset(config);
+                        set(handles.status_text, 'String', ['Status: ' final_msg ' - Dataset compiled']);
+                    catch ME
+                        fprintf('Warning: Master dataset compilation failed: %s\n', ME.message);
+                        set(handles.status_text, 'String', ['Status: ' final_msg ' - Individual trials saved (master dataset failed)']);
+                    end
+                else
+                    set(handles.status_text, 'String', ['Status: ' final_msg ' - Individual trials saved (master dataset disabled)']);
+                end
             end
             
             % Save script and settings for reproducibility
@@ -3639,6 +3666,7 @@ function handles = loadUserPreferences(handles)
     handles.preferences.enable_performance_monitoring = true;
     handles.preferences.default_verbosity = 'Normal';
     handles.preferences.enable_memory_monitoring = true;
+    handles.preferences.enable_master_dataset = true; % Default to creating master dataset
     
     % Try to load saved preferences
     if exist(pref_file, 'file')
@@ -3720,6 +3748,11 @@ function applyUserPreferences(handles)
             set(handles.enable_memory_monitoring, 'Value', prefs.enable_memory_monitoring);
         end
         
+        % Apply master dataset setting
+        if isfield(handles, 'enable_master_dataset') && isfield(prefs, 'enable_master_dataset')
+            set(handles.enable_master_dataset, 'Value', prefs.enable_master_dataset);
+        end
+        
     catch
         % Silently fail if preferences can't be applied
     end
@@ -3781,6 +3814,11 @@ function saveUserPreferences(handles)
         
         if isfield(handles, 'enable_memory_monitoring')
             handles.preferences.enable_memory_monitoring = get(handles.enable_memory_monitoring, 'Value');
+        end
+        
+        % Save master dataset setting
+        if isfield(handles, 'enable_master_dataset')
+            handles.preferences.enable_master_dataset = get(handles.enable_master_dataset, 'Value');
         end
         
         % Save to file
