@@ -46,6 +46,9 @@ class MotionCapturePlotter(QMainWindow):
         # Try to auto-load the Excel file if it exists
         self.auto_load_excel_file()
         
+        # Data source tracking
+        self.current_data_source = "Motion Capture (Excel)"
+        
     def auto_load_excel_file(self):
         """Automatically load the Excel file if it exists in the current directory"""
         excel_files = [f for f in os.listdir('.') if f.endswith(('.xlsx', '.xls'))]
@@ -88,7 +91,23 @@ class MotionCapturePlotter(QMainWindow):
         # File loading
         file_group = QGroupBox("Data Loading")
         file_layout = QVBoxLayout(file_group)
-        load_btn = QPushButton("Load Excel File")
+        
+        # Data source selection
+        file_layout.addWidget(QLabel("Data Source:"))
+        self.data_source_combo = QComboBox()
+        self.data_source_combo.addItem("Motion Capture (Excel)")
+        self.data_source_combo.addItem("Simscape Multibody (CSV)")
+        self.data_source_combo.currentTextChanged.connect(self.on_data_source_changed)
+        file_layout.addWidget(self.data_source_combo)
+        
+        # File selection
+        file_layout.addWidget(QLabel("Data File:"))
+        self.file_combo = QComboBox()
+        self.file_combo.addItem("Wiffle_ProV1_club_3D_data.xlsx")
+        self.file_combo.addItem("trial_001_20250802_204903.csv")
+        file_layout.addWidget(self.file_combo)
+        
+        load_btn = QPushButton("Load File")
         load_btn.clicked.connect(self.load_file)
         file_layout.addWidget(load_btn)
         layout.addWidget(file_group)
@@ -258,12 +277,41 @@ class MotionCapturePlotter(QMainWindow):
         return panel
         
     def load_file(self):
-        """Load Excel file"""
-        filename, _ = QFileDialog.getOpenFileName(
-            self, "Load Excel File", "", "Excel Files (*.xlsx *.xls)")
+        """Load data file based on current data source"""
+        if self.current_data_source == "Motion Capture (Excel)":
+            filename, _ = QFileDialog.getOpenFileName(
+                self, "Load Excel File", "", "Excel Files (*.xlsx *.xls)")
+            if filename:
+                self.load_excel_file(filename)
+        else:  # Simscape Multibody (CSV)
+            filename, _ = QFileDialog.getOpenFileName(
+                self, "Load CSV File", "", "CSV Files (*.csv)")
+            if filename:
+                self.load_simscape_csv(filename)
+    
+    def on_data_source_changed(self, source):
+        """Handle data source change"""
+        self.current_data_source = source
+        print(f"Data source changed to: {source}")
         
-        if filename:
-            self.load_excel_file(filename)
+        # Update file combo based on data source
+        self.file_combo.clear()
+        if source == "Motion Capture (Excel)":
+            self.file_combo.addItem("Wiffle_ProV1_club_3D_data.xlsx")
+            # Try to auto-load Excel file
+            self.auto_load_excel_file()
+        else:  # Simscape Multibody (CSV)
+            self.file_combo.addItem("trial_001_20250802_204903.csv")
+            # Try to auto-load CSV file
+            self.auto_load_simscape_csv()
+    
+    def auto_load_simscape_csv(self):
+        """Automatically load the Simscape CSV file if it exists"""
+        csv_files = [f for f in os.listdir('.') if f.endswith('.csv')]
+        if csv_files:
+            filename = csv_files[0]
+            print(f"Auto-loading Simscape CSV file: {filename}")
+            self.load_simscape_csv(filename)
             
     def load_excel_file(self, filename):
         """Load and process Excel file"""
@@ -353,6 +401,79 @@ class MotionCapturePlotter(QMainWindow):
         except Exception as e:
             print(f"Error loading file: {str(e)}")
             QMessageBox.critical(self, "Error", f"Failed to load file: {str(e)}")
+    
+    def load_simscape_csv(self, filename):
+        """Load and process Simscape CSV file"""
+        try:
+            print(f"Loading Simscape CSV file: {filename}")
+            
+            # Read the CSV file
+            df = pd.read_csv(filename)
+            print(f"Successfully loaded CSV with {len(df)} rows and {len(df.columns)} columns")
+            print(f"Time range: {df['time'].min():.3f} to {df['time'].max():.3f} seconds")
+            
+            # Define the key joint positions for golf swing visualization
+            joint_positions = {
+                'club_head': ['ClubLogs_CHGlobalPosition_1', 'ClubLogs_CHGlobalPosition_2', 'ClubLogs_CHGlobalPosition_3'],
+                'left_hand': ['LWLogs_LHGlobalPosition_1', 'LWLogs_LHGlobalPosition_2', 'LWLogs_LHGlobalPosition_3'],
+                'right_hand': ['RWLogs_RHGlobalPosition_1', 'RWLogs_RHGlobalPosition_2', 'RWLogs_RHGlobalPosition_3'],
+                'left_shoulder': ['LSLogs_GlobalPosition_1', 'LSLogs_GlobalPosition_2', 'LSLogs_GlobalPosition_3'],
+                'right_shoulder': ['RSLogs_GlobalPosition_1', 'RSLogs_GlobalPosition_2', 'RSLogs_GlobalPosition_3'],
+                'left_elbow': ['LELogs_LArmonLForearmFGlobal_1', 'LELogs_LArmonLForearmFGlobal_2', 'LELogs_LArmonLForearmFGlobal_3'],
+                'right_elbow': ['RELogs_RArmonLForearmFGlobal_1', 'RELogs_RArmonLForearmFGlobal_2', 'RELogs_RArmonLForearmFGlobal_3'],
+                'hub': ['HipLogs_HUBGlobalPosition_1', 'HipLogs_HUBGlobalPosition_2', 'HipLogs_HUBGlobalPosition_3'],
+                'spine': ['SpineLogs_GlobalPosition_1', 'SpineLogs_GlobalPosition_2', 'SpineLogs_GlobalPosition_3'],
+                'hip': ['HipLogs_HipGlobalPosition_dim1', 'HipLogs_HipGlobalPosition_dim2', 'HipLogs_HipGlobalPosition_dim3']
+            }
+            
+            # Check which joint positions are available
+            available_joints = {}
+            for joint_name, columns in joint_positions.items():
+                if all(col in df.columns for col in columns):
+                    available_joints[joint_name] = columns
+                    print(f"✓ {joint_name}: AVAILABLE")
+                else:
+                    missing_cols = [col for col in columns if col not in df.columns]
+                    print(f"✗ {joint_name}: MISSING {len(missing_cols)} columns")
+            
+            if not available_joints:
+                raise ValueError("No valid joint position data found in the CSV file")
+            
+            # Process the data into our standard format
+            data = []
+            for i, row in df.iterrows():
+                frame_data = {'time': row['time']}
+                
+                # Add available joint positions
+                for joint_name, columns in available_joints.items():
+                    if all(col in df.columns for col in columns):
+                        frame_data[f'{joint_name}_X'] = row[columns[0]]
+                        frame_data[f'{joint_name}_Y'] = row[columns[1]]
+                        frame_data[f'{joint_name}_Z'] = row[columns[2]]
+                
+                data.append(frame_data)
+            
+            # Store the data
+            swing_name = "Simscape_Swing"
+            self.swing_data[swing_name] = pd.DataFrame(data)
+            print(f"Successfully loaded {len(data)} frames for {swing_name}")
+            
+            # Update swing selection
+            self.swing_combo.clear()
+            self.swing_combo.addItems(list(self.swing_data.keys()))
+            
+            if self.swing_data:
+                self.current_swing = swing_name
+                print(f"Selected swing: {self.current_swing}")
+                self.swing_combo.setCurrentText(self.current_swing)
+                self.setup_frame_slider()
+                self.update_visualization()
+            else:
+                print("No valid swing data found in the file")
+                
+        except Exception as e:
+            print(f"Error loading Simscape CSV file: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to load Simscape CSV file: {str(e)}")
             
     def print_data_debug(self, sheet_name):
         """Print debug information about the loaded data"""
@@ -501,10 +622,20 @@ class MotionCapturePlotter(QMainWindow):
         # Clear and setup scene
         self.setup_3d_scene()
         
-        # FIXED: Proper coordinate system interpretation
-        # The data appears to track a point on the club (likely near the grip)
-        # We need to position the club so that the clubhead points toward the ball
+        # Determine data source and visualize accordingly
+        if self.current_data_source == "Motion Capture (Excel)":
+            self.visualize_motion_capture_data(frame_data, data)
+        else:  # Simscape Multibody (CSV)
+            self.visualize_simscape_data(frame_data, data)
         
+        # Update info text
+        self.update_info_text(frame_data)
+        
+        # Redraw canvas
+        self.canvas.draw()
+    
+    def visualize_motion_capture_data(self, frame_data, data):
+        """Visualize motion capture data (Excel format)"""
         # Use actual mid-hands and club head positions from the data
         # For right-handed golfers: X should be flipped to show proper swing direction
         mid_hands = np.array([
@@ -549,26 +680,124 @@ class MotionCapturePlotter(QMainWindow):
                                   row['club_Z'] * self.motion_scale] for _, row in data.iterrows()])
             self.ax.plot(club_path[:, 0], club_path[:, 1], club_path[:, 2], 
                         'r--', alpha=0.6, linewidth=2, label='Club Head Path')
+    
+    def visualize_simscape_data(self, frame_data, data):
+        """Visualize Simscape multibody data (CSV format)"""
+        # Define colors for different body segments
+        colors = {
+            'club': 'red',
+            'hands': 'blue',
+            'arms': 'green',
+            'shoulders': 'orange',
+            'torso': 'purple',
+            'hips': 'brown'
+        }
         
-        # Update info text
-        self.update_info_text(frame_data)
+        # Draw golf swing skeleton
+        joints = {}
         
-        # Redraw canvas
-        self.canvas.draw()
+        # Extract joint positions from frame data
+        for joint_name in ['club_head', 'left_hand', 'right_hand', 'left_shoulder', 
+                          'right_shoulder', 'left_elbow', 'right_elbow', 'hub', 'spine', 'hip']:
+            if f'{joint_name}_X' in frame_data:
+                joints[joint_name] = np.array([
+                    frame_data[f'{joint_name}_X'] * self.motion_scale,
+                    frame_data[f'{joint_name}_Y'] * self.motion_scale,
+                    frame_data[f'{joint_name}_Z'] * self.motion_scale
+                ])
+        
+        # Draw segments connecting joints
+        segments = [
+            ('left_hand', 'right_hand', colors['hands']),  # Midpoint
+            ('left_hand', 'left_elbow', colors['arms']),
+            ('right_hand', 'right_elbow', colors['arms']),
+            ('left_elbow', 'left_shoulder', colors['arms']),
+            ('right_elbow', 'right_shoulder', colors['arms']),
+            ('left_shoulder', 'right_shoulder', colors['shoulders']),
+            ('left_shoulder', 'hub', colors['torso']),
+            ('right_shoulder', 'hub', colors['torso']),
+            ('hub', 'spine', colors['torso']),
+            ('spine', 'hip', colors['torso'])
+        ]
+        
+        # Draw club if available
+        if 'club_head' in joints and 'left_hand' in joints:
+            # Draw club shaft from left hand to club head
+            club_points = np.array([joints['left_hand'], joints['club_head']])
+            self.ax.plot(club_points[:, 0], club_points[:, 1], club_points[:, 2], 
+                        color=colors['club'], linewidth=6, alpha=0.8, label='Club')
+            
+            # Draw club head as sphere
+            u = np.linspace(0, 2 * np.pi, 8)
+            v = np.linspace(0, np.pi, 8)
+            head_size = 0.03
+            x_head = head_size * np.outer(np.cos(u), np.sin(v)) + joints['club_head'][0]
+            y_head = head_size * np.outer(np.sin(u), np.sin(v)) + joints['club_head'][1]
+            z_head = head_size * np.outer(np.ones(np.size(u)), np.cos(v)) + joints['club_head'][2]
+            self.ax.plot_surface(x_head, y_head, z_head, color=colors['club'], alpha=0.8)
+        
+        # Draw body segments
+        for start_joint, end_joint, color in segments:
+            if start_joint in joints and end_joint in joints:
+                segment_points = np.array([joints[start_joint], joints[end_joint]])
+                self.ax.plot(segment_points[:, 0], segment_points[:, 1], segment_points[:, 2], 
+                            color=color, linewidth=3, alpha=0.7)
+        
+        # Draw joint markers
+        for joint_name, position in joints.items():
+            self.ax.scatter(position[0], position[1], position[2], 
+                          color='black', s=50, alpha=0.8)
+        
+        # Draw trajectory paths if enabled
+        if self.trajectory_check.isChecked() and len(data) > 1:
+            # Club head trajectory
+            if 'club_head' in joints:
+                club_trajectory = np.array([[row[f'club_head_X'] * self.motion_scale,
+                                           row[f'club_head_Y'] * self.motion_scale,
+                                           row[f'club_head_Z'] * self.motion_scale] 
+                                          for _, row in data.iterrows() if f'club_head_X' in row])
+                if len(club_trajectory) > 1:
+                    self.ax.plot(club_trajectory[:, 0], club_trajectory[:, 1], club_trajectory[:, 2], 
+                                'r--', alpha=0.6, linewidth=2, label='Club Head Path')
+        
+        if self.club_path_check.isChecked() and len(data) > 1:
+            # Hands trajectory
+            if 'left_hand' in joints:
+                hands_trajectory = np.array([[row[f'left_hand_X'] * self.motion_scale,
+                                            row[f'left_hand_Y'] * self.motion_scale,
+                                            row[f'left_hand_Z'] * self.motion_scale] 
+                                           for _, row in data.iterrows() if f'left_hand_X' in row])
+                if len(hands_trajectory) > 1:
+                    self.ax.plot(hands_trajectory[:, 0], hands_trajectory[:, 1], hands_trajectory[:, 2], 
+                                'b--', alpha=0.6, linewidth=2, label='Hands Path')
         
     def update_info_text(self, frame_data):
         """Update the information text display"""
         info = f"Frame: {self.current_frame}\n"
         info += f"Time: {frame_data['time']:.3f}s\n"
-        info += f"Mid-Hands Position:\n"
-        info += f"  X: {frame_data['mid_X']:.3f}\n"
-        info += f"  Y: {frame_data['mid_Y']:.3f}\n"
-        info += f"  Z: {frame_data['mid_Z']:.3f}\n"
-        info += f"Club Head Position:\n"
-        info += f"  X: {frame_data['club_X']:.3f}\n"
-        info += f"  Y: {frame_data['club_Y']:.3f}\n"
-        info += f"  Z: {frame_data['club_Z']:.3f}\n"
-        info += f"Motion Scale: {self.motion_scale}x"
+        info += f"Data Source: {self.current_data_source}\n"
+        info += f"Motion Scale: {self.motion_scale}x\n\n"
+        
+        if self.current_data_source == "Motion Capture (Excel)":
+            info += f"Mid-Hands Position:\n"
+            info += f"  X: {frame_data['mid_X']:.3f}\n"
+            info += f"  Y: {frame_data['mid_Y']:.3f}\n"
+            info += f"  Z: {frame_data['mid_Z']:.3f}\n"
+            info += f"Club Head Position:\n"
+            info += f"  X: {frame_data['club_X']:.3f}\n"
+            info += f"  Y: {frame_data['club_Y']:.3f}\n"
+            info += f"  Z: {frame_data['club_Z']:.3f}\n"
+        else:  # Simscape Multibody (CSV)
+            info += f"Available Joints:\n"
+            joint_count = 0
+            for joint_name in ['club_head', 'left_hand', 'right_hand', 'left_shoulder', 
+                              'right_shoulder', 'left_elbow', 'right_elbow', 'hub', 'spine', 'hip']:
+                if f'{joint_name}_X' in frame_data:
+                    info += f"  {joint_name}: ✓\n"
+                    joint_count += 1
+                else:
+                    info += f"  {joint_name}: ✗\n"
+            info += f"\nTotal Joints: {joint_count}"
         
         self.info_text.setText(info)
         
