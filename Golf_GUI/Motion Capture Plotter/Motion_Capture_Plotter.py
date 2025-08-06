@@ -650,8 +650,15 @@ class MotionCapturePlotter(QMainWindow):
         
     def update_visualization(self):
         """Update the 3D visualization with proper coordinate system"""
+        # Store current view angles before clearing
+        current_elev = self.ax.elev
+        current_azim = self.ax.azim
+        
         # Clear and setup scene
         self.setup_3d_scene()
+        
+        # Restore the view angles to maintain user's camera position
+        self.ax.view_init(elev=current_elev, azim=current_azim)
         
         # Visualize motion capture data if enabled
         if self.show_motion_capture and self.swing_data:
@@ -744,7 +751,7 @@ class MotionCapturePlotter(QMainWindow):
                           'right_shoulder', 'left_elbow', 'right_elbow', 'hub', 'spine', 'hip']:
             if f'{joint_name}_X' in frame_data:
                 joints[joint_name] = np.array([
-                    frame_data[f'{joint_name}_X'] * self.motion_scale,
+                    -frame_data[f'{joint_name}_X'] * self.motion_scale,  # Flip X for right-handed swing
                     frame_data[f'{joint_name}_Y'] * self.motion_scale,
                     frame_data[f'{joint_name}_Z'] * self.motion_scale
                 ])
@@ -795,7 +802,7 @@ class MotionCapturePlotter(QMainWindow):
         if self.trajectory_check.isChecked() and len(data) > 1:
             # Club head trajectory
             if 'club_head' in joints:
-                club_trajectory = np.array([[row[f'club_head_X'] * self.motion_scale,
+                club_trajectory = np.array([[-row[f'club_head_X'] * self.motion_scale,  # Flip X for right-handed swing
                                            row[f'club_head_Y'] * self.motion_scale,
                                            row[f'club_head_Z'] * self.motion_scale] 
                                           for _, row in data.iterrows() if f'club_head_X' in row])
@@ -806,7 +813,7 @@ class MotionCapturePlotter(QMainWindow):
         if self.club_path_check.isChecked() and len(data) > 1:
             # Hands trajectory
             if 'left_hand' in joints:
-                hands_trajectory = np.array([[row[f'left_hand_X'] * self.motion_scale,
+                hands_trajectory = np.array([[-row[f'left_hand_X'] * self.motion_scale,  # Flip X for right-handed swing
                                             row[f'left_hand_Y'] * self.motion_scale,
                                             row[f'left_hand_Z'] * self.motion_scale] 
                                            for _, row in data.iterrows() if f'left_hand_X' in row])
@@ -818,7 +825,7 @@ class MotionCapturePlotter(QMainWindow):
         for segment_key, checkbox in self.segment_traces.items():
             if checkbox.isChecked() and f'{segment_key}_X' in frame_data and len(data) > 1:
                 # Create trajectory for this segment
-                segment_trajectory = np.array([[row[f'{segment_key}_X'] * self.motion_scale,
+                segment_trajectory = np.array([[-row[f'{segment_key}_X'] * self.motion_scale,  # Flip X for right-handed swing
                                               row[f'{segment_key}_Y'] * self.motion_scale,
                                               row[f'{segment_key}_Z'] * self.motion_scale] 
                                              for _, row in data.iterrows() if f'{segment_key}_X' in row])
