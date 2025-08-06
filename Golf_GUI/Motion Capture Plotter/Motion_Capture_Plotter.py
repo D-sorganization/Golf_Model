@@ -889,11 +889,11 @@ class MotionCapturePlotter(QMainWindow):
     def set_camera_view(self, view):
         """Set predefined camera views"""
         if view == 'face_on':
-            # Face-on view: looking at golfer from front
-            self.ax.view_init(elev=0, azim=0)
+            # Face-on view: looking at golfer from front (toward +X target line)
+            self.ax.view_init(elev=0, azim=90)
         elif view == 'down_line':
-            # Down-the-line view: looking from behind golfer toward target
-            self.ax.view_init(elev=0, azim=180)
+            # Down-the-line view: looking from behind golfer toward target (-Y direction)
+            self.ax.view_init(elev=0, azim=270)
         elif view == 'top_down':
             # Top-down view: looking down from above
             self.ax.view_init(elev=90, azim=0)
