@@ -346,11 +346,14 @@ class GeometryManager:
 # ============================================================================
 
 class OpenGLRenderer:
-    """Fixed OpenGL renderer with correct uniform API"""
+    """High-performance OpenGL renderer with modern shaders"""
     
     def __init__(self):
-        self.ctx: Optional[mgl.Context] = None
-        self.geometry_manager: Optional[GeometryManager] = None
+        self.ctx = None
+        self.geometry_manager = None
+        self.programs = {}
+        self.textures = {}
+        self.ground_level = 0.0  # Ground level for proper rendering
         
         # Rendering state
         self.viewport_size = (1600, 900)
@@ -358,8 +361,8 @@ class OpenGLRenderer:
         
         # Performance tracking
         self.render_stats = {
-            'triangles_rendered': 0,
             'draw_calls': 0,
+            'triangles_rendered': 0,
             'render_time_ms': 0.0
         }
     
@@ -442,15 +445,8 @@ class OpenGLRenderer:
         self.render_stats['render_time_ms'] = (time.time() - start_time) * 1000
     
     def _render_ground(self, view_matrix: np.ndarray, proj_matrix: np.ndarray, view_position: np.ndarray):
-        """Render ground plane"""
+        """Render ground plane at proper level with golf grid"""
         if not self.geometry_manager:
-            return
-            
-        if 'ground' not in self.geometry_manager.geometry_objects:
-            return
-            
-        ground_obj = self.geometry_manager.geometry_objects['ground']
-        if not ground_obj.visible:
             return
         
         if 'ground' not in self.geometry_manager.programs:
@@ -460,24 +456,37 @@ class OpenGLRenderer:
         if program is None:
             return
         
-        # Transformation matrices
-        model_matrix = self.geometry_manager.get_model_matrix(ground_obj)
-        
         # Set uniforms safely using correct moderngl 5.x API
         try:
-            # Use .value for single values and .write for arrays
-            program['model'].write(model_matrix.astype(np.float32).tobytes())
             program['view'].write(view_matrix.astype(np.float32).tobytes())
             program['projection'].write(proj_matrix.astype(np.float32).tobytes())
-            
-            # Ground-specific uniforms
             program['grassColor'].write(np.array([0.2, 0.6, 0.2], dtype=np.float32).tobytes())
-            program['gridColor'].write(np.array([0.15, 0.45, 0.15], dtype=np.float32).tobytes())
-            program['gridSpacing'].value = 5.0
+            program['gridColor'].write(np.array([0.3, 0.3, 0.3], dtype=np.float32).tobytes())
+            program['gridSpacing'].value = 0.5  # 50cm grid spacing
+        except Exception as e:
+            print(f"⚠️ Ground uniform error: {e}")
+            return
+        
+        # Create ground plane at proper level
+        # Ground should be at the lowest Z point in the data
+        ground_level = getattr(self, 'ground_level', 0.0)
+        
+        # Create ground plane model matrix (large plane at ground level)
+        ground_size = 10.0  # 10m x 10m ground plane
+        ground_model = np.eye(4, dtype=np.float32)
+        ground_model[0, 0] = ground_size  # Scale X
+        ground_model[2, 2] = ground_size  # Scale Z
+        ground_model[1, 3] = ground_level  # Position at ground level
+        
+        try:
+            program['model'].write(ground_model.astype(np.float32).tobytes())
             
-            ground_obj.vao.render()
-            self.render_stats['draw_calls'] += 1
-            self.render_stats['triangles_rendered'] += ground_obj.index_count // 3
+            # Render ground plane
+            if 'ground_plane' in self.geometry_manager.geometry_objects:
+                ground_obj = self.geometry_manager.geometry_objects['ground_plane']
+                ground_obj.vao.render()
+                self.render_stats['draw_calls'] += 1
+                self.render_stats['triangles_rendered'] += ground_obj.index_count // 3
         except Exception as e:
             print(f"⚠️ Ground render error: {e}")
     
@@ -630,7 +639,7 @@ class OpenGLRenderer:
     
     def _render_club(self, frame_data, render_config, view_matrix: np.ndarray,
                     proj_matrix: np.ndarray, view_position: np.ndarray):
-        """Render golf club"""
+        """Render golf club with improved geometry and face normal"""
         if not self.geometry_manager:
             return
         
@@ -652,23 +661,64 @@ class OpenGLRenderer:
             print(f"⚠️ Club uniform error: {e}")
             return
         
-        # Render shaft
-        shaft_radius = 0.006  # 6mm radius
-        shaft_color = [0.75, 0.75, 0.75]  # Metallic gray
+        # Render shaft with realistic proportions
+        shaft_radius = 0.004  # 4mm radius for more realistic shaft
+        shaft_color = [0.8, 0.8, 0.8]  # Metallic gray
         
         self._render_cylinder_between_points(
             'shaft', frame_data.butt, frame_data.clubhead, shaft_radius, shaft_color,
             1.0, program
         )
         
-        # Render clubhead
+        # Render clubhead with more realistic geometry
         clubhead_color = [0.9, 0.9, 0.95]  # Polished steel
-        clubhead_radius = 0.025
+        
+        # Calculate club face normal (perpendicular to shaft direction)
+        shaft_direction = frame_data.clubhead - frame_data.butt
+        shaft_direction = shaft_direction / np.linalg.norm(shaft_direction)
+        
+        # Face normal points perpendicular to shaft (this is simplified - real clubs have loft)
+        # For now, assume face points in the direction of swing (perpendicular to shaft)
+        face_normal = np.cross(shaft_direction, np.array([0, 1, 0]))  # Cross with up vector
+        if np.linalg.norm(face_normal) < 1e-6:
+            face_normal = np.cross(shaft_direction, np.array([1, 0, 0]))  # Fallback
+        face_normal = face_normal / np.linalg.norm(face_normal)
+        
+        # Render clubhead as an elongated ellipsoid (more realistic than sphere)
+        clubhead_radius = 0.02  # Smaller, more realistic head size
         
         self._render_sphere_at_point(
             'clubhead', frame_data.clubhead, clubhead_radius, clubhead_color,
             1.0, program
         )
+        
+        # Render face normal vector if enabled
+        if hasattr(render_config, 'show_face_normal') and render_config.show_face_normal:
+            normal_length = 0.1  # 10cm normal vector
+            normal_end = frame_data.clubhead + face_normal * normal_length
+            normal_color = [1.0, 0.0, 0.0]  # Red for face normal
+            
+            self._render_cylinder_between_points(
+                'face_normal', frame_data.clubhead, normal_end, 0.002, normal_color,
+                0.8, program
+            )
+            
+            # Add arrowhead to normal vector
+            self._render_sphere_at_point(
+                'normal_arrow', normal_end, 0.005, normal_color, 0.8, program
+            )
+        
+        # Render ball at center strike position
+        if hasattr(render_config, 'show_ball') and render_config.show_ball:
+            # Position ball slightly in front of clubface for center strike
+            ball_offset = face_normal * 0.05  # 5cm in front of face
+            ball_position = frame_data.clubhead + ball_offset
+            ball_color = [1.0, 1.0, 1.0]  # White ball
+            ball_radius = 0.02135  # Standard golf ball diameter (42.67mm)
+            
+            self._render_sphere_at_point(
+                'ball', ball_position, ball_radius, ball_color, 1.0, program
+            )
     
     def cleanup(self):
         """Clean up OpenGL resources"""

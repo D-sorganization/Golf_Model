@@ -313,11 +313,14 @@ class GolfVisualizerWidget(QOpenGLWidget):
         self.current_frame_data = None
         self.current_render_config = None
         
-        # Camera state
+        # Camera state - Fixed for proper golf views
         self.camera_distance = 3.0
-        self.camera_azimuth = 0.0
-        self.camera_elevation = 30.0
+        self.camera_azimuth = 0.0  # Face-on view (looking at golfer from front)
+        self.camera_elevation = 15.0  # Slightly elevated for better view
         self.camera_target = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+        
+        # Ground level tracking
+        self.ground_level = 0.0
         
         # Mouse interaction
         self.last_mouse_pos = None
@@ -364,6 +367,10 @@ class GolfVisualizerWidget(QOpenGLWidget):
             proj_matrix = self._calculate_projection_matrix()
             view_position = self._calculate_view_position()
             
+            # Pass ground level to renderer
+            if hasattr(self.renderer, 'ground_level'):
+                self.renderer.ground_level = self.ground_level
+            
             # Render frame
             self.renderer.render_frame(
                 self.current_frame_data,
@@ -388,10 +395,18 @@ class GolfVisualizerWidget(QOpenGLWidget):
         
         # Look-at matrix
         forward = self.camera_target - camera_pos
-        forward = forward / np.linalg.norm(forward)
+        forward_norm = np.linalg.norm(forward)
+        if forward_norm > 1e-6:
+            forward = forward / forward_norm
+        else:
+            forward = np.array([0, 0, -1], dtype=np.float32)  # Default forward direction
         
         right = np.cross(forward, np.array([0, 1, 0], dtype=np.float32))
-        right = right / np.linalg.norm(right)
+        right_norm = np.linalg.norm(right)
+        if right_norm > 1e-6:
+            right = right / right_norm
+        else:
+            right = np.array([1, 0, 0], dtype=np.float32)  # Default right direction
         
         up = np.cross(right, forward)
         
@@ -462,7 +477,7 @@ class GolfVisualizerWidget(QOpenGLWidget):
         self.update()
     
     def _frame_camera_to_data(self):
-        """Frame camera to show all data"""
+        """Frame camera to show all data and set proper ground level"""
         if not self.current_frame_data:
             return
         
@@ -488,11 +503,42 @@ class GolfVisualizerWidget(QOpenGLWidget):
         center = np.mean(positions, axis=0)
         max_distance = np.max(np.linalg.norm(positions - center, axis=1))
         
-        # Update camera
-        self.camera_target = center
+        # Set ground level to lowest Z point in the data
+        self.ground_level = np.min(positions[:, 2])
+        
+        # Update camera target to be centered horizontally but at ground level
+        self.camera_target = np.array([center[0], center[1], self.ground_level], dtype=np.float32)
         self.camera_distance = max_distance * 2.5
         
-        print(f"📷 Camera framed: center={center}, distance={self.camera_distance:.2f}")
+        print(f"📷 Camera framed: center={center}, ground_level={self.ground_level:.3f}, distance={self.camera_distance:.2f}")
+    
+    def set_face_on_view(self):
+        """Set camera to face-on view (looking at golfer from front)"""
+        self.camera_azimuth = 0.0
+        self.camera_elevation = 15.0
+        self.update()
+        print("📷 Camera: Face-on view")
+    
+    def set_down_the_line_view(self):
+        """Set camera to down-the-line view (90° from face-on)"""
+        self.camera_azimuth = 90.0  # 90° from face-on, not 180°
+        self.camera_elevation = 15.0
+        self.update()
+        print("📷 Camera: Down-the-line view")
+    
+    def set_behind_view(self):
+        """Set camera to behind view (180° from face-on)"""
+        self.camera_azimuth = 180.0
+        self.camera_elevation = 15.0
+        self.update()
+        print("📷 Camera: Behind view")
+    
+    def set_above_view(self):
+        """Set camera to overhead view"""
+        self.camera_azimuth = 0.0
+        self.camera_elevation = 80.0
+        self.update()
+        print("📷 Camera: Overhead view")
     
     def mousePressEvent(self, event):
         """Handle mouse press events"""
@@ -539,17 +585,27 @@ class GolfVisualizerWidget(QOpenGLWidget):
         self.update()
     
     def keyPressEvent(self, event):
-        """Handle key press events"""
-        if event.key() == Qt.Key.Key_Space:
-            # Toggle playback (will be handled by parent)
-            pass
-        elif event.key() == Qt.Key.Key_R:
-            # Reset camera
-            self.camera_distance = 3.0
-            self.camera_azimuth = 0.0
-            self.camera_elevation = 30.0
-            self.camera_target = np.array([0.0, 0.0, 0.0], dtype=np.float32)
+        """Handle keyboard shortcuts"""
+        key = event.key()
+        
+        if key == Qt.Key.Key_1:
+            self.set_face_on_view()
+        elif key == Qt.Key.Key_2:
+            self.set_down_the_line_view()
+        elif key == Qt.Key.Key_3:
+            self.set_behind_view()
+        elif key == Qt.Key.Key_4:
+            self.set_above_view()
+        elif key == Qt.Key.Key_R:
+            self._frame_camera_to_data()
             self.update()
+        elif key == Qt.Key.Key_Space:
+            # Toggle playback if parent has this functionality
+            parent = self.parent()
+            if parent and hasattr(parent, 'toggle_playback'):
+                parent.toggle_playback()
+        else:
+            super().keyPressEvent(event)
 
 # ============================================================================
 # MAIN WINDOW
@@ -602,26 +658,51 @@ class GolfVisualizerMainWindow(QMainWindow):
         main_layout.addWidget(global_controls)
     
     def _create_global_controls(self):
-        """Create global controls that apply to all tabs"""
+        """Create global control panel"""
         panel = QGroupBox("Global Controls")
-        layout = QHBoxLayout()
+        layout = QGridLayout()
         
-        # Export controls
-        layout.addWidget(QLabel("Export:"))
-        self.export_button = QPushButton("Export Animation")
-        layout.addWidget(self.export_button)
+        # Camera view buttons
+        layout.addWidget(QLabel("Camera Views:"), 0, 0)
         
-        self.screenshot_button = QPushButton("Screenshot")
-        layout.addWidget(self.screenshot_button)
+        self.face_on_btn = QPushButton("Face-On (1)")
+        self.face_on_btn.setMaximumWidth(100)
+        self.face_on_btn.clicked.connect(self._set_face_on_view)
+        layout.addWidget(self.face_on_btn, 0, 1)
         
-        layout.addStretch()
+        self.down_line_btn = QPushButton("Down-Line (2)")
+        self.down_line_btn.setMaximumWidth(100)
+        self.down_line_btn.clicked.connect(self._set_down_line_view)
+        layout.addWidget(self.down_line_btn, 0, 2)
         
-        # Performance info
-        self.fps_label = QLabel("FPS: --")
-        layout.addWidget(self.fps_label)
+        self.behind_btn = QPushButton("Behind (3)")
+        self.behind_btn.setMaximumWidth(100)
+        self.behind_btn.clicked.connect(self._set_behind_view)
+        layout.addWidget(self.behind_btn, 1, 1)
         
-        self.frame_time_label = QLabel("Frame Time: -- ms")
-        layout.addWidget(self.frame_time_label)
+        self.above_btn = QPushButton("Above (4)")
+        self.above_btn.setMaximumWidth(100)
+        self.above_btn.clicked.connect(self._set_above_view)
+        layout.addWidget(self.above_btn, 1, 2)
+        
+        # Reset camera button
+        self.reset_camera_btn = QPushButton("Reset Camera (R)")
+        self.reset_camera_btn.setMaximumWidth(120)
+        self.reset_camera_btn.clicked.connect(self._reset_camera)
+        layout.addWidget(self.reset_camera_btn, 2, 1, 1, 2)
+        
+        # Visualization toggles
+        layout.addWidget(QLabel("Visualization:"), 3, 0)
+        
+        self.show_face_normal_cb = QCheckBox("Face Normal")
+        self.show_face_normal_cb.setChecked(True)
+        self.show_face_normal_cb.stateChanged.connect(self._toggle_face_normal)
+        layout.addWidget(self.show_face_normal_cb, 3, 1)
+        
+        self.show_ball_cb = QCheckBox("Ball")
+        self.show_ball_cb.setChecked(True)
+        self.show_ball_cb.stateChanged.connect(self._toggle_ball)
+        layout.addWidget(self.show_ball_cb, 3, 2)
         
         panel.setLayout(layout)
         return panel
@@ -811,12 +892,42 @@ class GolfVisualizerMainWindow(QMainWindow):
         self.motion_capture_tab._load_motion_capture_data()
     
     def _reset_camera(self):
-        """Reset camera in current tab"""
-        current_tab = self.tab_widget.currentWidget()
-        if hasattr(current_tab, 'opengl_widget'):
-            current_tab.opengl_widget.keyPressEvent(
-                type('Event', (), {'key': lambda: Qt.Key.Key_R})()
-            )
+        """Reset camera to default position"""
+        if hasattr(self, 'gl_widget') and self.gl_widget:
+            self.gl_widget._frame_camera_to_data()
+            self.gl_widget.update()
+    
+    def _set_face_on_view(self):
+        """Set face-on camera view"""
+        if hasattr(self, 'gl_widget') and self.gl_widget:
+            self.gl_widget.set_face_on_view()
+    
+    def _set_down_line_view(self):
+        """Set down-the-line camera view"""
+        if hasattr(self, 'gl_widget') and self.gl_widget:
+            self.gl_widget.set_down_the_line_view()
+    
+    def _set_behind_view(self):
+        """Set behind camera view"""
+        if hasattr(self, 'gl_widget') and self.gl_widget:
+            self.gl_widget.set_behind_view()
+    
+    def _set_above_view(self):
+        """Set overhead camera view"""
+        if hasattr(self, 'gl_widget') and self.gl_widget:
+            self.gl_widget.set_above_view()
+    
+    def _toggle_face_normal(self, state):
+        """Toggle face normal visibility"""
+        if hasattr(self, 'gl_widget') and self.gl_widget and self.gl_widget.current_render_config:
+            self.gl_widget.current_render_config.show_face_normal = bool(state)
+            self.gl_widget.update()
+    
+    def _toggle_ball(self, state):
+        """Toggle ball visibility"""
+        if hasattr(self, 'gl_widget') and self.gl_widget and self.gl_widget.current_render_config:
+            self.gl_widget.current_render_config.show_ball = bool(state)
+            self.gl_widget.update()
     
     def _show_about(self):
         """Show about dialog"""

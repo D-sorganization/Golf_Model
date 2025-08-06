@@ -78,11 +78,17 @@ class MotionCapturePlotter(QMainWindow):
         main_layout.addWidget(plot_panel, stretch=1)
         
     def create_control_panel(self):
-        """Create the left control panel"""
-        panel = QWidget()
-        panel.setMaximumWidth(400)
-        panel.setMinimumWidth(350)
+        """Create the left control panel with scroll area"""
+        # Create a scroll area to contain all controls
+        scroll_area = QScrollArea()
+        scroll_area.setMaximumWidth(400)
+        scroll_area.setMinimumWidth(350)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         
+        # Create the actual content widget
+        panel = QWidget()
         layout = QVBoxLayout(panel)
         
         # Title
@@ -266,7 +272,10 @@ class MotionCapturePlotter(QMainWindow):
         layout.addWidget(help_group)
         
         layout.addStretch()
-        return panel
+        
+        # Set the content widget in the scroll area
+        scroll_area.setWidget(panel)
+        return scroll_area
         
     def create_plot_panel(self):
         """Create the right plot panel"""
@@ -621,11 +630,12 @@ class MotionCapturePlotter(QMainWindow):
         """Setup the 3D scene with ground plane and ball"""
         self.ax.clear()
         
-        # Ground plane - adjusted for golf swing coordinate system
+        # Ground plane - positioned at calculated ground level
+        ground_level = self.calculate_ground_level()
         x_ground = np.linspace(-3, 3, 10)
         y_ground = np.linspace(-3, 3, 10)
         X_ground, Y_ground = np.meshgrid(x_ground, y_ground)
-        Z_ground = np.zeros_like(X_ground) - 0.1
+        Z_ground = np.full_like(X_ground, ground_level)  # Set to actual ground level
         self.ax.plot_surface(X_ground, Y_ground, Z_ground, alpha=0.3, color='green')
         
         # Golf ball - positioned at origin for golf swing analysis
@@ -643,10 +653,26 @@ class MotionCapturePlotter(QMainWindow):
         self.ax.set_zlabel('Z (Vertical)')
         self.ax.set_xlim([-2.0, 2.0])
         self.ax.set_ylim([-1.0, 3.0])
+        
+        # Set initial Z limits - will be adjusted based on data
         self.ax.set_zlim([-0.5, 2.5])
         
         # Set initial view
         self.ax.view_init(elev=15, azim=-45)
+        
+    def calculate_ground_level(self):
+        """Set ground level to fixed -2.5 meters"""
+        return -2.5
+        
+    def adjust_plot_limits_to_ground(self):
+        """Adjust plot limits so ground level is at the bottom"""
+        ground_level = self.calculate_ground_level()
+        
+        # Set Z limits with ground at bottom and reasonable height above
+        z_range = 3.0  # 3 meters total height
+        self.ax.set_zlim([ground_level, ground_level + z_range])
+        
+        print(f"Ground level set to: {ground_level:.3f}m")
         
     def update_visualization(self):
         """Update the 3D visualization with proper coordinate system"""
@@ -656,6 +682,9 @@ class MotionCapturePlotter(QMainWindow):
         
         # Clear and setup scene
         self.setup_3d_scene()
+        
+        # Adjust ground level based on data
+        self.adjust_plot_limits_to_ground()
         
         # Restore the view angles to maintain user's camera position
         self.ax.view_init(elev=current_elev, azim=current_azim)
@@ -703,16 +732,64 @@ class MotionCapturePlotter(QMainWindow):
         # Draw the club shaft (line from mid-hands to club head)
         shaft_points = np.array([mid_hands, club_head])
         self.ax.plot(shaft_points[:, 0], shaft_points[:, 1], shaft_points[:, 2], 
-                    'b-', linewidth=8, alpha=0.8, label='Club Shaft')
+                    'gray', linewidth=6, alpha=0.9, label='Club Shaft')
         
         # Draw club head as a sphere at the actual club head position
         u = np.linspace(0, 2 * np.pi, 8)
         v = np.linspace(0, np.pi, 8)
-        head_size = 0.05  # Fixed size for club head
+        head_size = 0.03  # Smaller, more realistic club head size
         x_head = head_size * np.outer(np.cos(u), np.sin(v)) + club_head[0]
         y_head = head_size * np.outer(np.sin(u), np.sin(v)) + club_head[1]
         z_head = head_size * np.outer(np.ones(np.size(u)), np.cos(v)) + club_head[2]
-        self.ax.plot_surface(x_head, y_head, z_head, color='red', alpha=0.8, label='Club Head')
+        self.ax.plot_surface(x_head, y_head, z_head, color='darkgray', alpha=0.9, label='Club Head')
+        
+        # Calculate and draw club face normal vector
+        shaft_direction = club_head - mid_hands
+        shaft_length = np.linalg.norm(shaft_direction)
+        
+        if shaft_length > 0:
+            shaft_direction = shaft_direction / shaft_length
+            
+            # Calculate face normal (perpendicular to shaft, simplified calculation)
+            # For a golf club, the face normal is typically perpendicular to the shaft
+            # We'll assume it points in the direction of the swing (positive Y direction)
+            up_vector = np.array([0, 0, 1])  # Vertical up
+            face_normal = np.cross(shaft_direction, up_vector)
+            face_normal_length = np.linalg.norm(face_normal)
+            
+            if face_normal_length > 0:
+                face_normal = face_normal / face_normal_length
+                
+                # Draw face normal vector (red arrow) - longer and more visible
+                normal_length = 0.25  # 25cm normal vector (longer)
+                normal_end = club_head + face_normal * normal_length
+                
+                # Draw the normal vector as a thick line
+                normal_points = np.array([club_head, normal_end])
+                self.ax.plot(normal_points[:, 0], normal_points[:, 1], normal_points[:, 2], 
+                            'red', linewidth=6, alpha=1.0, label='Face Normal')
+                
+                # Add a larger arrowhead at the end
+                self.ax.scatter(normal_end[0], normal_end[1], normal_end[2], 
+                               c='red', s=200, marker='>', alpha=1.0)
+                
+                # Add a small sphere at the start of the normal for better visibility
+                self.ax.scatter(club_head[0], club_head[1], club_head[2], 
+                               c='red', s=50, marker='o', alpha=0.8)
+                
+                # Draw golf ball positioned for center strike
+                ball_offset_distance = 0.08  # 8cm in front of club face
+                ball_position = club_head + face_normal * ball_offset_distance
+                
+                # Draw golf ball as a white sphere
+                ball_radius = 0.021  # Standard golf ball radius (42.7mm diameter)
+                u_ball = np.linspace(0, 2 * np.pi, 12)
+                v_ball = np.linspace(0, np.pi, 12)
+                x_ball = ball_radius * np.outer(np.cos(u_ball), np.sin(v_ball)) + ball_position[0]
+                y_ball = ball_radius * np.outer(np.sin(u_ball), np.sin(v_ball)) + ball_position[1]
+                z_ball = ball_radius * np.outer(np.ones(np.size(u_ball)), np.cos(v_ball)) + ball_position[2]
+                self.ax.plot_surface(x_ball, y_ball, z_ball, color='white', alpha=0.95, 
+                                   edgecolor='lightgray', linewidth=0.5, label='Golf Ball')
         
         # Draw trajectory paths
         if self.trajectory_check.isChecked() and len(data) > 1:
@@ -775,16 +852,64 @@ class MotionCapturePlotter(QMainWindow):
             # Draw club shaft from left hand to club head
             club_points = np.array([joints['left_hand'], joints['club_head']])
             self.ax.plot(club_points[:, 0], club_points[:, 1], club_points[:, 2], 
-                        color=colors['club'], linewidth=6, alpha=0.8, label='Club')
+                        color='gray', linewidth=6, alpha=0.9, label='Club Shaft')
             
-            # Draw club head as sphere
+            # Draw club head as sphere with better appearance
             u = np.linspace(0, 2 * np.pi, 8)
             v = np.linspace(0, np.pi, 8)
-            head_size = 0.03
+            head_size = 0.03  # Realistic club head size
             x_head = head_size * np.outer(np.cos(u), np.sin(v)) + joints['club_head'][0]
             y_head = head_size * np.outer(np.sin(u), np.sin(v)) + joints['club_head'][1]
             z_head = head_size * np.outer(np.ones(np.size(u)), np.cos(v)) + joints['club_head'][2]
-            self.ax.plot_surface(x_head, y_head, z_head, color=colors['club'], alpha=0.8)
+            self.ax.plot_surface(x_head, y_head, z_head, color='darkgray', alpha=0.9, label='Club Head')
+            
+            # Calculate and draw club face normal vector
+            club_head_pos = joints['club_head']
+            left_hand_pos = joints['left_hand']
+            shaft_direction = club_head_pos - left_hand_pos
+            shaft_length = np.linalg.norm(shaft_direction)
+            
+            if shaft_length > 0:
+                shaft_direction = shaft_direction / shaft_length
+                
+                # Calculate face normal (perpendicular to shaft)
+                up_vector = np.array([0, 0, 1])  # Vertical up
+                face_normal = np.cross(shaft_direction, up_vector)
+                face_normal_length = np.linalg.norm(face_normal)
+                
+                if face_normal_length > 0:
+                    face_normal = face_normal / face_normal_length
+                    
+                    # Draw face normal vector (red arrow) - longer and more visible
+                    normal_length = 0.25  # 25cm normal vector (longer)
+                    normal_end = club_head_pos + face_normal * normal_length
+                    
+                    # Draw the normal vector as a thick line
+                    normal_points = np.array([club_head_pos, normal_end])
+                    self.ax.plot(normal_points[:, 0], normal_points[:, 1], normal_points[:, 2], 
+                                'red', linewidth=6, alpha=1.0, label='Face Normal')
+                    
+                    # Add a larger arrowhead at the end
+                    self.ax.scatter(normal_end[0], normal_end[1], normal_end[2], 
+                                   c='red', s=200, marker='>', alpha=1.0)
+                    
+                    # Add a small sphere at the start of the normal for better visibility
+                    self.ax.scatter(club_head_pos[0], club_head_pos[1], club_head_pos[2], 
+                                   c='red', s=50, marker='o', alpha=0.8)
+                    
+                    # Draw golf ball positioned for center strike
+                    ball_offset_distance = 0.08  # 8cm in front of club face
+                    ball_position = club_head_pos + face_normal * ball_offset_distance
+                    
+                    # Draw golf ball as a white sphere
+                    ball_radius = 0.021  # Standard golf ball radius
+                    u_ball = np.linspace(0, 2 * np.pi, 12)
+                    v_ball = np.linspace(0, np.pi, 12)
+                    x_ball = ball_radius * np.outer(np.cos(u_ball), np.sin(v_ball)) + ball_position[0]
+                    y_ball = ball_radius * np.outer(np.sin(u_ball), np.sin(v_ball)) + ball_position[1]
+                    z_ball = ball_radius * np.outer(np.ones(np.size(u_ball)), np.cos(v_ball)) + ball_position[2]
+                    self.ax.plot_surface(x_ball, y_ball, z_ball, color='white', alpha=0.95, 
+                                       edgecolor='lightgray', linewidth=0.5, label='Golf Ball')
         
         # Draw body segments
         for start_joint, end_joint, color in segments:
@@ -890,10 +1015,10 @@ class MotionCapturePlotter(QMainWindow):
         """Set predefined camera views"""
         if view == 'face_on':
             # Face-on view: looking at golfer from front (toward +X target line)
-            self.ax.view_init(elev=0, azim=90)
+            self.ax.view_init(elev=15, azim=90)
         elif view == 'down_line':
-            # Down-the-line view: looking from behind golfer toward target (-Y direction)
-            self.ax.view_init(elev=0, azim=270)
+            # Down-the-line view: looking from side (90° from face-on)
+            self.ax.view_init(elev=15, azim=180)
         elif view == 'top_down':
             # Top-down view: looking down from above
             self.ax.view_init(elev=90, azim=0)
