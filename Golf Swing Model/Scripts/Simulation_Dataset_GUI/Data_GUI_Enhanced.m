@@ -1034,6 +1034,11 @@ function applyUserPreferences(handles)
             set(handles.execution_mode_popup, 'Value', 2);
         end
         
+        % Set default master dataset creation to enabled
+        if isfield(handles, 'enable_master_dataset')
+            set(handles.enable_master_dataset, 'Value', 1);
+        end
+        
         % Apply other preferences if they exist
         if isfield(handles, 'preferences')
             prefs = handles.preferences;
@@ -1045,6 +1050,10 @@ function applyUserPreferences(handles)
             
             if isfield(prefs, 'default_sample_rate') && isfield(handles, 'sample_rate_edit')
                 set(handles.sample_rate_edit, 'String', num2str(prefs.default_sample_rate));
+            end
+            
+            if isfield(handles, 'enable_master_dataset') && isfield(prefs, 'enable_master_dataset')
+                set(handles.enable_master_dataset, 'Value', prefs.enable_master_dataset);
             end
         end
         
@@ -1538,6 +1547,19 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                                 'ForegroundColor', colors.text, ...
                                                 'FontSize', 9, ...
                                                 'TooltipString', 'When checked, resume from existing checkpoint. When unchecked, always start fresh.');
+
+    % Fourth row of options - Master Dataset Creation
+    y = y - 0.025;
+    handles.enable_master_dataset = uicontrol('Parent', panel, ...
+                                             'Style', 'checkbox', ...
+                                             'String', 'Create master dataset', ...
+                                             'Value', 1, ...
+                                             'Units', 'normalized', ...
+                                             'Position', [textBoxStart, y, 0.30, rowHeight], ...
+                                             'BackgroundColor', colors.panel, ...
+                                             'ForegroundColor', colors.text, ...
+                                             'FontSize', 9, ...
+                                             'TooltipString', 'When checked, combine all trials into a master dataset. Uncheck to skip this step for large datasets that may cause memory issues.');
     
     % Clear Checkpoints Button
     handles.clear_checkpoint_button = uicontrol('Parent', panel, ...
@@ -2620,6 +2642,10 @@ function saveUserPreferences(handles)
         preferences.output_folder = get(handles.output_folder_edit, 'String');
         preferences.model_name = handles.model_name;
         
+        if isfield(handles, 'enable_master_dataset')
+            preferences.enable_master_dataset = get(handles.enable_master_dataset, 'Value');
+        end
+        
         save('user_preferences.mat', 'preferences');
     catch ME
         fprintf('Warning: Could not save preferences: %s\n', ME.message);
@@ -2722,12 +2748,22 @@ function runGeneration(handles)
             set(handles.status_text, 'String', ['Status: ' final_msg]);
             set(handles.progress_text, 'String', final_msg);
             
-            % Compile dataset
+            % Compile dataset (only if enabled)
             if successful_trials > 0
-                set(handles.status_text, 'String', 'Status: Compiling master dataset...');
-                drawnow;
-                compileDataset(config);
-                set(handles.status_text, 'String', ['Status: ' final_msg ' - Dataset compiled']);
+                enable_master_dataset = get(handles.enable_master_dataset, 'Value');
+                if enable_master_dataset
+                    set(handles.status_text, 'String', 'Status: Compiling master dataset...');
+                    drawnow;
+                    try
+                        compileDataset(config);
+                        set(handles.status_text, 'String', ['Status: ' final_msg ' - Dataset compiled']);
+                    catch ME
+                        fprintf('Warning: Master dataset compilation failed: %s\n', ME.message);
+                        set(handles.status_text, 'String', ['Status: ' final_msg ' - Individual trials saved (master dataset failed)']);
+                    end
+                else
+                    set(handles.status_text, 'String', ['Status: ' final_msg ' - Individual trials saved (master dataset disabled)']);
+                end
             end
             
             % Save script and settings for reproducibility
@@ -4516,6 +4552,7 @@ function config = validateInputs(handles)
         config.enable_performance_monitoring = get(handles.enable_performance_monitoring, 'Value');
         config.verbosity = verbosity_level;
         config.enable_memory_monitoring = get(handles.enable_memory_monitoring, 'Value');
+        config.enable_master_dataset = get(handles.enable_master_dataset, 'Value');
         
     catch ME
         errordlg(ME.message, 'Input Validation Error');
