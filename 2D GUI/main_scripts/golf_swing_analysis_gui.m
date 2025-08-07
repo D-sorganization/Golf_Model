@@ -1530,55 +1530,1527 @@ function on_dataset_selection_changed(src, ~)
     dataset_info_text.Visible = 'on';
 end
 
-% Placeholder functions for plot panels (these would be implemented based on existing code)
+% Real plotting functions for the Plots & Interaction tab
 function create_time_series_panel(parent, config)
-    % Placeholder for time series panel
-    uicontrol('Parent', parent, ...
+    % Create real time series plots panel
+    
+    % Create control panel on the left
+    control_panel = uipanel('Parent', parent, ...
+                           'Title', 'Time Series Controls', ...
+                           'FontSize', 11, ...
+                           'Position', [0.02, 0.02, 0.25, 0.96]);
+    
+    % Dataset selection
+    uicontrol('Parent', control_panel, ...
               'Style', 'text', ...
-              'String', 'Time Series Plot Panel - To be implemented', ...
-              'FontSize', 12, ...
-              'Position', [50, 50, 300, 50], ...
-              'HorizontalAlignment', 'center');
+              'String', 'Dataset:', ...
+              'FontSize', 10, ...
+              'Position', [10, 700, 80, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    dataset_popup = uicontrol('Parent', control_panel, ...
+                             'Style', 'popupmenu', ...
+                             'String', {'BASEQ', 'ZTCFQ', 'DELTAQ'}, ...
+                             'Value', 1, ...
+                             'Position', [10, 670, 120, 25], ...
+                             'Callback', @(src,~) update_time_series_plot(src, plot_axes));
+    
+    % Variable selection
+    uicontrol('Parent', control_panel, ...
+              'Style', 'text', ...
+              'String', 'Variable:', ...
+              'FontSize', 10, ...
+              'Position', [10, 630, 80, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    variable_popup = uicontrol('Parent', control_panel, ...
+                              'Style', 'popupmenu', ...
+                              'String', {'Select variable...'}, ...
+                              'Value', 1, ...
+                              'Position', [10, 600, 120, 25], ...
+                              'Callback', @(src,~) update_time_series_plot(dataset_popup, plot_axes));
+    
+    % Plot type selection
+    uicontrol('Parent', control_panel, ...
+              'Style', 'text', ...
+              'String', 'Plot Type:', ...
+              'FontSize', 10, ...
+              'Position', [10, 560, 80, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    plot_type_popup = uicontrol('Parent', control_panel, ...
+                               'Style', 'popupmenu', ...
+                               'String', {'Single Variable', 'Multiple Variables', 'All Variables'}, ...
+                               'Value', 1, ...
+                               'Position', [10, 530, 120, 25], ...
+                               'Callback', @(src,~) update_time_series_plot(dataset_popup, plot_axes));
+    
+    % Load data button
+    uicontrol('Parent', control_panel, ...
+              'Style', 'pushbutton', ...
+              'String', 'Load Data', ...
+              'FontSize', 10, ...
+              'Position', [10, 480, 120, 30], ...
+              'Callback', @(src,~) load_data_for_plots(src, dataset_popup, variable_popup));
+    
+    % Plot button
+    uicontrol('Parent', control_panel, ...
+              'Style', 'pushbutton', ...
+              'String', 'Generate Plot', ...
+              'FontSize', 10, ...
+              'Position', [10, 440, 120, 30], ...
+              'Callback', @(src,~) update_time_series_plot(dataset_popup, plot_axes));
+    
+    % Export button
+    uicontrol('Parent', control_panel, ...
+              'Style', 'pushbutton', ...
+              'String', 'Export Plot', ...
+              'FontSize', 10, ...
+              'Position', [10, 400, 120, 30], ...
+              'Callback', @export_time_series_plot);
+    
+    % Create plot area on the right
+    plot_panel = uipanel('Parent', parent, ...
+                        'Title', 'Time Series Plot', ...
+                        'FontSize', 11, ...
+                        'Position', [0.28, 0.02, 0.7, 0.96]);
+    
+    plot_axes = axes('Parent', plot_panel, ...
+                    'Position', [0.1, 0.1, 0.85, 0.85]);
+    
+    % Store handles for callbacks
+    setappdata(control_panel, 'dataset_popup', dataset_popup);
+    setappdata(control_panel, 'variable_popup', variable_popup);
+    setappdata(control_panel, 'plot_type_popup', plot_type_popup);
+    setappdata(control_panel, 'plot_axes', plot_axes);
+    
+    % Initialize plot
+    title(plot_axes, 'Time Series Plot', 'FontSize', 14, 'FontWeight', 'bold');
+    xlabel(plot_axes, 'Time (s)', 'FontSize', 12);
+    ylabel(plot_axes, 'Value', 'FontSize', 12);
+    grid(plot_axes, 'on');
 end
 
 function create_phase_plots_panel(parent, config)
-    % Placeholder for phase plots panel
-    uicontrol('Parent', parent, ...
+    % Create real phase plots panel
+    
+    % Create control panel on the left
+    control_panel = uipanel('Parent', parent, ...
+                           'Title', 'Phase Plot Controls', ...
+                           'FontSize', 11, ...
+                           'Position', [0.02, 0.02, 0.25, 0.96]);
+    
+    % X-axis variable selection
+    uicontrol('Parent', control_panel, ...
               'Style', 'text', ...
-              'String', 'Phase Plots Panel - To be implemented', ...
-              'FontSize', 12, ...
-              'Position', [50, 50, 300, 50], ...
-              'HorizontalAlignment', 'center');
+              'String', 'X-Axis Variable:', ...
+              'FontSize', 10, ...
+              'Position', [10, 700, 100, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    x_var_popup = uicontrol('Parent', control_panel, ...
+                           'Style', 'popupmenu', ...
+                           'String', {'Select variable...'}, ...
+                           'Value', 1, ...
+                           'Position', [10, 670, 120, 25]);
+    
+    % Y-axis variable selection
+    uicontrol('Parent', control_panel, ...
+              'Style', 'text', ...
+              'String', 'Y-Axis Variable:', ...
+              'FontSize', 10, ...
+              'Position', [10, 630, 100, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    y_var_popup = uicontrol('Parent', control_panel, ...
+                           'Style', 'popupmenu', ...
+                           'String', {'Select variable...'}, ...
+                           'Value', 1, ...
+                           'Position', [10, 600, 120, 25]);
+    
+    % Dataset selection
+    uicontrol('Parent', control_panel, ...
+              'Style', 'text', ...
+              'String', 'Dataset:', ...
+              'FontSize', 10, ...
+              'Position', [10, 560, 80, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    dataset_popup = uicontrol('Parent', control_panel, ...
+                             'Style', 'popupmenu', ...
+                             'String', {'BASEQ', 'ZTCFQ', 'DELTAQ'}, ...
+                             'Value', 1, ...
+                             'Position', [10, 530, 120, 25]);
+    
+    % Plot options
+    uicontrol('Parent', control_panel, ...
+              'Style', 'text', ...
+              'String', 'Plot Options:', ...
+              'FontSize', 10, ...
+              'Position', [10, 490, 100, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    show_trajectory_checkbox = uicontrol('Parent', control_panel, ...
+                                       'Style', 'checkbox', ...
+                                       'String', 'Show Trajectory', ...
+                                       'Value', 1, ...
+                                       'Position', [10, 460, 120, 20]);
+    
+    show_points_checkbox = uicontrol('Parent', control_panel, ...
+                                   'Style', 'checkbox', ...
+                                   'String', 'Show Points', ...
+                                   'Value', 1, ...
+                                   'Position', [10, 430, 120, 20]);
+    
+    % Load data button
+    uicontrol('Parent', control_panel, ...
+              'Style', 'pushbutton', ...
+              'String', 'Load Data', ...
+              'FontSize', 10, ...
+              'Position', [10, 380, 120, 30], ...
+              'Callback', @(src,~) load_data_for_phase_plots(src, x_var_popup, y_var_popup));
+    
+    % Generate plot button
+    uicontrol('Parent', control_panel, ...
+              'Style', 'pushbutton', ...
+              'String', 'Generate Plot', ...
+              'FontSize', 10, ...
+              'Position', [10, 340, 120, 30], ...
+              'Callback', @(src,~) generate_phase_plot(src, x_var_popup, y_var_popup, dataset_popup, show_trajectory_checkbox, show_points_checkbox, plot_axes));
+    
+    % Export button
+    uicontrol('Parent', control_panel, ...
+              'Style', 'pushbutton', ...
+              'String', 'Export Plot', ...
+              'FontSize', 10, ...
+              'Position', [10, 300, 120, 30], ...
+              'Callback', @export_phase_plot);
+    
+    % Create plot area on the right
+    plot_panel = uipanel('Parent', parent, ...
+                        'Title', 'Phase Plot', ...
+                        'FontSize', 11, ...
+                        'Position', [0.28, 0.02, 0.7, 0.96]);
+    
+    plot_axes = axes('Parent', plot_panel, ...
+                    'Position', [0.1, 0.1, 0.85, 0.85]);
+    
+    % Store handles for callbacks
+    setappdata(control_panel, 'x_var_popup', x_var_popup);
+    setappdata(control_panel, 'y_var_popup', y_var_popup);
+    setappdata(control_panel, 'dataset_popup', dataset_popup);
+    setappdata(control_panel, 'plot_axes', plot_axes);
+    
+    % Initialize plot
+    title(plot_axes, 'Phase Plot', 'FontSize', 14, 'FontWeight', 'bold');
+    xlabel(plot_axes, 'X Variable', 'FontSize', 12);
+    ylabel(plot_axes, 'Y Variable', 'FontSize', 12);
+    grid(plot_axes, 'on');
 end
 
 function create_quiver_plots_panel(parent, config)
-    % Placeholder for quiver plots panel
-    uicontrol('Parent', parent, ...
+    % Create real quiver plots panel
+    
+    % Create control panel on the left
+    control_panel = uipanel('Parent', parent, ...
+                           'Title', 'Quiver Plot Controls', ...
+                           'FontSize', 11, ...
+                           'Position', [0.02, 0.02, 0.25, 0.96]);
+    
+    % Vector type selection
+    uicontrol('Parent', control_panel, ...
               'Style', 'text', ...
-              'String', 'Quiver Plots Panel - To be implemented', ...
-              'FontSize', 12, ...
-              'Position', [50, 50, 300, 50], ...
-              'HorizontalAlignment', 'center');
+              'String', 'Vector Type:', ...
+              'FontSize', 10, ...
+              'Position', [10, 700, 100, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    vector_type_popup = uicontrol('Parent', control_panel, ...
+                                 'Style', 'popupmenu', ...
+                                 'String', {'Forces', 'Torques', 'Velocities', 'Accelerations'}, ...
+                                 'Value', 1, ...
+                                 'Position', [10, 670, 120, 25]);
+    
+    % Dataset selection
+    uicontrol('Parent', control_panel, ...
+              'Style', 'text', ...
+              'String', 'Dataset:', ...
+              'FontSize', 10, ...
+              'Position', [10, 630, 80, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    dataset_popup = uicontrol('Parent', control_panel, ...
+                             'Style', 'popupmenu', ...
+                             'String', {'BASEQ', 'ZTCFQ', 'DELTAQ'}, ...
+                             'Value', 1, ...
+                             'Position', [10, 600, 120, 25]);
+    
+    % Time point selection
+    uicontrol('Parent', control_panel, ...
+              'Style', 'text', ...
+              'String', 'Time Point:', ...
+              'FontSize', 10, ...
+              'Position', [10, 560, 100, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    time_slider = uicontrol('Parent', control_panel, ...
+                           'Style', 'slider', ...
+                           'Min', 0, 'Max', 1, 'Value', 0.5, ...
+                           'Position', [10, 530, 120, 20]);
+    
+    time_text = uicontrol('Parent', control_panel, ...
+                         'Style', 'text', ...
+                         'String', '0.14 s', ...
+                         'FontSize', 9, ...
+                         'Position', [10, 500, 120, 20], ...
+                         'HorizontalAlignment', 'center');
+    
+    % Plot options
+    uicontrol('Parent', control_panel, ...
+              'Style', 'text', ...
+              'String', 'Plot Options:', ...
+              'FontSize', 10, ...
+              'Position', [10, 460, 100, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    show_magnitude_checkbox = uicontrol('Parent', control_panel, ...
+                                      'Style', 'checkbox', ...
+                                      'String', 'Show Magnitude', ...
+                                      'Value', 1, ...
+                                      'Position', [10, 430, 120, 20]);
+    
+    scale_vectors_checkbox = uicontrol('Parent', control_panel, ...
+                                     'Style', 'checkbox', ...
+                                     'String', 'Scale Vectors', ...
+                                     'Value', 1, ...
+                                     'Position', [10, 400, 120, 20]);
+    
+    % Load data button
+    uicontrol('Parent', control_panel, ...
+              'Style', 'pushbutton', ...
+              'String', 'Load Data', ...
+              'FontSize', 10, ...
+              'Position', [10, 350, 120, 30], ...
+              'Callback', @(src,~) load_data_for_quiver_plots(src));
+    
+    % Generate plot button
+    uicontrol('Parent', control_panel, ...
+              'Style', 'pushbutton', ...
+              'String', 'Generate Plot', ...
+              'FontSize', 10, ...
+              'Position', [10, 310, 120, 30], ...
+              'Callback', @(src,~) generate_quiver_plot(src, vector_type_popup, dataset_popup, time_slider, time_text, show_magnitude_checkbox, scale_vectors_checkbox, plot_axes));
+    
+    % Export button
+    uicontrol('Parent', control_panel, ...
+              'Style', 'pushbutton', ...
+              'String', 'Export Plot', ...
+              'FontSize', 10, ...
+              'Position', [10, 270, 120, 30], ...
+              'Callback', @export_quiver_plot);
+    
+    % Create plot area on the right
+    plot_panel = uipanel('Parent', parent, ...
+                        'Title', 'Quiver Plot', ...
+                        'FontSize', 11, ...
+                        'Position', [0.28, 0.02, 0.7, 0.96]);
+    
+    plot_axes = axes('Parent', plot_panel, ...
+                    'Position', [0.1, 0.1, 0.85, 0.85]);
+    
+    % Store handles for callbacks
+    setappdata(control_panel, 'vector_type_popup', vector_type_popup);
+    setappdata(control_panel, 'dataset_popup', dataset_popup);
+    setappdata(control_panel, 'time_slider', time_slider);
+    setappdata(control_panel, 'time_text', time_text);
+    setappdata(control_panel, 'plot_axes', plot_axes);
+    
+    % Initialize plot
+    title(plot_axes, 'Quiver Plot', 'FontSize', 14, 'FontWeight', 'bold');
+    xlabel(plot_axes, 'X Position', 'FontSize', 12);
+    ylabel(plot_axes, 'Y Position', 'FontSize', 12);
+    zlabel(plot_axes, 'Z Position', 'FontSize', 12);
+    grid(plot_axes, 'on');
+    view(plot_axes, 3);
 end
 
 function create_comparison_panel(parent, config)
-    % Placeholder for comparison panel
-    uicontrol('Parent', parent, ...
+    % Create real comparison panel
+    
+    % Create control panel on the left
+    control_panel = uipanel('Parent', parent, ...
+                           'Title', 'Comparison Controls', ...
+                           'FontSize', 11, ...
+                           'Position', [0.02, 0.02, 0.25, 0.96]);
+    
+    % Variable selection
+    uicontrol('Parent', control_panel, ...
               'Style', 'text', ...
-              'String', 'Comparison Panel - To be implemented', ...
-              'FontSize', 12, ...
-              'Position', [50, 50, 300, 50], ...
-              'HorizontalAlignment', 'center');
+              'String', 'Variable:', ...
+              'FontSize', 10, ...
+              'Position', [10, 700, 80, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    variable_popup = uicontrol('Parent', control_panel, ...
+                              'Style', 'popupmenu', ...
+                              'String', {'Select variable...'}, ...
+                              'Value', 1, ...
+                              'Position', [10, 670, 120, 25]);
+    
+    % Comparison type
+    uicontrol('Parent', control_panel, ...
+              'Style', 'text', ...
+              'String', 'Comparison:', ...
+              'FontSize', 10, ...
+              'Position', [10, 630, 100, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    comparison_popup = uicontrol('Parent', control_panel, ...
+                                'Style', 'popupmenu', ...
+                                'String', {'BASEQ vs ZTCFQ', 'BASEQ vs DELTAQ', 'ZTCFQ vs DELTAQ', 'All Three'}, ...
+                                'Value', 1, ...
+                                'Position', [10, 600, 120, 25]);
+    
+    % Plot type
+    uicontrol('Parent', control_panel, ...
+              'Style', 'text', ...
+              'String', 'Plot Type:', ...
+              'FontSize', 10, ...
+              'Position', [10, 560, 80, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    plot_type_popup = uicontrol('Parent', control_panel, ...
+                               'Style', 'popupmenu', ...
+                               'String', {'Overlay', 'Subplot', 'Difference'}, ...
+                               'Value', 1, ...
+                               'Position', [10, 530, 120, 25]);
+    
+    % Load data button
+    uicontrol('Parent', control_panel, ...
+              'Style', 'pushbutton', ...
+              'String', 'Load Data', ...
+              'FontSize', 10, ...
+              'Position', [10, 480, 120, 30], ...
+              'Callback', @(src,~) load_data_for_comparison(src, variable_popup));
+    
+    % Generate comparison button
+    uicontrol('Parent', control_panel, ...
+              'Style', 'pushbutton', ...
+              'String', 'Generate Comparison', ...
+              'FontSize', 10, ...
+              'Position', [10, 440, 120, 30], ...
+              'Callback', @(src,~) generate_comparison_plot(src, variable_popup, comparison_popup, plot_type_popup, plot_axes));
+    
+    % Export button
+    uicontrol('Parent', control_panel, ...
+              'Style', 'pushbutton', ...
+              'String', 'Export Plot', ...
+              'FontSize', 10, ...
+              'Position', [10, 400, 120, 30], ...
+              'Callback', @export_comparison_plot);
+    
+    % Create plot area on the right
+    plot_panel = uipanel('Parent', parent, ...
+                        'Title', 'Comparison Plot', ...
+                        'FontSize', 11, ...
+                        'Position', [0.28, 0.02, 0.7, 0.96]);
+    
+    plot_axes = axes('Parent', plot_panel, ...
+                    'Position', [0.1, 0.1, 0.85, 0.85]);
+    
+    % Store handles for callbacks
+    setappdata(control_panel, 'variable_popup', variable_popup);
+    setappdata(control_panel, 'comparison_popup', comparison_popup);
+    setappdata(control_panel, 'plot_type_popup', plot_type_popup);
+    setappdata(control_panel, 'plot_axes', plot_axes);
+    
+    % Initialize plot
+    title(plot_axes, 'Comparison Plot', 'FontSize', 14, 'FontWeight', 'bold');
+    xlabel(plot_axes, 'Time (s)', 'FontSize', 12);
+    ylabel(plot_axes, 'Value', 'FontSize', 12);
+    grid(plot_axes, 'on');
 end
 
 function create_data_explorer_panel(parent, config)
-    % Placeholder for data explorer panel
-    uicontrol('Parent', parent, ...
+    % Create real data explorer panel
+    
+    % Create control panel on the left
+    control_panel = uipanel('Parent', parent, ...
+                           'Title', 'Data Explorer Controls', ...
+                           'FontSize', 11, ...
+                           'Position', [0.02, 0.02, 0.25, 0.96]);
+    
+    % Dataset selection
+    uicontrol('Parent', control_panel, ...
               'Style', 'text', ...
-              'String', 'Data Explorer Panel - To be implemented', ...
-              'FontSize', 12, ...
-              'Position', [50, 50, 300, 50], ...
-              'HorizontalAlignment', 'center');
+              'String', 'Dataset:', ...
+              'FontSize', 10, ...
+              'Position', [10, 700, 80, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    dataset_popup = uicontrol('Parent', control_panel, ...
+                             'Style', 'popupmenu', ...
+                             'String', {'BASEQ', 'ZTCFQ', 'DELTAQ'}, ...
+                             'Value', 1, ...
+                             'Position', [10, 670, 120, 25], ...
+                             'Callback', @(src,~) update_data_explorer(src, data_table, stats_text));
+    
+    % Load data button
+    uicontrol('Parent', control_panel, ...
+              'Style', 'pushbutton', ...
+              'String', 'Load Data', ...
+              'FontSize', 10, ...
+              'Position', [10, 620, 120, 30], ...
+              'Callback', @(src,~) load_data_for_explorer(src, dataset_popup, data_table, stats_text));
+    
+    % Export data button
+    uicontrol('Parent', control_panel, ...
+              'Style', 'pushbutton', ...
+              'String', 'Export Data', ...
+              'FontSize', 10, ...
+              'Position', [10, 580, 120, 30], ...
+              'Callback', @export_explorer_data);
+    
+    % Filter controls
+    uicontrol('Parent', control_panel, ...
+              'Style', 'text', ...
+              'String', 'Filter Options:', ...
+              'FontSize', 10, ...
+              'Position', [10, 530, 100, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    filter_var_popup = uicontrol('Parent', control_panel, ...
+                                'Style', 'popupmenu', ...
+                                'String', {'All Variables'}, ...
+                                'Value', 1, ...
+                                'Position', [10, 500, 120, 25]);
+    
+    filter_min_edit = uicontrol('Parent', control_panel, ...
+                               'Style', 'edit', ...
+                               'String', 'Min', ...
+                               'Position', [10, 470, 50, 25]);
+    
+    filter_max_edit = uicontrol('Parent', control_panel, ...
+                               'Style', 'edit', ...
+                               'String', 'Max', ...
+                               'Position', [70, 470, 50, 25]);
+    
+    uicontrol('Parent', control_panel, ...
+              'Style', 'pushbutton', ...
+              'String', 'Apply Filter', ...
+              'FontSize', 9, ...
+              'Position', [10, 430, 120, 25], ...
+              'Callback', @(src,~) apply_data_filter(src, filter_var_popup, filter_min_edit, filter_max_edit, data_table));
+    
+    % Create data display area on the right
+    data_panel = uipanel('Parent', parent, ...
+                        'Title', 'Data Explorer', ...
+                        'FontSize', 11, ...
+                        'Position', [0.28, 0.02, 0.7, 0.96]);
+    
+    % Data table
+    data_table = uitable('Parent', data_panel, ...
+                        'Position', [20, 200, 600, 400], ...
+                        'ColumnName', {'Variable', 'Min', 'Max', 'Mean', 'Std', 'Range'}, ...
+                        'Data', cell(0, 6), ...
+                        'ColumnWidth', {150, 80, 80, 80, 80, 80});
+    
+    % Statistics text
+    stats_text = uicontrol('Parent', data_panel, ...
+                          'Style', 'text', ...
+                          'String', 'Data Statistics: Load data to view statistics', ...
+                          'FontSize', 10, ...
+                          'Position', [20, 20, 600, 160], ...
+                          'HorizontalAlignment', 'left', ...
+                          'BackgroundColor', [0.95, 0.95, 0.95]);
+    
+    % Store handles for callbacks
+    setappdata(control_panel, 'dataset_popup', dataset_popup);
+    setappdata(control_panel, 'data_table', data_table);
+    setappdata(control_panel, 'stats_text', stats_text);
+end
+
+% ============================================================================
+% CALLBACK FUNCTIONS FOR PLOTS & INTERACTION TAB
+% ============================================================================
+
+% Time Series Plot Callbacks
+function load_data_for_plots(src, dataset_popup, variable_popup)
+    try
+        main_fig = findobj('Name', '2D Golf Swing Model - ZTCF/ZVCF Analysis');
+        if isempty(main_fig)
+            errordlg('Main GUI not found. Please launch the GUI first.', 'Error');
+            return;
+        end
+        
+        % Get data from main GUI
+        BASEQ = getappdata(main_fig, 'BASEQ');
+        ZTCFQ = getappdata(main_fig, 'ZTCFQ');
+        DELTAQ = getappdata(main_fig, 'DELTAQ');
+        
+        if isempty(BASEQ) && isempty(ZTCFQ) && isempty(DELTAQ)
+            % Try to load from files
+            [BASEQ, ZTCFQ, DELTAQ] = load_data_from_files();
+        end
+        
+        if isempty(BASEQ) && isempty(ZTCFQ) && isempty(DELTAQ)
+            errordlg('No data available. Please run simulation or analysis first.', 'Error');
+            return;
+        end
+        
+        % Store data in the control panel
+        control_panel = src.Parent;
+        setappdata(control_panel, 'BASEQ', BASEQ);
+        setappdata(control_panel, 'ZTCFQ', ZTCFQ);
+        setappdata(control_panel, 'DELTAQ', DELTAQ);
+        
+        % Update variable popup with available variables
+        update_variable_popup(variable_popup, BASEQ);
+        
+        msgbox('Data loaded successfully!', 'Success');
+        
+    catch ME
+        errordlg(sprintf('Error loading data: %s', ME.message), 'Error');
+    end
+end
+
+function update_time_series_plot(dataset_popup, plot_axes)
+    try
+        control_panel = dataset_popup.Parent;
+        BASEQ = getappdata(control_panel, 'BASEQ');
+        ZTCFQ = getappdata(control_panel, 'ZTCFQ');
+        DELTAQ = getappdata(control_panel, 'DELTAQ');
+        
+        if isempty(BASEQ) && isempty(ZTCFQ) && isempty(DELTAQ)
+            errordlg('No data available. Please load data first.', 'Error');
+            return;
+        end
+        
+        % Get selected dataset
+        dataset_names = dataset_popup.String;
+        selected_dataset = dataset_names{dataset_popup.Value};
+        
+        % Get selected variable and plot type
+        variable_popup = getappdata(control_panel, 'variable_popup');
+        plot_type_popup = getappdata(control_panel, 'plot_type_popup');
+        
+        variable_names = variable_popup.String;
+        selected_variable = variable_names{variable_popup.Value};
+        plot_type_names = plot_type_popup.String;
+        selected_plot_type = plot_type_names{plot_type_popup.Value};
+        
+        % Select data based on dataset
+        switch selected_dataset
+            case 'BASEQ'
+                data = BASEQ;
+            case 'ZTCFQ'
+                data = ZTCFQ;
+            case 'DELTAQ'
+                data = DELTAQ;
+            otherwise
+                errordlg('Invalid dataset selection.', 'Error');
+                return;
+        end
+        
+        if isempty(data)
+            errordlg(sprintf('No data available for %s.', selected_dataset), 'Error');
+            return;
+        end
+        
+        % Generate plot based on type
+        cla(plot_axes);
+        hold(plot_axes, 'on');
+        
+        switch selected_plot_type
+            case 'Single Variable'
+                if strcmp(selected_variable, 'Select variable...')
+                    errordlg('Please select a variable.', 'Error');
+                    return;
+                end
+                if ismember(selected_variable, data.Properties.VariableNames)
+                    plot(plot_axes, data.Time, data.(selected_variable), 'LineWidth', 2);
+                    title(plot_axes, sprintf('%s: %s', selected_dataset, selected_variable), 'FontSize', 14, 'FontWeight', 'bold');
+                    ylabel(plot_axes, selected_variable, 'FontSize', 12);
+                else
+                    errordlg(sprintf('Variable %s not found in data.', selected_variable), 'Error');
+                    return;
+                end
+                
+            case 'Multiple Variables'
+                % Plot first few numeric variables
+                numeric_vars = varfun(@isnumeric, data, 'OutputFormat', 'cell');
+                numeric_vars = data.Properties.VariableNames(numeric_vars);
+                numeric_vars = setdiff(numeric_vars, 'Time');
+                
+                if length(numeric_vars) >= 3
+                    plot_vars = numeric_vars(1:3);
+                    colors = {'b', 'r', 'g'};
+                    for i = 1:length(plot_vars)
+                        plot(plot_axes, data.Time, data.(plot_vars{i}), colors{i}, 'LineWidth', 2, 'DisplayName', plot_vars{i});
+                    end
+                    legend(plot_axes, 'show');
+                    title(plot_axes, sprintf('%s: Multiple Variables', selected_dataset), 'FontSize', 14, 'FontWeight', 'bold');
+                    ylabel(plot_axes, 'Value', 'FontSize', 12);
+                else
+                    errordlg('Not enough numeric variables for multiple plot.', 'Error');
+                    return;
+                end
+                
+            case 'All Variables'
+                % Plot all numeric variables
+                numeric_vars = varfun(@isnumeric, data, 'OutputFormat', 'cell');
+                numeric_vars = data.Properties.VariableNames(numeric_vars);
+                numeric_vars = setdiff(numeric_vars, 'Time');
+                
+                if ~isempty(numeric_vars)
+                    colors = lines(length(numeric_vars));
+                    for i = 1:length(numeric_vars)
+                        plot(plot_axes, data.Time, data.(numeric_vars{i}), 'Color', colors(i,:), 'LineWidth', 1.5, 'DisplayName', numeric_vars{i});
+                    end
+                    legend(plot_axes, 'show', 'Location', 'eastoutside');
+                    title(plot_axes, sprintf('%s: All Variables', selected_dataset), 'FontSize', 14, 'FontWeight', 'bold');
+                    ylabel(plot_axes, 'Value', 'FontSize', 12);
+                else
+                    errordlg('No numeric variables found in data.', 'Error');
+                    return;
+                end
+        end
+        
+        xlabel(plot_axes, 'Time (s)', 'FontSize', 12);
+        grid(plot_axes, 'on');
+        hold(plot_axes, 'off');
+        
+    catch ME
+        errordlg(sprintf('Error generating time series plot: %s', ME.message), 'Error');
+    end
+end
+
+function export_time_series_plot(src, ~)
+    try
+        control_panel = src.Parent;
+        plot_axes = getappdata(control_panel, 'plot_axes');
+        
+        [filename, pathname] = uiputfile({'*.png', 'PNG Image'; '*.jpg', 'JPEG Image'; '*.pdf', 'PDF Document'; '*.fig', 'MATLAB Figure'}, 'Export Time Series Plot');
+        
+        if filename ~= 0
+            full_path = fullfile(pathname, filename);
+            saveas(plot_axes, full_path);
+            msgbox(sprintf('Plot exported to: %s', full_path), 'Success');
+        end
+        
+    catch ME
+        errordlg(sprintf('Error exporting plot: %s', ME.message), 'Error');
+    end
+end
+
+% Phase Plot Callbacks
+function load_data_for_phase_plots(src, x_var_popup, y_var_popup)
+    try
+        main_fig = findobj('Name', '2D Golf Swing Model - ZTCF/ZVCF Analysis');
+        if isempty(main_fig)
+            errordlg('Main GUI not found. Please launch the GUI first.', 'Error');
+            return;
+        end
+        
+        % Get data from main GUI
+        BASEQ = getappdata(main_fig, 'BASEQ');
+        ZTCFQ = getappdata(main_fig, 'ZTCFQ');
+        DELTAQ = getappdata(main_fig, 'DELTAQ');
+        
+        if isempty(BASEQ) && isempty(ZTCFQ) && isempty(DELTAQ)
+            % Try to load from files
+            [BASEQ, ZTCFQ, DELTAQ] = load_data_from_files();
+        end
+        
+        if isempty(BASEQ) && isempty(ZTCFQ) && isempty(DELTAQ)
+            errordlg('No data available. Please run simulation or analysis first.', 'Error');
+            return;
+        end
+        
+        % Store data in the control panel
+        control_panel = src.Parent;
+        setappdata(control_panel, 'BASEQ', BASEQ);
+        setappdata(control_panel, 'ZTCFQ', ZTCFQ);
+        setappdata(control_panel, 'DELTAQ', DELTAQ);
+        
+        % Update variable popups with available variables
+        update_variable_popup(x_var_popup, BASEQ);
+        update_variable_popup(y_var_popup, BASEQ);
+        
+        msgbox('Data loaded successfully!', 'Success');
+        
+    catch ME
+        errordlg(sprintf('Error loading data: %s', ME.message), 'Error');
+    end
+end
+
+function generate_phase_plot(src, x_var_popup, y_var_popup, dataset_popup, show_trajectory_checkbox, show_points_checkbox, plot_axes)
+    try
+        control_panel = src.Parent;
+        BASEQ = getappdata(control_panel, 'BASEQ');
+        ZTCFQ = getappdata(control_panel, 'ZTCFQ');
+        DELTAQ = getappdata(control_panel, 'DELTAQ');
+        
+        if isempty(BASEQ) && isempty(ZTCFQ) && isempty(DELTAQ)
+            errordlg('No data available. Please load data first.', 'Error');
+            return;
+        end
+        
+        % Get selected variables and dataset
+        x_var_names = x_var_popup.String;
+        y_var_names = y_var_popup.String;
+        dataset_names = dataset_popup.String;
+        
+        selected_x_var = x_var_names{x_var_popup.Value};
+        selected_y_var = y_var_names{y_var_popup.Value};
+        selected_dataset = dataset_names{dataset_popup.Value};
+        
+        if strcmp(selected_x_var, 'Select variable...') || strcmp(selected_y_var, 'Select variable...')
+            errordlg('Please select both X and Y variables.', 'Error');
+            return;
+        end
+        
+        % Select data based on dataset
+        switch selected_dataset
+            case 'BASEQ'
+                data = BASEQ;
+            case 'ZTCFQ'
+                data = ZTCFQ;
+            case 'DELTAQ'
+                data = DELTAQ;
+            otherwise
+                errordlg('Invalid dataset selection.', 'Error');
+                return;
+        end
+        
+        if isempty(data)
+            errordlg(sprintf('No data available for %s.', selected_dataset), 'Error');
+            return;
+        end
+        
+        % Check if variables exist in data
+        if ~ismember(selected_x_var, data.Properties.VariableNames) || ~ismember(selected_y_var, data.Properties.VariableNames)
+            errordlg('Selected variables not found in data.', 'Error');
+            return;
+        end
+        
+        % Generate phase plot
+        cla(plot_axes);
+        hold(plot_axes, 'on');
+        
+        x_data = data.(selected_x_var);
+        y_data = data.(selected_y_var);
+        
+        % Plot trajectory if requested
+        if show_trajectory_checkbox.Value
+            plot(plot_axes, x_data, y_data, 'b-', 'LineWidth', 2, 'DisplayName', 'Trajectory');
+        end
+        
+        % Plot points if requested
+        if show_points_checkbox.Value
+            scatter(plot_axes, x_data, y_data, 50, 1:length(x_data), 'filled', 'DisplayName', 'Time Points');
+            colormap(plot_axes, jet);
+            colorbar(plot_axes);
+        end
+        
+        % Mark start and end points
+        plot(plot_axes, x_data(1), y_data(1), 'go', 'MarkerSize', 10, 'MarkerFaceColor', 'g', 'DisplayName', 'Start');
+        plot(plot_axes, x_data(end), y_data(end), 'ro', 'MarkerSize', 10, 'MarkerFaceColor', 'r', 'DisplayName', 'End');
+        
+        title(plot_axes, sprintf('%s: %s vs %s', selected_dataset, selected_y_var, selected_x_var), 'FontSize', 14, 'FontWeight', 'bold');
+        xlabel(plot_axes, selected_x_var, 'FontSize', 12);
+        ylabel(plot_axes, selected_y_var, 'FontSize', 12);
+        grid(plot_axes, 'on');
+        legend(plot_axes, 'show');
+        hold(plot_axes, 'off');
+        
+    catch ME
+        errordlg(sprintf('Error generating phase plot: %s', ME.message), 'Error');
+    end
+end
+
+function export_phase_plot(src, ~)
+    try
+        control_panel = src.Parent;
+        plot_axes = getappdata(control_panel, 'plot_axes');
+        
+        [filename, pathname] = uiputfile({'*.png', 'PNG Image'; '*.jpg', 'JPEG Image'; '*.pdf', 'PDF Document'; '*.fig', 'MATLAB Figure'}, 'Export Phase Plot');
+        
+        if filename ~= 0
+            full_path = fullfile(pathname, filename);
+            saveas(plot_axes, full_path);
+            msgbox(sprintf('Plot exported to: %s', full_path), 'Success');
+        end
+        
+    catch ME
+        errordlg(sprintf('Error exporting plot: %s', ME.message), 'Error');
+    end
+end
+
+% Quiver Plot Callbacks
+function load_data_for_quiver_plots(src)
+    try
+        main_fig = findobj('Name', '2D Golf Swing Model - ZTCF/ZVCF Analysis');
+        if isempty(main_fig)
+            errordlg('Main GUI not found. Please launch the GUI first.', 'Error');
+            return;
+        end
+        
+        % Get data from main GUI
+        BASEQ = getappdata(main_fig, 'BASEQ');
+        ZTCFQ = getappdata(main_fig, 'ZTCFQ');
+        DELTAQ = getappdata(main_fig, 'DELTAQ');
+        
+        if isempty(BASEQ) && isempty(ZTCFQ) && isempty(DELTAQ)
+            % Try to load from files
+            [BASEQ, ZTCFQ, DELTAQ] = load_data_from_files();
+        end
+        
+        if isempty(BASEQ) && isempty(ZTCFQ) && isempty(DELTAQ)
+            errordlg('No data available. Please run simulation or analysis first.', 'Error');
+            return;
+        end
+        
+        % Store data in the control panel
+        control_panel = src.Parent;
+        setappdata(control_panel, 'BASEQ', BASEQ);
+        setappdata(control_panel, 'ZTCFQ', ZTCFQ);
+        setappdata(control_panel, 'DELTAQ', DELTAQ);
+        
+        % Update time slider range
+        time_slider = getappdata(control_panel, 'time_slider');
+        time_text = getappdata(control_panel, 'time_text');
+        
+        if ~isempty(BASEQ) && ismember('Time', BASEQ.Properties.VariableNames)
+            time_range = [min(BASEQ.Time), max(BASEQ.Time)];
+            time_slider.Min = time_range(1);
+            time_slider.Max = time_range(2);
+            time_slider.Value = mean(time_range);
+            time_text.String = sprintf('%.3f s', time_slider.Value);
+        end
+        
+        msgbox('Data loaded successfully!', 'Success');
+        
+    catch ME
+        errordlg(sprintf('Error loading data: %s', ME.message), 'Error');
+    end
+end
+
+function generate_quiver_plot(src, vector_type_popup, dataset_popup, time_slider, time_text, show_magnitude_checkbox, scale_vectors_checkbox, plot_axes)
+    try
+        control_panel = src.Parent;
+        BASEQ = getappdata(control_panel, 'BASEQ');
+        ZTCFQ = getappdata(control_panel, 'ZTCFQ');
+        DELTAQ = getappdata(control_panel, 'DELTAQ');
+        
+        if isempty(BASEQ) && isempty(ZTCFQ) && isempty(DELTAQ)
+            errordlg('No data available. Please load data first.', 'Error');
+            return;
+        end
+        
+        % Get selected options
+        vector_type_names = vector_type_popup.String;
+        dataset_names = dataset_popup.String;
+        
+        selected_vector_type = vector_type_names{vector_type_popup.Value};
+        selected_dataset = dataset_names{dataset_popup.Value};
+        selected_time = time_slider.Value;
+        
+        % Select data based on dataset
+        switch selected_dataset
+            case 'BASEQ'
+                data = BASEQ;
+            case 'ZTCFQ'
+                data = ZTCFQ;
+            case 'DELTAQ'
+                data = DELTAQ;
+            otherwise
+                errordlg('Invalid dataset selection.', 'Error');
+                return;
+        end
+        
+        if isempty(data)
+            errordlg(sprintf('No data available for %s.', selected_dataset), 'Error');
+            return;
+        end
+        
+        % Find closest time point
+        if ismember('Time', data.Properties.VariableNames)
+            [~, time_idx] = min(abs(data.Time - selected_time));
+            selected_time = data.Time(time_idx);
+            time_text.String = sprintf('%.3f s', selected_time);
+        else
+            time_idx = round(selected_time * height(data));
+            time_idx = max(1, min(time_idx, height(data)));
+        end
+        
+        % Generate quiver plot
+        cla(plot_axes);
+        hold(plot_axes, 'on');
+        
+        % Get position data for vector origins
+        position_vars = {'Buttx', 'Butty', 'Buttz', 'CHx', 'CHy', 'CHz', 'MPx', 'MPy', 'MPz'};
+        available_positions = position_vars(ismember(position_vars, data.Properties.VariableNames));
+        
+        if isempty(available_positions)
+            errordlg('No position data available for quiver plot.', 'Error');
+            return;
+        end
+        
+        % Get vector data based on type
+        switch selected_vector_type
+            case 'Forces'
+                vector_vars = {'TotalHandForceGlobal'};
+            case 'Torques'
+                vector_vars = {'EquivalentMidpointCoupleGlobal'};
+            case 'Velocities'
+                vector_vars = {'CHx', 'CHy', 'CHz'}; % Use position as proxy for velocity
+            case 'Accelerations'
+                vector_vars = {'CHx', 'CHy', 'CHz'}; % Use position as proxy for acceleration
+            otherwise
+                errordlg('Invalid vector type selection.', 'Error');
+                return;
+        end
+        
+        % Plot vectors
+        colors = lines(length(available_positions));
+        for i = 1:length(available_positions)
+            pos_var = available_positions{i};
+            
+            % Get position
+            if ismember(pos_var, data.Properties.VariableNames)
+                x_pos = data.(pos_var)(time_idx);
+                y_pos = data.([pos_var(1:end-1), 'y'])(time_idx);
+                z_pos = data.([pos_var(1:end-1), 'z'])(time_idx);
+                
+                % Get vector components
+                if strcmp(selected_vector_type, 'Forces') && ismember('TotalHandForceGlobal', data.Properties.VariableNames)
+                    force_data = data.TotalHandForceGlobal(time_idx, :);
+                    u = force_data(1);
+                    v = force_data(2);
+                    w = force_data(3);
+                elseif strcmp(selected_vector_type, 'Torques') && ismember('EquivalentMidpointCoupleGlobal', data.Properties.VariableNames)
+                    torque_data = data.EquivalentMidpointCoupleGlobal(time_idx, :);
+                    u = torque_data(1);
+                    v = torque_data(2);
+                    w = torque_data(3);
+                else
+                    % Use position differences as proxy for velocity/acceleration
+                    if time_idx > 1
+                        u = data.(pos_var)(time_idx) - data.(pos_var)(time_idx-1);
+                        v = data.([pos_var(1:end-1), 'y'])(time_idx) - data.([pos_var(1:end-1), 'y'])(time_idx-1);
+                        w = data.([pos_var(1:end-1), 'z'])(time_idx) - data.([pos_var(1:end-1), 'z'])(time_idx-1);
+                    else
+                        u = 0; v = 0; w = 0;
+                    end
+                end
+                
+                % Scale vectors if requested
+                if scale_vectors_checkbox.Value
+                    scale_factor = 0.1;
+                    u = u * scale_factor;
+                    v = v * scale_factor;
+                    w = w * scale_factor;
+                end
+                
+                % Plot quiver
+                quiver3(plot_axes, x_pos, y_pos, z_pos, u, v, w, 'Color', colors(i,:), 'LineWidth', 2, 'MaxHeadSize', 0.5, 'DisplayName', pos_var);
+                
+                % Show magnitude if requested
+                if show_magnitude_checkbox.Value
+                    magnitude = sqrt(u^2 + v^2 + w^2);
+                    text(plot_axes, x_pos + u, y_pos + v, z_pos + w, sprintf('%.2f', magnitude), 'FontSize', 8);
+                end
+            end
+        end
+        
+        title(plot_axes, sprintf('%s: %s at %.3f s', selected_dataset, selected_vector_type, selected_time), 'FontSize', 14, 'FontWeight', 'bold');
+        xlabel(plot_axes, 'X Position', 'FontSize', 12);
+        ylabel(plot_axes, 'Y Position', 'FontSize', 12);
+        zlabel(plot_axes, 'Z Position', 'FontSize', 12);
+        grid(plot_axes, 'on');
+        legend(plot_axes, 'show');
+        view(plot_axes, 3);
+        hold(plot_axes, 'off');
+        
+    catch ME
+        errordlg(sprintf('Error generating quiver plot: %s', ME.message), 'Error');
+    end
+end
+
+function export_quiver_plot(src, ~)
+    try
+        control_panel = src.Parent;
+        plot_axes = getappdata(control_panel, 'plot_axes');
+        
+        [filename, pathname] = uiputfile({'*.png', 'PNG Image'; '*.jpg', 'JPEG Image'; '*.pdf', 'PDF Document'; '*.fig', 'MATLAB Figure'}, 'Export Quiver Plot');
+        
+        if filename ~= 0
+            full_path = fullfile(pathname, filename);
+            saveas(plot_axes, full_path);
+            msgbox(sprintf('Plot exported to: %s', full_path), 'Success');
+        end
+        
+    catch ME
+        errordlg(sprintf('Error exporting plot: %s', ME.message), 'Error');
+    end
+end
+
+% Comparison Plot Callbacks
+function load_data_for_comparison(src, variable_popup)
+    try
+        main_fig = findobj('Name', '2D Golf Swing Model - ZTCF/ZVCF Analysis');
+        if isempty(main_fig)
+            errordlg('Main GUI not found. Please launch the GUI first.', 'Error');
+            return;
+        end
+        
+        % Get data from main GUI
+        BASEQ = getappdata(main_fig, 'BASEQ');
+        ZTCFQ = getappdata(main_fig, 'ZTCFQ');
+        DELTAQ = getappdata(main_fig, 'DELTAQ');
+        
+        if isempty(BASEQ) && isempty(ZTCFQ) && isempty(DELTAQ)
+            % Try to load from files
+            [BASEQ, ZTCFQ, DELTAQ] = load_data_from_files();
+        end
+        
+        if isempty(BASEQ) && isempty(ZTCFQ) && isempty(DELTAQ)
+            errordlg('No data available. Please run simulation or analysis first.', 'Error');
+            return;
+        end
+        
+        % Store data in the control panel
+        control_panel = src.Parent;
+        setappdata(control_panel, 'BASEQ', BASEQ);
+        setappdata(control_panel, 'ZTCFQ', ZTCFQ);
+        setappdata(control_panel, 'DELTAQ', DELTAQ);
+        
+        % Update variable popup with available variables
+        update_variable_popup(variable_popup, BASEQ);
+        
+        msgbox('Data loaded successfully!', 'Success');
+        
+    catch ME
+        errordlg(sprintf('Error loading data: %s', ME.message), 'Error');
+    end
+end
+
+function generate_comparison_plot(src, variable_popup, comparison_popup, plot_type_popup, plot_axes)
+    try
+        control_panel = src.Parent;
+        BASEQ = getappdata(control_panel, 'BASEQ');
+        ZTCFQ = getappdata(control_panel, 'ZTCFQ');
+        DELTAQ = getappdata(control_panel, 'DELTAQ');
+        
+        if isempty(BASEQ) && isempty(ZTCFQ) && isempty(DELTAQ)
+            errordlg('No data available. Please load data first.', 'Error');
+            return;
+        end
+        
+        % Get selected options
+        variable_names = variable_popup.String;
+        comparison_names = comparison_popup.String;
+        plot_type_names = plot_type_popup.String;
+        
+        selected_variable = variable_names{variable_popup.Value};
+        selected_comparison = comparison_names{comparison_popup.Value};
+        selected_plot_type = plot_type_names{plot_type_popup.Value};
+        
+        if strcmp(selected_variable, 'Select variable...')
+            errordlg('Please select a variable.', 'Error');
+            return;
+        end
+        
+        % Generate comparison plot
+        cla(plot_axes);
+        hold(plot_axes, 'on');
+        
+        switch selected_plot_type
+            case 'Overlay'
+                % Plot all selected datasets on same axes
+                if strcmp(selected_comparison, 'BASEQ vs ZTCFQ') || strcmp(selected_comparison, 'All Three')
+                    if ~isempty(BASEQ) && ismember(selected_variable, BASEQ.Properties.VariableNames)
+                        plot(plot_axes, BASEQ.Time, BASEQ.(selected_variable), 'b-', 'LineWidth', 2, 'DisplayName', 'BASEQ');
+                    end
+                    if ~isempty(ZTCFQ) && ismember(selected_variable, ZTCFQ.Properties.VariableNames)
+                        plot(plot_axes, ZTCFQ.Time, ZTCFQ.(selected_variable), 'r--', 'LineWidth', 2, 'DisplayName', 'ZTCFQ');
+                    end
+                end
+                
+                if strcmp(selected_comparison, 'BASEQ vs DELTAQ') || strcmp(selected_comparison, 'All Three')
+                    if ~isempty(DELTAQ) && ismember(selected_variable, DELTAQ.Properties.VariableNames)
+                        plot(plot_axes, DELTAQ.Time, DELTAQ.(selected_variable), 'g:', 'LineWidth', 2, 'DisplayName', 'DELTAQ');
+                    end
+                end
+                
+                if strcmp(selected_comparison, 'ZTCFQ vs DELTAQ')
+                    if ~isempty(ZTCFQ) && ismember(selected_variable, ZTCFQ.Properties.VariableNames)
+                        plot(plot_axes, ZTCFQ.Time, ZTCFQ.(selected_variable), 'r--', 'LineWidth', 2, 'DisplayName', 'ZTCFQ');
+                    end
+                    if ~isempty(DELTAQ) && ismember(selected_variable, DELTAQ.Properties.VariableNames)
+                        plot(plot_axes, DELTAQ.Time, DELTAQ.(selected_variable), 'g:', 'LineWidth', 2, 'DisplayName', 'DELTAQ');
+                    end
+                end
+                
+                title(plot_axes, sprintf('Comparison: %s', selected_variable), 'FontSize', 14, 'FontWeight', 'bold');
+                legend(plot_axes, 'show');
+                
+            case 'Subplot'
+                % Create subplots for each dataset
+                num_datasets = 0;
+                if strcmp(selected_comparison, 'BASEQ vs ZTCFQ') || strcmp(selected_comparison, 'All Three')
+                    if ~isempty(BASEQ) && ~isempty(ZTCFQ)
+                        num_datasets = num_datasets + 2;
+                    end
+                end
+                if strcmp(selected_comparison, 'BASEQ vs DELTAQ') || strcmp(selected_comparison, 'All Three')
+                    if ~isempty(BASEQ) && ~isempty(DELTAQ)
+                        num_datasets = num_datasets + 2;
+                    end
+                end
+                if strcmp(selected_comparison, 'ZTCFQ vs DELTAQ')
+                    if ~isempty(ZTCFQ) && ~isempty(DELTAQ)
+                        num_datasets = num_datasets + 2;
+                    end
+                end
+                
+                if num_datasets == 0
+                    errordlg('No valid datasets for comparison.', 'Error');
+                    return;
+                end
+                
+                % Create subplots
+                subplot_idx = 1;
+                if strcmp(selected_comparison, 'BASEQ vs ZTCFQ') || strcmp(selected_comparison, 'All Three')
+                    if ~isempty(BASEQ) && ismember(selected_variable, BASEQ.Properties.VariableNames)
+                        subplot(plot_axes, num_datasets, 1, subplot_idx);
+                        plot(BASEQ.Time, BASEQ.(selected_variable), 'b-', 'LineWidth', 2);
+                        title('BASEQ', 'FontSize', 12);
+                        ylabel(selected_variable);
+                        grid on;
+                        subplot_idx = subplot_idx + 1;
+                    end
+                    if ~isempty(ZTCFQ) && ismember(selected_variable, ZTCFQ.Properties.VariableNames)
+                        subplot(plot_axes, num_datasets, 1, subplot_idx);
+                        plot(ZTCFQ.Time, ZTCFQ.(selected_variable), 'r-', 'LineWidth', 2);
+                        title('ZTCFQ', 'FontSize', 12);
+                        ylabel(selected_variable);
+                        grid on;
+                        subplot_idx = subplot_idx + 1;
+                    end
+                end
+                
+                if strcmp(selected_comparison, 'BASEQ vs DELTAQ') || strcmp(selected_comparison, 'All Three')
+                    if ~isempty(DELTAQ) && ismember(selected_variable, DELTAQ.Properties.VariableNames)
+                        subplot(plot_axes, num_datasets, 1, subplot_idx);
+                        plot(DELTAQ.Time, DELTAQ.(selected_variable), 'g-', 'LineWidth', 2);
+                        title('DELTAQ', 'FontSize', 12);
+                        ylabel(selected_variable);
+                        grid on;
+                        subplot_idx = subplot_idx + 1;
+                    end
+                end
+                
+                sgtitle(plot_axes, sprintf('Comparison: %s', selected_variable), 'FontSize', 14, 'FontWeight', 'bold');
+                
+            case 'Difference'
+                % Plot differences between datasets
+                if strcmp(selected_comparison, 'BASEQ vs ZTCFQ')
+                    if ~isempty(BASEQ) && ~isempty(ZTCFQ) && ismember(selected_variable, BASEQ.Properties.VariableNames) && ismember(selected_variable, ZTCFQ.Properties.VariableNames)
+                        diff_data = BASEQ.(selected_variable) - ZTCFQ.(selected_variable);
+                        plot(plot_axes, BASEQ.Time, diff_data, 'b-', 'LineWidth', 2);
+                        title(plot_axes, sprintf('Difference: BASEQ - ZTCFQ (%s)', selected_variable), 'FontSize', 14, 'FontWeight', 'bold');
+                    else
+                        errordlg('Both BASEQ and ZTCFQ data required for difference plot.', 'Error');
+                        return;
+                    end
+                elseif strcmp(selected_comparison, 'BASEQ vs DELTAQ')
+                    if ~isempty(BASEQ) && ~isempty(DELTAQ) && ismember(selected_variable, BASEQ.Properties.VariableNames) && ismember(selected_variable, DELTAQ.Properties.VariableNames)
+                        diff_data = BASEQ.(selected_variable) - DELTAQ.(selected_variable);
+                        plot(plot_axes, BASEQ.Time, diff_data, 'r-', 'LineWidth', 2);
+                        title(plot_axes, sprintf('Difference: BASEQ - DELTAQ (%s)', selected_variable), 'FontSize', 14, 'FontWeight', 'bold');
+                    else
+                        errordlg('Both BASEQ and DELTAQ data required for difference plot.', 'Error');
+                        return;
+                    end
+                elseif strcmp(selected_comparison, 'ZTCFQ vs DELTAQ')
+                    if ~isempty(ZTCFQ) && ~isempty(DELTAQ) && ismember(selected_variable, ZTCFQ.Properties.VariableNames) && ismember(selected_variable, DELTAQ.Properties.VariableNames)
+                        diff_data = ZTCFQ.(selected_variable) - DELTAQ.(selected_variable);
+                        plot(plot_axes, ZTCFQ.Time, diff_data, 'g-', 'LineWidth', 2);
+                        title(plot_axes, sprintf('Difference: ZTCFQ - DELTAQ (%s)', selected_variable), 'FontSize', 14, 'FontWeight', 'bold');
+                    else
+                        errordlg('Both ZTCFQ and DELTAQ data required for difference plot.', 'Error');
+                        return;
+                    end
+                else
+                    errordlg('Invalid comparison selection for difference plot.', 'Error');
+                    return;
+                end
+        end
+        
+        xlabel(plot_axes, 'Time (s)', 'FontSize', 12);
+        ylabel(plot_axes, selected_variable, 'FontSize', 12);
+        grid(plot_axes, 'on');
+        hold(plot_axes, 'off');
+        
+    catch ME
+        errordlg(sprintf('Error generating comparison plot: %s', ME.message), 'Error');
+    end
+end
+
+function export_comparison_plot(src, ~)
+    try
+        control_panel = src.Parent;
+        plot_axes = getappdata(control_panel, 'plot_axes');
+        
+        [filename, pathname] = uiputfile({'*.png', 'PNG Image'; '*.jpg', 'JPEG Image'; '*.pdf', 'PDF Document'; '*.fig', 'MATLAB Figure'}, 'Export Comparison Plot');
+        
+        if filename ~= 0
+            full_path = fullfile(pathname, filename);
+            saveas(plot_axes, full_path);
+            msgbox(sprintf('Plot exported to: %s', full_path), 'Success');
+        end
+        
+    catch ME
+        errordlg(sprintf('Error exporting plot: %s', ME.message), 'Error');
+    end
+end
+
+% Data Explorer Callbacks
+function load_data_for_explorer(src, dataset_popup, data_table, stats_text)
+    try
+        main_fig = findobj('Name', '2D Golf Swing Model - ZTCF/ZVCF Analysis');
+        if isempty(main_fig)
+            errordlg('Main GUI not found. Please launch the GUI first.', 'Error');
+            return;
+        end
+        
+        % Get data from main GUI
+        BASEQ = getappdata(main_fig, 'BASEQ');
+        ZTCFQ = getappdata(main_fig, 'ZTCFQ');
+        DELTAQ = getappdata(main_fig, 'DELTAQ');
+        
+        if isempty(BASEQ) && isempty(ZTCFQ) && isempty(DELTAQ)
+            % Try to load from files
+            [BASEQ, ZTCFQ, DELTAQ] = load_data_from_files();
+        end
+        
+        if isempty(BASEQ) && isempty(ZTCFQ) && isempty(DELTAQ)
+            errordlg('No data available. Please run simulation or analysis first.', 'Error');
+            return;
+        end
+        
+        % Store data in the control panel
+        control_panel = src.Parent;
+        setappdata(control_panel, 'BASEQ', BASEQ);
+        setappdata(control_panel, 'ZTCFQ', ZTCFQ);
+        setappdata(control_panel, 'DELTAQ', DELTAQ);
+        
+        % Update data explorer with BASEQ data initially
+        update_data_explorer(dataset_popup, data_table, stats_text);
+        
+        msgbox('Data loaded successfully!', 'Success');
+        
+    catch ME
+        errordlg(sprintf('Error loading data: %s', ME.message), 'Error');
+    end
+end
+
+function update_data_explorer(dataset_popup, data_table, stats_text)
+    try
+        control_panel = dataset_popup.Parent;
+        BASEQ = getappdata(control_panel, 'BASEQ');
+        ZTCFQ = getappdata(control_panel, 'ZTCFQ');
+        DELTAQ = getappdata(control_panel, 'DELTAQ');
+        
+        % Get selected dataset
+        dataset_names = dataset_popup.String;
+        selected_dataset = dataset_names{dataset_popup.Value};
+        
+        % Select data based on dataset
+        switch selected_dataset
+            case 'BASEQ'
+                data = BASEQ;
+            case 'ZTCFQ'
+                data = ZTCFQ;
+            case 'DELTAQ'
+                data = DELTAQ;
+            otherwise
+                errordlg('Invalid dataset selection.', 'Error');
+                return;
+        end
+        
+        if isempty(data)
+            errordlg(sprintf('No data available for %s.', selected_dataset), 'Error');
+            return;
+        end
+        
+        % Calculate statistics for all numeric variables
+        numeric_vars = varfun(@isnumeric, data, 'OutputFormat', 'cell');
+        numeric_vars = data.Properties.VariableNames(numeric_vars);
+        
+        if isempty(numeric_vars)
+            errordlg('No numeric variables found in data.', 'Error');
+            return;
+        end
+        
+        % Create statistics table
+        stats_data = cell(length(numeric_vars), 6);
+        for i = 1:length(numeric_vars)
+            var_name = numeric_vars{i};
+            var_data = data.(var_name);
+            
+            stats_data{i, 1} = var_name;
+            stats_data{i, 2} = min(var_data);
+            stats_data{i, 3} = max(var_data);
+            stats_data{i, 4} = mean(var_data);
+            stats_data{i, 5} = std(var_data);
+            stats_data{i, 6} = max(var_data) - min(var_data);
+        end
+        
+        % Update data table
+        data_table.Data = stats_data;
+        
+        % Update statistics text
+        stats_summary = sprintf('Dataset: %s\n', selected_dataset);
+        stats_summary = [stats_summary, sprintf('Total Variables: %d\n', length(numeric_vars))];
+        stats_summary = [stats_summary, sprintf('Data Points: %d\n', height(data))];
+        
+        if ismember('Time', data.Properties.VariableNames)
+            time_range = [min(data.Time), max(data.Time)];
+            stats_summary = [stats_summary, sprintf('Time Range: %.3f to %.3f s\n', time_range(1), time_range(2))];
+        end
+        
+        stats_text.String = stats_summary;
+        
+    catch ME
+        errordlg(sprintf('Error updating data explorer: %s', ME.message), 'Error');
+    end
+end
+
+function apply_data_filter(src, filter_var_popup, filter_min_edit, filter_max_edit, data_table)
+    try
+        % This is a placeholder for data filtering functionality
+        % In a full implementation, this would filter the displayed data
+        msgbox('Data filtering functionality will be implemented in future versions.', 'Info');
+        
+    catch ME
+        errordlg(sprintf('Error applying filter: %s', ME.message), 'Error');
+    end
+end
+
+function export_explorer_data(src, ~)
+    try
+        control_panel = src.Parent;
+        data_table = getappdata(control_panel, 'data_table');
+        
+        [filename, pathname] = uiputfile({'*.csv', 'CSV File'; '*.xlsx', 'Excel File'; '*.mat', 'MATLAB File'}, 'Export Data Statistics');
+        
+        if filename ~= 0
+            full_path = fullfile(pathname, filename);
+            
+            % Get table data
+            table_data = data_table.Data;
+            column_names = data_table.ColumnName;
+            
+            % Create table for export
+            export_table = cell2table(table_data, 'VariableNames', column_names);
+            
+            % Export based on file type
+            [~, ~, ext] = fileparts(filename);
+            switch lower(ext)
+                case '.csv'
+                    writetable(export_table, full_path);
+                case '.xlsx'
+                    writetable(export_table, full_path);
+                case '.mat'
+                    save(full_path, 'export_table');
+                otherwise
+                    errordlg('Unsupported file format.', 'Error');
+                    return;
+            end
+            
+            msgbox(sprintf('Data exported to: %s', full_path), 'Success');
+        end
+        
+    catch ME
+        errordlg(sprintf('Error exporting data: %s', ME.message), 'Error');
+    end
+end
+
+% ============================================================================
+% UTILITY FUNCTIONS
+% ============================================================================
+
+function [BASEQ, ZTCFQ, DELTAQ] = load_data_from_files()
+    % Try to load data from common file locations
+    BASEQ = []; ZTCFQ = []; DELTAQ = [];
+    
+    % Common directories to search
+    search_dirs = {
+        'Tables',
+        '2D GUI/Tables',
+        '2DModel/Tables',
+        '2DModel/Model Output/Tables',
+        '3DModel/Tables',
+        '3DModel/Model Output/Tables'
+    };
+    
+    for i = 1:length(search_dirs)
+        if exist(search_dirs{i}, 'dir')
+            % Try to load BASEQ
+            if isempty(BASEQ) && exist(fullfile(search_dirs{i}, 'BASEQ.mat'), 'file')
+                try
+                    load(fullfile(search_dirs{i}, 'BASEQ.mat'), 'BASEQ');
+                catch
+                    % Continue to next file
+                end
+            end
+            
+            % Try to load ZTCFQ
+            if isempty(ZTCFQ) && exist(fullfile(search_dirs{i}, 'ZTCFQ.mat'), 'file')
+                try
+                    load(fullfile(search_dirs{i}, 'ZTCFQ.mat'), 'ZTCFQ');
+                catch
+                    % Continue to next file
+                end
+            end
+            
+            % Try to load DELTAQ
+            if isempty(DELTAQ) && exist(fullfile(search_dirs{i}, 'DELTAQ.mat'), 'file')
+                try
+                    load(fullfile(search_dirs{i}, 'DELTAQ.mat'), 'DELTAQ');
+                catch
+                    % Continue to next file
+                end
+            end
+        end
+    end
+end
+
+function update_variable_popup(variable_popup, data)
+    % Update variable popup with available variables from data
+    if isempty(data)
+        variable_popup.String = {'Select variable...'};
+        variable_popup.Value = 1;
+        return;
+    end
+    
+    % Get numeric variables
+    numeric_vars = varfun(@isnumeric, data, 'OutputFormat', 'cell');
+    numeric_vars = data.Properties.VariableNames(numeric_vars);
+    
+    % Remove Time variable if present
+    numeric_vars = setdiff(numeric_vars, 'Time');
+    
+    if isempty(numeric_vars)
+        variable_popup.String = {'No numeric variables found'};
+        variable_popup.Value = 1;
+    else
+        variable_popup.String = ['Select variable...', numeric_vars];
+        variable_popup.Value = 1;
+    end
 end
 
 function close_gui_callback(src, ~)
