@@ -3556,25 +3556,29 @@ function update_animation_frame(anim_ax, animation_data, frame_idx)
     end
 end
 
-function validate_parameters()
+function result = validate_parameters()
     % Validate simulation parameters before running
+    result = true; % Default to true
     try
         main_fig = findobj('Name', '2D Golf Swing Analysis GUI');
         if isempty(main_fig)
-            return false;
+            result = false;
+            return;
         end
         
         % Find simulation tab
         main_tab_group = getappdata(main_fig, 'main_tab_group');
         simulation_tab = findobj(main_tab_group, 'Title', '🎮 Simulation');
         if isempty(simulation_tab)
-            return false;
+            result = false;
+            return;
         end
         
         % Find parameter panel
         param_panel = findobj(simulation_tab, 'Title', 'Parameter Controls');
         if isempty(param_panel)
-            return false;
+            result = false;
+            return;
         end
         
         % Validate stop time
@@ -3583,7 +3587,8 @@ function validate_parameters()
             stop_time = str2double(stop_time_edit.String);
             if isnan(stop_time) || stop_time <= 0
                 errordlg('Stop time must be a positive number.', 'Parameter Error');
-                return false;
+                result = false;
+                return;
             end
         end
         
@@ -3593,7 +3598,8 @@ function validate_parameters()
             max_step = str2double(max_step_edit.String);
             if isnan(max_step) || max_step <= 0
                 errordlg('Max step must be a positive number.', 'Parameter Error');
-                return false;
+                result = false;
+                return;
             end
         end
         
@@ -3603,15 +3609,17 @@ function validate_parameters()
             club_length = str2double(club_length_edit.String);
             if isnan(club_length) || club_length <= 0
                 errordlg('Club length must be a positive number.', 'Parameter Error');
-                return false;
+                result = false;
+                return;
             end
         end
         
-        return true;
+        % If we get here, validation passed
+        result = true;
         
     catch ME
         errordlg(sprintf('Error validating parameters: %s', ME.message), 'Error');
-        return false;
+        result = false;
     end
 end
 

@@ -13,7 +13,16 @@ function launch_gui()
     addpath(genpath(script_dir));
     
     % Launch the GUI
-    golf_swing_analysis_gui();
+    main_scripts_dir = fullfile(script_dir, 'main_scripts');
+    if exist(fullfile(main_scripts_dir, 'golf_swing_analysis_gui.m'), 'file')
+        % Change to main_scripts directory and launch
+        current_dir = pwd;
+        cd(main_scripts_dir);
+        golf_swing_analysis_gui();
+        cd(current_dir);
+    else
+        error('GUI file not found in main_scripts directory');
+    end
     
     fprintf('🚀 GUI launched successfully!\n');
     fprintf('📁 Working directory: %s\n', script_dir);
