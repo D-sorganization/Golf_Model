@@ -9,9 +9,20 @@ function launch_gui()
     % Get the directory where this script is located
     script_dir = fileparts(mfilename('fullpath'));
     
-    % Add all subdirectories to the MATLAB path
-    addpath(genpath(script_dir));
-    
+    % Specify required subdirectories
+    paths_to_add = {
+        fullfile(script_dir, 'main_scripts'),
+        fullfile(script_dir, 'functions'),
+        fullfile(script_dir, 'data_processing'),
+        fullfile(script_dir, 'visualization')
+    };
+
+    % Add targeted subdirectories to the MATLAB path
+    cellfun(@addpath, paths_to_add);
+
+    % Ensure paths are removed when the GUI closes
+    cleanupObj = onCleanup(@() cellfun(@rmpath, paths_to_add));
+
     % Launch the GUI
     main_scripts_dir = fullfile(script_dir, 'main_scripts');
     if exist(fullfile(main_scripts_dir, 'golf_swing_analysis_gui.m'), 'file')

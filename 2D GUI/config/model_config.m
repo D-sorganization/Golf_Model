@@ -24,7 +24,8 @@ function config = model_config()
     config.interpolation_method = 'spline';
     
     % File paths
-    config.base_path = matlabdrive;
+    config_dir = fileparts(mfilename('fullpath'));
+    config.base_path = fileparts(fileparts(config_dir));
     config.model_path = fullfile(config.base_path, '2DModel');
     config.scripts_path = fullfile(config.model_path, 'Scripts');
     config.tables_path = fullfile(config.model_path, 'Tables');
