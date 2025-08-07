@@ -1,15 +1,13 @@
-cd(matlabdrive);
-% This script loads impact state targets into the model workspace from the
-% impact model and then loads the model into a top of backswing position.
-% Then the model is kinematically driven between the two states.
+origDir = pwd;
+cleanup = onCleanup(@() cd(origDir));
 
-cd 3DModel;
-SCRIPT_LoadImpactStateTargets;
-SCRIPT_LoadTopofBackswing
+% Load impact state targets and top of backswing data without changing directories
+modelDir = fullfile(matlabdrive, '3DModel');
+run(fullfile(modelDir, 'SCRIPT_LoadImpactStateTargets.m'));
+run(fullfile(modelDir, 'SCRIPT_LoadTopofBackswing.m'));
 
 % Run kinematic model with the target values
-cd(matlabdrive);
-cd 3DModel;
-assignin(mdlWks,'StopTime',Simulink.Parameter(0.2));
-GolfSwing3D_KinematicallyDriven;
-out=sim("GolfSwing3D_KinematicallyDriven.slx");
+assignin(mdlWks, 'StopTime', Simulink.Parameter(0.2));
+run(fullfile(modelDir, 'GolfSwing3D_KinematicallyDriven.m'));
+modelPath = fullfile(modelDir, 'GolfSwing3D_KinematicallyDriven.slx');
+out = sim(modelPath);

@@ -2,18 +2,20 @@
 % Read from model workspace the value in the starting position / velocity
 % from the impact optimized model
 
+origDir = pwd;
+cleanup = onCleanup(@() cd(origDir));
+
 % First load up the model and set up a model workspace to write the
 % variables to with the mdlWks function.
-cd(matlabdrive);
-cd '3DModel'
-GolfSwing3D_KineticallyDriven;
-mdlWks=get_param('GolfSwing3D_KineticallyDriven','ModelWorkspace');
+modelDir = fullfile(matlabdrive, '3DModel');
+load_system(fullfile(modelDir, 'GolfSwing3D_KineticallyDriven.slx'));
+mdlWks = get_param('GolfSwing3D_KineticallyDriven', 'ModelWorkspace');
 
 
 % Read from source file into the workspace.
 % load("3DModelInputs.mat")
 % load("3DModelInputs_TopofBackswing.mat")
-load("3DModelInputs_Impact.mat")
+load(fullfile(modelDir, '3DModelInputs_Impact.mat'))
 
 % Copy only the kinematics from the workspace to the model workspace.
 
@@ -128,11 +130,13 @@ assignin(mdlWks,"RWStartVelocityX",Simulink.Parameter(RWStartVelocityX.Value))
 assignin(mdlWks,"RWStartVelocityY",Simulink.Parameter(RWStartVelocityY.Value))
 
 % Save Model Workspace
-save(mdlWks,'3DModelInputs.mat')
+save(mdlWks, fullfile(modelDir, '3DModelInputs.mat'))
 
 % Clear Workspace
 clear
-mdlWks=get_param('GolfSwing3D_KineticallyDriven','ModelWorkspace');
+mdlWks = get_param('GolfSwing3D_KineticallyDriven', 'ModelWorkspace');
 
 % Run Model
-out=sim("GolfSwing3D_KineticallyDriven.slx");
+modelDir = fullfile(matlabdrive, '3DModel');
+modelPath = fullfile(modelDir, 'GolfSwing3D_KineticallyDriven.slx');
+out = sim(modelPath);
