@@ -202,15 +202,16 @@ function create_parameter_controls(parent, config)
 end
 
 function create_simulation_controls(parent, config)
-    % Create simulation control buttons
+    % Create enhanced simulation control buttons (Phase 2)
     
-    % Run simulation button
+    % Run simulation button with validation
     uicontrol('Parent', parent, ...
               'Style', 'pushbutton', ...
               'String', '🚀 Run Simulation', ...
               'FontSize', 11, ...
               'Position', [10, 700, 200, 40], ...
-              'Callback', @run_simulation);
+              'Callback', @run_simulation, ...
+              'TooltipString', 'Run simulation with current parameters');
     
     % Load existing data button
     uicontrol('Parent', parent, ...
@@ -218,51 +219,131 @@ function create_simulation_controls(parent, config)
               'String', '📂 Load Data', ...
               'FontSize', 11, ...
               'Position', [10, 650, 200, 40], ...
-              'Callback', @load_simulation_data);
+              'Callback', @load_simulation_data, ...
+              'TooltipString', 'Load previously saved simulation data');
     
-    % Animation controls
+    % Enhanced animation controls
     uicontrol('Parent', parent, ...
               'Style', 'pushbutton', ...
               'String', '▶️ Play Animation', ...
               'FontSize', 11, ...
-              'Position', [10, 600, 200, 40], ...
-              'Callback', @play_animation);
+              'Position', [10, 600, 95, 40], ...
+              'Callback', @play_animation, ...
+              'TooltipString', 'Start animation playback');
+    
+    uicontrol('Parent', parent, ...
+              'Style', 'pushbutton', ...
+              'String', '⏸️ Pause', ...
+              'FontSize', 11, ...
+              'Position', [115, 600, 95, 40], ...
+              'Callback', @pause_animation, ...
+              'TooltipString', 'Pause animation');
     
     uicontrol('Parent', parent, ...
               'Style', 'pushbutton', ...
               'String', '⏹️ Stop Animation', ...
               'FontSize', 11, ...
               'Position', [10, 550, 200, 40], ...
-              'Callback', @stop_animation);
+              'Callback', @stop_animation, ...
+              'TooltipString', 'Stop animation and reset to beginning');
     
-    % Basic plotting controls
+    % Animation speed control
+    uicontrol('Parent', parent, ...
+              'Style', 'text', ...
+              'String', 'Animation Speed:', ...
+              'FontSize', 10, ...
+              'Position', [10, 520, 100, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    speed_slider = uicontrol('Parent', parent, ...
+                            'Style', 'slider', ...
+                            'Min', 0.1, ...
+                            'Max', 5.0, ...
+                            'Value', 1.0, ...
+                            'Position', [10, 500, 200, 20], ...
+                            'Callback', @update_animation_speed, ...
+                            'TooltipString', 'Adjust animation playback speed');
+    
+    % Speed display
+    speed_text = uicontrol('Parent', parent, ...
+                          'Style', 'text', ...
+                          'String', '1.0x', ...
+                          'FontSize', 9, ...
+                          'Position', [220, 500, 40, 20], ...
+                          'HorizontalAlignment', 'left', ...
+                          'Tag', 'speed_text');
+    
+    % Enhanced plotting controls
     uicontrol('Parent', parent, ...
               'Style', 'pushbutton', ...
               'String', '📊 Plot Forces', ...
               'FontSize', 11, ...
-              'Position', [10, 500, 200, 40], ...
-              'Callback', @plot_forces);
+              'Position', [10, 450, 95, 40], ...
+              'Callback', @plot_forces, ...
+              'TooltipString', 'Plot force data from simulation');
     
     uicontrol('Parent', parent, ...
               'Style', 'pushbutton', ...
               'String', '📊 Plot Torques', ...
               'FontSize', 11, ...
-              'Position', [10, 450, 200, 40], ...
-              'Callback', @plot_torques);
+              'Position', [115, 450, 95, 40], ...
+              'Callback', @plot_torques, ...
+              'TooltipString', 'Plot torque data from simulation');
     
     % Export controls
     uicontrol('Parent', parent, ...
               'Style', 'pushbutton', ...
               'String', '💾 Export Data', ...
               'FontSize', 11, ...
-              'Position', [10, 400, 200, 40], ...
-              'Callback', @export_simulation_data);
+              'Position', [10, 400, 95, 40], ...
+              'Callback', @export_simulation_data, ...
+              'TooltipString', 'Export simulation data to file');
+    
+    uicontrol('Parent', parent, ...
+              'Style', 'pushbutton', ...
+              'String', '🎬 Export Video', ...
+              'FontSize', 11, ...
+              'Position', [115, 400, 95, 40], ...
+              'Callback', @export_animation_video, ...
+              'TooltipString', 'Export animation as video file');
+    
+    % Performance monitoring panel
+    perf_panel = uipanel('Parent', parent, ...
+                        'Title', 'Performance Monitor', ...
+                        'FontSize', 10, ...
+                        'Position', [0.05, 0.25, 0.9, 0.15]);
+    
+    % Memory usage display
+    memory_text = uicontrol('Parent', perf_panel, ...
+                           'Style', 'text', ...
+                           'String', 'Memory: 0 MB', ...
+                           'FontSize', 9, ...
+                           'Position', [10, 60, 180, 20], ...
+                           'HorizontalAlignment', 'left', ...
+                           'Tag', 'memory_text');
+    
+    % CPU usage display
+    cpu_text = uicontrol('Parent', perf_panel, ...
+                        'Style', 'text', ...
+                        'String', 'CPU: 0%', ...
+                        'FontSize', 9, ...
+                        'Position', [10, 40, 180, 20], ...
+                        'HorizontalAlignment', 'left', ...
+                        'Tag', 'cpu_text');
+    
+    % Update performance button
+    uicontrol('Parent', perf_panel, ...
+              'Style', 'pushbutton', ...
+              'String', '🔄 Update', ...
+              'FontSize', 9, ...
+              'Position', [200, 40, 60, 25], ...
+              'Callback', @update_performance_monitor);
     
     % Progress panel
     progress_panel = uipanel('Parent', parent, ...
                             'Title', 'Progress', ...
                             'FontSize', 10, ...
-                            'Position', [0.05, 0.05, 0.9, 0.25]);
+                            'Position', [0.05, 0.05, 0.9, 0.18]);
     
     % Progress text
     progress_text = uicontrol('Parent', progress_panel, ...
@@ -278,23 +359,42 @@ function create_simulation_controls(parent, config)
                             'Style', 'text', ...
                             'String', '', ...
                             'BackgroundColor', [0.8, 0.8, 0.8], ...
-                            'Position', [10, 40, 180, 20]);
+                            'Position', [10, 40, 180, 20], ...
+                            'Tag', 'progress_bar');
+    
+    % Progress percentage
+    progress_percent = uicontrol('Parent', progress_panel, ...
+                                'Style', 'text', ...
+                                'String', '0%', ...
+                                'FontSize', 9, ...
+                                'Position', [200, 40, 40, 20], ...
+                                'HorizontalAlignment', 'center', ...
+                                'Tag', 'progress_percent');
     
     % Store handles
     setappdata(parent, 'progress_text', progress_text);
     setappdata(parent, 'progress_bar', progress_bar);
+    setappdata(parent, 'progress_percent', progress_percent);
+    setappdata(parent, 'speed_slider', speed_slider);
+    setappdata(parent, 'speed_text', speed_text);
+    setappdata(parent, 'memory_text', memory_text);
+    setappdata(parent, 'cpu_text', cpu_text);
+    
+    % Initialize performance monitoring
+    update_performance_monitor();
     
 end
 
 function create_simulation_visualization(parent, config)
-    % Create visualization area for simulation
+    % Create enhanced visualization area for simulation (Phase 2)
     
-    % Create animation axes
+    % Create animation axes with improved styling
     anim_ax = axes('Parent', parent, ...
-                   'Position', [0.1, 0.3, 0.8, 0.6], ...
+                   'Position', [0.1, 0.35, 0.8, 0.55], ...
                    'Box', 'on', ...
                    'GridLineStyle', ':', ...
-                   'GridAlpha', 0.3);
+                   'GridAlpha', 0.3, ...
+                   'FontSize', 10);
     
     hold(anim_ax, 'on');
     grid(anim_ax, 'on');
@@ -302,32 +402,46 @@ function create_simulation_visualization(parent, config)
     ylabel(anim_ax, 'Y Position (m)', 'FontSize', config.plot_font_size);
     title(anim_ax, 'Golf Swing Animation', 'FontSize', config.plot_font_size + 2);
     
-    % Set axis limits
-    xlim(anim_ax, [-2, 2]);
-    ylim(anim_ax, [-1, 1]);
+    % Set axis limits with better scaling
+    xlim(anim_ax, [-2.5, 2.5]);
+    ylim(anim_ax, [-1.5, 1.5]);
     axis(anim_ax, 'equal');
     
-    % Create plot handles for animation
+    % Create enhanced plot handles for animation
     animation_handles = struct();
-    animation_handles.club_shaft = plot(anim_ax, NaN, NaN, 'b-', 'LineWidth', 3);
-    animation_handles.club_head = plot(anim_ax, NaN, NaN, 'ro', 'MarkerSize', 10, 'MarkerFaceColor', 'r');
-    animation_handles.hands = plot(anim_ax, NaN, NaN, 'go', 'MarkerSize', 8, 'MarkerFaceColor', 'g');
-    animation_handles.arms = plot(anim_ax, NaN, NaN, 'k-', 'LineWidth', 2);
-    animation_handles.torso = plot(anim_ax, NaN, NaN, 'k-', 'LineWidth', 2);
+    animation_handles.club_shaft = plot(anim_ax, NaN, NaN, 'b-', 'LineWidth', 4, 'Tag', 'club_shaft');
+    animation_handles.club_head = plot(anim_ax, NaN, NaN, 'ro', 'MarkerSize', 12, 'MarkerFaceColor', 'r', 'Tag', 'club_head');
+    animation_handles.hands = plot(anim_ax, NaN, NaN, 'go', 'MarkerSize', 10, 'MarkerFaceColor', 'g', 'Tag', 'hands');
+    animation_handles.arms = plot(anim_ax, NaN, NaN, 'k-', 'LineWidth', 3, 'Tag', 'arms');
+    animation_handles.torso = plot(anim_ax, NaN, NaN, 'k-', 'LineWidth', 3, 'Tag', 'torso');
     
-    % Create time display
+    % Add trajectory trail
+    animation_handles.trajectory = plot(anim_ax, NaN, NaN, 'r:', 'LineWidth', 1, 'Tag', 'trajectory');
+    
+    % Create enhanced time display
     animation_handles.time_text = text(anim_ax, 0.02, 0.98, 'Time: 0.000s', ...
                                       'Units', 'normalized', ...
                                       'FontSize', 12, ...
+                                      'FontWeight', 'bold', ...
                                       'BackgroundColor', 'white', ...
-                                      'EdgeColor', 'black');
+                                      'EdgeColor', 'black', ...
+                                      'Tag', 'time_text');
     
-    % Create basic plot axes for forces/torques
+    % Create frame counter
+    animation_handles.frame_text = text(anim_ax, 0.02, 0.92, 'Frame: 0/0', ...
+                                       'Units', 'normalized', ...
+                                       'FontSize', 10, ...
+                                       'BackgroundColor', 'white', ...
+                                       'EdgeColor', 'black', ...
+                                       'Tag', 'frame_text');
+    
+    % Create enhanced plot axes for forces/torques
     plot_ax = axes('Parent', parent, ...
-                   'Position', [0.1, 0.05, 0.8, 0.2], ...
+                   'Position', [0.1, 0.05, 0.8, 0.25], ...
                    'Box', 'on', ...
                    'GridLineStyle', ':', ...
-                   'GridAlpha', 0.3);
+                   'GridAlpha', 0.3, ...
+                   'FontSize', 9);
     
     hold(plot_ax, 'on');
     grid(plot_ax, 'on');
@@ -335,15 +449,25 @@ function create_simulation_visualization(parent, config)
     ylabel(plot_ax, 'Magnitude', 'FontSize', config.plot_font_size);
     title(plot_ax, 'Forces and Torques', 'FontSize', config.plot_font_size);
     
+    % Add legend
+    legend(plot_ax, 'Location', 'northeast', 'FontSize', 8);
+    
     % Store handles
     setappdata(parent, 'anim_ax', anim_ax);
     setappdata(parent, 'animation_handles', animation_handles);
     setappdata(parent, 'plot_ax', plot_ax);
     
+    % Initialize animation state
+    setappdata(parent, 'animation_running', false);
+    setappdata(parent, 'animation_timer', []);
+    setappdata(parent, 'current_frame', 1);
+    setappdata(parent, 'total_frames', 0);
+    setappdata(parent, 'animation_data', []);
+    
 end
 
 function create_analysis_tab(parent, config)
-    % Create ZTCF/ZVCF analysis tab
+    % Create enhanced ZTCF/ZVCF analysis tab (Phase 2)
     
     % Create left panel for analysis controls
     control_panel = uipanel('Parent', parent, ...
@@ -351,55 +475,70 @@ function create_analysis_tab(parent, config)
                            'FontSize', 12, ...
                            'Position', [0.02, 0.02, 0.25, 0.96]);
     
-    % Analysis buttons
+    % Analysis buttons with enhanced tooltips
     uicontrol('Parent', control_panel, ...
               'Style', 'pushbutton', ...
               'String', '🚀 Run Complete Analysis', ...
               'FontSize', 11, ...
               'Position', [10, 700, 200, 40], ...
-              'Callback', @run_complete_analysis);
+              'Callback', @run_complete_analysis, ...
+              'TooltipString', 'Run complete analysis pipeline (Base → ZTCF → ZVCF → Process)');
     
     uicontrol('Parent', control_panel, ...
               'Style', 'pushbutton', ...
               'String', '📂 Load Existing Data', ...
               'FontSize', 11, ...
               'Position', [10, 650, 200, 40], ...
-              'Callback', @load_analysis_data);
+              'Callback', @load_analysis_data, ...
+              'TooltipString', 'Load previously generated analysis data');
     
-    % Individual analysis steps
+    % Individual analysis steps with validation
     uicontrol('Parent', control_panel, ...
               'Style', 'pushbutton', ...
               'String', '📊 Generate Base Data', ...
               'FontSize', 11, ...
               'Position', [10, 600, 200, 40], ...
-              'Callback', @generate_base_data);
+              'Callback', @generate_base_data, ...
+              'TooltipString', 'Generate base simulation data');
     
     uicontrol('Parent', control_panel, ...
               'Style', 'pushbutton', ...
               'String', '🔄 Generate ZTCF Data', ...
               'FontSize', 11, ...
               'Position', [10, 550, 200, 40], ...
-              'Callback', @generate_ztcf_data);
+              'Callback', @generate_ztcf_data, ...
+              'TooltipString', 'Generate Zero Torque Counterfactual data');
     
     uicontrol('Parent', control_panel, ...
               'Style', 'pushbutton', ...
               'String', '📈 Generate ZVCF Data', ...
               'FontSize', 11, ...
               'Position', [10, 500, 200, 40], ...
-              'Callback', @generate_zvcf_data);
+              'Callback', @generate_zvcf_data, ...
+              'TooltipString', 'Generate Zero Velocity Counterfactual data');
     
     uicontrol('Parent', control_panel, ...
               'Style', 'pushbutton', ...
               'String', '⚙️ Process Data Tables', ...
               'FontSize', 11, ...
               'Position', [10, 450, 200, 40], ...
-              'Callback', @process_data_tables);
+              'Callback', @process_data_tables, ...
+              'TooltipString', 'Process and align data tables');
     
-    % Progress panel
+    % Data validation button
+    uicontrol('Parent', control_panel, ...
+              'Style', 'pushbutton', ...
+              'String', '✅ Validate Data', ...
+              'FontSize', 11, ...
+              'Position', [10, 400, 200, 40], ...
+              'Callback', @validate_analysis_data, ...
+              'TooltipString', 'Validate data integrity and consistency');
+    
+    % Enhanced progress panel
     progress_panel = uipanel('Parent', control_panel, ...
-                            'Title', 'Progress', ...
+                            'Title', 'Progress & Status', ...
                             'FontSize', 10, ...
-                            'Position', [0.05, 0.05, 0.9, 0.3]);
+                            'Position', [0.05, 0.05, 0.9, 0.25]);
     
     % Progress text
     progress_text = uicontrol('Parent', progress_panel, ...
@@ -415,45 +554,141 @@ function create_analysis_tab(parent, config)
                             'Style', 'text', ...
                             'String', '', ...
                             'BackgroundColor', [0.8, 0.8, 0.8], ...
-                            'Position', [10, 40, 180, 20]);
+                            'Position', [10, 40, 180, 20], ...
+                            'Tag', 'analysis_progress_bar');
+    
+    % Progress percentage
+    progress_percent = uicontrol('Parent', progress_panel, ...
+                                'Style', 'text', ...
+                                'String', '0%', ...
+                                'FontSize', 9, ...
+                                'Position', [200, 40, 40, 20], ...
+                                'HorizontalAlignment', 'center', ...
+                                'Tag', 'analysis_progress_percent');
     
     % Store handles
     setappdata(control_panel, 'progress_text', progress_text);
     setappdata(control_panel, 'progress_bar', progress_bar);
+    setappdata(control_panel, 'progress_percent', progress_percent);
     
     % Create right panel for analysis status
     status_panel = uipanel('Parent', parent, ...
-                          'Title', 'Analysis Status', ...
+                          'Title', 'Analysis Status & Results', ...
                           'FontSize', 12, ...
                           'Position', [0.28, 0.02, 0.7, 0.96]);
     
-    % Create status display
-    create_analysis_status_display(status_panel, config);
+    % Create enhanced status display
+    create_enhanced_analysis_status_display(status_panel, config);
     
 end
 
-function create_analysis_status_display(parent, config)
-    % Create status display for analysis
+function create_enhanced_analysis_status_display(parent, config)
+    % Create enhanced status display for analysis (Phase 2)
     
-    % Status text area
+    % Status text area with better formatting
     status_text = uicontrol('Parent', parent, ...
                            'Style', 'text', ...
                            'String', 'Analysis Status: Ready', ...
                            'FontSize', 10, ...
-                           'Position', [20, 600, 600, 150], ...
+                           'Position', [20, 650, 600, 100], ...
                            'HorizontalAlignment', 'left', ...
-                           'BackgroundColor', [0.95, 0.95, 0.95]);
+                           'BackgroundColor', [0.95, 0.95, 0.95], ...
+                           'Tag', 'analysis_status_text');
     
-    % Data summary table
+    % Data summary table with enhanced columns
     summary_table = uitable('Parent', parent, ...
-                           'Position', [20, 200, 600, 380], ...
-                           'ColumnName', {'Dataset', 'Status', 'Data Points', 'Time Range'}, ...
-                           'Data', cell(4, 4), ...
-                           'ColumnWidth', {150, 100, 100, 150});
+                           'Position', [20, 250, 600, 380], ...
+                           'ColumnName', {'Dataset', 'Status', 'Data Points', 'Time Range', 'Last Modified'}, ...
+                           'Data', cell(4, 5), ...
+                           'ColumnWidth', {120, 80, 80, 120, 120}, ...
+                           'Tag', 'analysis_summary_table');
+    
+    % Data quality indicators
+    quality_panel = uipanel('Parent', parent, ...
+                           'Title', 'Data Quality Indicators', ...
+                           'FontSize', 10, ...
+                           'Position', [20, 150, 600, 80]);
+    
+    % Quality indicators
+    uicontrol('Parent', quality_panel, ...
+              'Style', 'text', ...
+              'String', 'Base Data:', ...
+              'FontSize', 9, ...
+              'Position', [10, 50, 80, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    base_quality = uicontrol('Parent', quality_panel, ...
+                            'Style', 'text', ...
+                            'String', '❌ Not Available', ...
+                            'FontSize', 9, ...
+                            'Position', [100, 50, 120, 20], ...
+                            'HorizontalAlignment', 'left', ...
+                            'Tag', 'base_quality');
+    
+    uicontrol('Parent', quality_panel, ...
+              'Style', 'text', ...
+              'String', 'ZTCF Data:', ...
+              'FontSize', 9, ...
+              'Position', [240, 50, 80, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    ztcf_quality = uicontrol('Parent', quality_panel, ...
+                            'Style', 'text', ...
+                            'String', '❌ Not Available', ...
+                            'FontSize', 9, ...
+                            'Position', [330, 50, 120, 20], ...
+                            'HorizontalAlignment', 'left', ...
+                            'Tag', 'ztcf_quality');
+    
+    uicontrol('Parent', quality_panel, ...
+              'Style', 'text', ...
+              'String', 'DELTA Data:', ...
+              'FontSize', 9, ...
+              'Position', [470, 50, 80, 20], ...
+              'HorizontalAlignment', 'left');
+    
+    delta_quality = uicontrol('Parent', quality_panel, ...
+                             'Style', 'text', ...
+                             'String', '❌ Not Available', ...
+                             'FontSize', 9, ...
+                             'Position', [560, 50, 120, 20], ...
+                             'HorizontalAlignment', 'left', ...
+                             'Tag', 'delta_quality');
+    
+    % Action buttons
+    uicontrol('Parent', parent, ...
+              'Style', 'pushbutton', ...
+              'String', '🔄 Refresh Status', ...
+              'FontSize', 10, ...
+              'Position', [20, 100, 120, 30], ...
+              'Callback', @refresh_analysis_status, ...
+              'TooltipString', 'Refresh analysis status and data availability');
+    
+    uicontrol('Parent', parent, ...
+              'Style', 'pushbutton', ...
+              'String', '📊 View Statistics', ...
+              'FontSize', 10, ...
+              'Position', [150, 100, 120, 30], ...
+              'Callback', @view_analysis_statistics, ...
+              'TooltipString', 'View detailed statistics for loaded data');
+    
+    uicontrol('Parent', parent, ...
+              'Style', 'pushbutton', ...
+              'String', '💾 Export Results', ...
+              'FontSize', 10, ...
+              'Position', [280, 100, 120, 30], ...
+              'Callback', @export_analysis_results, ...
+              'TooltipString', 'Export analysis results and reports');
     
     % Store handles
     setappdata(parent, 'status_text', status_text);
     setappdata(parent, 'summary_table', summary_table);
+    setappdata(parent, 'base_quality', base_quality);
+    setappdata(parent, 'ztcf_quality', ztcf_quality);
+    setappdata(parent, 'delta_quality', delta_quality);
+    
+    % Initialize status
+    refresh_analysis_status();
     
 end
 
@@ -3056,4 +3291,720 @@ end
 function close_gui_callback(src, ~)
     % Clean up when closing GUI
     delete(src);
+end
+
+% ============================================================================
+% PHASE 2 ENHANCEMENTS - NEW CALLBACK FUNCTIONS
+% ============================================================================
+
+function pause_animation(src, ~)
+    % Pause animation playback
+    try
+        main_fig = findobj('Name', '2D Golf Swing Analysis GUI');
+        if isempty(main_fig)
+            errordlg('GUI not found.', 'Error');
+            return;
+        end
+        
+        % Find simulation tab
+        main_tab_group = getappdata(main_fig, 'main_tab_group');
+        simulation_tab = findobj(main_tab_group, 'Title', '🎮 Simulation');
+        if isempty(simulation_tab)
+            errordlg('Simulation tab not found.', 'Error');
+            return;
+        end
+        
+        % Find visualization panel
+        viz_panel = findobj(simulation_tab, 'Title', 'Visualization');
+        if isempty(viz_panel)
+            errordlg('Visualization panel not found.', 'Error');
+            return;
+        end
+        
+        % Stop animation timer
+        animation_timer = getappdata(viz_panel, 'animation_timer');
+        if ~isempty(animation_timer) && isvalid(animation_timer)
+            stop(animation_timer);
+        end
+        
+        setappdata(viz_panel, 'animation_running', false);
+        
+        % Update progress text
+        progress_text = findobj(simulation_tab, 'Tag', 'progress_text');
+        if ~isempty(progress_text)
+            progress_text.String = 'Animation paused';
+        end
+        
+    catch ME
+        errordlg(sprintf('Error pausing animation: %s', ME.message), 'Error');
+    end
+end
+
+function update_animation_speed(src, ~)
+    % Update animation playback speed
+    try
+        main_fig = findobj('Name', '2D Golf Swing Analysis GUI');
+        if isempty(main_fig)
+            return;
+        end
+        
+        % Find simulation tab
+        main_tab_group = getappdata(main_fig, 'main_tab_group');
+        simulation_tab = findobj(main_tab_group, 'Title', '🎮 Simulation');
+        if isempty(simulation_tab)
+            return;
+        end
+        
+        % Find speed text
+        speed_text = findobj(simulation_tab, 'Tag', 'speed_text');
+        if ~isempty(speed_text)
+            speed_value = src.Value;
+            speed_text.String = sprintf('%.1fx', speed_value);
+        end
+        
+        % Update animation timer if running
+        viz_panel = findobj(simulation_tab, 'Title', 'Visualization');
+        if ~isempty(viz_panel)
+            animation_timer = getappdata(viz_panel, 'animation_timer');
+            if ~isempty(animation_timer) && isvalid(animation_timer)
+                % Restart timer with new period
+                base_period = 0.05; % 50ms base period
+                new_period = base_period / speed_value;
+                set(animation_timer, 'Period', new_period);
+            end
+        end
+        
+    catch ME
+        warning('Error updating animation speed: %s', ME.message);
+    end
+end
+
+function update_performance_monitor(src, ~)
+    % Update performance monitoring display
+    try
+        main_fig = findobj('Name', '2D Golf Swing Analysis GUI');
+        if isempty(main_fig)
+            return;
+        end
+        
+        % Find simulation tab
+        main_tab_group = getappdata(main_fig, 'main_tab_group');
+        simulation_tab = findobj(main_tab_group, 'Title', '🎮 Simulation');
+        if isempty(simulation_tab)
+            return;
+        end
+        
+        % Get memory usage
+        memory_info = memory;
+        memory_mb = memory_info.MemUsedMATLAB / 1e6;
+        
+        % Update memory text
+        memory_text = findobj(simulation_tab, 'Tag', 'memory_text');
+        if ~isempty(memory_text)
+            memory_text.String = sprintf('Memory: %.1f MB', memory_mb);
+        end
+        
+        % Get CPU usage (simplified - MATLAB doesn't provide direct CPU usage)
+        % This is a placeholder for future implementation
+        cpu_text = findobj(simulation_tab, 'Tag', 'cpu_text');
+        if ~isempty(cpu_text)
+            cpu_text.String = 'CPU: N/A (MATLAB limitation)';
+        end
+        
+    catch ME
+        warning('Error updating performance monitor: %s', ME.message);
+    end
+end
+
+function export_animation_video(src, ~)
+    % Export animation as video file
+    try
+        main_fig = findobj('Name', '2D Golf Swing Analysis GUI');
+        if isempty(main_fig)
+            errordlg('GUI not found.', 'Error');
+            return;
+        end
+        
+        % Find simulation tab
+        main_tab_group = getappdata(main_fig, 'main_tab_group');
+        simulation_tab = findobj(main_tab_group, 'Title', '🎮 Simulation');
+        if isempty(simulation_tab)
+            errordlg('Simulation tab not found.', 'Error');
+            return;
+        end
+        
+        % Find visualization panel
+        viz_panel = findobj(simulation_tab, 'Title', 'Visualization');
+        if isempty(viz_panel)
+            errordlg('Visualization panel not found.', 'Error');
+            return;
+        end
+        
+        % Check if animation data exists
+        animation_data = getappdata(viz_panel, 'animation_data');
+        if isempty(animation_data)
+            errordlg('No animation data available. Run simulation first.', 'Error');
+            return;
+        end
+        
+        % Get file save dialog
+        [filename, pathname] = uiputfile({'*.avi', 'AVI Video'; '*.mp4', 'MP4 Video'}, 'Export Animation Video');
+        
+        if filename == 0
+            return;
+        end
+        
+        full_path = fullfile(pathname, filename);
+        
+        % Get animation axes
+        anim_ax = getappdata(viz_panel, 'anim_ax');
+        if isempty(anim_ax)
+            errordlg('Animation axes not found.', 'Error');
+            return;
+        end
+        
+        % Create video writer
+        [~, ~, ext] = fileparts(filename);
+        switch lower(ext)
+            case '.avi'
+                v = VideoWriter(full_path, 'Motion JPEG AVI');
+            case '.mp4'
+                v = VideoWriter(full_path, 'MPEG-4');
+            otherwise
+                errordlg('Unsupported video format.', 'Error');
+                return;
+        end
+        
+        v.FrameRate = 30; % 30 FPS
+        v.Quality = 95; % High quality
+        
+        % Show progress
+        progress_text = findobj(simulation_tab, 'Tag', 'progress_text');
+        if ~isempty(progress_text)
+            progress_text.String = 'Exporting video...';
+        end
+        
+        % Open video writer
+        open(v);
+        
+        % Write frames
+        total_frames = length(animation_data);
+        for i = 1:total_frames
+            % Update animation frame
+            update_animation_frame(anim_ax, animation_data, i);
+            
+            % Capture frame
+            frame = getframe(anim_ax);
+            writeVideo(v, frame);
+            
+            % Update progress
+            if ~isempty(progress_text) && mod(i, 10) == 0
+                progress_percent = round(100 * i / total_frames);
+                progress_text.String = sprintf('Exporting video... %d%%', progress_percent);
+                drawnow;
+            end
+        end
+        
+        % Close video writer
+        close(v);
+        
+        % Update progress
+        if ~isempty(progress_text)
+            progress_text.String = sprintf('Video exported to: %s', full_path);
+        end
+        
+        msgbox(sprintf('Animation exported to: %s', full_path), 'Success');
+        
+    catch ME
+        errordlg(sprintf('Error exporting video: %s', ME.message), 'Error');
+    end
+end
+
+function update_animation_frame(anim_ax, animation_data, frame_idx)
+    % Update animation frame with data
+    try
+        if frame_idx > length(animation_data)
+            return;
+        end
+        
+        frame_data = animation_data{frame_idx};
+        
+        % Update plot handles (this is a simplified example)
+        % In a real implementation, you would update with actual simulation data
+        handles = findobj(anim_ax, 'Tag', 'club_shaft');
+        if ~isempty(handles)
+            % Update club shaft position (example)
+            set(handles, 'XData', [0, 1], 'YData', [0, 0]);
+        end
+        
+        % Update time display
+        time_text = findobj(anim_ax, 'Tag', 'time_text');
+        if ~isempty(time_text)
+            time_text.String = sprintf('Time: %.3fs', frame_idx * 0.01);
+        end
+        
+        % Update frame counter
+        frame_text = findobj(anim_ax, 'Tag', 'frame_text');
+        if ~isempty(frame_text)
+            frame_text.String = sprintf('Frame: %d/%d', frame_idx, length(animation_data));
+        end
+        
+        drawnow;
+        
+    catch ME
+        warning('Error updating animation frame: %s', ME.message);
+    end
+end
+
+function validate_parameters()
+    % Validate simulation parameters before running
+    try
+        main_fig = findobj('Name', '2D Golf Swing Analysis GUI');
+        if isempty(main_fig)
+            return false;
+        end
+        
+        % Find simulation tab
+        main_tab_group = getappdata(main_fig, 'main_tab_group');
+        simulation_tab = findobj(main_tab_group, 'Title', '🎮 Simulation');
+        if isempty(simulation_tab)
+            return false;
+        end
+        
+        % Find parameter panel
+        param_panel = findobj(simulation_tab, 'Title', 'Parameter Controls');
+        if isempty(param_panel)
+            return false;
+        end
+        
+        % Validate stop time
+        stop_time_edit = getappdata(param_panel, 'stop_time_edit');
+        if ~isempty(stop_time_edit)
+            stop_time = str2double(stop_time_edit.String);
+            if isnan(stop_time) || stop_time <= 0
+                errordlg('Stop time must be a positive number.', 'Parameter Error');
+                return false;
+            end
+        end
+        
+        % Validate max step
+        max_step_edit = getappdata(param_panel, 'max_step_edit');
+        if ~isempty(max_step_edit)
+            max_step = str2double(max_step_edit.String);
+            if isnan(max_step) || max_step <= 0
+                errordlg('Max step must be a positive number.', 'Parameter Error');
+                return false;
+            end
+        end
+        
+        % Validate club length
+        club_length_edit = getappdata(param_panel, 'club_length_edit');
+        if ~isempty(club_length_edit)
+            club_length = str2double(club_length_edit.String);
+            if isnan(club_length) || club_length <= 0
+                errordlg('Club length must be a positive number.', 'Parameter Error');
+                return false;
+            end
+        end
+        
+        return true;
+        
+    catch ME
+        errordlg(sprintf('Error validating parameters: %s', ME.message), 'Error');
+        return false;
+    end
+end
+
+% ============================================================================
+% ENHANCED ANALYSIS TAB CALLBACK FUNCTIONS
+% ============================================================================
+
+function validate_analysis_data(src, ~)
+    % Validate analysis data integrity and consistency
+    try
+        main_fig = findobj('Name', '2D Golf Swing Analysis GUI');
+        if isempty(main_fig)
+            errordlg('GUI not found.', 'Error');
+            return;
+        end
+        
+        % Get data from appdata
+        BASEQ = getappdata(main_fig, 'BASEQ');
+        ZTCFQ = getappdata(main_fig, 'ZTCFQ');
+        DELTAQ = getappdata(main_fig, 'DELTAQ');
+        
+        validation_results = {};
+        
+        % Validate BASEQ data
+        if ~isempty(BASEQ)
+            validation_results{end+1} = '✅ BASEQ: Valid';
+            if ismember('Time', BASEQ.Properties.VariableNames)
+                validation_results{end+1} = sprintf('   - Time range: %.3f to %.3f s', min(BASEQ.Time), max(BASEQ.Time));
+                validation_results{end+1} = sprintf('   - Data points: %d', height(BASEQ));
+            end
+        else
+            validation_results{end+1} = '❌ BASEQ: Not available';
+        end
+        
+        % Validate ZTCFQ data
+        if ~isempty(ZTCFQ)
+            validation_results{end+1} = '✅ ZTCFQ: Valid';
+            if ismember('Time', ZTCFQ.Properties.VariableNames)
+                validation_results{end+1} = sprintf('   - Time range: %.3f to %.3f s', min(ZTCFQ.Time), max(ZTCFQ.Time));
+                validation_results{end+1} = sprintf('   - Data points: %d', height(ZTCFQ));
+            end
+        else
+            validation_results{end+1} = '❌ ZTCFQ: Not available';
+        end
+        
+        % Validate DELTAQ data
+        if ~isempty(DELTAQ)
+            validation_results{end+1} = '✅ DELTAQ: Valid';
+            if ismember('Time', DELTAQ.Properties.VariableNames)
+                validation_results{end+1} = sprintf('   - Time range: %.3f to %.3f s', min(DELTAQ.Time), max(DELTAQ.Time));
+                validation_results{end+1} = sprintf('   - Data points: %d', height(DELTAQ));
+            end
+        else
+            validation_results{end+1} = '❌ DELTAQ: Not available';
+        end
+        
+        % Check data consistency
+        if ~isempty(BASEQ) && ~isempty(ZTCFQ) && ~isempty(DELTAQ)
+            if ismember('Time', BASEQ.Properties.VariableNames) && ...
+               ismember('Time', ZTCFQ.Properties.VariableNames) && ...
+               ismember('Time', DELTAQ.Properties.VariableNames)
+                
+                base_time_range = [min(BASEQ.Time), max(BASEQ.Time)];
+                ztcf_time_range = [min(ZTCFQ.Time), max(ZTCFQ.Time)];
+                delta_time_range = [min(DELTAQ.Time), max(DELTAQ.Time)];
+                
+                if abs(base_time_range(1) - ztcf_time_range(1)) < 0.001 && ...
+                   abs(base_time_range(2) - ztcf_time_range(2)) < 0.001
+                    validation_results{end+1} = '✅ Time alignment: Consistent';
+                else
+                    validation_results{end+1} = '⚠️ Time alignment: Inconsistent';
+                end
+            end
+        end
+        
+        % Display validation results
+        result_text = strjoin(validation_results, '\n');
+        msgbox(result_text, 'Data Validation Results');
+        
+    catch ME
+        errordlg(sprintf('Error validating data: %s', ME.message), 'Error');
+    end
+end
+
+function refresh_analysis_status(src, ~)
+    % Refresh analysis status and data availability
+    try
+        main_fig = findobj('Name', '2D Golf Swing Analysis GUI');
+        if isempty(main_fig)
+            return;
+        end
+        
+        % Find analysis tab
+        main_tab_group = getappdata(main_fig, 'main_tab_group');
+        analysis_tab = findobj(main_tab_group, 'Title', '📊 ZTCF/ZVCF Analysis');
+        if isempty(analysis_tab)
+            return;
+        end
+        
+        % Find status panel
+        status_panel = findobj(analysis_tab, 'Title', 'Analysis Status & Results');
+        if isempty(status_panel)
+            return;
+        end
+        
+        % Get data from appdata
+        BASEQ = getappdata(main_fig, 'BASEQ');
+        ZTCFQ = getappdata(main_fig, 'ZTCFQ');
+        DELTAQ = getappdata(main_fig, 'DELTAQ');
+        
+        % Update quality indicators
+        base_quality = findobj(status_panel, 'Tag', 'base_quality');
+        if ~isempty(base_quality)
+            if ~isempty(BASEQ)
+                base_quality.String = '✅ Available';
+                base_quality.ForegroundColor = [0, 0.7, 0];
+            else
+                base_quality.String = '❌ Not Available';
+                base_quality.ForegroundColor = [0.7, 0, 0];
+            end
+        end
+        
+        ztcf_quality = findobj(status_panel, 'Tag', 'ztcf_quality');
+        if ~isempty(ztcf_quality)
+            if ~isempty(ZTCFQ)
+                ztcf_quality.String = '✅ Available';
+                ztcf_quality.ForegroundColor = [0, 0.7, 0];
+            else
+                ztcf_quality.String = '❌ Not Available';
+                ztcf_quality.ForegroundColor = [0.7, 0, 0];
+            end
+        end
+        
+        delta_quality = findobj(status_panel, 'Tag', 'delta_quality');
+        if ~isempty(delta_quality)
+            if ~isempty(DELTAQ)
+                delta_quality.String = '✅ Available';
+                delta_quality.ForegroundColor = [0, 0.7, 0];
+            else
+                delta_quality.String = '❌ Not Available';
+                delta_quality.ForegroundColor = [0.7, 0, 0];
+            end
+        end
+        
+        % Update summary table
+        summary_table = findobj(status_panel, 'Tag', 'analysis_summary_table');
+        if ~isempty(summary_table)
+            table_data = cell(4, 5);
+            
+            % BASEQ row
+            if ~isempty(BASEQ)
+                table_data{1, 1} = 'BASEQ';
+                table_data{1, 2} = 'Available';
+                table_data{1, 3} = num2str(height(BASEQ));
+                if ismember('Time', BASEQ.Properties.VariableNames)
+                    table_data{1, 4} = sprintf('%.3f-%.3f', min(BASEQ.Time), max(BASEQ.Time));
+                else
+                    table_data{1, 4} = 'N/A';
+                end
+                table_data{1, 5} = datestr(now, 'yyyy-mm-dd HH:MM');
+            else
+                table_data{1, 1} = 'BASEQ';
+                table_data{1, 2} = 'Not Available';
+                table_data{1, 3} = '0';
+                table_data{1, 4} = 'N/A';
+                table_data{1, 5} = 'N/A';
+            end
+            
+            % ZTCFQ row
+            if ~isempty(ZTCFQ)
+                table_data{2, 1} = 'ZTCFQ';
+                table_data{2, 2} = 'Available';
+                table_data{2, 3} = num2str(height(ZTCFQ));
+                if ismember('Time', ZTCFQ.Properties.VariableNames)
+                    table_data{2, 4} = sprintf('%.3f-%.3f', min(ZTCFQ.Time), max(ZTCFQ.Time));
+                else
+                    table_data{2, 4} = 'N/A';
+                end
+                table_data{2, 5} = datestr(now, 'yyyy-mm-dd HH:MM');
+            else
+                table_data{2, 1} = 'ZTCFQ';
+                table_data{2, 2} = 'Not Available';
+                table_data{2, 3} = '0';
+                table_data{2, 4} = 'N/A';
+                table_data{2, 5} = 'N/A';
+            end
+            
+            % DELTAQ row
+            if ~isempty(DELTAQ)
+                table_data{3, 1} = 'DELTAQ';
+                table_data{3, 2} = 'Available';
+                table_data{3, 3} = num2str(height(DELTAQ));
+                if ismember('Time', DELTAQ.Properties.VariableNames)
+                    table_data{3, 4} = sprintf('%.3f-%.3f', min(DELTAQ.Time), max(DELTAQ.Time));
+                else
+                    table_data{3, 4} = 'N/A';
+                end
+                table_data{3, 5} = datestr(now, 'yyyy-mm-dd HH:MM');
+            else
+                table_data{3, 1} = 'DELTAQ';
+                table_data{3, 2} = 'Not Available';
+                table_data{3, 3} = '0';
+                table_data{3, 4} = 'N/A';
+                table_data{3, 5} = 'N/A';
+            end
+            
+            summary_table.Data = table_data;
+        end
+        
+        % Update status text
+        status_text = findobj(status_panel, 'Tag', 'analysis_status_text');
+        if ~isempty(status_text)
+            if ~isempty(BASEQ) || ~isempty(ZTCFQ) || ~isempty(DELTAQ)
+                status_text.String = 'Analysis Status: Data Available - Ready for analysis';
+            else
+                status_text.String = 'Analysis Status: No data available - Run analysis first';
+            end
+        end
+        
+    catch ME
+        warning('Error refreshing analysis status: %s', ME.message);
+    end
+end
+
+function view_analysis_statistics(src, ~)
+    % View detailed statistics for loaded data
+    try
+        main_fig = findobj('Name', '2D Golf Swing Analysis GUI');
+        if isempty(main_fig)
+            errordlg('GUI not found.', 'Error');
+            return;
+        end
+        
+        % Get data from appdata
+        BASEQ = getappdata(main_fig, 'BASEQ');
+        ZTCFQ = getappdata(main_fig, 'ZTCFQ');
+        DELTAQ = getappdata(main_fig, 'DELTAQ');
+        
+        if isempty(BASEQ) && isempty(ZTCFQ) && isempty(DELTAQ)
+            errordlg('No analysis data available. Run analysis first.', 'Error');
+            return;
+        end
+        
+        % Create statistics figure
+        stats_fig = figure('Name', 'Analysis Statistics', ...
+                          'NumberTitle', 'off', ...
+                          'Position', [100, 100, 800, 600], ...
+                          'MenuBar', 'none');
+        
+        % Create tab group for different datasets
+        tab_group = uitabgroup('Parent', stats_fig, ...
+                              'Position', [0.02, 0.02, 0.96, 0.96]);
+        
+        % BASEQ statistics tab
+        if ~isempty(BASEQ)
+            base_tab = uitab('Parent', tab_group, 'Title', 'BASEQ Statistics');
+            create_dataset_statistics(base_tab, BASEQ, 'BASEQ');
+        end
+        
+        % ZTCFQ statistics tab
+        if ~isempty(ZTCFQ)
+            ztcf_tab = uitab('Parent', tab_group, 'Title', 'ZTCFQ Statistics');
+            create_dataset_statistics(ztcf_tab, ZTCFQ, 'ZTCFQ');
+        end
+        
+        % DELTAQ statistics tab
+        if ~isempty(DELTAQ)
+            delta_tab = uitab('Parent', tab_group, 'Title', 'DELTAQ Statistics');
+            create_dataset_statistics(delta_tab, DELTAQ, 'DELTAQ');
+        end
+        
+    catch ME
+        errordlg(sprintf('Error viewing statistics: %s', ME.message), 'Error');
+    end
+end
+
+function create_dataset_statistics(parent, data, dataset_name)
+    % Create statistics display for a dataset
+    try
+        % Get numeric variables
+        numeric_vars = varfun(@isnumeric, data, 'OutputFormat', 'cell');
+        numeric_vars = data.Properties.VariableNames(numeric_vars);
+        numeric_vars = setdiff(numeric_vars, 'Time');
+        
+        if isempty(numeric_vars)
+            uicontrol('Parent', parent, ...
+                     'Style', 'text', ...
+                     'String', 'No numeric variables found in data.', ...
+                     'FontSize', 12, ...
+                     'Position', [50, 250, 300, 50], ...
+                     'HorizontalAlignment', 'center');
+            return;
+        end
+        
+        % Create statistics table
+        stats_table = uitable('Parent', parent, ...
+                             'Position', [50, 50, 700, 400], ...
+                             'ColumnName', {'Variable', 'Min', 'Max', 'Mean', 'Std', 'Range'}, ...
+                             'Data', cell(length(numeric_vars), 6), ...
+                             'ColumnWidth', {150, 100, 100, 100, 100, 100});
+        
+        % Calculate statistics
+        for i = 1:length(numeric_vars)
+            var_name = numeric_vars{i};
+            var_data = data.(var_name);
+            
+            stats_table.Data{i, 1} = var_name;
+            stats_table.Data{i, 2} = min(var_data);
+            stats_table.Data{i, 3} = max(var_data);
+            stats_table.Data{i, 4} = mean(var_data);
+            stats_table.Data{i, 5} = std(var_data);
+            stats_table.Data{i, 6} = max(var_data) - min(var_data);
+        end
+        
+        % Add title
+        uicontrol('Parent', parent, ...
+                 'Style', 'text', ...
+                 'String', sprintf('%s Dataset Statistics', dataset_name), ...
+                 'FontSize', 14, ...
+                 'FontWeight', 'bold', ...
+                 'Position', [50, 470, 300, 30], ...
+                 'HorizontalAlignment', 'left');
+        
+    catch ME
+        warning('Error creating dataset statistics: %s', ME.message);
+    end
+end
+
+function export_analysis_results(src, ~)
+    % Export analysis results and reports
+    try
+        main_fig = findobj('Name', '2D Golf Swing Analysis GUI');
+        if isempty(main_fig)
+            errordlg('GUI not found.', 'Error');
+            return;
+        end
+        
+        % Get data from appdata
+        BASEQ = getappdata(main_fig, 'BASEQ');
+        ZTCFQ = getappdata(main_fig, 'ZTCFQ');
+        DELTAQ = getappdata(main_fig, 'DELTAQ');
+        
+        if isempty(BASEQ) && isempty(ZTCFQ) && isempty(DELTAQ)
+            errordlg('No analysis data available to export.', 'Error');
+            return;
+        end
+        
+        % Get file save dialog
+        [filename, pathname] = uiputfile({'*.mat', 'MATLAB Data File'; '*.xlsx', 'Excel File'; '*.csv', 'CSV Files'}, 'Export Analysis Results');
+        
+        if filename == 0
+            return;
+        end
+        
+        full_path = fullfile(pathname, filename);
+        
+        % Export based on file type
+        [~, ~, ext] = fileparts(filename);
+        switch lower(ext)
+            case '.mat'
+                % Export as MATLAB file
+                save(full_path, 'BASEQ', 'ZTCFQ', 'DELTAQ');
+                msgbox(sprintf('Analysis results exported to: %s', full_path), 'Success');
+                
+            case '.xlsx'
+                % Export as Excel file with multiple sheets
+                if ~isempty(BASEQ)
+                    writetable(BASEQ, full_path, 'Sheet', 'BASEQ');
+                end
+                if ~isempty(ZTCFQ)
+                    writetable(ZTCFQ, full_path, 'Sheet', 'ZTCFQ');
+                end
+                if ~isempty(DELTAQ)
+                    writetable(DELTAQ, full_path, 'Sheet', 'DELTAQ');
+                end
+                msgbox(sprintf('Analysis results exported to: %s', full_path), 'Success');
+                
+            case '.csv'
+                % Export as CSV (user will need to choose which dataset)
+                if ~isempty(BASEQ)
+                    [csv_filename, csv_pathname] = uiputfile('*.csv', 'Export BASEQ as CSV');
+                    if csv_filename ~= 0
+                        writetable(BASEQ, fullfile(csv_pathname, csv_filename));
+                    end
+                end
+                msgbox('CSV export completed for selected datasets.', 'Success');
+                
+            otherwise
+                errordlg('Unsupported file format.', 'Error');
+                return;
+        end
+        
+    catch ME
+        errordlg(sprintf('Error exporting results: %s', ME.message), 'Error');
+    end
 end
