@@ -1,56 +1,49 @@
-function save_data_tables(config, BASE, ZTCF, DELTA, BASEQ, ZTCFQ, DELTAQ, ZVCFTable, ZVCFTableQ)
-% SAVE_DATA_TABLES - Save all data tables to files
+function save_data_tables(config, BASEQ, ZTCFQ, DELTAQ)
+% SAVE_DATA_TABLES - Save processed Q-tables to files
 %
 % Inputs:
 %   config - Configuration structure from model_config()
-%   BASE, ZTCF, DELTA, BASEQ, ZTCFQ, DELTAQ - Data tables
-%   ZVCFTable, ZVCFTableQ - ZVCF data tables
+%   BASEQ - Processed base data table
+%   ZTCFQ - Processed ZTCF data table
+%   DELTAQ - Processed DELTA data table
 %
-% This function saves all data tables to the Tables directory
+% This function:
+%   1. Creates the Tables directory if it doesn't exist
+%   2. Saves BASEQ, ZTCFQ, and DELTAQ to .mat files
+%   3. Provides feedback on the save operation
 
-    % Create Tables directory if it doesn't exist
-    if ~exist(config.tables_path, 'dir')
-        mkdir(config.tables_path);
-    end
-    
-    % Change to Tables directory
-    cd(config.tables_path);
-    
     fprintf('💾 Saving data tables...\n');
     
-    % Save main data tables
-    save('BASE.mat', 'BASE');
-    save('ZTCF.mat', 'ZTCF');
-    save('DELTA.mat', 'DELTA');
-    save('BASEQ.mat', 'BASEQ');
-    save('ZTCFQ.mat', 'ZTCFQ');
-    save('DELTAQ.mat', 'DELTAQ');
-    
-    % Save ZVCF tables
-    save('ZVCFTable.mat', 'ZVCFTable');
-    save('ZVCFTableQ.mat', 'ZVCFTableQ');
-    
-    % Save additional tables if they exist in workspace
-    if exist('ClubQuiverAlphaReversal', 'var')
-        save('ClubQuiverAlphaReversal.mat', 'ClubQuiverAlphaReversal');
+    try
+        % Create Tables directory if it doesn't exist
+        if ~exist(config.tables_path, 'dir')
+            fprintf('   Creating Tables directory: %s\n', config.tables_path);
+            mkdir(config.tables_path);
+        end
+        
+        % Save BASEQ
+        baseq_file = fullfile(config.tables_path, 'BASEQ.mat');
+        fprintf('   Saving BASEQ to: %s\n', baseq_file);
+        save(baseq_file, 'BASEQ');
+        
+        % Save ZTCFQ
+        ztcfq_file = fullfile(config.tables_path, 'ZTCFQ.mat');
+        fprintf('   Saving ZTCFQ to: %s\n', ztcfq_file);
+        save(ztcfq_file, 'ZTCFQ');
+        
+        % Save DELTAQ
+        deltaq_file = fullfile(config.tables_path, 'DELTAQ.mat');
+        fprintf('   Saving DELTAQ to: %s\n', deltaq_file);
+        save(deltaq_file, 'DELTAQ');
+        
+        fprintf('✅ Data tables saved successfully\n');
+        fprintf('   BASEQ: %s\n', baseq_file);
+        fprintf('   ZTCFQ: %s\n', ztcfq_file);
+        fprintf('   DELTAQ: %s\n', deltaq_file);
+        
+    catch ME
+        fprintf('❌ Error saving data tables: %s\n', ME.message);
+        rethrow(ME);
     end
-    
-    if exist('ClubQuiverMaxCHS', 'var')
-        save('ClubQuiverMaxCHS.mat', 'ClubQuiverMaxCHS');
-    end
-    
-    if exist('ClubQuiverZTCFAlphaReversal', 'var')
-        save('ClubQuiverZTCFAlphaReversal.mat', 'ClubQuiverZTCFAlphaReversal');
-    end
-    
-    if exist('ClubQuiverDELTAAlphaReversal', 'var')
-        save('ClubQuiverDELTAAlphaReversal.mat', 'ClubQuiverDELTAAlphaReversal');
-    end
-    
-    if exist('SummaryTable', 'var')
-        save('SummaryTable.mat', 'SummaryTable');
-    end
-    
-    fprintf('✅ Data tables saved successfully to: %s\n', config.tables_path);
     
 end

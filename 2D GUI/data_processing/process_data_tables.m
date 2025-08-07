@@ -1,5 +1,5 @@
-function [BASE, ZTCF, DELTA, BASEQ, ZTCFQ, DELTAQ] = process_data_tables(config, BaseData, ZTCF)
-% PROCESS_DATA_TABLES - Process and interpolate data tables
+function [BASEQ, ZTCFQ, DELTAQ] = process_data_tables(config, BaseData, ZTCF)
+% PROCESS_DATA_TABLES - Process base and ZTCF data into Q-tables for visualization
 %
 % Inputs:
 %   config - Configuration structure from model_config()
@@ -7,78 +7,98 @@ function [BASE, ZTCF, DELTA, BASEQ, ZTCFQ, DELTAQ] = process_data_tables(config,
 %   ZTCF - ZTCF data table from generate_ztcf_data()
 %
 % Returns:
-%   BASE, ZTCF, DELTA - Processed data tables
-%   BASEQ, ZTCFQ, DELTAQ - Q-spaced data tables
+%   BASEQ - Processed base data table for visualization
+%   ZTCFQ - Processed ZTCF data table for visualization
+%   DELTAQ - Delta data table (BASEQ - ZTCFQ) for visualization
 %
 % This function:
-%   1. Converts tables to timetables
-%   2. Interpolates data to match time points
-%   3. Calculates DELTA (difference between BASE and ZTCF)
-%   4. Creates uniformly spaced versions (Q tables)
+%   1. Converts BaseData and ZTCF to timetable format
+%   2. Resamples data to consistent time intervals
+%   3. Creates DELTAQ as the difference between BASEQ and ZTCFQ
+%   4. Returns all three Q-tables ready for visualization
 
     fprintf('🔄 Processing data tables...\n');
     
-    % Generate duration times for each table
-    BaseDataTime = seconds(BaseData.Time);
-    ZTCFTime = seconds(ZTCF.Time);
-    
-    % Create temporary tables for modification
-    BaseDataTemp = BaseData;
-    ZTCFTemp = ZTCF;
-    
-    % Write duration times into the tables
-    BaseDataTemp.('t') = BaseDataTime;
-    ZTCFTemp.('t') = ZTCFTime;
-    
-    % Create timetables
-    BaseDataTimetableTemp = table2timetable(BaseDataTemp, "RowTimes", "t");
-    ZTCFTimetableTemp = table2timetable(ZTCFTemp, "RowTimes", "t");
-    
-    % Remove the remaining time variable
-    BaseDataTimetable = removevars(BaseDataTimetableTemp, 'Time');
-    ZTCFTimetable = removevars(ZTCFTimetableTemp, 'Time');
-    
-    % Generate matched set using interpolation
-    BaseDataMatched = retime(BaseDataTimetable, ZTCFTime, config.interpolation_method);
-    
-    % Generate DELTA
-    DELTATimetable = BaseDataMatched - ZTCFTimetable;
-    
-    % Define sample time and create uniform tables
-    Ts = config.sample_time;
-    
-    BASEUniform = retime(BaseDataMatched, 'regular', config.interpolation_method, 'TimeStep', seconds(Ts));
-    ZTCFUniform = retime(ZTCFTimetable, 'regular', config.interpolation_method, 'TimeStep', seconds(Ts));
-    DELTAUniform = retime(DELTATimetable, 'regular', config.interpolation_method, 'TimeStep', seconds(Ts));
-    
-    % Convert back to tables
-    DELTA = timetable2table(DELTAUniform, "ConvertRowTimes", true);
-    DELTA = renamevars(DELTA, "t", "Time");
-    
-    BASE = timetable2table(BASEUniform, "ConvertRowTimes", true);
-    BASE = renamevars(BASE, "t", "Time");
-    
-    ZTCF = timetable2table(ZTCFUniform, "ConvertRowTimes", true);
-    ZTCF = renamevars(ZTCF, "t", "Time");
-    
-    % Convert time vectors back to normal time
-    BASETime = seconds(BASE.Time);
-    BASE.Time = BASETime;
-    
-    DELTATime = seconds(DELTA.Time);
-    DELTA.Time = DELTATime;
-    
-    ZTCFTime = seconds(ZTCF.Time);
-    ZTCF.Time = ZTCFTime;
-    
-    % Create Q tables (copy for now, will be updated by other scripts)
-    BASEQ = BASE;
-    ZTCFQ = ZTCF;
-    DELTAQ = DELTA;
-    
-    fprintf('✅ Data tables processed successfully\n');
-    fprintf('   BASE points: %d\n', height(BASE));
-    fprintf('   ZTCF points: %d\n', height(ZTCF));
-    fprintf('   DELTA points: %d\n', height(DELTA));
+    try
+        % Convert BaseData to timetable if it's not already
+        if ~istimetable(BaseData)
+            if ismember('Time', BaseData.Properties.VariableNames)
+                BASEQ = table2timetable(BaseData, 'RowTimes', 'Time');
+            else
+                % Create time vector if not present
+                time_vector = (0:height(BaseData)-1) * config.sample_time;
+                BaseData.Time = time_vector';
+                BASEQ = table2timetable(BaseData, 'RowTimes', 'Time');
+            end
+        else
+            BASEQ = BaseData;
+        end
+        
+        % Convert ZTCF to timetable if it's not already
+        if ~istimetable(ZTCF)
+            if ismember('Time', ZTCF.Properties.VariableNames)
+                ZTCFQ = table2timetable(ZTCF, 'RowTimes', 'Time');
+            else
+                % Create time vector if not present
+                time_vector = (0:height(ZTCF)-1) * config.sample_time;
+                ZTCF.Time = time_vector';
+                ZTCFQ = table2timetable(ZTCF, 'RowTimes', 'Time');
+            end
+        else
+            ZTCFQ = ZTCF;
+        end
+        
+        % Resample data to consistent time intervals
+        fprintf('   Resampling data to consistent time intervals...\n');
+        
+        % Get the time range that covers both datasets
+        start_time = min(BASEQ.Time(1), ZTCFQ.Time(1));
+        end_time = max(BASEQ.Time(end), ZTCFQ.Time(end));
+        
+        % Create uniform time vector
+        uniform_time = (start_time:config.sample_time:end_time)';
+        
+        % Resample BASEQ
+        BASEQ = retime(BASEQ, uniform_time, config.interpolation_method);
+        
+        % Resample ZTCFQ
+        ZTCFQ = retime(ZTCFQ, uniform_time, config.interpolation_method);
+        
+        % Create DELTAQ as the difference between BASEQ and ZTCFQ
+        fprintf('   Creating DELTAQ table...\n');
+        DELTAQ = BASEQ;
+        
+        % Get numeric columns for difference calculation
+        numeric_vars = varfun(@isnumeric, BASEQ, 'OutputFormat', 'cell');
+        numeric_vars = BASEQ.Properties.VariableNames(numeric_vars);
+        
+        % Calculate differences for numeric columns
+        for i = 1:length(numeric_vars)
+            var_name = numeric_vars{i};
+            if ismember(var_name, ZTCFQ.Properties.VariableNames)
+                try
+                    DELTAQ.(var_name) = BASEQ.(var_name) - ZTCFQ.(var_name);
+                catch
+                    % Skip if calculation fails (e.g., different data types)
+                    fprintf('   Warning: Could not calculate difference for %s\n', var_name);
+                end
+            end
+        end
+        
+        % Convert back to table format for consistency
+        BASEQ = timetable2table(BASEQ);
+        ZTCFQ = timetable2table(ZTCFQ);
+        DELTAQ = timetable2table(DELTAQ);
+        
+        fprintf('✅ Data tables processed successfully\n');
+        fprintf('   BASEQ: %d frames\n', height(BASEQ));
+        fprintf('   ZTCFQ: %d frames\n', height(ZTCFQ));
+        fprintf('   DELTAQ: %d frames\n', height(DELTAQ));
+        fprintf('   Time range: %.3f to %.3f seconds\n', BASEQ.Time(1), BASEQ.Time(end));
+        
+    catch ME
+        fprintf('❌ Error processing data tables: %s\n', ME.message);
+        rethrow(ME);
+    end
     
 end
