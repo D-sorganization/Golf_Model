@@ -32,7 +32,7 @@ classdef GolfSwingVisualizer < handle
             end
             % Validate BASEQ first to get NumFrames
             try
-                obj.validateInputData(BASEQ_table, 'BASEQ_table');
+                DataValidator.validateInputData(BASEQ_table, 'BASEQ_table');
                 obj.NumFrames = height(BASEQ_table);
                 if obj.NumFrames < 2 % Need at least 2 frames for velocity calculation
                     warning('GolfSwingVisualizer:NotEnoughFrames', 'Requires at least 2 frames for velocity-based face normal. Face normal may default to fallback.');
@@ -45,14 +45,14 @@ classdef GolfSwingVisualizer < handle
             end
             % Validate other tables (ensure same number of frames)
              try
-                obj.validateInputData(ZTCFQ_table, 'ZTCFQ_table');
-                obj.validateInputData(DELTAQ_table, 'DELTAQ_table');
+                DataValidator.validateInputData(ZTCFQ_table, 'ZTCFQ_table', obj.NumFrames);
+                DataValidator.validateInputData(DELTAQ_table, 'DELTAQ_table', obj.NumFrames);
              catch ME
                  rethrow(ME);
              end
 
             % 2. Setup Configuration
-            obj.setupConfig();
+            obj.Config = loadSwingConfig();
 
             % 3. Store Data and Calculate Initial Values
             obj.DataSets = {
@@ -96,104 +96,6 @@ classdef GolfSwingVisualizer < handle
     % == Private Methods ==
     methods (Access = private)
         % --- Initialization Helpers ---
-        function validateInputData(obj, dataTable, tableName)
-            % Basic validation for required columns and data types
-            requiredCols = {'Buttx', 'Butty', 'Buttz', 'CHx', 'CHy', 'CHz', ...
-                              'MPx', 'MPy', 'MPz', 'LWx', 'LWy', 'LWz', ...
-                              'LEx', 'LEy', 'LEz', 'LSx', 'LSy', 'LSz', ...
-                              'RWx', 'RWy', 'RWz', 'REx', 'REy', 'REz', ...
-                              'RSx', 'RSy', 'RSz', 'HUBx', 'HUBy', 'HUBz', ...
-                              'TotalHandForceGlobal', 'EquivalentMidpointCoupleGlobal'};
-            presentCols = dataTable.Properties.VariableNames;
-            for i = 1:length(requiredCols)
-                colName = requiredCols{i};
-                if ~ismember(colName, presentCols)
-                    error('GolfSwingVisualizer:MissingColumn', 'Input table %s is missing required column: %s', tableName, colName);
-                end
-                colData = dataTable.(colName);
-                if ~isnumeric(colData)
-                     error('GolfSwingVisualizer:InvalidColumnType', 'Column %s in table %s must be numeric.', colName, tableName);
-                end
-                 % Check frame count consistency after BASEQ is processed
-                 if ~strcmp(tableName, 'BASEQ_table') && isprop(obj,'NumFrames') && ~isempty(obj.NumFrames) && height(dataTable) ~= obj.NumFrames
-                      error('GolfSwingVisualizer:FrameMismatch', 'Input table %s has %d rows, expected %d based on BASEQ_table.', tableName, height(dataTable), obj.NumFrames);
-                 end
-            end
-             % Validate vector columns are Nx3
-             vectorCols = {'TotalHandForceGlobal', 'EquivalentMidpointCoupleGlobal'};
-             for i = 1:length(vectorCols)
-                 colName = vectorCols{i};
-                 if ismember(colName, presentCols)
-                     colData = dataTable.(colName);
-                     if size(colData, 2) ~= 3
-                         error('GolfSwingVisualizer:InvalidColumnSize', 'Column %s in table %s must have 3 columns (Nx3).', colName, tableName);
-                     end
-                 end
-             end
-        end
-
-        function setupConfig(obj)
-            obj.Config = struct();
-            % --- Colors ---
-            % Body/Environment
-            obj.Config.Colors.Skin = [0.9, 0.75, 0.65]; % Beige-like skin tone
-            obj.Config.Colors.Shirt = [0.2, 0.4, 0.8];  % Blue shirt color
-            obj.Config.Colors.Shaft = [0 0 0];          % Black shaft
-            obj.Config.Colors.Clubhead = [0.6 0.6 0.6]; % Grey clubhead
-            obj.Config.Colors.FaceNormal = [0 1 0];     % Green face normal
-            obj.Config.Colors.Ground = [0.4, 0.6, 0.2];  % Greenish ground (used for cmap calc)
-            obj.Config.Colors.Ball = [1 1 1];        % White ball
-            % GUI Elements (Reverted)
-            obj.Config.Colors.FigureBackground = [0.9, 1, 0.9]; % Light green
-            obj.Config.Colors.AxesBackground = [1, 1, 0.8];   % Soft yellow
-            obj.Config.Colors.PanelBackground = [0.8, 1, 0.8];  % Lighter green
-            obj.Config.Colors.TextBackground = [1 1 1];      % White text bg
-            obj.Config.Colors.RecordIdle = [1.0 0.6 0.0];    % Orange record idle
-            obj.Config.Colors.RecordActive = [1.0 0.4 0.4];   % Red record active
-            obj.Config.Colors.PlayButton = [0.4 0.8 0.4];    % Green play button
-            % Vectors & Legend (Classic Colors)
-            obj.Config.Colors.Force = {[1 0 0], [0 0 1], [0 0.5 0]};     % Red, Blue, Dark Green
-            obj.Config.Colors.Torque = {[0.5 0 0.5], [0 0.5 0.5], [1 0.5 0]}; % Purple, Teal, Orange
-            obj.Config.Colors.LegendText = obj.Config.Colors.Force; % Forces first
-            obj.Config.Colors.LegendText(4:6) = obj.Config.Colors.Torque; % Then torques
-
-            % --- Sizes ---
-            inches_to_meters = 0.0254;
-            obj.Config.Sizes.ClubheadLength = 4.5 * inches_to_meters; % Longer axis (along shaft)
-            obj.Config.Sizes.ClubheadWidth = 3.5 * inches_to_meters;  % Shorter axes (face width/depth)
-            obj.Config.Sizes.ShaftDiameter = 0.5 * inches_to_meters;
-            obj.Config.Sizes.ForearmDiameter = 2.8 * inches_to_meters;
-            obj.Config.Sizes.UpperarmDiameter = 3.5 * inches_to_meters;
-            obj.Config.Sizes.ShoulderNeckDiameter = 4.5 * inches_to_meters;
-            obj.Config.Sizes.BallDiameter = 1.68 * inches_to_meters; % Regulation golf ball diameter
-            obj.Config.Sizes.PlotMargin = 0.3;
-            obj.Config.Sizes.GroundPlaneZ = -0.6; % Ground plane height
-            obj.Config.Sizes.VelocityEps = 1e-4; % Threshold for detecting zero velocity
-            obj.Config.Sizes.ParallelEps = 1e-4; % Threshold for detecting parallel vectors
-
-            % --- Labels & Text ---
-            obj.Config.Font.Size = 10; obj.Config.Font.SizeSmall = 9;
-            obj.Config.Labels.FigureName = 'Golf Swing Visualizer';
-            obj.Config.Labels.CheckboxPanelTitle = 'Segments and Vectors';
-            obj.Config.Labels.PlaybackPanelTitle = 'Playback and Scaling';
-            obj.Config.Labels.ZoomPanelTitle = 'Zoom';
-            obj.Config.Labels.LegendPanelTitle = 'Legend';
-            obj.Config.Labels.Checkboxes = {'Force BASE', 'Force ZTCF', 'Force DELTA', 'Torque BASE', 'Torque ZTCF', 'Torque DELTA', 'Shaft & Club', 'Face Normal', 'Left Forearm', 'Left Upper Arm', 'Left Shoulder-Neck', 'Right Forearm', 'Right Upper Arm', 'Right Shoulder-Neck'};
-            obj.Config.Labels.LegendEntries = {'BASE (Force)', 'ZTCF (Force)', 'DELTA (Force)', 'BASE (Torque)', 'ZTCF (Torque)', 'DELTA (Torque)'};
-            % Mapping from label to checkbox index
-            obj.Config.CheckboxMapping = struct('Force_BASE', 1, 'Force_ZTCF', 2, 'Force_DELTA', 3, 'Torque_BASE', 4, 'Torque_ZTCF', 5, 'Torque_DELTA', 6, 'Shaft_Club', 7, 'Face_Normal', 8, 'Left_Forearm', 9, 'Left_Upper_Arm', 10, 'Left_Shoulder_Neck', 11, 'Right_Forearm', 12, 'Right_Upper_Arm', 13, 'Right_Shoulder_Neck', 14);
-
-            % --- Playback, Scaling, Zoom, Recording Config ---
-            obj.Config.Playback.TimerPeriod = 0.033; % Approx 30 fps base speed
-            obj.Config.Playback.MinSpeed = 0.1; obj.Config.Playback.MaxSpeed = 3.0; obj.Config.Playback.DefaultSpeed = 1.0;
-            obj.Config.Scaling.MinVectorScale = 0.1; obj.Config.Scaling.MaxVectorScale = 9.0; obj.Config.Scaling.DefaultVectorScale = 1.0;
-            obj.Config.Zoom.MinFactor = 0.1; obj.Config.Zoom.MaxFactor = 5.0; obj.Config.Zoom.DefaultFactor = 1.0;
-            obj.Config.Recording.FrameRate = 30;
-            obj.Config.Recording.DefaultFileName = 'golf_swing_recording.mp4';
-            obj.Config.Recording.FileType = '*.mp4';
-            obj.Config.Recording.FileDescription = 'Save Swing Recording As...';
-        end
-
         function calculateScalingMagnitudes(obj)
             % Calculate max magnitudes from BASE data for consistent scaling
             baseTable = obj.DataSets{1}.Data;
@@ -622,7 +524,7 @@ classdef GolfSwingVisualizer < handle
             % Face Normal
             fnVisibleCheckbox = get(obj.Handles.Checkboxes(obj.Config.CheckboxMapping.Face_Normal), 'Value');
             fnScale = shaftLength * 0.2; % Scale face normal length relative to shaft length
-            obj.updateQuiver(obj.PlotHandles.FaceNormalQuiver, points.Clubhead, faceNormal, fnScale, fnVisibleCheckbox);
+            VectorRenderer.updateQuiver(obj.PlotHandles.FaceNormalQuiver, points.Clubhead, faceNormal, fnScale, fnVisibleCheckbox);
 
             % Force/Torque Vectors
             for k = 1:length(obj.DataSets)
@@ -640,10 +542,10 @@ classdef GolfSwingVisualizer < handle
                 end
                 forceVisibleCheckbox = get(obj.Handles.Checkboxes(obj.Config.CheckboxMapping.(['Force_', dataSet.Name])), 'Value');
                 forceScale = shaftLength / obj.MaxForceMag * vectorScale;
-                obj.updateQuiver(obj.PlotHandles.ForceQuivers(k), points.Midpoint, forceVec, forceScale, forceVisibleCheckbox);
+                VectorRenderer.updateQuiver(obj.PlotHandles.ForceQuivers(k), points.Midpoint, forceVec, forceScale, forceVisibleCheckbox);
                 torqueVisibleCheckbox = get(obj.Handles.Checkboxes(obj.Config.CheckboxMapping.(['Torque_', dataSet.Name])), 'Value');
                 torqueScale = shaftLength / obj.MaxTorqueMag * vectorScale;
-                obj.updateQuiver(obj.PlotHandles.TorqueQuivers(k), points.Midpoint, torqueVec, torqueScale, torqueVisibleCheckbox);
+                VectorRenderer.updateQuiver(obj.PlotHandles.TorqueQuivers(k), points.Midpoint, torqueVec, torqueScale, torqueVisibleCheckbox);
             end
 
             % Body Segments
@@ -839,25 +741,6 @@ classdef GolfSwingVisualizer < handle
 
              set(hSurf, 'XData', nx, 'YData', ny, 'ZData', nz, 'Visible', 'on');
         end
-
-        function updateQuiver(obj, hQuiver, origin, vector, scaleFactor, isVisibleCheckbox)
-            % Updates position, direction, scale, and visibility of a quiver object
-            if ~ishandle(hQuiver); return; end
-
-            vectorNorm = norm(vector);
-            if any(isnan(origin)) || any(isinf(origin)) || any(isnan(vector)) || any(isinf(vector)) || ...
-               isnan(scaleFactor) || isinf(scaleFactor) || vectorNorm < 1e-9 || abs(scaleFactor) < 1e-9
-                set(hQuiver, 'Visible', 'off', 'XData', NaN, 'YData', NaN, 'ZData', NaN, 'UData', NaN, 'VData', NaN, 'WData', NaN); return;
-            end
-            if ~isVisibleCheckbox
-                set(hQuiver, 'Visible', 'off'); return;
-            end
-
-            set(hQuiver, 'Visible', 'on', ...
-                'XData', origin(1), 'YData', origin(2), 'ZData', origin(3), ...
-                'UData', vector(1) * scaleFactor, 'VData', vector(2) * scaleFactor, 'WData', vector(3) * scaleFactor);
-        end
-
         function hideDynamicPlotElements(obj)
             % Hides plot elements that change frame-to-frame
             fields = fieldnames(obj.PlotHandles);
