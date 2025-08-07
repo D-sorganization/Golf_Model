@@ -18,31 +18,31 @@ function [BASE, ZTCF, DELTA, BASEQ, ZTCFQ, DELTAQ, ZVCFTable, ZVCFTableQ] = run_
     
     % 1. Update calculations for impulse and work
     fprintf('   1. Updating impulse and work calculations...\n');
-    SCRIPT_UpdateCalcsforImpulseandWork;
-    
+    [ZTCF, DELTA] = SCRIPT_UpdateCalcsforImpulseandWork(ZTCF, DELTA, config.sample_time);
+
     % 2. Q table time change
     fprintf('   2. Processing Q table time changes...\n');
-    SCRIPT_QTableTimeChange;
-    
+    [BASEQ, ZTCFQ, DELTAQ] = SCRIPT_QTableTimeChange(BASE, ZTCF, DELTA, config.tables_path);
+
     % 3. Total work and power calculations
     fprintf('   3. Calculating total work and power...\n');
-    SCRIPT_TotalWorkandPowerCalculation;
-    
+    [BASE, ZTCF, DELTA, BASEQ, ZTCFQ, DELTAQ] = SCRIPT_TotalWorkandPowerCalculation(BASE, ZTCF, DELTA, BASEQ, ZTCFQ, DELTAQ);
+
     % 4. Club and hand path calculations
     fprintf('   4. Calculating club and hand paths...\n');
-    SCRIPT_CHPandMPPCalculation;
-    
+    [BASEQ, ZTCFQ, DELTAQ] = SCRIPT_CHPandMPPCalculation(BASEQ, ZTCFQ, DELTAQ);
+
     % 5. Table of values generation
     fprintf('   5. Generating table of values...\n');
-    SCRIPT_TableofValues;
-    
+    [~, ~, ~, ~, ~] = SCRIPT_TableofValues(BASE, BASEQ, ZTCF, DELTA, ZTCFQ, DELTAQ);
+
     % 6. Generate ZVCF data
     fprintf('   6. Generating ZVCF data...\n');
-    SCRIPT_ZVCF_GENERATOR;
-    
+    [ZVCFTable, ZVCFTableQ] = SCRIPT_ZVCF_GENERATOR(BASE, config);
+
     % 7. Generate all plots
     fprintf('   7. Generating plots...\n');
-    SCRIPT_AllPlots;
+    SCRIPT_AllPlots(config);
     
     fprintf('✅ Additional processing completed successfully\n');
     
