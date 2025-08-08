@@ -270,20 +270,42 @@ function processed_trial = calculateDerivedQuantities(processed_trial)
         end
     end
     
-    % Calculate work and power
+    % Calculate work and power with optional settings
     if isfield(processed_trial, 'torque_data') && isfield(processed_trial, 'joint_data')
-        processed_trial = calculateWorkAndPower(processed_trial);
+        % Default options - work calculations disabled for random input data
+        calculation_options = struct();
+        calculation_options.calculate_work = false;  % Disable work for random inputs
+        calculation_options.include_applied_torques = true;
+        calculation_options.include_force_moments = true;
+        
+        processed_trial = calculateWorkAndPowerEnhanced(processed_trial, calculation_options);
     end
 end
 
-function processed_trial = calculateWorkAndPower(processed_trial)
+function processed_trial = calculateWorkAndPowerEnhanced(processed_trial, options)
+    % Enhanced work and power calculation with optional settings
     % Calculate work and power from torque and angular velocity data
+    
+    % Set default options
+    if nargin < 2
+        options = struct();
+    end
+    if ~isfield(options, 'calculate_work')
+        options.calculate_work = false;
+    end
+    if ~isfield(options, 'include_applied_torques')
+        options.include_applied_torques = true;
+    end
+    if ~isfield(options, 'include_force_moments')
+        options.include_force_moments = true;
+    end
     
     joint_names = fieldnames(processed_trial.joint_data);
     torque_names = fieldnames(processed_trial.torque_data);
     
     total_work = 0;
     total_power = 0;
+    total_angular_impulse = zeros(1, 3);
     
     for i = 1:length(joint_names)
         joint_name = joint_names{i};
@@ -303,12 +325,11 @@ function processed_trial = calculateWorkAndPower(processed_trial)
                 power = torque .* angular_velocity;
                 processed_trial.joint_data.(joint_name).power = power;
                 
-                % Calculate work (W = ∫ P dt)
-                if isfield(processed_trial, 'time')
+                % Calculate work if requested (W = ∫ P dt)
+                if options.calculate_work && isfield(processed_trial, 'time')
                     time_data = processed_trial.time;
                     work = trapz(time_data, power);
                     processed_trial.joint_data.(joint_name).work = work;
-                    
                     total_work = total_work + work;
                 end
                 
@@ -316,13 +337,55 @@ function processed_trial = calculateWorkAndPower(processed_trial)
                 peak_power = max(abs(power));
                 processed_trial.joint_data.(joint_name).peak_power = peak_power;
                 total_power = total_power + peak_power;
+                
+                % Calculate angular impulse if time data is available
+                if isfield(processed_trial, 'time')
+                    time_data = processed_trial.time;
+                    angular_impulse = trapz(time_data, torque);
+                    processed_trial.joint_data.(joint_name).angular_impulse = angular_impulse;
+                    
+                    % Add to total angular impulse
+                    if options.include_applied_torques
+                        total_angular_impulse = total_angular_impulse + angular_impulse;
+                    end
+                end
+            end
+        end
+    end
+    
+    % Calculate force moments contribution to angular impulse if requested
+    if options.include_force_moments && isfield(processed_trial, 'force_moments')
+        force_moment_names = fieldnames(processed_trial.force_moments);
+        
+        for i = 1:length(force_moment_names)
+            moment_name = force_moment_names{i};
+            
+            if isfield(processed_trial.force_moments.(moment_name), 'moment') && ...
+               isfield(processed_trial, 'time')
+                
+                moment = processed_trial.force_moments.(moment_name).moment;
+                time_data = processed_trial.time;
+                
+                % Calculate moment contribution to angular impulse
+                moment_impulse = trapz(time_data, moment);
+                processed_trial.force_moments.(moment_name).angular_impulse = moment_impulse;
+                
+                % Add to total angular impulse
+                total_angular_impulse = total_angular_impulse + moment_impulse;
             end
         end
     end
     
     % Store totals
-    processed_trial.total_work = total_work;
     processed_trial.total_peak_power = total_power;
+    processed_trial.total_angular_impulse = total_angular_impulse;
+    
+    if options.calculate_work
+        processed_trial.total_work = total_work;
+    end
+    
+    % Store calculation options for reference
+    processed_trial.calculation_options = options;
 end
 
 function exportBatch(batch_data, batch_idx, output_folder, options)
