@@ -270,20 +270,18 @@ function processed_trial = calculateDerivedQuantities(processed_trial)
         end
     end
     
-    % Calculate work and power with optional settings
+    % Calculate work and power with granular angular impulse
     if isfield(processed_trial, 'torque_data') && isfield(processed_trial, 'joint_data')
         % Default options - work calculations disabled for random input data
         calculation_options = struct();
         calculation_options.calculate_work = false;  % Disable work for random inputs
-        calculation_options.include_applied_torques = true;
-        calculation_options.include_force_moments = true;
         
         processed_trial = calculateWorkAndPowerEnhanced(processed_trial, calculation_options);
     end
 end
 
 function processed_trial = calculateWorkAndPowerEnhanced(processed_trial, options)
-    % Enhanced work and power calculation with optional settings
+    % Enhanced work and power calculation with granular angular impulse
     % Calculate work and power from torque and angular velocity data
     
     % Set default options
@@ -292,12 +290,6 @@ function processed_trial = calculateWorkAndPowerEnhanced(processed_trial, option
     end
     if ~isfield(options, 'calculate_work')
         options.calculate_work = false;
-    end
-    if ~isfield(options, 'include_applied_torques')
-        options.include_applied_torques = true;
-    end
-    if ~isfield(options, 'include_force_moments')
-        options.include_force_moments = true;
     end
     
     joint_names = fieldnames(processed_trial.joint_data);
@@ -338,47 +330,15 @@ function processed_trial = calculateWorkAndPowerEnhanced(processed_trial, option
                 processed_trial.joint_data.(joint_name).peak_power = peak_power;
                 total_power = total_power + peak_power;
                 
-                % Calculate angular impulse if time data is available
-                if isfield(processed_trial, 'time')
-                    time_data = processed_trial.time;
-                    angular_impulse = trapz(time_data, torque);
-                    processed_trial.joint_data.(joint_name).angular_impulse = angular_impulse;
-                    
-                    % Add to total angular impulse
-                    if options.include_applied_torques
-                        total_angular_impulse = total_angular_impulse + angular_impulse;
-                    end
-                end
-            end
-        end
-    end
-    
-    % Calculate force moments contribution to angular impulse if requested
-    if options.include_force_moments && isfield(processed_trial, 'force_moments')
-        force_moment_names = fieldnames(processed_trial.force_moments);
-        
-        for i = 1:length(force_moment_names)
-            moment_name = force_moment_names{i};
-            
-            if isfield(processed_trial.force_moments.(moment_name), 'moment') && ...
-               isfield(processed_trial, 'time')
-                
-                moment = processed_trial.force_moments.(moment_name).moment;
-                time_data = processed_trial.time;
-                
-                % Calculate moment contribution to angular impulse
-                moment_impulse = trapz(time_data, moment);
-                processed_trial.force_moments.(moment_name).angular_impulse = moment_impulse;
-                
-                % Add to total angular impulse
-                total_angular_impulse = total_angular_impulse + moment_impulse;
+                % Note: Angular impulse calculations are now handled by the granular function
+                % calculateWorkPowerAndGranularAngularImpulse3D which provides detailed breakdown
+                % by joint end (proximal/distal) and source (joint torques, applied torques, force moments)
             end
         end
     end
     
     % Store totals
     processed_trial.total_peak_power = total_power;
-    processed_trial.total_angular_impulse = total_angular_impulse;
     
     if options.calculate_work
         processed_trial.total_work = total_work;
@@ -386,6 +346,13 @@ function processed_trial = calculateWorkAndPowerEnhanced(processed_trial, option
     
     % Store calculation options for reference
     processed_trial.calculation_options = options;
+    
+    % Note: Granular angular impulse calculations are handled separately by
+    % calculateWorkPowerAndGranularAngularImpulse3D function which provides:
+    % - Joint torque angular impulse (proximal/distal)
+    % - Applied torque angular impulse (proximal/distal)  
+    % - Force moment angular impulse (proximal/distal)
+    % - Total angular impulse per joint end
 end
 
 function exportBatch(batch_data, batch_idx, output_folder, options)
@@ -401,6 +368,14 @@ function exportBatch(batch_data, batch_idx, output_folder, options)
             exportToMAT(batch_data, output_file, options);
         case 'json'
             exportToJSON(batch_data, output_file, options);
+        case 'pytorch (.pt)'
+            exportToPyTorch(batch_data, output_file, options);
+        case 'tensorflow (.h5)'
+            exportToTensorFlow(batch_data, output_file, options);
+        case 'numpy (.npz)'
+            exportToNumPy(batch_data, output_file, options);
+        case 'pickle (.pkl)'
+            exportToPickle(batch_data, output_file, options);
         otherwise
             error('Unsupported export format: %s', options.format);
     end
@@ -803,4 +778,310 @@ end
 function defaultLogCallback(message)
     % Default log callback
     fprintf('[%s] %s\n', datestr(now, 'HH:MM:SS'), message);
+end
+
+% Machine Learning Export Functions
+function exportToPyTorch(batch_data, output_file, options)
+    % Export to PyTorch format (.pt)
+    try
+        % Convert data to PyTorch-compatible format
+        pytorch_data = convertToPyTorchFormat(batch_data);
+        
+        % Save using Python interface (requires Python with PyTorch)
+        if exist('pyenv', 'builtin')
+            try
+                % Create Python script to save PyTorch tensor
+                python_script = sprintf([...
+                    'import torch\n', ...
+                    'import numpy as np\n', ...
+                    'data = %s\n', ...
+                    'torch.save(data, "%s")\n'], ...
+                    matlab2json(pytorch_data), output_file);
+                
+                % Execute Python script
+                system(sprintf('python -c "%s"', python_script));
+                fprintf('PyTorch data saved to: %s\n', output_file);
+            catch ME
+                warning('PyTorch export failed: %s. Falling back to MAT format.', ME.message);
+                save(strrep(output_file, '.pt', '.mat'), '-struct', 'batch_data');
+            end
+        else
+            warning('Python interface not available. Falling back to MAT format.');
+            save(strrep(output_file, '.pt', '.mat'), '-struct', 'batch_data');
+        end
+    catch ME
+        warning('PyTorch export failed: %s. Falling back to MAT format.', ME.message);
+        save(strrep(output_file, '.pt', '.mat'), '-struct', 'batch_data');
+    end
+end
+
+function exportToTensorFlow(batch_data, output_file, options)
+    % Export to TensorFlow format (.h5)
+    try
+        % Convert data to TensorFlow-compatible format
+        tf_data = convertToTensorFlowFormat(batch_data);
+        
+        % Save using Python interface (requires Python with TensorFlow)
+        if exist('pyenv', 'builtin')
+            try
+                % Create Python script to save TensorFlow data
+                python_script = sprintf([...
+                    'import h5py\n', ...
+                    'import numpy as np\n', ...
+                    'data = %s\n', ...
+                    'with h5py.File("%s", "w") as f:\n', ...
+                    '    for key, value in data.items():\n', ...
+                    '        f.create_dataset(key, data=value)\n'], ...
+                    matlab2json(tf_data), output_file);
+                
+                % Execute Python script
+                system(sprintf('python -c "%s"', python_script));
+                fprintf('TensorFlow data saved to: %s\n', output_file);
+            catch ME
+                warning('TensorFlow export failed: %s. Falling back to MAT format.', ME.message);
+                save(strrep(output_file, '.h5', '.mat'), '-struct', 'batch_data');
+            end
+        else
+            warning('Python interface not available. Falling back to MAT format.');
+            save(strrep(output_file, '.h5', '.mat'), '-struct', 'batch_data');
+        end
+    catch ME
+        warning('TensorFlow export failed: %s. Falling back to MAT format.', ME.message);
+        save(strrep(output_file, '.h5', '.mat'), '-struct', 'batch_data');
+    end
+end
+
+function exportToNumPy(batch_data, output_file, options)
+    % Export to NumPy format (.npz)
+    try
+        % Convert data to NumPy-compatible format
+        numpy_data = convertToNumPyFormat(batch_data);
+        
+        % Save using Python interface (requires Python with NumPy)
+        if exist('pyenv', 'builtin')
+            try
+                % Create Python script to save NumPy data
+                python_script = sprintf([...
+                    'import numpy as np\n', ...
+                    'data = %s\n', ...
+                    'np.savez("%s", **data)\n'], ...
+                    matlab2json(numpy_data), output_file);
+                
+                % Execute Python script
+                system(sprintf('python -c "%s"', python_script));
+                fprintf('NumPy data saved to: %s\n', output_file);
+            catch ME
+                warning('NumPy export failed: %s. Falling back to MAT format.', ME.message);
+                save(strrep(output_file, '.npz', '.mat'), '-struct', 'batch_data');
+            end
+        else
+            warning('Python interface not available. Falling back to MAT format.');
+            save(strrep(output_file, '.npz', '.mat'), '-struct', 'batch_data');
+        end
+    catch ME
+        warning('NumPy export failed: %s. Falling back to MAT format.', ME.message);
+        save(strrep(output_file, '.npz', '.mat'), '-struct', 'batch_data');
+    end
+end
+
+function exportToPickle(batch_data, output_file, options)
+    % Export to Pickle format (.pkl)
+    try
+        % Convert data to Pickle-compatible format
+        pickle_data = convertToPickleFormat(batch_data);
+        
+        % Save using Python interface (requires Python)
+        if exist('pyenv', 'builtin')
+            try
+                % Create Python script to save Pickle data
+                python_script = sprintf([...
+                    'import pickle\n', ...
+                    'import numpy as np\n', ...
+                    'data = %s\n', ...
+                    'with open("%s", "wb") as f:\n', ...
+                    '    pickle.dump(data, f)\n'], ...
+                    matlab2json(pickle_data), output_file);
+                
+                % Execute Python script
+                system(sprintf('python -c "%s"', python_script));
+                fprintf('Pickle data saved to: %s\n', output_file);
+            catch ME
+                warning('Pickle export failed: %s. Falling back to MAT format.', ME.message);
+                save(strrep(output_file, '.pkl', '.mat'), '-struct', 'batch_data');
+            end
+        else
+            warning('Python interface not available. Falling back to MAT format.');
+            save(strrep(output_file, '.pkl', '.mat'), '-struct', 'batch_data');
+        end
+    catch ME
+        warning('Pickle export failed: %s. Falling back to MAT format.', ME.message);
+        save(strrep(output_file, '.pkl', '.mat'), '-struct', 'batch_data');
+    end
+end
+
+% Data conversion functions for ML formats
+function pytorch_data = convertToPyTorchFormat(batch_data)
+    % Convert batch data to PyTorch-compatible format
+    pytorch_data = struct();
+    
+    % Extract time series data
+    if isfield(batch_data, 'trials') && ~isempty(batch_data.trials)
+        trial = batch_data.trials{1}; % Use first trial as template
+        
+        % Convert to tensor format
+        if isfield(trial, 'time')
+            pytorch_data.time = trial.time;
+        end
+        
+        % Extract joint data
+        if isfield(trial, 'joint_data')
+            joint_names = fieldnames(trial.joint_data);
+            for i = 1:length(joint_names)
+                joint_name = joint_names{i};
+                joint_data = trial.joint_data.(joint_name);
+                
+                if isfield(joint_data, 'angular_velocity')
+                    pytorch_data.([joint_name '_angular_velocity']) = joint_data.angular_velocity;
+                end
+                if isfield(joint_data, 'power')
+                    pytorch_data.([joint_name '_power']) = joint_data.power;
+                end
+            end
+        end
+        
+        % Extract torque data
+        if isfield(trial, 'torque_data')
+            torque_names = fieldnames(trial.torque_data);
+            for i = 1:length(torque_names)
+                torque_name = torque_names{i};
+                torque_data = trial.torque_data.(torque_name);
+                
+                if isfield(torque_data, 'torque')
+                    pytorch_data.([torque_name '_torque']) = torque_data.torque;
+                end
+            end
+        end
+    end
+end
+
+function tf_data = convertToTensorFlowFormat(batch_data)
+    % Convert batch data to TensorFlow-compatible format
+    tf_data = struct();
+    
+    % Similar to PyTorch but with TensorFlow-specific formatting
+    if isfield(batch_data, 'trials') && ~isempty(batch_data.trials)
+        trial = batch_data.trials{1};
+        
+        if isfield(trial, 'time')
+            tf_data.time = trial.time;
+        end
+        
+        % Extract features for TensorFlow
+        if isfield(trial, 'joint_data')
+            joint_names = fieldnames(trial.joint_data);
+            for i = 1:length(joint_names)
+                joint_name = joint_names{i};
+                joint_data = trial.joint_data.(joint_name);
+                
+                if isfield(joint_data, 'angular_velocity')
+                    tf_data.([joint_name '_angular_velocity']) = joint_data.angular_velocity;
+                end
+                if isfield(joint_data, 'power')
+                    tf_data.([joint_name '_power']) = joint_data.power;
+                end
+            end
+        end
+    end
+end
+
+function numpy_data = convertToNumPyFormat(batch_data)
+    % Convert batch data to NumPy-compatible format
+    numpy_data = struct();
+    
+    % Extract all numeric data for NumPy
+    if isfield(batch_data, 'trials') && ~isempty(batch_data.trials)
+        trial = batch_data.trials{1};
+        
+        % Convert all numeric fields
+        fields = fieldnames(trial);
+        for i = 1:length(fields)
+            field_name = fields{i};
+            field_data = trial.(field_name);
+            
+            if isnumeric(field_data)
+                numpy_data.(field_name) = field_data;
+            elseif isstruct(field_data)
+                % Recursively convert nested structures
+                nested_data = convertStructToNumeric(field_data);
+                if ~isempty(fieldnames(nested_data))
+                    numpy_data.(field_name) = nested_data;
+                end
+            end
+        end
+    end
+end
+
+function pickle_data = convertToPickleFormat(batch_data)
+    % Convert batch data to Pickle-compatible format
+    pickle_data = struct();
+    
+    % Pickle can handle most Python-compatible data types
+    if isfield(batch_data, 'trials') && ~isempty(batch_data.trials)
+        trial = batch_data.trials{1};
+        
+        % Convert to Python-compatible format
+        pickle_data = convertToPythonFormat(trial);
+    end
+end
+
+function numeric_data = convertStructToNumeric(data)
+    % Convert structure to numeric-only format
+    numeric_data = struct();
+    
+    if isstruct(data)
+        fields = fieldnames(data);
+        for i = 1:length(fields)
+            field_name = fields{i};
+            field_data = data.(field_name);
+            
+            if isnumeric(field_data)
+                numeric_data.(field_name) = field_data;
+            elseif isstruct(field_data)
+                nested_data = convertStructToNumeric(field_data);
+                if ~isempty(fieldnames(nested_data))
+                    numeric_data.(field_name) = nested_data;
+                end
+            end
+        end
+    end
+end
+
+function python_data = convertToPythonFormat(data)
+    % Convert MATLAB data to Python-compatible format
+    python_data = struct();
+    
+    if isstruct(data)
+        fields = fieldnames(data);
+        for i = 1:length(fields)
+            field_name = fields{i};
+            field_data = data.(field_name);
+            
+            if isnumeric(field_data)
+                python_data.(field_name) = field_data;
+            elseif ischar(field_data)
+                python_data.(field_name) = field_data;
+            elseif iscell(field_data)
+                python_data.(field_name) = field_data;
+            elseif isstruct(field_data)
+                python_data.(field_name) = convertToPythonFormat(field_data);
+            else
+                python_data.(field_name) = char(field_data);
+            end
+        end
+    end
+end
+
+function json_str = matlab2json(data)
+    % Convert MATLAB data to JSON string for Python
+    json_str = jsonencode(data);
 end 
