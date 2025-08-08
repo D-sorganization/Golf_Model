@@ -61,12 +61,9 @@ options_all.calculate_applied_torque_impulse = true;
 options_all.calculate_force_moment_impulse = true;
 options_all.calculate_total_angular_impulse = true;
 options_all.calculate_linear_impulse = true;
-options_all.calculate_hip_calculations = true;
-options_all.calculate_knee_calculations = true;
-options_all.calculate_ankle_calculations = true;
-options_all.calculate_shoulder_calculations = true;
-options_all.calculate_elbow_calculations = true;
-options_all.calculate_wrist_calculations = true;
+options_all.calculate_proximal_on_distal = true;
+options_all.calculate_distal_on_proximal = true;
+
 
 [ZTCFQ_all, DELTAQ_all] = calculateWorkPowerAndGranularAngularImpulse3D(ZTCFQ, DELTAQ, options_all);
 
@@ -104,12 +101,9 @@ options_power_only.calculate_applied_torque_impulse = false;
 options_power_only.calculate_force_moment_impulse = false;
 options_power_only.calculate_total_angular_impulse = false;
 options_power_only.calculate_linear_impulse = false;
-options_power_only.calculate_hip_calculations = true;
-options_power_only.calculate_knee_calculations = true;
-options_power_only.calculate_ankle_calculations = true;
-options_power_only.calculate_shoulder_calculations = true;
-options_power_only.calculate_elbow_calculations = true;
-options_power_only.calculate_wrist_calculations = true;
+options_power_only.calculate_proximal_on_distal = true;
+options_power_only.calculate_distal_on_proximal = true;
+
 
 [ZTCFQ_power, DELTAQ_power] = calculateWorkPowerAndGranularAngularImpulse3D(ZTCFQ, DELTAQ, options_power_only);
 
@@ -138,12 +132,9 @@ options_linear_only.calculate_applied_torque_impulse = false;
 options_linear_only.calculate_force_moment_impulse = false;
 options_linear_only.calculate_total_angular_impulse = false;
 options_linear_only.calculate_linear_impulse = true;
-options_linear_only.calculate_hip_calculations = true;
-options_linear_only.calculate_knee_calculations = true;
-options_linear_only.calculate_ankle_calculations = true;
-options_linear_only.calculate_shoulder_calculations = true;
-options_linear_only.calculate_elbow_calculations = true;
-options_linear_only.calculate_wrist_calculations = true;
+options_linear_only.calculate_proximal_on_distal = true;
+options_linear_only.calculate_distal_on_proximal = true;
+
 
 [ZTCFQ_linear, DELTAQ_linear] = calculateWorkPowerAndGranularAngularImpulse3D(ZTCFQ, DELTAQ, options_linear_only);
 
@@ -160,38 +151,32 @@ else
     fprintf('   ✗ Unexpected columns present or missing\n');
 end
 
-% Test 4: Only hip calculations enabled
-fprintf('\n5. Testing with only hip calculations enabled...\n');
-options_hip_only = struct();
-options_hip_only.calculate_work = true;
-options_hip_only.calculate_power = true;
-options_hip_only.calculate_joint_torque_impulse = true;
-options_hip_only.calculate_applied_torque_impulse = true;
-options_hip_only.calculate_force_moment_impulse = true;
-options_hip_only.calculate_total_angular_impulse = true;
-options_hip_only.calculate_linear_impulse = true;
-options_hip_only.calculate_hip_calculations = true;
-options_hip_only.calculate_knee_calculations = false;
-options_hip_only.calculate_ankle_calculations = false;
-options_hip_only.calculate_shoulder_calculations = true;
-options_hip_only.calculate_elbow_calculations = true;
-options_hip_only.calculate_wrist_calculations = true;
+% Test 4: Only proximal on distal moments enabled
+fprintf('\n5. Testing with only proximal on distal moments enabled...\n');
+options_proximal_only = struct();
+options_proximal_only.calculate_work = false;
+options_proximal_only.calculate_power = false;
+options_proximal_only.calculate_joint_torque_impulse = false;
+options_proximal_only.calculate_applied_torque_impulse = false;
+options_proximal_only.calculate_force_moment_impulse = false;
+options_proximal_only.calculate_total_angular_impulse = false;
+options_proximal_only.calculate_linear_impulse = false;
+options_proximal_only.calculate_proximal_on_distal = true;
+options_proximal_only.calculate_distal_on_proximal = false;
 
-[ZTCFQ_hip, DELTAQ_hip] = calculateWorkPowerAndGranularAngularImpulse3D(ZTCFQ, DELTAQ, options_hip_only);
+[ZTCFQ_proximal, DELTAQ_proximal] = calculateWorkPowerAndGranularAngularImpulse3D(ZTCFQ, DELTAQ, options_proximal_only);
 
-% Check that hip columns are present but knee/ankle are not
-hip_columns = {'Hip_Power_Proximal', 'Hip_LinearImpulse_Proximal_X'};
-knee_columns = {'Knee_Power_Proximal', 'Knee_LinearImpulse_Proximal_X'};
-ankle_columns = {'Ankle_Power_Proximal', 'Ankle_LinearImpulse_Proximal_X'};
+% Check that proximal moment calculations are present but distal are not
+proximal_columns = {'Hip_MomentOfForce_Proximal_X', 'Knee_MomentOfForce_Proximal_X'};
+distal_columns = {'Hip_MomentOfForce_Distal_X', 'Knee_MomentOfForce_Distal_X'};
 
-hip_present = all(ismember(hip_columns, ZTCFQ_hip.Properties.VariableNames));
-knee_present = any(ismember(knee_columns, ZTCFQ_hip.Properties.VariableNames));
-ankle_present = any(ismember(ankle_columns, ZTCFQ_hip.Properties.VariableNames));
+proximal_present = any(ismember(proximal_columns, ZTCFQ_proximal.Properties.VariableNames));
+distal_present = any(ismember(distal_columns, ZTCFQ_proximal.Properties.VariableNames));
 
-if hip_present && ~knee_present && ~ankle_present
-    fprintf('   ✓ Only hip calculations present (knee and ankle disabled)\n');
+if proximal_present && ~distal_present
+    fprintf('   ✓ Only proximal on distal moments present (distal on proximal disabled)\n');
 else
-    fprintf('   ✗ Unexpected joint calculations present or missing\n');
+    fprintf('   ✗ Unexpected moment calculations present or missing\n');
 end
 
 % Test 5: Verify linear impulse calculations
@@ -230,12 +215,8 @@ try
     calculation_options.calculate_force_moment_impulse = true;
     calculation_options.calculate_total_angular_impulse = true;
     calculation_options.calculate_linear_impulse = true;
-    calculation_options.calculate_hip_calculations = true;
-    calculation_options.calculate_knee_calculations = true;
-    calculation_options.calculate_ankle_calculations = true;
-    calculation_options.calculate_shoulder_calculations = true;
-    calculation_options.calculate_elbow_calculations = true;
-    calculation_options.calculate_wrist_calculations = true;
+    calculation_options.calculate_proximal_on_distal = true;
+    calculation_options.calculate_distal_on_proximal = true;
     
     processed_trial = calculateWorkAndPowerEnhanced(trial_data, calculation_options);
     

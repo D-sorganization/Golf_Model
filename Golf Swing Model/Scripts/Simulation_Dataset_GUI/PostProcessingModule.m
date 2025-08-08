@@ -298,12 +298,10 @@ function processed_trial = calculateWorkAndPowerEnhanced(processed_trial, option
         'calculate_force_moment_impulse', true;
         'calculate_total_angular_impulse', true;
         'calculate_linear_impulse', true;
-        'calculate_hip_calculations', true;
-        'calculate_knee_calculations', true;
-        'calculate_ankle_calculations', true;
-        'calculate_shoulder_calculations', true;
-        'calculate_elbow_calculations', true;
-        'calculate_wrist_calculations', true;
+        'calculate_proximal_on_distal', true;
+        'calculate_distal_on_proximal', true;
+
+
     };
     
     for i = 1:size(default_options, 1)

@@ -13,9 +13,8 @@ function [ZTCFQ_updated, DELTAQ_updated] = calculateWorkPowerAndGranularAngularI
 %       .calculate_force_moment_impulse - Boolean to enable force moment impulse
 %       .calculate_total_angular_impulse - Boolean to enable total angular impulse
 %       .calculate_linear_impulse - Boolean to enable linear impulse
-%       .calculate_hip_calculations - Boolean to enable hip calculations
-%       .calculate_knee_calculations - Boolean to enable knee calculations
-%       .calculate_ankle_calculations - Boolean to enable ankle calculations
+%       .calculate_proximal_on_distal - Boolean to enable proximal on distal moments
+%       .calculate_distal_on_proximal - Boolean to enable distal on proximal moments
 %
 % Outputs:
 %   ZTCFQ_updated - Updated ZTCFQ table with new calculations
@@ -43,9 +42,8 @@ function [ZTCFQ_updated, DELTAQ_updated] = calculateWorkPowerAndGranularAngularI
         'calculate_force_moment_impulse', true;
         'calculate_total_angular_impulse', true;
         'calculate_linear_impulse', true;
-        'calculate_hip_calculations', true;
-        'calculate_knee_calculations', true;
-        'calculate_ankle_calculations', true;
+        'calculate_proximal_on_distal', true;
+        'calculate_distal_on_proximal', true;
     };
     
     for i = 1:size(default_options, 1)
@@ -84,25 +82,12 @@ function [ZTCFQ_updated, DELTAQ_updated] = calculateWorkPowerAndGranularAngularI
     for i = 1:length(joint_names)
         joint_name = joint_names{i};
         
-        % Check if this joint's calculations are enabled
-        joint_enabled = false;
-        switch lower(joint_name)
-            case 'hip'
-                joint_enabled = options.calculate_hip_calculations;
-            case 'knee'
-                joint_enabled = options.calculate_knee_calculations;
-            case 'ankle'
-                joint_enabled = options.calculate_ankle_calculations;
-            case 'shoulder'
-                joint_enabled = options.calculate_shoulder_calculations;
-            case 'elbow'
-                joint_enabled = options.calculate_elbow_calculations;
-            case 'wrist'
-                joint_enabled = options.calculate_wrist_calculations;
-        end
+        % Check if moments of force calculations are enabled
+        proximal_enabled = options.calculate_proximal_on_distal;
+        distal_enabled = options.calculate_distal_on_proximal;
         
-        if ~joint_enabled
-            continue; % Skip this joint if calculations are disabled
+        if ~proximal_enabled && ~distal_enabled
+            continue; % Skip this joint if no moment calculations are enabled
         end
         
         proximal_end = joint_config.(joint_name){1};
