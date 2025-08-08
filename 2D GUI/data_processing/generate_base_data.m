@@ -20,9 +20,9 @@ function BaseData = generate_base_data(config, mdlWks)
     fprintf('🔄 Running base model simulation...\n');
     out = sim(config.model_name);
     
-    % Run table generation script
-    SCRIPT_TableGeneration;
-    
+    % Convert simulation output to table
+    Data = SCRIPT_TableGeneration(out);
+
     % Create BaseData table
     BaseData = Data;
     

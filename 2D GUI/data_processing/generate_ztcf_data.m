@@ -38,8 +38,7 @@ function ZTCF = generate_ztcf_data(config, mdlWks, BaseData)
         
         % Run simulation
         out = sim(config.model_name);
-        SCRIPT_TableGeneration;
-        ZTCFData = Data;
+        ZTCFData = SCRIPT_TableGeneration(out);
         
         % Find the row where KillswitchState first becomes zero
         row = find(ZTCFData.KillswitchState == 0, 1);
