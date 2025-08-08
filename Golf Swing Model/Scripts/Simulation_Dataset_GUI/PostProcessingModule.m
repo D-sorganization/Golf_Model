@@ -288,71 +288,101 @@ function processed_trial = calculateWorkAndPowerEnhanced(processed_trial, option
     if nargin < 2
         options = struct();
     end
-    if ~isfield(options, 'calculate_work')
-        options.calculate_work = false;
-    end
     
-    joint_names = fieldnames(processed_trial.joint_data);
-    torque_names = fieldnames(processed_trial.torque_data);
+    % Set defaults for all calculation options
+    default_options = {
+        'calculate_work', false;
+        'calculate_power', true;
+        'calculate_joint_torque_impulse', true;
+        'calculate_applied_torque_impulse', true;
+        'calculate_force_moment_impulse', true;
+        'calculate_total_angular_impulse', true;
+        'calculate_linear_impulse', true;
+        'calculate_hip_calculations', true;
+        'calculate_knee_calculations', true;
+        'calculate_ankle_calculations', true;
+        'calculate_shoulder_calculations', true;
+        'calculate_elbow_calculations', true;
+        'calculate_wrist_calculations', true;
+    };
     
-    total_work = 0;
-    total_power = 0;
-    total_angular_impulse = zeros(1, 3);
-    
-    for i = 1:length(joint_names)
-        joint_name = joint_names{i};
-        
-        % Find corresponding torque data
-        torque_idx = find(strcmp(torque_names, joint_name));
-        if ~isempty(torque_idx)
-            torque_name = torque_names{torque_idx};
-            
-            if isfield(processed_trial.joint_data.(joint_name), 'angular_velocity') && ...
-               isfield(processed_trial.torque_data.(torque_name), 'torque')
-                
-                angular_velocity = processed_trial.joint_data.(joint_name).angular_velocity;
-                torque = processed_trial.torque_data.(torque_name).torque;
-                
-                % Calculate power (P = τ * ω)
-                power = torque .* angular_velocity;
-                processed_trial.joint_data.(joint_name).power = power;
-                
-                % Calculate work if requested (W = ∫ P dt)
-                if options.calculate_work && isfield(processed_trial, 'time')
-                    time_data = processed_trial.time;
-                    work = trapz(time_data, power);
-                    processed_trial.joint_data.(joint_name).work = work;
-                    total_work = total_work + work;
-                end
-                
-                % Calculate peak power
-                peak_power = max(abs(power));
-                processed_trial.joint_data.(joint_name).peak_power = peak_power;
-                total_power = total_power + peak_power;
-                
-                % Note: Angular impulse calculations are now handled by the granular function
-                % calculateWorkPowerAndGranularAngularImpulse3D which provides detailed breakdown
-                % by joint end (proximal/distal) and source (joint torques, applied torques, force moments)
-            end
+    for i = 1:size(default_options, 1)
+        if ~isfield(options, default_options{i, 1})
+            options.(default_options{i, 1}) = default_options{i, 2};
         end
     end
     
-    % Store totals
-    processed_trial.total_peak_power = total_power;
-    
-    if options.calculate_work
-        processed_trial.total_work = total_work;
+    % Extract ZTCFQ and DELTAQ tables if available
+    if isfield(processed_trial, 'ZTCFQ') && isfield(processed_trial, 'DELTAQ')
+        ZTCFQ = processed_trial.ZTCFQ;
+        DELTAQ = processed_trial.DELTAQ;
+        
+        % Call the enhanced granular calculation function
+        [ZTCFQ_updated, DELTAQ_updated] = calculateWorkPowerAndGranularAngularImpulse3D(ZTCFQ, DELTAQ, options);
+        
+        % Update the processed trial with new data
+        processed_trial.ZTCFQ = ZTCFQ_updated;
+        processed_trial.DELTAQ = DELTAQ_updated;
+    else
+        % Fallback to original calculation method if ZTCFQ/DELTAQ not available
+        joint_names = fieldnames(processed_trial.joint_data);
+        torque_names = fieldnames(processed_trial.torque_data);
+        
+        total_work = 0;
+        total_power = 0;
+        
+        for i = 1:length(joint_names)
+            joint_name = joint_names{i};
+            
+            % Find corresponding torque data
+            torque_idx = find(strcmp(torque_names, joint_name));
+            if ~isempty(torque_idx)
+                torque_name = torque_names{torque_idx};
+                
+                if isfield(processed_trial.joint_data.(joint_name), 'angular_velocity') && ...
+                   isfield(processed_trial.torque_data.(torque_name), 'torque')
+                    
+                    angular_velocity = processed_trial.joint_data.(joint_name).angular_velocity;
+                    torque = processed_trial.torque_data.(torque_name).torque;
+                    
+                    % Calculate power (P = τ * ω)
+                    power = torque .* angular_velocity;
+                    processed_trial.joint_data.(joint_name).power = power;
+                    
+                    % Calculate work if requested (W = ∫ P dt)
+                    if options.calculate_work && isfield(processed_trial, 'time')
+                        time_data = processed_trial.time;
+                        work = trapz(time_data, power);
+                        processed_trial.joint_data.(joint_name).work = work;
+                        total_work = total_work + work;
+                    end
+                    
+                    % Calculate peak power
+                    peak_power = max(abs(power));
+                    processed_trial.joint_data.(joint_name).peak_power = peak_power;
+                    total_power = total_power + peak_power;
+                end
+            end
+        end
+        
+        % Store totals
+        processed_trial.total_peak_power = total_power;
+        
+        if options.calculate_work
+            processed_trial.total_work = total_work;
+        end
     end
     
     % Store calculation options for reference
     processed_trial.calculation_options = options;
     
-    % Note: Granular angular impulse calculations are handled separately by
+    % Note: Granular angular impulse calculations are handled by
     % calculateWorkPowerAndGranularAngularImpulse3D function which provides:
     % - Joint torque angular impulse (proximal/distal)
     % - Applied torque angular impulse (proximal/distal)  
     % - Force moment angular impulse (proximal/distal)
     % - Total angular impulse per joint end
+    % - Linear impulse from joint forces
 end
 
 function exportBatch(batch_data, batch_idx, output_folder, options)

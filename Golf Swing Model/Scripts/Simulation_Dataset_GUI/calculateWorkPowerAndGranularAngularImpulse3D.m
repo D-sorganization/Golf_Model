@@ -1,12 +1,21 @@
 function [ZTCFQ_updated, DELTAQ_updated] = calculateWorkPowerAndGranularAngularImpulse3D(ZTCFQ, DELTAQ, options)
 % CALCULATEWORKPOWERANDGRANULARANGULARIMPULSE3D - Enhanced calculation function
-% Calculates work, power, and granular angular impulse with detailed breakdown
+% Calculates work, power, granular angular impulse, and linear impulse with detailed breakdown
 %
 % Inputs:
 %   ZTCFQ - Table containing zero-time-crossing force data
 %   DELTAQ - Table containing delta force data  
 %   options - Structure with calculation options
 %       .calculate_work - Boolean to enable/disable work calculations
+%       .calculate_power - Boolean to enable/disable power calculations
+%       .calculate_joint_torque_impulse - Boolean to enable joint torque impulse
+%       .calculate_applied_torque_impulse - Boolean to enable applied torque impulse
+%       .calculate_force_moment_impulse - Boolean to enable force moment impulse
+%       .calculate_total_angular_impulse - Boolean to enable total angular impulse
+%       .calculate_linear_impulse - Boolean to enable linear impulse
+%       .calculate_hip_calculations - Boolean to enable hip calculations
+%       .calculate_knee_calculations - Boolean to enable knee calculations
+%       .calculate_ankle_calculations - Boolean to enable ankle calculations
 %
 % Outputs:
 %   ZTCFQ_updated - Updated ZTCFQ table with new calculations
@@ -16,13 +25,33 @@ function [ZTCFQ_updated, DELTAQ_updated] = calculateWorkPowerAndGranularAngularI
 %   - Joint Torque Angular Impulse (proximal/distal)
 %   - Force Moment Angular Impulse (proximal/distal) 
 %   - Total Angular Impulse per joint (proximal/distal/total)
+%
+% Linear Impulse:
+%   - Linear impulse from joint forces
 
     % Set default options
     if nargin < 3
         options = struct();
     end
-    if ~isfield(options, 'calculate_work')
-        options.calculate_work = false;
+    
+    % Set defaults for all calculation options
+    default_options = {
+        'calculate_work', false;
+        'calculate_power', true;
+        'calculate_joint_torque_impulse', true;
+        'calculate_applied_torque_impulse', true;
+        'calculate_force_moment_impulse', true;
+        'calculate_total_angular_impulse', true;
+        'calculate_linear_impulse', true;
+        'calculate_hip_calculations', true;
+        'calculate_knee_calculations', true;
+        'calculate_ankle_calculations', true;
+    };
+    
+    for i = 1:size(default_options, 1)
+        if ~isfield(options, default_options{i, 1})
+            options.(default_options{i, 1}) = default_options{i, 2};
+        end
     end
 
     % Initialize output tables
@@ -50,10 +79,32 @@ function [ZTCFQ_updated, DELTAQ_updated] = calculateWorkPowerAndGranularAngularI
     % Initialize angular impulse storage
     angular_impulse_data = struct();
 
-    % Process each joint
+    % Process each joint based on enabled options
     joint_names = fieldnames(joint_config);
     for i = 1:length(joint_names)
         joint_name = joint_names{i};
+        
+        % Check if this joint's calculations are enabled
+        joint_enabled = false;
+        switch lower(joint_name)
+            case 'hip'
+                joint_enabled = options.calculate_hip_calculations;
+            case 'knee'
+                joint_enabled = options.calculate_knee_calculations;
+            case 'ankle'
+                joint_enabled = options.calculate_ankle_calculations;
+            case 'shoulder'
+                joint_enabled = options.calculate_shoulder_calculations;
+            case 'elbow'
+                joint_enabled = options.calculate_elbow_calculations;
+            case 'wrist'
+                joint_enabled = options.calculate_wrist_calculations;
+        end
+        
+        if ~joint_enabled
+            continue; % Skip this joint if calculations are disabled
+        end
+        
         proximal_end = joint_config.(joint_name){1};
         distal_end = joint_config.(joint_name){2};
 
@@ -68,7 +119,7 @@ function [ZTCFQ_updated, DELTAQ_updated] = calculateWorkPowerAndGranularAngularI
             extractJointData(ZTCFQ, DELTAQ, joint_name);
 
         % Calculate joint torque angular impulse (separate for proximal/distal)
-        if ~isempty(torque_data)
+        if ~isempty(torque_data) && options.calculate_joint_torque_impulse
             % Proximal end angular impulse from joint torques
             proximal_torque_impulse = calculateAngularImpulse(torque_data.proximal, time_data);
             angular_impulse_data.(joint_name).proximal.joint_torque_impulse = proximal_torque_impulse;
@@ -83,7 +134,7 @@ function [ZTCFQ_updated, DELTAQ_updated] = calculateWorkPowerAndGranularAngularI
         end
 
         % Calculate applied torque angular impulse (separate for proximal/distal)
-        if ~isempty(applied_torque_data)
+        if ~isempty(applied_torque_data) && options.calculate_applied_torque_impulse
             % Proximal end angular impulse from applied torques
             proximal_applied_impulse = calculateAngularImpulse(applied_torque_data.proximal, time_data);
             angular_impulse_data.(joint_name).proximal.applied_torque_impulse = proximal_applied_impulse;
@@ -98,7 +149,7 @@ function [ZTCFQ_updated, DELTAQ_updated] = calculateWorkPowerAndGranularAngularI
         end
 
         % Calculate force moment angular impulse (separate for proximal/distal)
-        if ~isempty(force_moment_data)
+        if ~isempty(force_moment_data) && options.calculate_force_moment_impulse
             % Proximal end angular impulse from force moments
             proximal_force_moment_impulse = calculateAngularImpulse(force_moment_data.proximal, time_data);
             angular_impulse_data.(joint_name).proximal.force_moment_impulse = proximal_force_moment_impulse;
@@ -112,44 +163,81 @@ function [ZTCFQ_updated, DELTAQ_updated] = calculateWorkPowerAndGranularAngularI
             angular_impulse_data.(joint_name).total.force_moment_impulse = total_force_moment_impulse;
         end
 
-        % Calculate total angular impulse for each end and overall
-        angular_impulse_data.(joint_name).proximal.total_angular_impulse = ...
-            angular_impulse_data.(joint_name).proximal.joint_torque_impulse + ...
-            angular_impulse_data.(joint_name).proximal.applied_torque_impulse + ...
-            angular_impulse_data.(joint_name).proximal.force_moment_impulse;
+        % Calculate total angular impulse for each joint end
+        if options.calculate_total_angular_impulse
+            proximal_total_impulse = [0, 0, 0];
+            distal_total_impulse = [0, 0, 0];
 
-        angular_impulse_data.(joint_name).distal.total_angular_impulse = ...
-            angular_impulse_data.(joint_name).distal.joint_torque_impulse + ...
-            angular_impulse_data.(joint_name).distal.applied_torque_impulse + ...
-            angular_impulse_data.(joint_name).distal.force_moment_impulse;
+            % Sum up all proximal impulses
+            if isfield(angular_impulse_data.(joint_name).proximal, 'joint_torque_impulse')
+                proximal_total_impulse = proximal_total_impulse + angular_impulse_data.(joint_name).proximal.joint_torque_impulse;
+            end
+            if isfield(angular_impulse_data.(joint_name).proximal, 'applied_torque_impulse')
+                proximal_total_impulse = proximal_total_impulse + angular_impulse_data.(joint_name).proximal.applied_torque_impulse;
+            end
+            if isfield(angular_impulse_data.(joint_name).proximal, 'force_moment_impulse')
+                proximal_total_impulse = proximal_total_impulse + angular_impulse_data.(joint_name).proximal.force_moment_impulse;
+            end
 
-        angular_impulse_data.(joint_name).total.total_angular_impulse = ...
-            angular_impulse_data.(joint_name).total.joint_torque_impulse + ...
-            angular_impulse_data.(joint_name).total.applied_torque_impulse + ...
-            angular_impulse_data.(joint_name).total.force_moment_impulse;
+            % Sum up all distal impulses
+            if isfield(angular_impulse_data.(joint_name).distal, 'joint_torque_impulse')
+                distal_total_impulse = distal_total_impulse + angular_impulse_data.(joint_name).distal.joint_torque_impulse;
+            end
+            if isfield(angular_impulse_data.(joint_name).distal, 'applied_torque_impulse')
+                distal_total_impulse = distal_total_impulse + angular_impulse_data.(joint_name).distal.applied_torque_impulse;
+            end
+            if isfield(angular_impulse_data.(joint_name).distal, 'force_moment_impulse')
+                distal_total_impulse = distal_total_impulse + angular_impulse_data.(joint_name).distal.force_moment_impulse;
+            end
 
-        % Calculate power (always calculated)
-        if ~isempty(torque_data) && ~isempty(angular_velocity_data)
-            power_data = calculatePower(torque_data, angular_velocity_data);
-            
-            % Add power data to output tables
-            ZTCFQ_updated = addPowerColumns(ZTCFQ_updated, power_data, joint_name, 'ZTCFQ');
-            DELTAQ_updated = addPowerColumns(DELTAQ_updated, power_data, joint_name, 'DELTAQ');
+            % Store total angular impulse
+            angular_impulse_data.(joint_name).proximal.total_angular_impulse = proximal_total_impulse;
+            angular_impulse_data.(joint_name).distal.total_angular_impulse = distal_total_impulse;
+            angular_impulse_data.(joint_name).total.total_angular_impulse = proximal_total_impulse + distal_total_impulse;
         end
 
-        % Calculate work if requested
-        if options.calculate_work && ~isempty(torque_data) && ~isempty(angular_velocity_data)
-            work_data = calculateWork(torque_data, angular_velocity_data, time_data);
-            
-            % Add work data to output tables
-            ZTCFQ_updated = addWorkColumns(ZTCFQ_updated, work_data, joint_name, 'ZTCFQ');
-            DELTAQ_updated = addWorkColumns(DELTAQ_updated, work_data, joint_name, 'DELTAQ');
+        % Calculate power and work for this joint
+        if ~isempty(torque_data) && ~isempty(angular_velocity_data)
+            if options.calculate_power
+                power_data = calculatePower(torque_data, angular_velocity_data);
+                
+                % Add power columns to output tables
+                ZTCFQ_updated = addPowerColumns(ZTCFQ_updated, power_data, joint_name, 'ZTCFQ');
+                DELTAQ_updated = addPowerColumns(DELTAQ_updated, power_data, joint_name, 'DELTAQ');
+            end
+
+            % Calculate work if enabled
+            if options.calculate_work
+                if options.calculate_power
+                    work_data = calculateWork(power_data, time_data);
+                else
+                    % Calculate power temporarily for work calculation
+                    power_data = calculatePower(torque_data, angular_velocity_data);
+                    work_data = calculateWork(power_data, time_data);
+                end
+                
+                % Add work columns to output tables
+                ZTCFQ_updated = addWorkColumns(ZTCFQ_updated, work_data, joint_name, 'ZTCFQ');
+                DELTAQ_updated = addWorkColumns(DELTAQ_updated, work_data, joint_name, 'DELTAQ');
+            end
         end
     end
 
     % Add angular impulse data to output tables
     ZTCFQ_updated = addAngularImpulseColumns(ZTCFQ_updated, angular_impulse_data, 'ZTCFQ');
     DELTAQ_updated = addAngularImpulseColumns(DELTAQ_updated, angular_impulse_data, 'DELTAQ');
+    
+    % Calculate linear impulse if enabled
+    if options.calculate_linear_impulse
+        linear_impulse_data = calculateLinearImpulse(ZTCFQ, DELTAQ, time_data, options);
+        
+        % Add linear impulse columns to output tables
+        ZTCFQ_updated = addLinearImpulseColumns(ZTCFQ_updated, linear_impulse_data, 'ZTCFQ');
+        DELTAQ_updated = addLinearImpulseColumns(DELTAQ_updated, linear_impulse_data, 'DELTAQ');
+        
+        fprintf('Linear impulse calculations completed.\n');
+        fprintf('  - Linear impulse from joint forces\n');
+    end
 
     fprintf('Granular angular impulse calculations completed.\n');
     fprintf('  - Joint torque angular impulse (proximal/distal)\n');
@@ -454,5 +542,141 @@ function table_updated = addAngularImpulseColumns(table_original, angular_impuls
             table_updated.([joint_name '_TotalAngularImpulse_Total_Y']) = joint_data.total.total_angular_impulse(2);
             table_updated.([joint_name '_TotalAngularImpulse_Total_Z']) = joint_data.total.total_angular_impulse(3);
         end
+    end
+end
+
+function linear_impulse_data = calculateLinearImpulse(ZTCFQ, DELTAQ, time_data, options)
+% Calculate linear impulse from joint forces
+    linear_impulse_data = struct();
+    
+    % Define joints to process based on options
+    joints_to_process = {};
+    if options.calculate_hip_calculations
+        joints_to_process{end+1} = 'hip';
+    end
+    if options.calculate_knee_calculations
+        joints_to_process{end+1} = 'knee';
+    end
+    if options.calculate_ankle_calculations
+        joints_to_process{end+1} = 'ankle';
+    end
+    
+    % Process each enabled joint
+    for i = 1:length(joints_to_process)
+        joint_name = joints_to_process{i};
+        
+        % Extract force data for the joint
+        force_data = extractJointForceData(ZTCFQ, DELTAQ, joint_name);
+        
+        if ~isempty(force_data)
+            % Calculate linear impulse using trapezoidal integration
+            linear_impulse = calculateLinearImpulseFromForces(force_data, time_data);
+            linear_impulse_data.(joint_name) = linear_impulse;
+        end
+    end
+end
+
+function force_data = extractJointForceData(ZTCFQ, DELTAQ, joint_name)
+% Extract force data for a specific joint
+    force_data = struct();
+    
+    % Define column name patterns for each joint
+    joint_columns = getJointForceColumnNames(joint_name);
+    
+    % Extract force data from ZTCFQ (primary source)
+    if isfield(ZTCFQ, joint_columns.force_x) && isfield(ZTCFQ, joint_columns.force_y) && isfield(ZTCFQ, joint_columns.force_z)
+        force_data.proximal = [ZTCFQ.(joint_columns.force_x), ZTCFQ.(joint_columns.force_y), ZTCFQ.(joint_columns.force_z)];
+        force_data.distal = -force_data.proximal; % Equal and opposite
+    else
+        force_data = [];
+    end
+end
+
+function joint_columns = getJointForceColumnNames(joint_name)
+% Get force column names for a specific joint
+    joint_columns = struct();
+    
+    switch lower(joint_name)
+        case 'hip'
+            joint_columns.force_x = 'Hip_Force_X';
+            joint_columns.force_y = 'Hip_Force_Y';
+            joint_columns.force_z = 'Hip_Force_Z';
+            
+        case 'knee'
+            joint_columns.force_x = 'Knee_Force_X';
+            joint_columns.force_y = 'Knee_Force_Y';
+            joint_columns.force_z = 'Knee_Force_Z';
+            
+        case 'ankle'
+            joint_columns.force_x = 'Ankle_Force_X';
+            joint_columns.force_y = 'Ankle_Force_Y';
+            joint_columns.force_z = 'Ankle_Force_Z';
+            
+        case 'shoulder'
+            joint_columns.force_x = 'Shoulder_Force_X';
+            joint_columns.force_y = 'Shoulder_Force_Y';
+            joint_columns.force_z = 'Shoulder_Force_Z';
+            
+        case 'elbow'
+            joint_columns.force_x = 'Elbow_Force_X';
+            joint_columns.force_y = 'Elbow_Force_Y';
+            joint_columns.force_z = 'Elbow_Force_Z';
+            
+        case 'wrist'
+            joint_columns.force_x = 'Wrist_Force_X';
+            joint_columns.force_y = 'Wrist_Force_Y';
+            joint_columns.force_z = 'Wrist_Force_Z';
+            
+        otherwise
+            error('Unknown joint: %s', joint_name);
+    end
+end
+
+function linear_impulse = calculateLinearImpulseFromForces(force_data, time_data)
+% Calculate linear impulse from force data using trapezoidal integration
+    linear_impulse = struct();
+    
+    % Calculate linear impulse for proximal end
+    if isfield(force_data, 'proximal') && ~isempty(force_data.proximal)
+        linear_impulse.proximal = trapz(time_data, force_data.proximal, 1);
+    else
+        linear_impulse.proximal = [0, 0, 0];
+    end
+    
+    % Calculate linear impulse for distal end
+    if isfield(force_data, 'distal') && ~isempty(force_data.distal)
+        linear_impulse.distal = trapz(time_data, force_data.distal, 1);
+    else
+        linear_impulse.distal = [0, 0, 0];
+    end
+    
+    % Total linear impulse (should be zero for internal forces)
+    linear_impulse.total = linear_impulse.proximal + linear_impulse.distal;
+end
+
+function table_updated = addLinearImpulseColumns(table_original, linear_impulse_data, table_type)
+% Add linear impulse columns to the output table
+    table_updated = table_original;
+    
+    joint_names = fieldnames(linear_impulse_data);
+    
+    for i = 1:length(joint_names)
+        joint_name = joint_names{i};
+        impulse_data = linear_impulse_data.(joint_name);
+        
+        % Add proximal linear impulse columns
+        table_updated.([joint_name '_LinearImpulse_Proximal_X']) = impulse_data.proximal(1);
+        table_updated.([joint_name '_LinearImpulse_Proximal_Y']) = impulse_data.proximal(2);
+        table_updated.([joint_name '_LinearImpulse_Proximal_Z']) = impulse_data.proximal(3);
+        
+        % Add distal linear impulse columns
+        table_updated.([joint_name '_LinearImpulse_Distal_X']) = impulse_data.distal(1);
+        table_updated.([joint_name '_LinearImpulse_Distal_Y']) = impulse_data.distal(2);
+        table_updated.([joint_name '_LinearImpulse_Distal_Z']) = impulse_data.distal(3);
+        
+        % Add total linear impulse columns
+        table_updated.([joint_name '_LinearImpulse_Total_X']) = impulse_data.total(1);
+        table_updated.([joint_name '_LinearImpulse_Total_Y']) = impulse_data.total(2);
+        table_updated.([joint_name '_LinearImpulse_Total_Z']) = impulse_data.total(3);
     end
 end
