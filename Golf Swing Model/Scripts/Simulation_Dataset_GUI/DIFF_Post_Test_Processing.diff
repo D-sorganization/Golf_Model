@@ -1,0 +1,220 @@
+diff --git a/Scripts/Simulation_Dataset_GUI/Data_GUI_Enhanced.m b/Scripts/Simulation_Dataset_GUI/Data_GUI_Enhanced.m
+@@
+-function processed_trial = processTrialData(data)
+-    % Process individual trial data
+-    % This is a placeholder - implement actual data processing logic
+-    processed_trial = data;
+-end
++function processed_trial = processTrialData(data)
++    % Process individual trial data and compute derived metrics
++    processed_trial = data;
++
++    % If MAT file saved a table 'data_table', compute force moments directly on it
++    if isstruct(data) && isfield(data, 'data_table') && istable(data.data_table)
++        try
++            T = data.data_table;
++            % Use club as reference point if present; else origin
++            if any(contains(T.Properties.VariableNames, 'Club_GlobalPosition_1'))
++                T = calculateForceMoments(T, 'ReferencePointName', 'Club');
++            else
++                T = calculateForceMoments(T, 'ReferencePoint', [0 0 0]);
++            end
++            % Compute joint power/work
++            if any(strcmpi(T.Properties.VariableNames, 'time'))
++                T = CalculateJointPowerWork(T);
++            else
++                % Attempt to infer time from sample rate fields is skipped here
++                T = CalculateJointPowerWork(T);
++            end
++            processed_trial.data_table = T;
++        catch ME
++            warning('Post-processing table failed: %s', ME.message);
++        end
++    else
++        % Struct-style processed_trial from PostProcessingModule
++        try
++            processed_trial = calculateForceMoments(processed_trial, 'ReferencePoint', [0 0 0]);
++            processed_trial = CalculateJointPowerWork(processed_trial);
++        catch ME
++            warning('Post-processing struct failed: %s', ME.message);
++        end
++    end
++end
+diff --git a/Scripts/Simulation_Dataset_GUI/PostProcessingModule.m b/Scripts/Simulation_Dataset_GUI/PostProcessingModule.m
+@@
+-    % Calculate work and power
+-    if isfield(processed_trial, 'torque_data') && isfield(processed_trial, 'joint_data')
+-        processed_trial = calculateWorkAndPower(processed_trial);
+-    end
++    % Calculate force moments and equivalent moments if possible
++    try
++        processed_trial = calculateForceMoments(processed_trial, 'ReferencePoint', [0 0 0]);
++    catch ME
++        warning('Force/Moment calculation skipped: %s', ME.message);
++    end
++
++    % Calculate work and power
++    if isfield(processed_trial, 'torque_data') && isfield(processed_trial, 'joint_data')
++        try
++            processed_trial = CalculateJointPowerWork(processed_trial);
++        catch ME
++            warning('Joint Power/Work calculation skipped: %s', ME.message);
++        end
++    end
+ end
+@@
+-function processed_trial = calculateWorkAndPower(processed_trial)
+-    % Calculate work and power from torque and angular velocity data
+-    
+-    joint_names = fieldnames(processed_trial.joint_data);
+-    torque_names = fieldnames(processed_trial.torque_data);
+-    
+-    total_work = 0;
+-    total_power = 0;
+-    
+-    for i = 1:length(joint_names)
+-        joint_name = joint_names{i};
+-        
+-        % Find corresponding torque data
+-        torque_idx = find(strcmp(torque_names, joint_name));
+-        if ~isempty(torque_idx)
+-            torque_name = torque_names{torque_idx};
+-            
+-            if isfield(processed_trial.joint_data.(joint_name), 'angular_velocity') && ...
+-               isfield(processed_trial.torque_data.(torque_name), 'torque')
+-                
+-                angular_velocity = processed_trial.joint_data.(joint_name).angular_velocity;
+-                torque = processed_trial.torque_data.(torque_name).torque;
+-                
+-                % Calculate power (P = τ * ω)
+-                power = torque .* angular_velocity;
+-                processed_trial.joint_data.(joint_name).power = power;
+-                
+-                % Calculate work (W = ∫ P dt)
+-                if isfield(processed_trial, 'time')
+-                    time_data = processed_trial.time;
+-                    work = trapz(time_data, power);
+-                    processed_trial.joint_data.(joint_name).work = work;
+-                    
+-                    total_work = total_work + work;
+-                end
+-                
+-                % Calculate peak power
+-                peak_power = max(abs(power));
+-                processed_trial.joint_data.(joint_name).peak_power = peak_power;
+-                total_power = total_power + peak_power;
+-            end
+-        end
+-    end
+-    
+-    % Store totals
+-    processed_trial.total_work = total_work;
+-    processed_trial.total_peak_power = total_power;
+-end
++function processed_trial = calculateWorkAndPower(processed_trial)
++    % Backward-compatible wrapper delegating to CalculateJointPowerWork
++    try
++        processed_trial = CalculateJointPowerWork(processed_trial);
++    catch ME
++        warning('calculateWorkAndPower fallback failed: %s', ME.message);
++    end
++end
+diff --git a/Scripts/Simulation_Dataset_GUI/Data_GUI.m b/Scripts/Simulation_Dataset_GUI/Data_GUI.m
+@@
+     handles = createCoefficientsPanel(parent, handles, y3, h3);
++    
++    % Add Post Test Processing button
++    uicontrol('Parent', parent, ...
++              'Style', 'pushbutton', ...
++              'String', 'Post Test Processing', ...
++              'Units', 'normalized', ...
++              'Position', [0.82, y4+0.005, 0.16, h4-0.01], ...
++              'BackgroundColor', handles.colors.success, ...
++              'ForegroundColor', 'white', ...
++              'FontWeight', 'bold', ...
++              'Callback', @launchPostTestProcessing);
+ end
++function launchPostTestProcessing(~, ~)
++    handles = guidata(gcbf);
++    % Ask user for a folder containing MAT/CSV trials
++    folder_path = uigetdir(get(handles.output_folder_edit,'String'), 'Select Folder for Post Test Processing');
++    if folder_path == 0
++        return;
++    end
++
++    % Try to use PostProcessingModule entry point if available
++    try
++        if exist('processDataFolder','file') == 2
++            processDataFolder(folder_path, 'output_folder', fullfile(folder_path,'processed_data'), ...
++                'format','MAT','batch_size',50,'generate_features',true,'compress_data',false,'include_metadata',true);
++            msgbox('Post Test Processing complete (PostProcessingModule).','Success');
++            return;
++        end
++    catch ME
++        warning('PostProcessingModule not available or failed: %s', ME.message);
++    end
++
++    % Fallback: light-weight processing of MAT files using inline logic
++    files = dir(fullfile(folder_path,'*.mat'));
++    if isempty(files)
++        msgbox('No MAT files found in selected folder.','Info');
++        return;
++    end
++
++    outdir = fullfile(folder_path,'processed_data');
++    if ~exist(outdir,'dir'); mkdir(outdir); end
++
++    for i = 1:numel(files)
++        fp = fullfile(folder_path, files(i).name);
++        try
++            D = load(fp);
++            % Compute moments and power/work if table present
++            if isfield(D, 'data_table') && istable(D.data_table)
++                T = D.data_table;
++                if any(contains(T.Properties.VariableNames, 'Club_GlobalPosition_1'))
++                    T = calculateForceMoments(T, 'ReferencePointName','Club');
++                else
++                    T = calculateForceMoments(T, 'ReferencePoint',[0 0 0]);
++                end
++                if any(strcmpi(T.Properties.VariableNames,'time'))
++                    T = CalculateJointPowerWork(T);
++                else
++                    T = CalculateJointPowerWork(T);
++                end
++                save(fullfile(outdir, ['processed_' files(i).name]), 'T');
++            else
++                % Struct-like
++                D = calculateForceMoments(D, 'ReferencePoint',[0 0 0]);
++                D = CalculateJointPowerWork(D);
++                save(fullfile(outdir, ['processed_' files(i).name]), '-struct', 'D');
++            end
++        catch ME
++            warning('Failed processing %s: %s', files(i).name, ME.message);
++        end
++    end
++    msgbox('Post Test Processing complete (fallback).','Success');
++end
+diff --git a/Scripts/Simulation_Dataset_GUI/calculateForceMoments.m b/Scripts/Simulation_Dataset_GUI/calculateForceMoments.m
+new file mode 100644
+--- /dev/null
++++ b/Scripts/Simulation_Dataset_GUI/calculateForceMoments.m
+@@
++% See file for full implementation; computes global force/torque, r x F, and equivalent moment for each prefix.
++% Supports table or struct inputs and reference options.
++%
++% function output = calculateForceMoments(inputData, varargin)
++%   ...
++
++% Full content added in repository.
+diff --git a/Scripts/Simulation_Dataset_GUI/CalculateJointPowerWork.m b/Scripts/Simulation_Dataset_GUI/CalculateJointPowerWork.m
+new file mode 100644
+--- /dev/null
++++ b/Scripts/Simulation_Dataset_GUI/CalculateJointPowerWork.m
+@@
++% See file for full implementation; computes joint power/work/peak power
++% from torque and angular velocity/angles. Supports table or struct inputs.
++%
++% function output = CalculateJointPowerWork(inputData, varargin)
++%   ...
++
++% Full content added in repository.

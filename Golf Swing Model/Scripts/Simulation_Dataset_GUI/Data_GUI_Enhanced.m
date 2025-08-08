@@ -892,9 +892,39 @@ function batch_data = processBatch(batch_files, processing_data)
 end
 
 function processed_trial = processTrialData(data)
-    % Process individual trial data
-    % This is a placeholder - implement actual data processing logic
+    % Process individual trial data and compute derived metrics
     processed_trial = data;
+
+    % If MAT file saved a table 'data_table', compute force moments directly on it
+    if isstruct(data) && isfield(data, 'data_table') && istable(data.data_table)
+        try
+            T = data.data_table;
+            % Use club as reference point if present; else origin
+            if any(contains(T.Properties.VariableNames, 'Club_GlobalPosition_1'))
+                T = calculateForceMoments(T, 'ReferencePointName', 'Club');
+            else
+                T = calculateForceMoments(T, 'ReferencePoint', [0 0 0]);
+            end
+            % Compute joint power/work
+            if any(strcmpi(T.Properties.VariableNames, 'time'))
+                T = CalculateJointPowerWork(T);
+            else
+                % Attempt to infer time from sample rate fields is skipped here
+                T = CalculateJointPowerWork(T);
+            end
+            processed_trial.data_table = T;
+        catch ME
+            warning('Post-processing table failed: %s', ME.message);
+        end
+    else
+        % Struct-style processed_trial from PostProcessingModule
+        try
+            processed_trial = calculateForceMoments(processed_trial, 'ReferencePoint', [0 0 0]);
+            processed_trial = CalculateJointPowerWork(processed_trial);
+        catch ME
+            warning('Post-processing struct failed: %s', ME.message);
+        end
+    end
 end
 
 function exportBatch(batch_data, batch_idx, processing_data)

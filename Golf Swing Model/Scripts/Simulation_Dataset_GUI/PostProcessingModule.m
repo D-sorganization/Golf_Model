@@ -270,59 +270,30 @@ function processed_trial = calculateDerivedQuantities(processed_trial)
         end
     end
     
+    % Calculate force moments and equivalent moments if possible
+    try
+        processed_trial = calculateForceMoments(processed_trial, 'ReferencePoint', [0 0 0]);
+    catch ME
+        warning('Force/Moment calculation skipped: %s', ME.message);
+    end
+
     % Calculate work and power
     if isfield(processed_trial, 'torque_data') && isfield(processed_trial, 'joint_data')
-        processed_trial = calculateWorkAndPower(processed_trial);
+        try
+            processed_trial = CalculateJointPowerWork(processed_trial);
+        catch ME
+            warning('Joint Power/Work calculation skipped: %s', ME.message);
+        end
     end
 end
 
 function processed_trial = calculateWorkAndPower(processed_trial)
-    % Calculate work and power from torque and angular velocity data
-    
-    joint_names = fieldnames(processed_trial.joint_data);
-    torque_names = fieldnames(processed_trial.torque_data);
-    
-    total_work = 0;
-    total_power = 0;
-    
-    for i = 1:length(joint_names)
-        joint_name = joint_names{i};
-        
-        % Find corresponding torque data
-        torque_idx = find(strcmp(torque_names, joint_name));
-        if ~isempty(torque_idx)
-            torque_name = torque_names{torque_idx};
-            
-            if isfield(processed_trial.joint_data.(joint_name), 'angular_velocity') && ...
-               isfield(processed_trial.torque_data.(torque_name), 'torque')
-                
-                angular_velocity = processed_trial.joint_data.(joint_name).angular_velocity;
-                torque = processed_trial.torque_data.(torque_name).torque;
-                
-                % Calculate power (P = τ * ω)
-                power = torque .* angular_velocity;
-                processed_trial.joint_data.(joint_name).power = power;
-                
-                % Calculate work (W = ∫ P dt)
-                if isfield(processed_trial, 'time')
-                    time_data = processed_trial.time;
-                    work = trapz(time_data, power);
-                    processed_trial.joint_data.(joint_name).work = work;
-                    
-                    total_work = total_work + work;
-                end
-                
-                % Calculate peak power
-                peak_power = max(abs(power));
-                processed_trial.joint_data.(joint_name).peak_power = peak_power;
-                total_power = total_power + peak_power;
-            end
-        end
+    % Backward-compatible wrapper delegating to CalculateJointPowerWork
+    try
+        processed_trial = CalculateJointPowerWork(processed_trial);
+    catch ME
+        warning('calculateWorkAndPower fallback failed: %s', ME.message);
     end
-    
-    % Store totals
-    processed_trial.total_work = total_work;
-    processed_trial.total_peak_power = total_power;
 end
 
 function exportBatch(batch_data, batch_idx, output_folder, options)

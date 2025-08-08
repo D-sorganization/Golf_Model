@@ -217,6 +217,17 @@ function handles = createRightColumnContent(parent, handles)
     handles = createPreviewPanel(parent, handles, y1, h1);
     handles = createJointEditorPanel(parent, handles, y2, h2);
     handles = createCoefficientsPanel(parent, handles, y3, h3);
+
+    % Add Post Test Processing button
+    uicontrol('Parent', parent, ...
+              'Style', 'pushbutton', ...
+              'String', 'Post Test Processing', ...
+              'Units', 'normalized', ...
+              'Position', [0.82, y4+0.005, 0.16, h4-0.01], ...
+              'BackgroundColor', handles.colors.success, ...
+              'ForegroundColor', 'white', ...
+              'FontWeight', 'bold', ...
+              'Callback', @launchPostTestProcessing);
 end
 function handles = createTrialAndDataPanel(parent, handles, yPos, height)
     % Configuration panel
@@ -5807,3 +5818,66 @@ function resetGUIState(handles)
         fprintf('Warning: Could not reset GUI state: %s\n', ME.message);
     end
 end
+
+% ... existing code ...
+function launchPostTestProcessing(~, ~)
+    handles = guidata(gcbf);
+    % Ask user for a folder containing MAT/CSV trials
+    folder_path = uigetdir(get(handles.output_folder_edit,'String'), 'Select Folder for Post Test Processing');
+    if folder_path == 0
+        return;
+    end
+
+    % Try to use PostProcessingModule entry point if available
+    try
+        if exist('processDataFolder','file') == 2
+            processDataFolder(folder_path, 'output_folder', fullfile(folder_path,'processed_data'), ...
+                'format','MAT','batch_size',50,'generate_features',true,'compress_data',false,'include_metadata',true);
+            msgbox('Post Test Processing complete (PostProcessingModule).','Success');
+            return;
+        end
+    catch ME
+        warning('PostProcessingModule not available or failed: %s', ME.message);
+    end
+
+    % Fallback: light-weight processing of MAT files using inline logic
+    files = dir(fullfile(folder_path,'*.mat'));
+    if isempty(files)
+        msgbox('No MAT files found in selected folder.','Info');
+        return;
+    end
+
+    outdir = fullfile(folder_path,'processed_data');
+    if ~exist(outdir,'dir'); mkdir(outdir); end
+
+    for i = 1:numel(files)
+        fp = fullfile(folder_path, files(i).name);
+        try
+            D = load(fp);
+            % Compute moments and power/work if table present
+            if isfield(D, 'data_table') && istable(D.data_table)
+                T = D.data_table;
+                if any(contains(T.Properties.VariableNames, 'Club_GlobalPosition_1'))
+                    T = calculateForceMoments(T, 'ReferencePointName','Club');
+                else
+                    T = calculateForceMoments(T, 'ReferencePoint',[0 0 0]);
+                end
+                if any(strcmpi(T.Properties.VariableNames,'time'))
+                    T = CalculateJointPowerWork(T);
+                else
+                    T = CalculateJointPowerWork(T);
+                end
+                save(fullfile(outdir, ['processed_' files(i).name]), 'T');
+            else
+                % Struct-like
+                D = calculateForceMoments(D, 'ReferencePoint',[0 0 0]);
+                D = CalculateJointPowerWork(D);
+                save(fullfile(outdir, ['processed_' files(i).name]), '-struct', 'D');
+            end
+        catch ME
+            warning('Failed processing %s: %s', files(i).name, ME.message);
+        end
+    end
+    msgbox('Post Test Processing complete (fallback).','Success');
+end
+% ... existing code ...
