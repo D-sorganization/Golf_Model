@@ -25,7 +25,7 @@ def test_data_loading():
 
         # Convert to GUI format
         baseq_data, ztcfq_data, deltaq_data = loader.convert_to_gui_format(data)
-        print(f"✅ GUI format conversion successful:")
+        print("✅ GUI format conversion successful:")
         print(f"   BASEQ: {baseq_data.shape}")
         print(f"   ZTCFQ: {ztcfq_data.shape}")
         print(f"   DELTAQ: {deltaq_data.shape}")

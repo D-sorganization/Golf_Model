@@ -18,7 +18,6 @@ import pandas as pd
 # Add the current directory to Python path
 sys.path.append(str(Path(__file__).parent))
 
-from golf_data_core import FrameData, RenderConfig
 from golf_gui_application import GolfVisualizerMainWindow
 from PyQt6.QtWidgets import QApplication
 

@@ -7,19 +7,15 @@ import pandas as pd
 matplotlib.use("Qt5Agg")  # Use Qt5 backend for compatibility
 import os
 
-import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import \
     FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from mpl_toolkits.mplot3d import Axes3D
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
-                             QFrame, QGroupBox, QHBoxLayout, QLabel,
-                             QMainWindow, QMessageBox, QPushButton,
-                             QScrollArea, QSlider, QTextEdit, QVBoxLayout,
-                             QWidget)
-from scipy import signal
+                             QGroupBox, QHBoxLayout, QLabel, QMainWindow,
+                             QMessageBox, QPushButton, QSlider, QTextEdit,
+                             QVBoxLayout, QWidget)
 
 
 class GolfSwingAnalyzerPyQt6(QMainWindow):
@@ -412,7 +408,7 @@ class GolfSwingAnalyzerPyQt6(QMainWindow):
                 print(
                     f"Time range: {data['time'].min():.3f} to {data['time'].max():.3f} seconds"
                 )
-                print(f"Position ranges (meters):")
+                print("Position ranges (meters):")
                 print(f"  X: {data['X'].min():.3f} to {data['X'].max():.3f}")
                 print(f"  Y: {data['Y'].min():.3f} to {data['Y'].max():.3f}")
                 print(f"  Z: {data['Z'].min():.3f} to {data['Z'].max():.3f}")
@@ -425,22 +421,22 @@ class GolfSwingAnalyzerPyQt6(QMainWindow):
                 total_range = np.linalg.norm(position_range)
                 print(f"Total position range: {total_range:.3f} meters")
 
-                print(f"\nData Analysis:")
-                print(f"  Motion range is very small - this suggests:")
-                print(f"    - Data might be tracking a single point on the club")
-                print(f"    - Possibly near the grip or sensor attachment point")
-                print(f"    - Not the full club head motion")
+                print("\nData Analysis:")
+                print("  Motion range is very small - this suggests:")
+                print("    - Data might be tracking a single point on the club")
+                print("    - Possibly near the grip or sensor attachment point")
+                print("    - Not the full club head motion")
 
                 if total_range < 0.5:
                     print(f"  WARNING: Very small motion range ({total_range:.3f}m)")
                     print(
-                        f"    - For comparison, a golf swing typically has 2-4m of club head motion"
+                        "    - For comparison, a golf swing typically has 2-4m of club head motion"
                     )
                     print(
-                        f"    - This data appears to track a fixed point, not the full swing arc"
+                        "    - This data appears to track a fixed point, not the full swing arc"
                     )
                     print(
-                        f"    - Using standard club length and motion scaling for visualization"
+                        "    - Using standard club length and motion scaling for visualization"
                     )
 
                 print("=" * 40)

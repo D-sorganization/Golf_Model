@@ -8,7 +8,7 @@ import time
 import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -16,7 +16,7 @@ import scipy.io
 from golf_inverse_dynamics import (butter_lowpass_filter,
                                    calculate_inverse_dynamics,
                                    savitzky_golay_filter)
-from numba import jit, njit
+from numba import njit
 
 # ============================================================================
 # OPTIMIZED DATA STRUCTURES
@@ -887,7 +887,7 @@ if __name__ == "__main__":
         processor = FrameProcessor(datasets, config)
         frame_data = processor.get_frame_data(0)
 
-        print(f"\n✅ Successfully loaded and processed data:")
+        print("\n✅ Successfully loaded and processed data:")
         print(f"   Frames: {processor.num_frames}")
         print(f"   Frame 0 valid: {frame_data.is_valid}")
         print(f"   Shaft length: {frame_data.shaft_length:.3f}")

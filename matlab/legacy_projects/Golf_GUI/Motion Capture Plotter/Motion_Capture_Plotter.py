@@ -7,18 +7,14 @@ import pandas as pd
 matplotlib.use("QtAgg")  # Use QtAgg backend for PyQt6 compatibility
 import os
 
-import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from mpl_toolkits.mplot3d import Axes3D
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
-                             QFrame, QGroupBox, QHBoxLayout, QLabel,
-                             QMainWindow, QMessageBox, QPushButton,
-                             QScrollArea, QSlider, QTextEdit, QVBoxLayout,
-                             QWidget)
-from scipy import signal
+                             QGroupBox, QHBoxLayout, QLabel, QMainWindow,
+                             QMessageBox, QPushButton, QScrollArea, QSlider,
+                             QTextEdit, QVBoxLayout, QWidget)
 
 
 class MotionCapturePlotter(QMainWindow):
@@ -609,12 +605,12 @@ class MotionCapturePlotter(QMainWindow):
                 print(
                     f"Time range: {data['time'].min():.3f} to {data['time'].max():.3f} seconds"
                 )
-                print(f"Mid-Hands Position ranges:")
+                print("Mid-Hands Position ranges:")
                 print(f"  X: {data['mid_X'].min():.3f} to {data['mid_X'].max():.3f}")
                 print(f"  Y: {data['mid_Y'].min():.3f} to {data['mid_Y'].max():.3f}")
                 print(f"  Z: {data['mid_Z'].min():.3f} to {data['mid_Z'].max():.3f}")
 
-                print(f"Club Head Position ranges:")
+                print("Club Head Position ranges:")
                 print(f"  X: {data['club_X'].min():.3f} to {data['club_X'].max():.3f}")
                 print(f"  Y: {data['club_Y'].min():.3f} to {data['club_Y'].max():.3f}")
                 print(f"  Z: {data['club_Z'].min():.3f} to {data['club_Z'].max():.3f}")
@@ -1175,13 +1171,13 @@ class MotionCapturePlotter(QMainWindow):
                 club_trajectory = np.array(
                     [
                         [
-                            -row[f"club_head_X"]
+                            -row["club_head_X"]
                             * self.motion_scale,  # Flip X for right-handed swing
-                            row[f"club_head_Y"] * self.motion_scale,
-                            row[f"club_head_Z"] * self.motion_scale,
+                            row["club_head_Y"] * self.motion_scale,
+                            row["club_head_Z"] * self.motion_scale,
                         ]
                         for _, row in data.iterrows()
-                        if f"club_head_X" in row
+                        if "club_head_X" in row
                     ]
                 )
                 if len(club_trajectory) > 1:
@@ -1201,13 +1197,13 @@ class MotionCapturePlotter(QMainWindow):
                 hands_trajectory = np.array(
                     [
                         [
-                            -row[f"left_hand_X"]
+                            -row["left_hand_X"]
                             * self.motion_scale,  # Flip X for right-handed swing
-                            row[f"left_hand_Y"] * self.motion_scale,
-                            row[f"left_hand_Z"] * self.motion_scale,
+                            row["left_hand_Y"] * self.motion_scale,
+                            row["left_hand_Z"] * self.motion_scale,
                         ]
                         for _, row in data.iterrows()
-                        if f"left_hand_X" in row
+                        if "left_hand_X" in row
                     ]
                 )
                 if len(hands_trajectory) > 1:
@@ -1281,7 +1277,7 @@ class MotionCapturePlotter(QMainWindow):
             ):
                 motion_data = self.swing_data[available_swings[0]]
                 motion_frame = motion_data.iloc[self.current_frame]
-                info += f"Motion Capture Data:\n"
+                info += "Motion Capture Data:\n"
                 info += f"  Time: {motion_frame['time']:.3f}s\n"
                 info += f"  Mid-Hands: ({motion_frame['mid_X']:.3f}, {motion_frame['mid_Y']:.3f}, {motion_frame['mid_Z']:.3f})\n"
                 info += f"  Club Head: ({motion_frame['club_X']:.3f}, {motion_frame['club_Y']:.3f}, {motion_frame['club_Z']:.3f})\n\n"
@@ -1294,9 +1290,9 @@ class MotionCapturePlotter(QMainWindow):
             ):
                 simscape_data = self.simscape_data[available_simscape[0]]
                 simscape_frame = simscape_data.iloc[self.current_frame]
-                info += f"Simscape Data:\n"
+                info += "Simscape Data:\n"
                 info += f"  Time: {simscape_frame['time']:.3f}s\n"
-                info += f"  Available Joints:\n"
+                info += "  Available Joints:\n"
                 joint_count = 0
                 for joint_name in [
                     "club_head",

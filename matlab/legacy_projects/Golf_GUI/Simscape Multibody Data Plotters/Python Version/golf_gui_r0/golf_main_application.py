@@ -5,13 +5,9 @@ Complete integration of all components with enhanced features and error handling
 """
 
 import logging
-import os
 import sys
-import traceback
 from pathlib import Path
 from typing import Dict, List, Optional
-
-import numpy as np
 
 # Configure logging
 logging.basicConfig(

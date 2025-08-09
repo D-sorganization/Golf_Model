@@ -1,7 +1,5 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from mpl_toolkits.mplot3d import Axes3D
 
 
 def analyze_coordinate_system():
@@ -75,7 +73,7 @@ def analyze_coordinate_system():
     club_y_range = [min(d["club_Y"] for d in data), max(d["club_Y"] for d in data)]
     club_z_range = [min(d["club_Z"] for d in data), max(d["club_Z"] for d in data)]
 
-    print(f"Mid-hands motion ranges:")
+    print("Mid-hands motion ranges:")
     print(
         f"  X: {mid_x_range[0]:.3f} to {mid_x_range[1]:.3f} (range: {mid_x_range[1]-mid_x_range[0]:.3f})"
     )
@@ -86,7 +84,7 @@ def analyze_coordinate_system():
         f"  Z: {mid_z_range[0]:.3f} to {mid_z_range[1]:.3f} (range: {mid_z_range[1]-mid_z_range[0]:.3f})"
     )
 
-    print(f"Club head motion ranges:")
+    print("Club head motion ranges:")
     print(
         f"  X: {club_x_range[0]:.3f} to {club_x_range[1]:.3f} (range: {club_x_range[1]-club_x_range[0]:.3f})"
     )
@@ -110,7 +108,7 @@ def analyze_coordinate_system():
         club_z_range[1] - club_z_range[0],
     ]
 
-    print(f"\nMotion analysis:")
+    print("\nMotion analysis:")
     print(
         f"  Mid-hands largest motion: {'X' if mid_motion_ranges[0] == max(mid_motion_ranges) else 'Y' if mid_motion_ranges[1] == max(mid_motion_ranges) else 'Z'}"
     )
@@ -119,7 +117,7 @@ def analyze_coordinate_system():
     )
 
     # Check if this looks like a golf swing
-    print(f"\nGolf swing interpretation:")
+    print("\nGolf swing interpretation:")
     if max(club_motion_ranges) > max(mid_motion_ranges) * 1.5:
         print("  ✓ Club head has larger motion than hands (typical of golf swing)")
     else:
@@ -141,7 +139,7 @@ def analyze_coordinate_system():
         print("  This seems unusual for a golf swing")
 
     # Look at key frames (start, middle, end)
-    print(f"\nKey frame analysis:")
+    print("\nKey frame analysis:")
     print("-" * 30)
 
     # Find frames at different times
@@ -175,7 +173,7 @@ def analyze_coordinate_system():
         print(f"  Club length: {club_length:.3f}m")
 
         # Analyze direction cosines for mid-hands
-        print(f"  Mid-hands direction cosines:")
+        print("  Mid-hands direction cosines:")
         print(
             f"    X-axis: [{frame['mid_Xx']:.3f}, {frame['mid_Xy']:.3f}, {frame['mid_Xz']:.3f}]"
         )

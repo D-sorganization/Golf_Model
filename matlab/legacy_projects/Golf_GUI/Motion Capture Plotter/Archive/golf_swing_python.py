@@ -2,15 +2,12 @@ import os
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
-from mpl_toolkits.mplot3d import Axes3D
 from scipy import signal
-from scipy.interpolate import UnivariateSpline
 
 
 class GolfSwingAnalyzer:
@@ -465,7 +462,7 @@ class GolfSwingAnalyzer:
                 print(
                     f"Time range: {data['time'].min():.3f} to {data['time'].max():.3f} seconds"
                 )
-                print(f"Position ranges (meters):")
+                print("Position ranges (meters):")
                 print(f"  X: {data['X'].min():.3f} to {data['X'].max():.3f}")
                 print(f"  Y: {data['Y'].min():.3f} to {data['Y'].max():.3f}")
                 print(f"  Z: {data['Z'].min():.3f} to {data['Z'].max():.3f}")
@@ -479,27 +476,27 @@ class GolfSwingAnalyzer:
                 print(f"Total position range: {total_range:.3f} meters")
 
                 # Analyze the data characteristics
-                print(f"\nData Analysis:")
-                print(f"  Motion range is very small - this suggests:")
-                print(f"    - Data might be tracking a single point on the club")
-                print(f"    - Possibly near the grip or sensor attachment point")
-                print(f"    - Not the full club head motion")
+                print("\nData Analysis:")
+                print("  Motion range is very small - this suggests:")
+                print("    - Data might be tracking a single point on the club")
+                print("    - Possibly near the grip or sensor attachment point")
+                print("    - Not the full club head motion")
 
                 # Check if data might be in different units
                 if total_range < 0.5:
                     print(f"  WARNING: Very small motion range ({total_range:.3f}m)")
                     print(
-                        f"    - For comparison, a golf swing typically has 2-4m of club head motion"
+                        "    - For comparison, a golf swing typically has 2-4m of club head motion"
                     )
                     print(
-                        f"    - This data appears to track a fixed point, not the full swing arc"
+                        "    - This data appears to track a fixed point, not the full swing arc"
                     )
-                    print(f"    - Using standard club length (0.9m) for visualization")
+                    print("    - Using standard club length (0.9m) for visualization")
                 else:
-                    print(f"  Motion range seems reasonable for a golf swing")
+                    print("  Motion range seems reasonable for a golf swing")
 
                 # Check orientation vectors
-                print(f"\nOrientation vector ranges:")
+                print("\nOrientation vector ranges:")
                 print(f"  Xx: {data['Xx'].min():.3f} to {data['Xx'].max():.3f}")
                 print(f"  Xy: {data['Xy'].min():.3f} to {data['Xy'].max():.3f}")
                 print(f"  Xz: {data['Xz'].min():.3f} to {data['Xz'].max():.3f}")
@@ -510,7 +507,7 @@ class GolfSwingAnalyzer:
                 # Check if orientation vectors are unit vectors
                 x_norms = np.sqrt(data["Xx"] ** 2 + data["Xy"] ** 2 + data["Xz"] ** 2)
                 y_norms = np.sqrt(data["Yx"] ** 2 + data["Yy"] ** 2 + data["Yz"] ** 2)
-                print(f"\nOrientation vector validation:")
+                print("\nOrientation vector validation:")
                 print(
                     f"  X-axis norm range: {x_norms.min():.3f} to {x_norms.max():.3f} (should be ~1.0)"
                 )

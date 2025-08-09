@@ -4,25 +4,17 @@ Golf Swing Visualizer - Wiffle_ProV1 Main Application
 Enhanced main application with Excel data loading and advanced visualization
 """
 
-import os
 import sys
-import time
-import traceback
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-from golf_data_core import (FrameProcessor, MatlabDataLoader, PerformanceStats,
-                            RenderConfig)
-from golf_gui_application import GolfVisualizerMainWindow, GolfVisualizerWidget
-from PyQt6.QtCore import QPoint, Qt, QThread, QTimer, pyqtSignal
-from PyQt6.QtGui import (QAction, QFont, QKeyEvent, QMouseEvent,
-                         QSurfaceFormat, QWheelEvent)
+from golf_gui_application import GolfVisualizerWidget
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtGui import QAction, QFont
 from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDockWidget,
                              QFileDialog, QGroupBox, QHBoxLayout, QLabel,
                              QMainWindow, QMessageBox, QProgressBar,
-                             QPushButton, QSlider, QTextEdit, QVBoxLayout,
-                             QWidget)
+                             QPushButton, QTextEdit, QVBoxLayout, QWidget)
 from wiffle_data_loader import WiffleDataConfig, WiffleDataLoader
 
 # ============================================================================
@@ -534,7 +526,7 @@ class WiffleGolfMainWindow(QMainWindow):
             # Calculate trajectory differences
             trajectory_diff = self._calculate_trajectory_difference()
 
-            metrics_text = f"Max Speed:\n"
+            metrics_text = "Max Speed:\n"
             metrics_text += f"  ProV1: {prov1_max_speed:.2f} m/s\n"
             metrics_text += f"  Wiffle: {wiffle_max_speed:.2f} m/s\n"
             metrics_text += (
@@ -605,7 +597,7 @@ class WiffleGolfMainWindow(QMainWindow):
                 f"Frame {frame_idx+1}, Time: {time_val:.3f}s, Distance: {distance:.3f}m"
             )
 
-        except Exception as e:
+        except Exception:
             pass
 
     def _export_comparison(self):

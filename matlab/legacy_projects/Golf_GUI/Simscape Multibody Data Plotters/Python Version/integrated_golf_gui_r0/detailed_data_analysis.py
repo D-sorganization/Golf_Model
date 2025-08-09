@@ -61,7 +61,7 @@ def deep_analyze_matlab_file(filename):
                             print(f"    Dtype: {obj.dtype}")
 
                 else:  # Regular numeric array
-                    print(f"  Numeric array")
+                    print("  Numeric array")
                     if value.size > 0:
                         print(
                             f"    Min: {value.min()}, Max: {value.max()}, Mean: {value.mean()}"
@@ -111,23 +111,23 @@ def extract_actual_data(filename):
                                 if (
                                     obj.shape[1] > 10
                                 ):  # Many columns suggest signal data
-                                    print(f"        This looks like signal data!")
+                                    print("        This looks like signal data!")
                                     print(
-                                        f"        Sample (first 3 rows, first 5 cols):"
+                                        "        Sample (first 3 rows, first 5 cols):"
                                     )
                                     print(f"        {obj[:3, :5]}")
 
                                     # Check if this has the expected structure
                                     if obj.shape[0] > 100:  # Many time points
                                         print(
-                                            f"        ✅ This appears to be the main dataset!"
+                                            "        ✅ This appears to be the main dataset!"
                                         )
                                         return obj
 
                     elif hasattr(field_data, "shape") and len(field_data.shape) == 2:
                         print(f"    Direct array: shape {field_data.shape}")
                         if field_data.shape[1] > 10:
-                            print(f"      This looks like signal data!")
+                            print("      This looks like signal data!")
                             return field_data
 
         return None

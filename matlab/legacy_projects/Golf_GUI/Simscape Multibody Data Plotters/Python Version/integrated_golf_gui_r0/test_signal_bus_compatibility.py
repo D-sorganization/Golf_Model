@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import scipy.io
 
 # Add the current directory to the path so we can import the golf modules

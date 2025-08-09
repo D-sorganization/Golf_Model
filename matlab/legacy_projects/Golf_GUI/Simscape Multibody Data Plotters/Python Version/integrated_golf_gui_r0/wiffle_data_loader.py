@@ -4,10 +4,9 @@ Wiffle_ProV1 Data Loader for Golf Swing Visualizer
 Handles Excel-based motion capture data and converts to the GUI's expected format
 """
 
-import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -455,7 +454,7 @@ class MotionDataLoader:
         # Create DELTAQ format (difference between ProV1 and Wiffle)
         deltaq_data = self._create_deltaq_format(prov1_df, wiffle_df)
 
-        print(f"✅ Converted to GUI format:")
+        print("✅ Converted to GUI format:")
         print(f"   BASEQ: {baseq_data.shape}")
         print(f"   ZTCFQ: {ztcfq_data.shape}")
         print(f"   DELTAQ: {deltaq_data.shape}")

@@ -5,7 +5,7 @@ Includes settings for optimizing simulation performance
 """
 
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import ttk
 
 
 class PerformanceOptionsDialog:

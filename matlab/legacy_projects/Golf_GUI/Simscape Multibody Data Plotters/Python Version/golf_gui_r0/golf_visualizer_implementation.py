@@ -13,7 +13,7 @@ Key Technologies:
 import sys
 import time
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import moderngl as mgl
 import numpy as np

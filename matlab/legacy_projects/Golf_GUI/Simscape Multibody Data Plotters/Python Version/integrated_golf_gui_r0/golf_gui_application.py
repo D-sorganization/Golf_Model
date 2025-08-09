@@ -4,11 +4,9 @@ Golf Swing Visualizer - Tabular GUI Application
 Supports multiple data sources including motion capture and future Simulink models
 """
 
-import os
 import sys
 import traceback
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Tuple
 
 import moderngl as mgl
 import numpy as np
@@ -16,21 +14,14 @@ import pandas as pd
 # Local imports
 from golf_data_core import FrameData, FrameProcessor, RenderConfig
 from golf_opengl_renderer import OpenGLRenderer
-from PyQt6.QtCore import (QEasingCurve, QPoint, QPropertyAnimation, QRect,
-                          QRunnable, QSize, Qt, QThread, QThreadPool, QTimer,
-                          pyqtSignal, pyqtSlot)
-from PyQt6.QtGui import (QAction, QActionGroup, QBrush, QColor, QFont, QIcon,
-                         QKeySequence, QPainter, QPalette, QPen, QPixmap,
-                         QShortcut)
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QAction, QKeySequence
 # OpenGL imports
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 # PyQt6 imports
-from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox,
-                             QDoubleSpinBox, QFileDialog, QFrame, QGridLayout,
-                             QGroupBox, QHBoxLayout, QLabel, QMainWindow,
-                             QMenu, QMenuBar, QMessageBox, QProgressBar,
-                             QPushButton, QSlider, QSpinBox, QSplitter,
-                             QStatusBar, QTabWidget, QTextEdit, QToolBar,
+from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QGridLayout,
+                             QGroupBox, QLabel, QMainWindow, QMessageBox,
+                             QPushButton, QSlider, QStatusBar, QTabWidget,
                              QVBoxLayout, QWidget)
 from wiffle_data_loader import MotionDataLoader
 

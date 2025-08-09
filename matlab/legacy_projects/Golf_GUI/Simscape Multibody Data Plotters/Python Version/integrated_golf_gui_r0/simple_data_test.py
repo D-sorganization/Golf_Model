@@ -42,7 +42,7 @@ def analyze_matlab_files():
                                 f"    Large dataset: {value.shape[0]} rows, {value.shape[1]} columns"
                             )
                             # Show sample of first few columns
-                            print(f"    Sample data (first 3 rows, first 5 cols):")
+                            print("    Sample data (first 3 rows, first 5 cols):")
                             print(f"    {value[:3, :5]}")
                     else:
                         print(f"  {key}: {type(value).__name__}")

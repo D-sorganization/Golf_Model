@@ -3,7 +3,6 @@
 Quick test to verify the new test data files are compatible with GUI format
 """
 
-from pathlib import Path
 
 import numpy as np
 import scipy.io
@@ -29,15 +28,15 @@ def test_new_data_files():
                     print(f"  {key}: shape {data.shape}, dtype {data.dtype}")
 
                     if isinstance(data, np.ndarray) and data.ndim == 2:
-                        print(f"    ✅ This is a numeric array - GUI compatible!")
-                        print(f"    Sample data (first 3 rows, first 5 cols):")
+                        print("    ✅ This is a numeric array - GUI compatible!")
+                        print("    Sample data (first 3 rows, first 5 cols):")
                         print(f"    {data[:3, :5]}")
 
                         # Check if it has the expected structure
                         if data.shape[1] >= 7:  # time + 6 position signals
-                            print(f"    ✅ Has sufficient columns for GUI")
+                            print("    ✅ Has sufficient columns for GUI")
                         else:
-                            print(f"    ⚠️  May be missing required signals")
+                            print("    ⚠️  May be missing required signals")
 
                         return True
 

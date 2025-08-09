@@ -3,7 +3,6 @@
 Analyze Simscape CSV data to identify joint center positions for golf swing visualization.
 """
 
-import numpy as np
 import pandas as pd
 
 

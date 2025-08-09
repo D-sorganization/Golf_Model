@@ -5,21 +5,16 @@ import numpy as np
 import pandas as pd
 
 matplotlib.use("Qt5Agg")  # Force Qt5 backend for compatibility
-import os
 
-import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import \
     FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from mpl_toolkits.mplot3d import Axes3D
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
-                             QFrame, QGroupBox, QHBoxLayout, QLabel,
-                             QMainWindow, QMessageBox, QPushButton,
-                             QScrollArea, QSlider, QTextEdit, QVBoxLayout,
-                             QWidget)
-from scipy import signal
+                             QGroupBox, QHBoxLayout, QLabel, QMainWindow,
+                             QMessageBox, QPushButton, QSlider, QTextEdit,
+                             QVBoxLayout, QWidget)
 
 
 class GolfSwingAnalyzerPyQt6(QMainWindow):
@@ -323,7 +318,7 @@ class GolfSwingAnalyzerPyQt6(QMainWindow):
                 print(
                     f"Time range: {data['time'].min():.3f} to {data['time'].max():.3f} seconds"
                 )
-                print(f"Position ranges (meters):")
+                print("Position ranges (meters):")
                 print(f"  X: {data['X'].min():.3f} to {data['X'].max():.3f}")
                 print(f"  Y: {data['Y'].min():.3f} to {data['Y'].max():.3f}")
                 print(f"  Z: {data['Z'].min():.3f} to {data['Z'].max():.3f}")
@@ -608,7 +603,7 @@ class GolfSwingAnalyzerPyQt6(QMainWindow):
         """Update the information text display"""
         info = f"Frame: {self.current_frame}\n"
         info += f"Time: {frame_data['time']:.3f}s\n"
-        info += f"Position (m):\n"
+        info += "Position (m):\n"
         info += f"  X: {frame_data['X']:.3f}\n"
         info += f"  Y: {frame_data['Y']:.3f}\n"
         info += f"  Z: {frame_data['Z']:.3f}\n"

@@ -4,12 +4,9 @@ Final Robustness and Accuracy Test for Wiffle_ProV1 Data Loading System
 """
 
 import time
-import warnings
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import numpy as np
-import pandas as pd
 
 
 def test_data_loading_accuracy():
@@ -48,7 +45,7 @@ def test_data_loading_accuracy():
         print(f"✅ GUI format conversion completed in {convert_time:.3f} seconds")
 
         # Analyze data quality
-        print(f"\n📊 DATA QUALITY ANALYSIS")
+        print("\n📊 DATA QUALITY ANALYSIS")
         print("-" * 40)
 
         # Check data shapes
@@ -72,7 +69,7 @@ def test_data_loading_accuracy():
                 col: (baseq[col].min(), baseq[col].max())
                 for col in numeric_cols[:5]  # First 5 columns
             }
-            print(f"BASEQ data ranges (first 5 columns):")
+            print("BASEQ data ranges (first 5 columns):")
             for col, (min_val, max_val) in baseq_ranges.items():
                 print(f"  {col}: [{min_val:.3f}, {max_val:.3f}]")
 
@@ -88,7 +85,7 @@ def test_data_loading_accuracy():
 
 def test_data_consistency():
     """Test consistency between datasets"""
-    print(f"\n🔄 TESTING DATA CONSISTENCY")
+    print("\n🔄 TESTING DATA CONSISTENCY")
     print("=" * 60)
 
     try:
@@ -108,12 +105,12 @@ def test_data_consistency():
         prov1_time_range = (baseq["Time"].min(), baseq["Time"].max())
         wiffle_time_range = (ztcfq["Time"].min(), ztcfq["Time"].max())
 
-        print(f"Time ranges:")
+        print("Time ranges:")
         print(f"  ProV1: [{prov1_time_range[0]:.3f}, {prov1_time_range[1]:.3f}]")
         print(f"  Wiffle: [{wiffle_time_range[0]:.3f}, {wiffle_time_range[1]:.3f}]")
 
         # Check data point counts
-        print(f"Data points:")
+        print("Data points:")
         print(f"  ProV1: {len(baseq)}")
         print(f"  Wiffle: {len(ztcfq)}")
         print(f"  Delta: {len(deltaq)}")
@@ -128,7 +125,7 @@ def test_data_consistency():
                 col: (ztcfq[col].min(), ztcfq[col].max()) for col in clubhead_cols
             }
 
-            print(f"Clubhead position ranges:")
+            print("Clubhead position ranges:")
             for col in clubhead_cols:
                 prov1_min, prov1_max = prov1_clubhead_range[col]
                 wiffle_min, wiffle_max = wiffle_clubhead_range[col]
@@ -148,7 +145,7 @@ def test_data_consistency():
 
 def test_error_handling():
     """Test error handling capabilities"""
-    print(f"\n🛡️ TESTING ERROR HANDLING")
+    print("\n🛡️ TESTING ERROR HANDLING")
     print("=" * 60)
 
     try:
@@ -189,7 +186,7 @@ def test_error_handling():
 
 def test_performance():
     """Test performance characteristics"""
-    print(f"\n⚡ TESTING PERFORMANCE")
+    print("\n⚡ TESTING PERFORMANCE")
     print("=" * 60)
 
     try:
@@ -216,7 +213,7 @@ def test_performance():
         baseq, ztcfq, deltaq = loader.convert_to_gui_format(excel_data)
         convert_time = time.time() - start_time
 
-        print(f"Performance metrics:")
+        print("Performance metrics:")
         print(f"  Data loading: {load_time:.3f} seconds")
         print(f"  Format conversion: {convert_time:.3f} seconds")
         print(f"  Total processing: {load_time + convert_time:.3f} seconds")
@@ -255,7 +252,7 @@ def generate_final_report():
             print(f"❌ {test_name} test crashed: {e}")
             results[test_name] = False
 
-    print(f"\n" + "=" * 80)
+    print("\n" + "=" * 80)
     print("📊 FINAL ANALYSIS SUMMARY")
     print("=" * 80)
 

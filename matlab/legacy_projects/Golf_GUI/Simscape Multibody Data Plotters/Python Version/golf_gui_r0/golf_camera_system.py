@@ -11,8 +11,7 @@ from enum import Enum
 from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
-from PyQt6.QtCore import (QEasingCurve, QObject, QPropertyAnimation, QTimer,
-                          pyqtSignal)
+from PyQt6.QtCore import QEasingCurve, QObject, QTimer, pyqtSignal
 
 # ============================================================================
 # CAMERA DATA STRUCTURES

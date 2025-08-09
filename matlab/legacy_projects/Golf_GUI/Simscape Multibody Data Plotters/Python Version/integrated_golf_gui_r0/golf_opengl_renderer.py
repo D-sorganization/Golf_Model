@@ -6,9 +6,7 @@ Fixed for moderngl 5.x compatibility with correct uniform API
 
 import time
 import traceback
-import warnings
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
 import moderngl as mgl
