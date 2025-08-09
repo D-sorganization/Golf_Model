@@ -1,77 +1,41 @@
-# Integrated Process Simulator - Cursor AI Rules
+# Global Safety
+- Every coding session starts with: `git switch -c chore/wip-$(date +%Y-%m-%d)`.
+- Every 30 min: make a WIP commit. If tests don’t pass, prefix with `wip:`.
+- End of day: run `scripts/snapshot.sh` to tag `snapshot-YYYY-MM-DD` and push `safety-net/YYYY-MM-DD`.
 
-## Project Context
-This is a comprehensive scientific and engineering simulation platform for process modeling, thermodynamic calculations, and analysis. The project contains ~57,000 Python lines across 427 Python files with extensive documentation.
+# Cursor AI Guardrails
+- Any AI change >50 lines or multi-file: FIRST create branch `backup/before-ai-<shortdesc>`.
+- Require: "Explain changes line-by-line" before accepting large edits.
+- Ask for edge cases and failure modes before accepting algorithmic code.
+- Never accept secrets or API keys in prompts/code; if detected, abort and scrub.
 
-## Critical Development Rules
+# Python Rules
+- Python 3.11+, PEP8, type hints mandatory.
+- Pre-commit must pass: black, isort, ruff, mypy, nbstripout.
+- Use pinned deps: `requirements.txt` (exact versions) or `environment.yml` (conda).
+- Use `logging.getLogger(__name__)`; avoid `print` in libraries.
+- Determinism: set seeds (numpy, random, torch) and log in metadata.
 
-### 1. ALWAYS Create Feature Branches
-- **NEVER make changes directly to main branch**
-- **ALWAYS create a feature branch for ANY changes** using: `git checkout -b feature/descriptive-name`
-- **Commit and push feature branches** before merging
-- **Use descriptive branch names** like: `feature/fix-quench-calculations`, `feature/add-new-thermodynamic-model`
+# MATLAB/Simulink Rules
+- Enable Code Analyzer; treat warnings as blockers.
+- Track `.slx/.mdl/.mat` via Git LFS; export textual configs via `.m` scripts.
+- Provide `matlab/run_all.m` that reproduces results end-to-end without clicks.
+- Save outputs to `output/YYYY-MM-DD/<experiment>/` with `metadata.json` (parameters, commit SHA, MATLAB version).
+- Include MATLAB Unit Test stubs for core functions; CI must run them.
 
-### 2. Code Quality Standards
-- **NEVER truncate files and start from scratch** - ALWAYS restore from git or fix current version
-- **NEVER truncate code when making modifications** - preserve all existing code structure
-- **NEVER delete large batches of code** or significantly reduce code count without explicit user permission
-- **Preserve existing functionality** - only fix bugs, don't change working features
-- **Test imports** after any changes: `python -c "from module import Class; print('✓ Import successful')"`
-- **Commit frequently** with descriptive messages
+# Project Hygiene
+- No direct commits to `main`. Use feature branches + PRs. Merge via squash commits.
+- Conventional commits required: feat/fix/docs/refactor/test/chore.
+- Maintain `CHANGELOG.md`; bump versions via `python/src/project/version.py` or MATLAB `+pkg/Version.m`.
 
-### 3. Project Structure
-- **Core logic** in `core/` directory
-- **UI components** in `ui/` directory  
-- **Calculators** in `calculators/` directory
-- **Documentation** in `docs/` directory
-- **Tests** in `tests/` directory
+# PR Checklist (block merge unless all checked)
+- [ ] Reproducible: `run_all` completes locally
+- [ ] Tests pass (MATLAB + Python)
+- [ ] Large binary outputs excluded or LFS tracked
+- [ ] Env files updated
+- [ ] AI changes explained in PR description
+- [ ] No secrets or large data dumps
 
-### 4. Thermodynamic Calculations
-- **Use real calculations** - NO hardcoded placeholder values
-- **Energy balance** must be properly implemented
-- **Heat transfer coefficients** should use engineering correlations
-- **Composition calculations** must use proper equilibrium methods
-
-### 5. Error Handling
-- **Root cause analysis** - find the actual problem, don't apply patches
-- **Git operations** - use `git checkout -- filename` to restore corrupted files
-- **Import testing** - verify modules work after changes
-
-### 6. Documentation
-- **ALWAYS keep markdown description files in docs folder** to clear up clutter
-- **Update relevant docs** when making changes
-- **Maintain audit files** like `HARDCODED_VALUES_AUDIT.md`
-- **Document fixes** with clear explanations
-
-### 7. Testing Protocol
-- **Test imports** after changes
-- **Verify calculations** work correctly
-- **Check application launches** successfully
-- **Validate inter-sheet communication**
-
-## Current Project Status
-- **Active Development:** Yes
-- **Critical Fixes Completed:** All major hardcoded value issues resolved
-- **Focus Areas:** Equilibrium calculations, thermodynamic accuracy, inter-sheet communication
-- **Branch Strategy:** Feature branches for all changes
-
-## File Naming Conventions
-- **Python files:** snake_case.py
-- **Classes:** PascalCase
-- **Functions:** snake_case
-- **Constants:** UPPER_SNAKE_CASE
-
-## Git Workflow
-1. Create feature branch: `git checkout -b feature/descriptive-name`
-2. Make changes
-3. Test imports and functionality
-4. Commit: `git commit -m "type: descriptive message"`
-5. Push: `git push origin feature/descriptive-name`
-6. Create pull request when ready
-
-## Emergency Procedures
-- **File corruption:** `git checkout -- filename`
-- **Import errors:** Check dependencies and module structure
-- **Launch issues:** Verify working directory is `integrated_process_simulator/`
-
-Remember: This is a scientific simulation platform - accuracy and proper calculations are paramount. Always use real thermodynamic values and engineering correlations, never hardcoded placeholders.
+# Domain-Specific Notes
+- Golf swing modeling: export kinematic parameter tables (CSV), torque profiles (CSV/MAT), figure data (CSV). Include sampling rates and coordinate-frame definitions in metadata.
+- Chemical simulations: pin solver tolerances, units, and EOS; store input decks (JSON/YAML) and outputs (CSV/Parquet) with schema version.

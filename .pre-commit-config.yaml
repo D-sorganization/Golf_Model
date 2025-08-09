@@ -1,0 +1,23 @@
+exclude: '^(Golf_GUI/Simscape Multibody Data Plotters/Python Version/|Golf_GUI/Motion Capture Plotter/|Golf Swing Model/Scripts/Machine_Learning_GUI/).*'
+repos:
+- repo: https://github.com/psf/black
+  rev: 24.4.2
+  hooks: [{id: black}]
+- repo: https://github.com/PyCQA/isort
+  rev: 5.13.2
+  hooks: [{id: isort}]
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.5.0
+  hooks:
+    - id: ruff
+      args: [--fix]
+      exclude: '^(archive/|data/|data_processor/data/|project_packer/|Golf_GUI/Simscape Multibody Data Plotters/Python Version/|Golf_GUI/Motion Capture Plotter/|Golf Swing Model/Scripts/Machine_Learning_GUI/|Modern Robotics Homework/(Example Projects/|NWU-Modern-Robotics-Capstone-Project-main/|Test_Scripts/|Python Version /)).*'
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.10.0
+  hooks:
+    - id: mypy
+      additional_dependencies: ["types-requests"]
+      exclude: '^(archive/|data/|data_processor/data/|project_packer/|Golf_GUI/Simscape Multibody Data Plotters/Python Version/|Golf_GUI/Motion Capture Plotter/|Golf Swing Model/Scripts/Machine_Learning_GUI/|Modern Robotics Homework/(Example Projects/|NWU-Modern-Robotics-Capstone-Project-main/|Test_Scripts/|Python Version /)).*'
+- repo: https://github.com/kynan/nbstripout
+  rev: 0.7.1
+  hooks: [{id: nbstripout}]

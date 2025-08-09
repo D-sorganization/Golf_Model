@@ -1,5 +1,5 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 # Read the Excel file
 filename = "Wiffle_ProV1_club_3D_data.xlsx"
@@ -38,4 +38,4 @@ for i in range(min(5, len(df))):
             print(f"Row {i}, Col {j}: NaN")
         else:
             print(f"Row {i}, Col {j}: {val} ({type(val)})")
-    print("---") 
+    print("---")

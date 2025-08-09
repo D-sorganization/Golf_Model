@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  guardrails:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install CI tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install pre-commit pytest
+
+      - name: Install project deps (optional)
+        run: |
+          if [ -f python/requirements.txt ]; then pip install -r python/requirements.txt || true; fi
+          if [ -f requirements.txt ]; then pip install -r requirements.txt || true; fi
+
+      - name: Run pre-commit (ruff/black/isort/mypy/etc.)
+        run: pre-commit run --all-files
+
+      - name: Run pytest (headless-safe)
+        env:
+          PYTEST_ADDOPTS: "-m 'not requires_gl and not slow_numba'"
+        run: |
+          if [ -d python/tests ] || ls -1 **/tests 2>/dev/null | grep -q .; then
+            pytest -q || (echo "pytest failures"; exit 1)
+          else
+            echo "No tests folder found; skipping pytest."
+          fi
+
