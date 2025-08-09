@@ -1,4 +1,4 @@
-exclude: '^(Golf_GUI/Simscape Multibody Data Plotters/Python Version/|Golf_GUI/Motion Capture Plotter/|Golf Swing Model/Scripts/Machine_Learning_GUI/).*'
+exclude: '^(Golf_GUI/Simscape Multibody Data Plotters/Python Version/|Golf_GUI/Motion Capture Plotter/|Golf Swing Model/Scripts/Machine_Learning_GUI/|matlab/).*'
 repos:
 - repo: https://github.com/psf/black
   rev: 24.4.2
@@ -11,13 +11,13 @@ repos:
   hooks:
     - id: ruff
       args: [--fix]
-      exclude: '^(archive/|data/|data_processor/data/|project_packer/|Golf_GUI/Simscape Multibody Data Plotters/Python Version/|Golf_GUI/Motion Capture Plotter/|Golf Swing Model/Scripts/Machine_Learning_GUI/|Modern Robotics Homework/(Example Projects/|NWU-Modern-Robotics-Capstone-Project-main/|Test_Scripts/|Python Version /)).*'
+      exclude: '^(archive/|data/|data_processor/data/|project_packer/|Golf_GUI/Simscape Multibody Data Plotters/Python Version/|Golf_GUI/Motion Capture Plotter/|Golf Swing Model/Scripts/Machine_Learning_GUI/|matlab/|Modern Robotics Homework/(Example Projects/|NWU-Modern-Robotics-Capstone-Project-main/|Test_Scripts/|Python Version /)).*'
 - repo: https://github.com/pre-commit/mirrors-mypy
   rev: v1.10.0
   hooks:
     - id: mypy
       additional_dependencies: ["types-requests"]
-      exclude: '^(archive/|data/|data_processor/data/|project_packer/|Golf_GUI/Simscape Multibody Data Plotters/Python Version/|Golf_GUI/Motion Capture Plotter/|Golf Swing Model/Scripts/Machine_Learning_GUI/|Modern Robotics Homework/(Example Projects/|NWU-Modern-Robotics-Capstone-Project-main/|Test_Scripts/|Python Version /)).*'
+      exclude: '^(archive/|data/|data_processor/data/|project_packer/|Golf_GUI/Simscape Multibody Data Plotters/Python Version/|Golf_GUI/Motion Capture Plotter/|Golf Swing Model/Scripts/Machine_Learning_GUI/|matlab/|Modern Robotics Homework/(Example Projects/|NWU-Modern-Robotics-Capstone-Project-main/|Test_Scripts/|Python Version /)).*'
 - repo: https://github.com/kynan/nbstripout
   rev: 0.7.1
   hooks: [{id: nbstripout}]
