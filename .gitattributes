@@ -6,3 +6,5 @@
 *.ipynb linguist-generated
 *.m text=auto
 *.py text=auto
+*.fig filter=lfs diff=lfs merge=lfs -text
+*.r20* filter=lfs diff=lfs merge=lfs -text
