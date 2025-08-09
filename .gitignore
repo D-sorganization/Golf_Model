@@ -38,3 +38,12 @@ logs/
 *.mat
 *.h5
 *.zip
+
+# Local-only directories not in origin/main (added 2025-08-09)
+/Golf Swing Model/
+/Golf_GUI/
+
+# Generated datasets from Simulation Dataset GUI (CSV outputs)
+/Golf Swing Model/Scripts/Simulation_Dataset_GUI/**/*.csv
+/Golf Swing Model/_Archive/Neural_Network_Pipeline/*.csv
+
