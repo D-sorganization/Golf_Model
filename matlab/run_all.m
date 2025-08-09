@@ -1,4 +1,4 @@
-// File: matlab/run_all.m
+% File: matlab/run_all.m
 function run_all()
     % Recreates key results end-to-end.
     % 1) Configure reproducibility
