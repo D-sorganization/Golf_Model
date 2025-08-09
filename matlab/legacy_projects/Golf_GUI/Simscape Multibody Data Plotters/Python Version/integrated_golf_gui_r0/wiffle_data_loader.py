@@ -6,10 +6,18 @@ Handles Excel-based motion capture data and converts to the GUI's expected forma
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Any
 
 import numpy as np
 import pandas as pd
+def _to_numpy(series: Any) -> np.ndarray:
+    """Convert pandas Series, numpy array, or ExtensionArray to numpy array safely"""
+    if hasattr(series, 'to_numpy'):
+        return series.to_numpy()
+    elif hasattr(series, 'values'):
+        return series.values
+    else:
+        return np.asarray(series)
 
 
 @dataclass
@@ -22,10 +30,10 @@ class MotionDataConfig:
     # Alternative sheets available: GW_ProV11, GW_wiffle (Ground Wood)
 
     # Column mappings for ProV1 data
-    prov1_columns: Dict[str, str] = None
+    prov1_columns: Optional[Dict[str, str]] = None
 
     # Column mappings for Wiffle data
-    wiffle_columns: Dict[str, str] = None
+    wiffle_columns: Optional[Dict[str, str]] = None
 
     # Data processing options
     normalize_time: bool = True
@@ -110,7 +118,7 @@ class MotionDataLoader:
 
     def __init__(self, config: Optional[MotionDataConfig] = None):
         self.config = config or MotionDataConfig()
-        self.data_cache = {}
+        self.data_cache: Dict[str, Any] = {}
 
     def load_data(self) -> Dict[str, pd.DataFrame]:
         """
@@ -157,16 +165,16 @@ class MotionDataLoader:
         Returns:
             Dictionary with 'ProV1' and 'Wiffle' DataFrames
         """
-        filepath = Path(filepath)
-        if not filepath.exists():
+        filepath_path = Path(filepath)
+        if not filepath_path.exists():
             raise FileNotFoundError(f"Excel file not found: {filepath}")
 
         print(f"📊 Loading Wiffle_ProV1 data from: {filepath}")
 
         try:
             # Read both sheets
-            prov1_data = pd.read_excel(filepath, sheet_name=self.config.prov1_sheet)
-            wiffle_data = pd.read_excel(filepath, sheet_name=self.config.wiffle_sheet)
+            prov1_data = pd.read_excel(filepath_path, sheet_name=self.config.prov1_sheet)
+            wiffle_data = pd.read_excel(filepath_path, sheet_name=self.config.wiffle_sheet)
 
             print(f"✅ Loaded ProV1 data: {prov1_data.shape}")
             print(f"✅ Loaded Wiffle data: {wiffle_data.shape}")
@@ -292,7 +300,7 @@ class MotionDataLoader:
 
     def _create_body_part_estimates(
         self, processed_data: pd.DataFrame, sheet_name: str
-    ):
+    ) -> None:
         """Create reasonable estimates for body parts based on clubhead position"""
         # This is a simplified biomechanical model
         # In a real application, you'd want more sophisticated modeling based on actual motion capture data
@@ -305,50 +313,55 @@ class MotionDataLoader:
         # Create estimates for other body parts
         # These are simplified relationships - adjust based on your biomechanical model
 
+        # Convert pandas Series to numpy arrays for arithmetic operations
+        ch_x_array = _to_numpy(ch_x)
+        ch_y_array = _to_numpy(ch_y)
+        ch_z_array = _to_numpy(ch_z)
+
         # Club butt (opposite end of clubhead)
-        processed_data["butt_x"] = ch_x - 0.5  # 0.5 units behind clubhead
-        processed_data["butt_y"] = ch_y + 0.1  # Slightly above
-        processed_data["butt_z"] = ch_z + 0.2  # Slightly to the side
+        processed_data["butt_x"] = ch_x_array - 0.5  # 0.5 units behind clubhead
+        processed_data["butt_y"] = ch_y_array + 0.1  # Slightly above
+        processed_data["butt_z"] = ch_z_array + 0.2  # Slightly to the side
 
         # Club midpoint
-        processed_data["midpoint_x"] = ch_x - 0.25
-        processed_data["midpoint_y"] = ch_y + 0.05
-        processed_data["midpoint_z"] = ch_z + 0.1
+        processed_data["midpoint_x"] = ch_x_array - 0.25
+        processed_data["midpoint_y"] = ch_y_array + 0.05
+        processed_data["midpoint_z"] = ch_z_array + 0.1
 
         # Left wrist (assuming left-handed golfer or left hand on club)
-        processed_data["left_wrist_x"] = ch_x - 0.3
-        processed_data["left_wrist_y"] = ch_y + 0.15
-        processed_data["left_wrist_z"] = ch_z + 0.3
+        processed_data["left_wrist_x"] = ch_x_array - 0.3
+        processed_data["left_wrist_y"] = ch_y_array + 0.15
+        processed_data["left_wrist_z"] = ch_z_array + 0.3
 
         # Left elbow
-        processed_data["left_elbow_x"] = ch_x - 0.4
-        processed_data["left_elbow_y"] = ch_y + 0.25
-        processed_data["left_elbow_z"] = ch_z + 0.4
+        processed_data["left_elbow_x"] = ch_x_array - 0.4
+        processed_data["left_elbow_y"] = ch_y_array + 0.25
+        processed_data["left_elbow_z"] = ch_z_array + 0.4
 
         # Left shoulder
-        processed_data["left_shoulder_x"] = ch_x - 0.5
-        processed_data["left_shoulder_y"] = ch_y + 0.35
-        processed_data["left_shoulder_z"] = ch_z + 0.5
+        processed_data["left_shoulder_x"] = ch_x_array - 0.5
+        processed_data["left_shoulder_y"] = ch_y_array + 0.35
+        processed_data["left_shoulder_z"] = ch_z_array + 0.5
 
         # Right wrist
-        processed_data["right_wrist_x"] = ch_x - 0.35
-        processed_data["right_wrist_y"] = ch_y + 0.2
-        processed_data["right_wrist_z"] = ch_z + 0.25
+        processed_data["right_wrist_x"] = ch_x_array - 0.35
+        processed_data["right_wrist_y"] = ch_y_array + 0.2
+        processed_data["right_wrist_z"] = ch_z_array + 0.25
 
         # Right elbow
-        processed_data["right_elbow_x"] = ch_x - 0.45
-        processed_data["right_elbow_y"] = ch_y + 0.3
-        processed_data["right_elbow_z"] = ch_z + 0.35
+        processed_data["right_elbow_x"] = ch_x_array - 0.45
+        processed_data["right_elbow_y"] = ch_y_array + 0.3
+        processed_data["right_elbow_z"] = ch_z_array + 0.35
 
         # Right shoulder
-        processed_data["right_shoulder_x"] = ch_x - 0.55
-        processed_data["right_shoulder_y"] = ch_y + 0.4
-        processed_data["right_shoulder_z"] = ch_z + 0.45
+        processed_data["right_shoulder_x"] = ch_x_array - 0.55
+        processed_data["right_shoulder_y"] = ch_y_array + 0.4
+        processed_data["right_shoulder_z"] = ch_z_array + 0.45
 
         # Hub (center of rotation, roughly between shoulders)
-        processed_data["hub_x"] = ch_x - 0.52
-        processed_data["hub_y"] = ch_y + 0.37
-        processed_data["hub_z"] = ch_z + 0.47
+        processed_data["hub_x"] = ch_x_array - 0.52
+        processed_data["hub_y"] = ch_y_array + 0.37
+        processed_data["hub_z"] = ch_z_array + 0.47
 
         print(
             f"📐 Created body part estimates for {sheet_name} based on clubhead position"
@@ -360,7 +373,7 @@ class MotionDataLoader:
         processed_data["time"] = np.linspace(0, 1, num_frames)
 
         # Create simple motion pattern
-        t = processed_data["time"].values
+        t = _to_numpy(processed_data["time"])
         processed_data["clubhead_x"] = np.sin(2 * np.pi * t) * 2
         processed_data["clubhead_y"] = np.cos(2 * np.pi * t) * 2
         processed_data["clubhead_z"] = t * 2 - 1
@@ -516,7 +529,7 @@ class MotionDataLoader:
     ) -> pd.DataFrame:
         """Create DELTAQ format showing differences between ProV1 and Wiffle"""
         # Align the dataframes by time
-        common_time = prov1_df["time"].values
+        common_time = _to_numpy(prov1_df["time"])
 
         deltaq_data = pd.DataFrame()
         deltaq_data["Time"] = common_time
@@ -545,7 +558,7 @@ class MotionDataLoader:
                     wiffle_interp = np.interp(
                         common_time, wiffle_df["time"], wiffle_df[wiffle_col]
                     )
-                    diff = prov1_df[prov1_col].values - wiffle_interp
+                    diff = _to_numpy(prov1_df[prov1_col]) - wiffle_interp
 
                     # Store in DELTAQ format
                     gui_col = (
@@ -585,7 +598,7 @@ def main():
 
     try:
         # Create loader and load data
-        loader = WiffleDataLoader()
+        loader = MotionDataLoader()
         excel_data = loader.load_excel_data(excel_file)
 
         # Convert to GUI format
