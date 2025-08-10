@@ -1,4 +1,4 @@
-// File: matlab/tests/test_example.m
+% File: matlab/tests/test_example.m
 function tests = test_example
     tests = functiontests(localfunctions);
 end
