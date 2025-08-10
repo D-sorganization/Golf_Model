@@ -303,12 +303,12 @@ class MATLABQualityChecker:
             if matlab_results.get("passed", False):
                 self.results[
                     "summary"
-                ] = f"✅ MATLAB quality checks PASSED ({self.results['total_files']} files checked)"
+                ] = f"[PASS] MATLAB quality checks PASSED ({self.results['total_files']} files checked)"
             else:
                 self.results["passed"] = False
                 self.results[
                     "summary"
-                ] = f"❌ MATLAB quality checks FAILED ({self.results['total_files']} files checked)"
+                ] = f"[FAIL] MATLAB quality checks FAILED ({self.results['total_files']} files checked)"
 
         return self.results
 
