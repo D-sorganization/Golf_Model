@@ -331,17 +331,3 @@ clear(varsnew{:});
 
 % Save Model Workspace
 save(mdlWks,'3DModelInputs.mat')
-
-
-
-
-
-
-
-
-
-
-
-
-
-

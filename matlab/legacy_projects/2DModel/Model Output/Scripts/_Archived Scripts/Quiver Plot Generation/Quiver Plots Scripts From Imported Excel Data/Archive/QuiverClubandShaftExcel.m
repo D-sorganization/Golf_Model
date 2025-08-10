@@ -19,4 +19,3 @@ HandPath=quiver3(Data{:,8},Data{:,9},Data{:,10},Data{:,74},Data{:,75},Data{:,76}
 HandPath.Color=[0 0 0];
 HandPath.LineWidth=1;
 HandPath.ShowArrowHead='off';
-

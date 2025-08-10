@@ -63,4 +63,3 @@ Data.LeftShoulderdz=Data.LSz-Data.HUBz;
 Data.RightShoulderdx=Data.RSx-Data.HUBx;
 Data.RightShoulderdy=Data.RSy-Data.HUBy;
 Data.RightShoulderdz=Data.RSz-Data.HUBz;
-

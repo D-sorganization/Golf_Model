@@ -5141,6 +5141,3 @@ function saveScriptAndSettings(config)
         fprintf('Error saving script and settings: %s\n', ME.message);
     end
 end
-
-
-

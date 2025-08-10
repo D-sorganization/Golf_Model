@@ -13,5 +13,3 @@ Grip=quiver3(Data.Buttx(:,1),Data.Butty(:,1),Data.Buttz(:,1),Data.Gripdx(:,1),Da
 Grip.ShowArrowHead='off';
 Grip.LineWidth=1;			    %Set grip line width
 Grip.Color=[0 0 0];			    %Set grip color to black
-
-

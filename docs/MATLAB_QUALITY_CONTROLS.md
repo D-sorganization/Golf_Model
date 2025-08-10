@@ -106,7 +106,7 @@ All MATLAB functions must follow this structure (from `.cursorrules.md`):
 ```matlab
 function results = process_swing_data(input_file, options)
     % PROCESS_SWING_DATA Analyze golf swing with reproducibility
-    %   
+    %
     % Inputs:
     %   input_file - Path to data file (must exist)
     %   options    - Struct with fields:
@@ -114,47 +114,47 @@ function results = process_swing_data(input_file, options)
     %                .tolerance (default: 1e-6) - Numerical tolerance
     %                .max_iter (default: 1000) - Max iterations
     %
-    % Outputs:  
+    % Outputs:
     %   results    - Struct with fields:
     %                .data - Processed data array
     %                .metadata - Processing metadata struct
     %                .timestamp - ISO 8601 timestamp
-    
+
     arguments
         input_file (1,1) string {mustBeFile}
         options.seed (1,1) double {mustBePositive} = 42
         options.tolerance (1,1) double {mustBePositive} = 1e-6
         options.max_iter (1,1) double {mustBeInteger, mustBePositive} = 1000
     end
-    
+
     % Set reproducibility
     rng(options.seed, 'twister');
-    
+
     % Validate inputs
     assert(exist(input_file, 'file') == 2, ...
            'PROCESS_SWING_DATA:FileNotFound', ...
            'Input file not found: %s', input_file);
-    
+
     % Store metadata
     results.metadata.matlab_version = version;
     results.metadata.timestamp = datetime('now', 'Format', 'yyyy-MM-dd''T''HH:mm:ss');
     results.metadata.git_sha = get_git_sha();
     results.metadata.input_file = char(input_file);
     results.metadata.options = options;
-    
+
     % Process with comprehensive error handling
     try
         raw_data = readmatrix(input_file);
-        
+
         % Validate data
         if any(isnan(raw_data(:)))
             warning('PROCESS_SWING_DATA:NaNDetected', ...
                     'NaN values found in input data');
         end
-        
+
         % Process...
         results.data = raw_data;  % Actual processing here
-        
+
     catch ME
         fprintf('Error in %s at line %d: %s\n', ...
                 ME.stack(1).name, ME.stack(1).line, ME.message);

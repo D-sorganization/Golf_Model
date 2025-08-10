@@ -64,4 +64,3 @@ function inertiaStruct = extractShaftInertiaFromShape(shaftXYZ, density, radius)
     disp('COM (m):'); disp(shaftCOM);
     disp('Inertia matrix (kg*m^2):'); disp(I_total);
 end
-

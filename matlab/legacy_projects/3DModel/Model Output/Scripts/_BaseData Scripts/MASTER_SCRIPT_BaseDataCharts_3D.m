@@ -49,5 +49,3 @@ SCRIPT_149_3D_QUIVER_BaseData_LHRHMoments;
 % SCRIPT_150_3D_PLOT_BaseData_TorqueInputvsTorqueOutput;
 
 % clear PauseTime;
-
-

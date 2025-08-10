@@ -290,4 +290,3 @@ assignin(mdlWks,'StopTime',Simulink.Parameter(0.2));
 
 PlotStatus="Done Plotting"
 clear PlotStatus;
-

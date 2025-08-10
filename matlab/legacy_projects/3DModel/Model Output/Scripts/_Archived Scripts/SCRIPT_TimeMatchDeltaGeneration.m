@@ -52,6 +52,3 @@ BASETime=seconds(BASE.Time);
 BASE.Time=BASETime;
 
 clear BASETime;
-
-
-

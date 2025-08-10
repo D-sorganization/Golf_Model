@@ -43,4 +43,3 @@ Pop=gradient(Crackle,t);
 EquationAvgJerk=AJ==(Af-Ao)/Tt;
 EquationAvgAccel=AA==(Vf-Vo)/Tt;
 EquationAvgVel=AV==(Pf-Po)/Tt;
-
