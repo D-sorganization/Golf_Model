@@ -1,8 +1,10 @@
 """Tests for logger utilities module."""
 
-import pytest
 import logging
-from src.logger_utils import get_logger
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+from logger_utils import get_logger
 
 
 def test_get_logger_returns_logger() -> None:
