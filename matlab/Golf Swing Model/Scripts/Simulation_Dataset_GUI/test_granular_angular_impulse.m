@@ -80,30 +80,30 @@ options.calculate_work = false;
 
 try
     [ZTCFQ_power, DELTAQ_power] = calculateWorkPowerAndGranularAngularImpulse3D(ZTCFQ, DELTAQ, options);
-    
+
     % Check power columns
     power_columns = {'Hip_Power_Proximal', 'Hip_Power_Distal', 'Hip_Power_Total', ...
                      'Knee_Power_Proximal', 'Knee_Power_Distal', 'Knee_Power_Total', ...
                      'Ankle_Power_Proximal', 'Ankle_Power_Distal', 'Ankle_Power_Total'};
-    
+
     missing_power = 0;
     for i = 1:length(power_columns)
         if ~isfield(ZTCFQ_power, power_columns{i})
             missing_power = missing_power + 1;
         end
     end
-    
+
     if missing_power == 0
         fprintf('   ✓ Power calculations successful\n');
         fprintf('   ✓ Power columns added: %d\n', length(power_columns));
-        
+
         % Show sample power values
         fprintf('   Sample Hip Power (Proximal): %.2f W\n', ZTCFQ_power.Hip_Power_Proximal(50));
         fprintf('   Sample Knee Power (Total): %.2f W\n', ZTCFQ_power.Knee_Power_Total(50));
     else
         fprintf('   ✗ Missing power columns: %d\n', missing_power);
     end
-    
+
 catch ME
     fprintf('   ✗ Power calculation failed: %s\n', ME.message);
 end
@@ -114,30 +114,30 @@ options.calculate_work = true;
 
 try
     [ZTCFQ_work, DELTAQ_work] = calculateWorkPowerAndGranularAngularImpulse3D(ZTCFQ, DELTAQ, options);
-    
+
     % Check work columns
     work_columns = {'Hip_Work_Proximal', 'Hip_Work_Distal', 'Hip_Work_Total', ...
                     'Knee_Work_Proximal', 'Knee_Work_Distal', 'Knee_Work_Total', ...
                     'Ankle_Work_Proximal', 'Ankle_Work_Distal', 'Ankle_Work_Total'};
-    
+
     missing_work = 0;
     for i = 1:length(work_columns)
         if ~isfield(ZTCFQ_work, work_columns{i})
             missing_work = missing_work + 1;
         end
     end
-    
+
     if missing_work == 0
         fprintf('   ✓ Work calculations successful\n');
         fprintf('   ✓ Work columns added: %d\n', length(work_columns));
-        
+
         % Show sample work values
         fprintf('   Hip Work (Proximal): %.2f J\n', ZTCFQ_work.Hip_Work_Proximal);
         fprintf('   Knee Work (Total): %.2f J\n', ZTCFQ_work.Knee_Work_Total);
     else
         fprintf('   ✗ Missing work columns: %d\n', missing_work);
     end
-    
+
 catch ME
     fprintf('   ✗ Work calculation failed: %s\n', ME.message);
 end
@@ -159,39 +159,39 @@ try
                        'Hip_AppliedTorqueImpulse_Total_X', 'Hip_AppliedTorqueImpulse_Total_Y', 'Hip_AppliedTorqueImpulse_Total_Z', ...
                        'Hip_ForceMomentImpulse_Total_X', 'Hip_ForceMomentImpulse_Total_Y', 'Hip_ForceMomentImpulse_Total_Z', ...
                        'Hip_TotalAngularImpulse_Total_X', 'Hip_TotalAngularImpulse_Total_Y', 'Hip_TotalAngularImpulse_Total_Z'};
-    
+
     missing_impulse = 0;
     for i = 1:length(impulse_columns)
         if ~isfield(ZTCFQ_work, impulse_columns{i})
             missing_impulse = missing_impulse + 1;
         end
     end
-    
+
     if missing_impulse == 0
         fprintf('   ✓ Angular impulse calculations successful\n');
         fprintf('   ✓ Angular impulse columns added: %d\n', length(impulse_columns));
-        
+
         % Show sample angular impulse values for Hip
         fprintf('   Hip Joint Torque Impulse (Proximal): [%.2f, %.2f, %.2f] N⋅m⋅s\n', ...
                 ZTCFQ_work.Hip_JointTorqueImpulse_Proximal_X, ...
                 ZTCFQ_work.Hip_JointTorqueImpulse_Proximal_Y, ...
                 ZTCFQ_work.Hip_JointTorqueImpulse_Proximal_Z);
-        
+
         fprintf('   Hip Applied Torque Impulse (Proximal): [%.2f, %.2f, %.2f] N⋅m⋅s\n', ...
                 ZTCFQ_work.Hip_AppliedTorqueImpulse_Proximal_X, ...
                 ZTCFQ_work.Hip_AppliedTorqueImpulse_Proximal_Y, ...
                 ZTCFQ_work.Hip_AppliedTorqueImpulse_Proximal_Z);
-        
+
         fprintf('   Hip Force Moment Impulse (Proximal): [%.2f, %.2f, %.2f] N⋅m⋅s\n', ...
                 ZTCFQ_work.Hip_ForceMomentImpulse_Proximal_X, ...
                 ZTCFQ_work.Hip_ForceMomentImpulse_Proximal_Y, ...
                 ZTCFQ_work.Hip_ForceMomentImpulse_Proximal_Z);
-        
+
         fprintf('   Hip Total Angular Impulse (Proximal): [%.2f, %.2f, %.2f] N⋅m⋅s\n', ...
                 ZTCFQ_work.Hip_TotalAngularImpulse_Proximal_X, ...
                 ZTCFQ_work.Hip_TotalAngularImpulse_Proximal_Y, ...
                 ZTCFQ_work.Hip_TotalAngularImpulse_Proximal_Z);
-        
+
         % Verify that distal = -proximal (equal and opposite)
         proximal_total = [ZTCFQ_work.Hip_TotalAngularImpulse_Proximal_X, ...
                          ZTCFQ_work.Hip_TotalAngularImpulse_Proximal_Y, ...
@@ -199,17 +199,17 @@ try
         distal_total = [ZTCFQ_work.Hip_TotalAngularImpulse_Distal_X, ...
                        ZTCFQ_work.Hip_TotalAngularImpulse_Distal_Y, ...
                        ZTCFQ_work.Hip_TotalAngularImpulse_Distal_Z];
-        
+
         if norm(proximal_total + distal_total) < 1e-10
             fprintf('   ✓ Proximal and distal impulses are equal and opposite\n');
         else
             fprintf('   ✗ Proximal and distal impulses are not equal and opposite\n');
         end
-        
+
     else
         fprintf('   ✗ Missing angular impulse columns: %d\n', missing_impulse);
     end
-    
+
 catch ME
     fprintf('   ✗ Angular impulse calculation failed: %s\n', ME.message);
 end
@@ -223,33 +223,33 @@ try
     processed_trial.time = time_data;
     processed_trial.joint_data = struct();
     processed_trial.torque_data = struct();
-    
+
     % Add joint data
     processed_trial.joint_data.hip = struct();
     processed_trial.joint_data.hip.angular_velocity = [ZTCFQ.Hip_AngularVelocity_X, ZTCFQ.Hip_AngularVelocity_Y, ZTCFQ.Hip_AngularVelocity_Z];
-    
+
     processed_trial.joint_data.knee = struct();
     processed_trial.joint_data.knee.angular_velocity = [ZTCFQ.Knee_AngularVelocity_X, ZTCFQ.Knee_AngularVelocity_Y, ZTCFQ.Knee_AngularVelocity_Z];
-    
+
     processed_trial.joint_data.ankle = struct();
     processed_trial.joint_data.ankle.angular_velocity = [ZTCFQ.Ankle_AngularVelocity_X, ZTCFQ.Ankle_AngularVelocity_Y, ZTCFQ.Ankle_AngularVelocity_Z];
-    
+
     % Add torque data
     processed_trial.torque_data.hip = struct();
     processed_trial.torque_data.hip.torque = [ZTCFQ.Hip_Torque_X, ZTCFQ.Hip_Torque_Y, ZTCFQ.Hip_Torque_Z];
-    
+
     processed_trial.torque_data.knee = struct();
     processed_trial.torque_data.knee.torque = [ZTCFQ.Knee_Torque_X, ZTCFQ.Knee_Torque_Y, ZTCFQ.Knee_Torque_Z];
-    
+
     processed_trial.torque_data.ankle = struct();
     processed_trial.torque_data.ankle.torque = [ZTCFQ.Ankle_Torque_X, ZTCFQ.Ankle_Torque_Y, ZTCFQ.Ankle_Torque_Z];
-    
+
     % Test the enhanced function
     calculation_options = struct();
     calculation_options.calculate_work = true;
-    
+
     processed_trial_enhanced = calculateWorkAndPowerEnhanced(processed_trial, calculation_options);
-    
+
     if isfield(processed_trial_enhanced, 'total_peak_power') && isfield(processed_trial_enhanced, 'total_work')
         fprintf('   ✓ PostProcessingModule integration successful\n');
         fprintf('   ✓ Total peak power: %.2f W\n', processed_trial_enhanced.total_peak_power);
@@ -257,7 +257,7 @@ try
     else
         fprintf('   ✗ PostProcessingModule integration failed\n');
     end
-    
+
 catch ME
     fprintf('   ✗ PostProcessingModule integration failed: %s\n', ME.message);
 end

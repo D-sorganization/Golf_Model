@@ -21,10 +21,12 @@ from matplotlib.gridspec import GridSpec
 # Import the main motion matching system
 # (Assuming the main script is saved as golf_swing_motion_matching.py)
 try:
-    from golf_swing_motion_matching import (GolfSwingKinematics,
-                                            GolfSwingMotionMatching,
-                                            PolynomialCoefficientOptimizer,
-                                            WiffleDataLoader)
+    from golf_swing_motion_matching import (
+        GolfSwingKinematics,
+        GolfSwingMotionMatching,
+        PolynomialCoefficientOptimizer,
+        WiffleDataLoader,
+    )
 except ImportError:
     print("Please ensure golf_swing_motion_matching.py is in the same directory")
     sys.exit(1)

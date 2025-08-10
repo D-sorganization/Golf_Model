@@ -11,18 +11,33 @@ from typing import Tuple
 import moderngl as mgl
 import numpy as np
 import pandas as pd
+
 # Local imports
 from golf_data_core import FrameData, FrameProcessor, RenderConfig
 from golf_opengl_renderer import OpenGLRenderer
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QAction, QKeySequence
+
 # OpenGL imports
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
+
 # PyQt6 imports
-from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QGridLayout,
-                             QGroupBox, QLabel, QMainWindow, QMessageBox,
-                             QPushButton, QSlider, QStatusBar, QTabWidget,
-                             QVBoxLayout, QWidget)
+from PyQt6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QComboBox,
+    QGridLayout,
+    QGroupBox,
+    QLabel,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QSlider,
+    QStatusBar,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 from wiffle_data_loader import MotionDataLoader
 
 # ============================================================================
@@ -795,12 +810,12 @@ class GolfVisualizerMainWindow(QMainWindow):
                 background-color: #ffffff;
                 color: #333333;
             }
-            
+
             QTabWidget::pane {
                 border: 1px solid #cccccc;
                 background-color: #ffffff;
             }
-            
+
             QTabBar::tab {
                 background-color: #f0f0f0;
                 color: #333333;
@@ -811,16 +826,16 @@ class GolfVisualizerMainWindow(QMainWindow):
                 border-top-left-radius: 4px;
                 border-top-right-radius: 4px;
             }
-            
+
             QTabBar::tab:selected {
                 background-color: #ffffff;
                 border-bottom: 1px solid #ffffff;
             }
-            
+
             QTabBar::tab:hover {
                 background-color: #e8e8e8;
             }
-            
+
             QGroupBox {
                 font-weight: bold;
                 border: 1px solid #cccccc;
@@ -829,14 +844,14 @@ class GolfVisualizerMainWindow(QMainWindow):
                 padding-top: 8px;
                 background-color: #fafafa;
             }
-            
+
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 8px;
                 padding: 0 4px 0 4px;
                 color: #333333;
             }
-            
+
             QPushButton {
                 background-color: #0078d4;
                 color: white;
@@ -845,27 +860,27 @@ class GolfVisualizerMainWindow(QMainWindow):
                 border-radius: 4px;
                 font-weight: bold;
             }
-            
+
             QPushButton:hover {
                 background-color: #106ebe;
             }
-            
+
             QPushButton:pressed {
                 background-color: #005a9e;
             }
-            
+
             QPushButton:disabled {
                 background-color: #cccccc;
                 color: #666666;
             }
-            
+
             QSlider::groove:horizontal {
                 border: 1px solid #cccccc;
                 height: 6px;
                 background-color: #f0f0f0;
                 border-radius: 3px;
             }
-            
+
             QSlider::handle:horizontal {
                 background-color: #0078d4;
                 border: 1px solid #0078d4;
@@ -873,15 +888,15 @@ class GolfVisualizerMainWindow(QMainWindow):
                 margin: -5px 0;
                 border-radius: 8px;
             }
-            
+
             QSlider::handle:horizontal:hover {
                 background-color: #106ebe;
             }
-            
+
             QCheckBox {
                 color: #333333;
             }
-            
+
             QCheckBox::indicator {
                 width: 16px;
                 height: 16px;
@@ -889,12 +904,12 @@ class GolfVisualizerMainWindow(QMainWindow):
                 border-radius: 2px;
                 background-color: #ffffff;
             }
-            
+
             QCheckBox::indicator:checked {
                 background-color: #0078d4;
                 border-color: #0078d4;
             }
-            
+
             QComboBox {
                 border: 1px solid #cccccc;
                 border-radius: 4px;
@@ -902,23 +917,23 @@ class GolfVisualizerMainWindow(QMainWindow):
                 background-color: #ffffff;
                 color: #333333;
             }
-            
+
             QComboBox::drop-down {
                 border: none;
                 width: 20px;
             }
-            
+
             QComboBox::down-arrow {
                 image: none;
                 border-left: 5px solid transparent;
                 border-right: 5px solid transparent;
                 border-top: 5px solid #333333;
             }
-            
+
             QLabel {
                 color: #333333;
             }
-            
+
             QStatusBar {
                 background-color: #f0f0f0;
                 color: #333333;

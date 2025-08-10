@@ -250,7 +250,7 @@ class GolfSwingAnalyzer:
 
         help_text = """3D Plot Interaction:
 • Left-click + drag: Rotate view
-• Right-click + drag: Pan view  
+• Right-click + drag: Pan view
 • Mouse wheel: Zoom in/out
 • Use camera buttons for preset views"""
 

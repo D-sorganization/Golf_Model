@@ -167,41 +167,41 @@ RWVelocityY=interp1(Data.Time,Data.RWVelocityY,LookupTime,'linear');
 % assignin(mdlWks,'ZVCFHipTorqueX',Simulink.Parameter(HipTorqueX));
 % assignin(mdlWks,'ZVCFHipTorqueY',Simulink.Parameter(HipTorqueY));
 % assignin(mdlWks,'ZVCFHipTorqueZ',Simulink.Parameter(HipTorqueZ));
-% 
+%
 % assignin(mdlWks,'ZVCFTranslationForceX',Simulink.Parameter(TranslationForceX));
 % assignin(mdlWks,'ZVCFTranslationForceY',Simulink.Parameter(TranslationForceY));
 % assignin(mdlWks,'ZVCFTranslationForceZ',Simulink.Parameter(TranslationForceZ));
-% 
+%
 % assignin(mdlWks,'ZVCFSpineTorqueX',Simulink.Parameter(SpineTorqueX));
 % assignin(mdlWks,'ZVCFSpineTorqueY',Simulink.Parameter(SpineTorqueY));
-% 
+%
 % assignin(mdlWks,'ZVCFTorsoTorque',Simulink.Parameter(TorsoTorque));
-% 
+%
 % assignin(mdlWks,'ZVCFLScapTorqueX',Simulink.Parameter(LScapTorqueX));
 % assignin(mdlWks,'ZVCFLScapTorqueY',Simulink.Parameter(LScapTorqueY));
-% 
+%
 % assignin(mdlWks,'ZVCFRScapTorqueX',Simulink.Parameter(RScapTorqueX));
 % assignin(mdlWks,'ZVCFRScapTorqueY',Simulink.Parameter(RScapTorqueY));
-% 
+%
 % assignin(mdlWks,'ZVCFLSTorqueX',Simulink.Parameter(LSTorqueX));
 % assignin(mdlWks,'ZVCFLSTorqueY',Simulink.Parameter(LSTorqueY));
 % assignin(mdlWks,'ZVCFLSTorqueZ',Simulink.Parameter(LSTorqueZ));
-% 
+%
 % assignin(mdlWks,'ZVCFRSTorqueX',Simulink.Parameter(RSTorqueX));
 % assignin(mdlWks,'ZVCFRSTorqueY',Simulink.Parameter(RSTorqueY));
 % assignin(mdlWks,'ZVCFRSTorqueZ',Simulink.Parameter(RSTorqueZ));
-% 
+%
 % assignin(mdlWks,'ZVCFLETorque',Simulink.Parameter(LETorque));
-% 
+%
 % assignin(mdlWks,'ZVCFRETorque',Simulink.Parameter(RETorque));
-% 
+%
 % assignin(mdlWks,'ZVCFLFTorque',Simulink.Parameter(LFTorque));
-% 
+%
 % assignin(mdlWks,'ZVCFRFTorque',Simulink.Parameter(RFTorque));
-% 
+%
 % assignin(mdlWks,'ZVCFLWTorqueX',Simulink.Parameter(LWTorqueX));
 % assignin(mdlWks,'ZVCFLWTorqueY',Simulink.Parameter(LWTorqueY));
-% 
+%
 % assignin(mdlWks,'ZVCFRWTorqueX',Simulink.Parameter(RWTorqueX));
 % assignin(mdlWks,'ZVCFRWTorqueY',Simulink.Parameter(RWTorqueY));
 

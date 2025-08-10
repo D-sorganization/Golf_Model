@@ -1,7 +1,7 @@
 function [joint_moments, segment_data] = calculateForceMoments(simulation_data)
 %CALCULATEFORCEMOMENTS Calculate moments of forces at joints on segments
 %
-% This function calculates the moments created by joint forces about 
+% This function calculates the moments created by joint forces about
 % segment centers of mass and other reference points
 
 % Initialize output structures
@@ -23,15 +23,15 @@ fprintf('Calculating force moments on segments...\n');
 for i = 1:size(segments, 1)
     segment_name = segments{i, 1};
     joint_list = segments{i, 2};
-    
+
     fprintf('Processing %s segment...\n', segment_name);
-    
+
     % Calculate moments for this segment
     moments = calculateSegmentMoments(simulation_data, segment_name, joint_list);
-    
+
     % Store results
     joint_moments.(segment_name) = moments;
-    
+
     % Add to export data
     segment_data = addSegmentMomentsToExport(segment_data, segment_name, moments);
 end
@@ -50,23 +50,23 @@ segment_props = getSegmentProperties(sim_data, segment_name);
 
 for j = 1:length(joint_list)
     joint_name = joint_list{j};
-    
+
     % Get joint forces (global coordinates)
     forces_global = getJointForcesGlobal(sim_data, joint_name);
-    
+
     % Get joint position relative to segment COM
     joint_pos = getJointPosition(sim_data, joint_name);
     segment_com = segment_props.center_of_mass;
-    
+
     % Calculate position vector from COM to joint
     r_vector = joint_pos - segment_com;
-    
+
     % Calculate moment: M = r × F
     moment = calculateCrossProduct(r_vector, forces_global);
-    
+
     % Store moment
     moments.([joint_name '_moment_about_COM']) = moment;
-    
+
     % Also calculate moment about joint itself (for segment analysis)
     if j > 1
         prev_joint = joint_list{j-1};
@@ -101,10 +101,10 @@ else
     % Convert local forces to global
     forces_local = getJointForcesLocal(sim_data, joint_name);
     R_matrices = getRotationMatrices(sim_data, joint_name);
-    
+
     n_samples = size(forces_local, 1);
     forces_global = zeros(size(forces_local));
-    
+
     for i = 1:n_samples
         R = squeeze(R_matrices(i, :, :));
         forces_global(i, :) = (R * forces_local(i, :)')';
@@ -154,7 +154,7 @@ else
         [joint_name 'Logs_Position_'];
         [joint_name '_GlobalPosition_']
     };
-    
+
     for a = 1:length(alt_fields)
         if isfield(sim_data, [alt_fields{a} '1'])
             joint_pos = [sim_data.([alt_fields{a} '1']), ...
@@ -163,7 +163,7 @@ else
             return;
         end
     end
-    
+
     warning('Position not found for joint %s', joint_name);
     joint_pos = zeros(length(sim_data.time), 3);
 end
@@ -185,7 +185,7 @@ switch segment_name
                 sim_data.SegmentInertiaLogs_LeftUpperArmCOM_dim3
             ];
         end
-        
+
     case 'RightUpperArm'
         if isfield(sim_data, 'SegmentInertiaLogs_RightUpperArmCOM_dim1')
             segment_props.center_of_mass = [
@@ -194,7 +194,7 @@ switch segment_name
                 sim_data.SegmentInertiaLogs_RightUpperArmCOM_dim3
             ];
         end
-        
+
     case 'LeftForearm'
         if isfield(sim_data, 'SegmentInertiaLogs_LFLowerCOM_dim1')
             segment_props.center_of_mass = [
@@ -203,7 +203,7 @@ switch segment_name
                 sim_data.SegmentInertiaLogs_LFLowerCOM_dim3
             ];
         end
-        
+
     case 'RightForearm'
         if isfield(sim_data, 'SegmentInertiaLogs_RFLowerCOM_dim1')
             segment_props.center_of_mass = [
@@ -212,7 +212,7 @@ switch segment_name
                 sim_data.SegmentInertiaLogs_RFLowerCOM_dim3
             ];
         end
-        
+
     case 'UpperTorso'
         if isfield(sim_data, 'SegmentInertiaLogs_UpperTorsoCOM_dim1')
             segment_props.center_of_mass = [
@@ -221,7 +221,7 @@ switch segment_name
                 sim_data.SegmentInertiaLogs_UpperTorsoCOM_dim3
             ];
         end
-        
+
     case 'LowerTorso'
         if isfield(sim_data, 'SegmentInertiaLogs_LowerTorsoCOM_dim1')
             segment_props.center_of_mass = [
@@ -230,7 +230,7 @@ switch segment_name
                 sim_data.SegmentInertiaLogs_LowerTorsoCOM_dim3
             ];
         end
-        
+
     otherwise
         warning('Unknown segment: %s', segment_name);
         segment_props.center_of_mass = zeros(length(sim_data.time), 3);
@@ -252,7 +252,7 @@ moment = zeros(n_samples, 3);
 for i = 1:n_samples
     r = r_vector(i, :);
     f = force_vector(i, :);
-    
+
     % Cross product: r × f
     moment(i, :) = [
         r(2)*f(3) - r(3)*f(2);  % Mx
@@ -285,13 +285,13 @@ moment_fields = fieldnames(moments);
 for i = 1:length(moment_fields)
     field_name = [segment_name '_' moment_fields{i}];
     moment_data = moments.(moment_fields{i});
-    
+
     if size(moment_data, 2) == 3
         % 3D moment vector
         segment_data.([field_name '_X']) = moment_data(:, 1);
         segment_data.([field_name '_Y']) = moment_data(:, 2);
         segment_data.([field_name '_Z']) = moment_data(:, 3);
-        
+
         % Magnitude
         segment_data.([field_name '_Magnitude']) = sqrt(sum(moment_data.^2, 2));
     else
@@ -343,28 +343,28 @@ end
 %
 % % Main calculation function
 % function enhanced_data = processGolfSwingData(simulation_data)
-%     
+%
 %     % Calculate joint power and work
 %     [joint_powers, joint_work, joint_data] = calculateJointPowerWork(simulation_data);
-%     
+%
 %     % Calculate force moments
 %     [joint_moments, segment_data] = calculateForceMoments(simulation_data);
-%     
+%
 %     % Combine all data
 %     enhanced_data = simulation_data;
-%     
+%
 %     % Add joint power/work data
 %     joint_fields = fieldnames(joint_data);
 %     for i = 1:length(joint_fields)
 %         enhanced_data.(joint_fields{i}) = joint_data.(joint_fields{i});
 %     end
-%     
+%
 %     % Add segment moment data
 %     segment_fields = fieldnames(segment_data);
 %     for i = 1:length(segment_fields)
 %         enhanced_data.(segment_fields{i}) = segment_data.(segment_fields{i});
 %     end
-%     
+%
 %     fprintf('Enhanced dataset contains %d variables\n', length(fieldnames(enhanced_data)));
-%     
+%
 % end

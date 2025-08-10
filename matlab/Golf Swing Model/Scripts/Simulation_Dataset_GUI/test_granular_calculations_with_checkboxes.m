@@ -19,27 +19,27 @@ ZTCFQ.Time = time_data;
 joints = {'Hip', 'Knee', 'Ankle'};
 for i = 1:length(joints)
     joint = joints{i};
-    
+
     % Torques (sinusoidal with some noise)
     ZTCFQ.([joint '_Torque_X']) = 10 * sin(2*pi*time_data) + 0.5*randn(num_samples, 1);
     ZTCFQ.([joint '_Torque_Y']) = 8 * cos(2*pi*time_data) + 0.3*randn(num_samples, 1);
     ZTCFQ.([joint '_Torque_Z']) = 5 * sin(4*pi*time_data) + 0.2*randn(num_samples, 1);
-    
+
     % Angular velocities
     ZTCFQ.([joint '_AngularVelocity_X']) = 2*pi*10 * cos(2*pi*time_data) + 0.1*randn(num_samples, 1);
     ZTCFQ.([joint '_AngularVelocity_Y']) = -2*pi*8 * sin(2*pi*time_data) + 0.1*randn(num_samples, 1);
     ZTCFQ.([joint '_AngularVelocity_Z']) = 2*pi*5 * cos(4*pi*time_data) + 0.1*randn(num_samples, 1);
-    
+
     % Applied torques
     ZTCFQ.([joint '_AppliedTorque_X']) = 2 * sin(3*pi*time_data) + 0.1*randn(num_samples, 1);
     ZTCFQ.([joint '_AppliedTorque_Y']) = 1.5 * cos(3*pi*time_data) + 0.1*randn(num_samples, 1);
     ZTCFQ.([joint '_AppliedTorque_Z']) = 1 * sin(6*pi*time_data) + 0.1*randn(num_samples, 1);
-    
+
     % Force moments
     ZTCFQ.([joint '_ForceMoment_X']) = 3 * sin(2.5*pi*time_data) + 0.2*randn(num_samples, 1);
     ZTCFQ.([joint '_ForceMoment_Y']) = 2.5 * cos(2.5*pi*time_data) + 0.2*randn(num_samples, 1);
     ZTCFQ.([joint '_ForceMoment_Z']) = 1.5 * sin(5*pi*time_data) + 0.2*randn(num_samples, 1);
-    
+
     % Forces (for linear impulse)
     ZTCFQ.([joint '_Force_X']) = 15 * sin(1.5*pi*time_data) + 0.5*randn(num_samples, 1);
     ZTCFQ.([joint '_Force_Y']) = 12 * cos(1.5*pi*time_data) + 0.5*randn(num_samples, 1);
@@ -205,7 +205,7 @@ try
     trial_data = struct();
     trial_data.ZTCFQ = ZTCFQ;
     trial_data.DELTAQ = DELTAQ;
-    
+
     % Test with calculation options
     calculation_options = struct();
     calculation_options.calculate_work = true;
@@ -217,9 +217,9 @@ try
     calculation_options.calculate_linear_impulse = true;
     calculation_options.calculate_proximal_on_distal = true;
     calculation_options.calculate_distal_on_proximal = true;
-    
+
     processed_trial = calculateWorkAndPowerEnhanced(trial_data, calculation_options);
-    
+
     if isfield(processed_trial, 'ZTCFQ') && isfield(processed_trial, 'DELTAQ')
         fprintf('   ✓ PostProcessingModule integration successful\n');
         fprintf('     Updated ZTCFQ has %d columns\n', width(processed_trial.ZTCFQ));
@@ -227,7 +227,7 @@ try
     else
         fprintf('   ✗ PostProcessingModule integration failed\n');
     end
-    
+
 catch ME
     fprintf('   ✗ PostProcessingModule integration error: %s\n', ME.message);
 end

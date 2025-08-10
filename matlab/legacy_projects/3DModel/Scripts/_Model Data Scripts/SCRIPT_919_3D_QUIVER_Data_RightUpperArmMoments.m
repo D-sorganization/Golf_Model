@@ -33,7 +33,7 @@ RSMOFRArm.AutoScaleFactor=REMOFRArmQuiver.ScaleFactor/RSMOFRArm.ScaleFactor;
 %Generate Right Arm Quivers
 RightArm=quiver3(Data.RSx(:,1),Data.RSy(:,1),Data.RSz(:,1),Data.RightArmdx(:,1),Data.RightArmdy(:,1),Data.RightArmdz(:,1),0);
 RightArm.ShowArrowHead='off';
-RightArm.LineWidth=1;			   
+RightArm.LineWidth=1;
 RightArm.Color=[0 0 0];
 
 %Add Legend to Plot

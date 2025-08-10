@@ -7,10 +7,22 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
-                             QGroupBox, QHBoxLayout, QLabel, QMainWindow,
-                             QMessageBox, QPushButton, QSlider, QTextEdit,
-                             QVBoxLayout, QWidget)
+from PyQt6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QComboBox,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QSlider,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 class GolfSwingAnalyzerPyQt6(QMainWindow):
@@ -192,7 +204,7 @@ class GolfSwingAnalyzerPyQt6(QMainWindow):
         help_text = QLabel(
             """3D Plot Interaction:
 • Left-click + drag: Rotate view
-• Right-click + drag: Pan view  
+• Right-click + drag: Pan view
 • Mouse wheel: Zoom in/out
 • Use camera buttons for preset views"""
         )

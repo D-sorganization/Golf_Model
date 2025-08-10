@@ -8,7 +8,7 @@ This document describes the enhancements made to the Skeleton Plotter GUI to add
 ### 1. Dataset Selection Dropdown
 - **Location**: Added to the Skeleton Plotter tab in the main GUI
 - **Functionality**: Allows users to select between BASEQ, ZTCFQ, and DELTAQ datasets
-- **Implementation**: 
+- **Implementation**:
   - Dropdown menu with three options: BASEQ, ZTCFQ, DELTAQ
   - Real-time dataset switching during visualization
   - Automatic update of figure title to reflect current dataset

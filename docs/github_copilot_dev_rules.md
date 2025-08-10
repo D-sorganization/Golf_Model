@@ -56,7 +56,7 @@ matlab_project/
 2. **Descriptive messages**: Use conventional commit format
    ```
    type(scope): description
-   
+
    Examples:
    feat(gui): add user login dialog
    fix(data): resolve CSV parsing error
@@ -159,7 +159,7 @@ node_modules/
    ```python
    import os
    from dotenv import load_dotenv
-   
+
    load_dotenv()
    API_KEY = os.getenv('API_KEY')
    ```
@@ -209,7 +209,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Application Name")
         self.setGeometry(100, 100, 800, 600)
         self.init_ui()
-    
+
     def init_ui(self):
         # Initialize UI components
         pass

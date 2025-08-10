@@ -10,11 +10,13 @@ from typing import Dict, Optional, Tuple, Any
 
 import numpy as np
 import pandas as pd
+
+
 def _to_numpy(series: Any) -> np.ndarray:
     """Convert pandas Series, numpy array, or ExtensionArray to numpy array safely"""
-    if hasattr(series, 'to_numpy'):
+    if hasattr(series, "to_numpy"):
         return series.to_numpy()
-    elif hasattr(series, 'values'):
+    elif hasattr(series, "values"):
         return series.values
     else:
         return np.asarray(series)
@@ -173,8 +175,12 @@ class MotionDataLoader:
 
         try:
             # Read both sheets
-            prov1_data = pd.read_excel(filepath_path, sheet_name=self.config.prov1_sheet)
-            wiffle_data = pd.read_excel(filepath_path, sheet_name=self.config.wiffle_sheet)
+            prov1_data = pd.read_excel(
+                filepath_path, sheet_name=self.config.prov1_sheet
+            )
+            wiffle_data = pd.read_excel(
+                filepath_path, sheet_name=self.config.wiffle_sheet
+            )
 
             print(f"✅ Loaded ProV1 data: {prov1_data.shape}")
             print(f"✅ Loaded Wiffle data: {wiffle_data.shape}")

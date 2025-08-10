@@ -1,10 +1,10 @@
 function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
     % Extract signals from simulation output based on specified options
     % This replaces the missing extractAllSignalsFromBus function
-    
+
     data_table = [];
     signal_info = struct();
-    
+
     try
         % Validate simOut input to prevent brace indexing errors
         if isempty(simOut)
@@ -13,7 +13,7 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
             end
             return;
         end
-        
+
         % Check if simOut is a valid simulation output object
         if ~isobject(simOut) && ~isstruct(simOut)
             if options.verbose
@@ -21,21 +21,21 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
             end
             return;
         end
-        
+
         % Initialize data collection
         all_data = {};
-        
+
         % Extract from CombinedSignalBus if enabled and available
         if options.extract_combined_bus && (isprop(simOut, 'CombinedSignalBus') || isfield(simOut, 'CombinedSignalBus'))
             if options.verbose
                 fprintf('Extracting from CombinedSignalBus...\n');
             end
-            
+
             try
                 combinedBus = simOut.CombinedSignalBus;
                 if ~isempty(combinedBus)
                     signal_bus_data = extractFromCombinedSignalBus(combinedBus);
-                    
+
                     if ~isempty(signal_bus_data)
                         all_data{end+1} = signal_bus_data;
                         if options.verbose
@@ -55,13 +55,13 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                 end
             end
         end
-        
+
         % Extract from logsout if enabled and available
         if options.extract_logsout && (isprop(simOut, 'logsout') || isfield(simOut, 'logsout'))
             if options.verbose
                 fprintf('Extracting from logsout...\n');
             end
-            
+
             try
                 logsout_data = extractLogsoutDataFixed(simOut.logsout);
                 if ~isempty(logsout_data)
@@ -82,17 +82,17 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                 end
             end
         end
-        
+
         % Extract from Simscape if enabled and available
         if options.extract_simscape
             if options.verbose
                 fprintf('Checking for Simscape simlog...\n');
             end
-            
+
             % Enhanced simlog access for parallel execution
             simlog_available = false;
             simlog_data = [];
-            
+
             if isprop(simOut, 'simlog') || isfield(simOut, 'simlog')
                 try
                     simlog_data = simOut.simlog;
@@ -114,7 +114,7 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                     end
                 end
             end
-            
+
             % Try alternative access methods for parallel workers
             if ~simlog_available
                 try
@@ -127,12 +127,12 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                     % Continue
                 end
             end
-            
+
             if simlog_available
                 if options.verbose
                     fprintf('Extracting from Simscape simlog...\n');
                 end
-                
+
                 simscape_data = extractSimscapeDataRecursive(simlog_data);
                 if ~isempty(simscape_data)
                     all_data{end+1} = simscape_data;
@@ -150,7 +150,7 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                 end
             end
         end
-        
+
         % Combine all data sources
         if ~isempty(all_data)
             data_table = combineDataSources(all_data);
@@ -161,7 +161,7 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                 fprintf('Warning: No data extracted from any source\n');
             end
         end
-        
+
     catch ME
         if options.verbose
             fprintf('Error in extractSignalsFromSimOut: %s\n', ME.message);
@@ -170,4 +170,4 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
         data_table = [];
         signal_info = struct();
     end
-end 
+end

@@ -289,18 +289,3 @@ clear TorsoAVMaxRow;
 clear TorsoAVMaxTime;
 clear TimeofZTCFAlphaReversal;
 clear TimeofDELTAAlphaReversal;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

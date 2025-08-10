@@ -68,7 +68,7 @@ H=height(Data);
 %Find number of times to iterate ommiting last row
 h=H-1
 
-%Generate 
+%Generate
 for i=1:h
 j=i+1;
 
@@ -140,4 +140,3 @@ clear CHPz;
 clear MPPx;
 clear MPPy;
 clear MPPz;
-

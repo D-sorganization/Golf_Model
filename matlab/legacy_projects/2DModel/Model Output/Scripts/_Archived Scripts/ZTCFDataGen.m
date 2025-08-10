@@ -58,4 +58,3 @@ assignin(mdlWks,'KillswitchStepTime','KillswitchStepTime'+'Stepper');
 ZTCF027=sim(GolfSwing);
 assignin(mdlWks,'KillswitchStepTime','KillswitchStepTime'+'Stepper');
 ZTCF028=sim(GolfSwing);
-

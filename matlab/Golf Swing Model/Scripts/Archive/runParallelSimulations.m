@@ -57,10 +57,10 @@ while true
     if isempty(folder_name)
         folder_name = 'trial_data';
     end
-    
+
     % Create full path
     config.output_folder = fullfile(folder_location, folder_name);
-    
+
     % Check if folder exists or can be created
     if exist(config.output_folder, 'dir')
         overwrite = input('Folder already exists. Overwrite existing data? (y/n): ', 's');
@@ -133,10 +133,10 @@ fprintf('\n--- Running Simulations ---\n');
 if use_parallel
     % Parallel execution
     fprintf('Running simulations in parallel...\n');
-    
+
     % Create array to store results
     trial_results = cell(config.num_simulations, 1);
-    
+
     % Run simulations in parallel
     parfor sim_idx = 1:config.num_simulations
         try
@@ -148,7 +148,7 @@ if use_parallel
             trial_results{sim_idx} = [];
         end
     end
-    
+
     % Process results
     successful_trials = 0;
     for sim_idx = 1:config.num_simulations
@@ -159,11 +159,11 @@ if use_parallel
             fprintf('✗ Trial %d failed\n', sim_idx);
         end
     end
-    
+
 else
     % Sequential execution
     fprintf('Running simulations sequentially...\n');
-    
+
     successful_trials = 0;
     for sim_idx = 1:config.num_simulations
         try
@@ -201,40 +201,40 @@ fprintf('\n=== Parallel Simulations Complete ===\n');
 
 function result = runSingleTrial(sim_idx, config)
     % Run a single trial and save the result
-    
+
     try
         % Generate unique polynomial coefficients for this trial
         polynomial_coeffs = generateRandomPolynomialCoefficients();
-        
+
         % Create simulation input
         simInput = Simulink.SimulationInput(config.model_name);
-        
+
         % Set simulation time
         simInput = simInput.setModelParameter('StopTime', num2str(config.simulation_time));
-        
+
         % Set polynomial coefficients as variables
         simInput = setPolynomialVariables(simInput, polynomial_coeffs);
-        
+
         % Configure logging
         simInput = simInput.setModelParameter('SignalLogging', 'on');
         simInput = simInput.setModelParameter('SignalLoggingName', 'out');
         simInput = simInput.setModelParameter('SignalLoggingSaveFormat', 'Dataset');
-        
+
         % Run simulation
         simOut = sim(simInput);
-        
+
         % Extract all data from this simulation
         trial_data = extractTrialData(simOut, sim_idx, config);
-        
+
         if ~isempty(trial_data)
             % Save individual trial file
             timestamp = datestr(now, 'yyyymmdd_HHMMSS');
             filename = sprintf('trial_%03d_%s.mat', sim_idx, timestamp);
             filepath = fullfile(config.output_folder, filename);
-            
+
             % Save trial data
             save(filepath, 'trial_data', 'polynomial_coeffs', 'sim_idx', 'config');
-            
+
             result = struct();
             result.success = true;
             result.filename = filename;
@@ -243,7 +243,7 @@ function result = runSingleTrial(sim_idx, config)
         else
             result = [];
         end
-        
+
     catch ME
         fprintf('  Trial %d error: %s\n', sim_idx, ME.message);
         result = [];
@@ -253,13 +253,13 @@ end
 function coeffs = generateRandomPolynomialCoefficients()
     % Generate random polynomial coefficients for different joints
     coeffs = struct();
-    
+
     % Define joints that use polynomial inputs
     joints = {'Hip', 'Spine', 'LS', 'RS', 'LE', 'RE', 'LW', 'RW'};
-    
+
     for i = 1:length(joints)
         joint = joints{i};
-        
+
         % Generate random coefficients for 3rd order polynomial (4 coefficients)
         % Range: -100 to 100 for reasonable torque values
         coeffs.([joint '_coeffs']) = (rand(1, 4) - 0.5) * 200;
@@ -268,12 +268,12 @@ end
 
 function simInput = setPolynomialVariables(simInput, coeffs)
     % Set polynomial coefficients as variables in the simulation input
-    
+
     fields = fieldnames(coeffs);
     for i = 1:length(fields)
         field_name = fields{i};
         coeff_values = coeffs.(field_name);
-        
+
         % Set as variable in simulation input
         simInput = simInput.setVariable(field_name, coeff_values);
     end
@@ -281,7 +281,7 @@ end
 
 function trial_data = extractTrialData(simOut, sim_idx, config)
     % Extract all available data from simulation output for a single trial
-    
+
     try
         % Get time vector and resample to 100 Hz
         time_vector = simOut.tout;
@@ -289,33 +289,33 @@ function trial_data = extractTrialData(simOut, sim_idx, config)
             trial_data = [];
             return;
         end
-        
+
         % Resample to 100 Hz
         target_time = 0:1/config.sample_rate:config.simulation_time;
         target_time = target_time(target_time <= config.simulation_time);
-        
+
         % Initialize data matrix
         num_time_points = length(target_time);
         trial_data = zeros(num_time_points, 0); % Will grow as we add columns
-        
+
         % Add time and simulation ID
         trial_data = [trial_data, target_time', repmat(sim_idx, num_time_points, 1)];
-        
+
         % Extract logsout data
         trial_data = extractLogsoutData(simOut, trial_data, target_time);
-        
+
         % Extract signal bus data
         trial_data = extractSignalBusData(simOut, trial_data, target_time);
-        
+
         % Extract Simscape data
         trial_data = extractSimscapeData(simOut, trial_data, target_time);
-        
+
         % Extract model workspace variables
         trial_data = extractModelWorkspaceData(simOut, trial_data, target_time);
-        
+
         % Extract inertia matrices and rotation matrices
         trial_data = extractMatrixData(simOut, trial_data, target_time);
-        
+
     catch ME
         fprintf('    Error extracting trial data: %s\n', ME.message);
         trial_data = [];
@@ -324,18 +324,18 @@ end
 
 function trial_data = extractLogsoutData(simOut, trial_data, target_time)
     % Extract data from logsout
-    
+
     try
         logsout = simOut.logsout;
         if isempty(logsout)
             return;
         end
-        
+
         for i = 1:logsout.numElements
             try
                 element = logsout.getElement(i);
                 signal_name = element.Name;
-                
+
                 % Get signal data
                 if isa(element, 'Simulink.SimulationData.Signal')
                     data = element.Values.Data;
@@ -347,18 +347,18 @@ function trial_data = extractLogsoutData(simOut, trial_data, target_time)
                         continue;
                     end
                 end
-                
+
                 % Resample to target time
                 resampled_data = resampleSignal(data, time, target_time);
-                
+
                 % Add to dataset
                 trial_data = [trial_data, resampled_data];
-                
+
             catch ME
                 % Continue to next signal
             end
         end
-        
+
     catch ME
         % Continue without logsout data
     end
@@ -366,7 +366,7 @@ end
 
 function trial_data = extractSignalBusData(simOut, trial_data, target_time)
     % Extract data from signal bus structs
-    
+
     try
         % Define expected signal bus structs
         expected_structs = {
@@ -375,21 +375,21 @@ function trial_data = extractSignalBusData(simOut, trial_data, target_time)
             'LWLogs', 'RWLogs', 'LScapLogs', 'RScapLogs', ...
             'LFLogs', 'RFLogs'
         };
-        
+
         for i = 1:length(expected_structs)
             struct_name = expected_structs{i};
-            
+
             try
                 if ~isempty(simOut.(struct_name))
                     log_struct = simOut.(struct_name);
-                    
+
                     if isstruct(log_struct)
                         fields = fieldnames(log_struct);
-                        
+
                         for j = 1:length(fields)
                             field_name = fields{j};
                             field_data = log_struct.(field_name);
-                            
+
                             % Extract data from field
                             if isa(field_data, 'timeseries')
                                 data = field_data.Data;
@@ -403,7 +403,7 @@ function trial_data = extractSignalBusData(simOut, trial_data, target_time)
                             else
                                 continue;
                             end
-                            
+
                             % Resample to target time
                             if ~isempty(time)
                                 resampled_data = resampleSignal(data, time, target_time);
@@ -412,12 +412,12 @@ function trial_data = extractSignalBusData(simOut, trial_data, target_time)
                         end
                     end
                 end
-                
+
             catch ME
                 % Continue to next struct
             end
         end
-        
+
     catch ME
         % Continue without signal bus data
     end
@@ -425,13 +425,13 @@ end
 
 function trial_data = extractSimscapeData(simOut, trial_data, target_time)
     % Extract data from Simscape Results Explorer
-    
+
     try
         simlog = simOut.simlog;
         if isempty(simlog) || ~isa(simlog, 'simscape.logging.Node')
             return;
         end
-        
+
         % Try to access child nodes
         try
             child_nodes = simlog.Children;
@@ -446,35 +446,35 @@ function trial_data = extractSimscapeData(simOut, trial_data, target_time)
                 end
             end
         end
-        
+
         if ~isempty(child_nodes)
             for i = 1:length(child_nodes)
                 child_node = child_nodes(i);
                 node_name = child_node.Name;
-                
+
                 % Look for joint-related nodes
                 if contains(lower(node_name), {'joint', 'actuator', 'motor', 'drive'})
                     try
                         signals = child_node.Children;
-                        
+
                         for j = 1:length(signals)
                             signal = signals(j);
                             signal_name = signal.Name;
-                            
+
                             if hasData(signal)
                                 [data, time] = getData(signal);
                                 resampled_data = resampleSignal(data, time, target_time);
                                 trial_data = [trial_data, resampled_data];
                             end
                         end
-                        
+
                     catch ME
                         % Continue to next node
                     end
                 end
             end
         end
-        
+
     catch ME
         % Continue without Simscape data
     end
@@ -482,30 +482,30 @@ end
 
 function trial_data = extractModelWorkspaceData(simOut, trial_data, target_time)
     % Extract model workspace variables (constant values)
-    
+
     try
         % Get model workspace variables
         model_workspace = get_param(simOut.SimulationMetadata.ModelInfo.ModelName, 'ModelWorkspace');
         variables = model_workspace.getVariableNames;
-        
+
         for i = 1:length(variables)
             var_name = variables{i};
-            
+
             try
                 var_value = model_workspace.getVariable(var_name);
-                
+
                 % Only include numeric variables
                 if isnumeric(var_value)
                     % Create constant column for all time points
                     constant_data = repmat(var_value, length(target_time), 1);
                     trial_data = [trial_data, constant_data];
                 end
-                
+
             catch ME
                 % Continue to next variable
             end
         end
-        
+
     catch ME
         % Continue without model workspace data
     end
@@ -513,24 +513,24 @@ end
 
 function trial_data = extractMatrixData(simOut, trial_data, target_time)
     % Extract inertia matrices and rotation matrices
-    
+
     try
         % Look for rotation matrices in signal buses
         rotation_fields = {'Rotation_Transform'};
-        
+
         for i = 1:length(rotation_fields)
             field_name = rotation_fields{i};
-            
+
             % Check in each signal bus struct
             expected_structs = {'HipLogs', 'SpineLogs', 'TorsoLogs', 'LSLogs', 'RSLogs', 'LELogs', 'RELogs', 'LWLogs', 'RWLogs', 'LScapLogs', 'RScapLogs', 'LFLogs', 'RFLogs'};
-            
+
             for j = 1:length(expected_structs)
                 struct_name = expected_structs{j};
-                
+
                 try
                     if ~isempty(simOut.(struct_name)) && isfield(simOut.(struct_name), field_name)
                         matrix_data = simOut.(struct_name).(field_name);
-                        
+
                         if isnumeric(matrix_data)
                             % Flatten 3x3xN matrix to Nx9
                             if ndims(matrix_data) == 3
@@ -546,7 +546,7 @@ function trial_data = extractMatrixData(simOut, trial_data, target_time)
                 end
             end
         end
-        
+
     catch ME
         % Continue without matrix data
     end
@@ -554,12 +554,12 @@ end
 
 function resampled_data = resampleSignal(data, time, target_time)
     % Resample signal data to target time points
-    
+
     if isempty(time) || isempty(data)
         resampled_data = zeros(length(target_time), 1);
         return;
     end
-    
+
     try
         % Handle different data dimensions
         if isvector(data)
@@ -570,7 +570,7 @@ function resampled_data = resampleSignal(data, time, target_time)
             % Multi-dimensional data
             [n_rows, n_cols] = size(data);
             resampled_data = zeros(length(target_time), n_cols);
-            
+
             for col = 1:n_cols
                 resampled_data(:, col) = interp1(time, data(:, col), target_time, 'linear', 'extrap');
             end
@@ -582,4 +582,4 @@ function resampled_data = resampleSignal(data, time, target_time)
             resampled_data = resampled_data(:);
         end
     end
-end 
+end

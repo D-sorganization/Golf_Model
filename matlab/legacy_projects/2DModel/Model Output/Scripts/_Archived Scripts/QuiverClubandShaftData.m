@@ -1,5 +1,5 @@
 %Reads from a Table named Data in main workspace Generated from the Quivers
-%Plots tab on the main worksheets. 
+%Plots tab on the main worksheets.
 
 %Generate Shaft Quivers
 Shaft=quiver3(Data.RWx(:,1),Data.RWy(:,1),Data.RWz(:,1),Data.Shaftdx(:,1),Data.Shaftdy(:,1),Data.Shaftdz(:,1),0);
@@ -13,5 +13,3 @@ Grip=quiver3(Data.Buttx(:,1),Data.Butty(:,1),Data.Buttz(:,1),Data.Gripdx(:,1),Da
 Grip.ShowArrowHead='off';
 Grip.LineWidth=1;			    %Set grip line width
 Grip.Color=[0 0 0];			    %Set grip color to black
-
-

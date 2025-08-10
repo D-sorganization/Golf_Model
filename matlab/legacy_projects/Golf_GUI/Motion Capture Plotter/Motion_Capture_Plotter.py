@@ -11,10 +11,23 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFileDialog,
-                             QGroupBox, QHBoxLayout, QLabel, QMainWindow,
-                             QMessageBox, QPushButton, QScrollArea, QSlider,
-                             QTextEdit, QVBoxLayout, QWidget)
+from PyQt6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QComboBox,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QSlider,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 
 class MotionCapturePlotter(QMainWindow):
@@ -264,7 +277,7 @@ class MotionCapturePlotter(QMainWindow):
         help_layout = QVBoxLayout(help_group)
         help_text = """3D Plot Interaction:
 • Left-click + drag: Rotate view
-• Right-click + drag: Pan view  
+• Right-click + drag: Pan view
 • Mouse wheel: Zoom in/out
 • Use camera buttons for preset views"""
         help_label = QLabel(help_text)

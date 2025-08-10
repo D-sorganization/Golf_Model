@@ -6,5 +6,5 @@ counter=height(Data)-1;
 %     % Data.HandPathdy(i)=Data.MidHandPosition(i+1,2)-Data.MidHandPosition(i,2)
 %     % Data.HandPathdz(i)=Data.MidHandPosition(i+1,3)-Data.MidHandPosition(i,3)
 % end
-% 
+%
 %Add Hand Path Vector Data to Table

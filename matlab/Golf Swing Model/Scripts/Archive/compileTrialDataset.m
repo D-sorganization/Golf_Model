@@ -39,7 +39,7 @@ while true
         end
         config.output_csv = output_csv;
     end
-    
+
     % Check if file already exists
     if exist(config.output_csv, 'file')
         overwrite = input('File already exists. Overwrite? (y/n): ', 's');
@@ -66,7 +66,7 @@ while true
         end
         config.output_summary = output_summary;
     end
-    
+
     % Check if file already exists
     if exist(config.output_summary, 'file')
         overwrite = input('File already exists. Overwrite? (y/n): ', 's');
@@ -125,17 +125,17 @@ failed_trials = 0;
 for file_idx = 1:num_files
     filename = trial_files(file_idx).name;
     filepath = fullfile(config.trial_folder, filename);
-    
+
     try
         fprintf('Loading %s (%d/%d)...\n', filename, file_idx, num_files);
-        
+
         % Load trial data
         trial_data = load(filepath);
-        
+
         if isfield(trial_data, 'trial_data') && ~isempty(trial_data.trial_data)
             % Get data matrix
             data_matrix = trial_data.trial_data;
-            
+
             % Check if this is the first successful trial
             if isempty(all_data)
                 all_data = data_matrix;
@@ -160,15 +160,15 @@ for file_idx = 1:num_files
                     all_data = [all_data; data_matrix];
                 end
             end
-            
+
             successful_trials = successful_trials + 1;
             fprintf('  ✓ Loaded %d data points\n', size(data_matrix, 1));
-            
+
         else
             fprintf('  ✗ No valid data found\n');
             failed_trials = failed_trials + 1;
         end
-        
+
     catch ME
         fprintf('  ✗ Error loading %s: %s\n', filename, ME.message);
         failed_trials = failed_trials + 1;
@@ -178,10 +178,10 @@ end
 %% Create comprehensive dataset
 if ~isempty(all_data)
     fprintf('\n--- Creating Dataset ---\n');
-    
+
     % Convert to table
     data_table = array2table(all_data);
-    
+
     % Set column names
     if length(column_names) == size(all_data, 2)
         data_table.Properties.VariableNames = column_names;
@@ -194,16 +194,16 @@ if ~isempty(all_data)
         end
         data_table.Properties.VariableNames = generic_names;
     end
-    
+
     % Save to CSV
     writetable(data_table, config.output_csv);
     fprintf('✓ Dataset saved to: %s\n', config.output_csv);
     fprintf('  Total data points: %d\n', size(all_data, 1));
     fprintf('  Total columns: %d\n', size(all_data, 2));
-    
+
     % Create summary file
     createDatasetSummary(config, all_data, column_names, successful_trials, failed_trials, trial_files);
-    
+
 else
     fprintf('✗ No data collected from any trial files\n');
 end
@@ -214,19 +214,19 @@ fprintf('\n=== Dataset Compilation Complete ===\n');
 
 function column_names = createColumnNames(num_columns)
     % Create column names for the dataset
-    
+
     column_names = {'time', 'simulation_id'};
-    
+
     % Add logsout signal names
     logsout_names = {'CHS', 'CHPathUnitVector', 'Face', 'Path', 'CHGlobalPosition', 'CHy', 'MaximumCHS', 'HipGlobalPosition', 'HipGlobalVelocity', 'HUBGlobalPosition', 'GolferMass', 'GolferCOM', 'KillswitchState', 'ButtPosition', 'LeftHandSpeed', 'LHAVGlobal', 'LeftHandPostion', 'LHGlobalVelocity', 'LHGlobalAngularVelocity', 'LHGlobalPosition', 'MidHandSpeed', 'MPGlobalPosition', 'MPGlobalVelocity', 'RightHandSpeed', 'RHAVGlobal', 'RHGlobalVelocity', 'RHGlobalAngularVelocity', 'RHGlobalPosition'};
-    
+
     % Add torque signal names
     torque_names = {'ForceAlongHandPath', 'LHForceAlongHandPath', 'RHForceAlongHandPath', 'SumofMomentsLHonClub', 'SumofMomentsRHonClub', 'TotalHandForceGlobal', 'TotalHandTorqueGlobal', 'LHonClubForceLocal', 'LHonClubTorqueLocal', 'RHonClubForceLocal', 'RHonClubTorqueLocal', 'HipTorqueXInput', 'HipTorqueYInput', 'HipTorqueZInput', 'TranslationForceXInput', 'TranslationForceYInput', 'TranslationForceZInput', 'LSTorqueXInput', 'SumofMomentsonClubLocal', 'BaseonHipForceHipBase'};
-    
+
     % Add signal bus field names (positions, velocities, accelerations, torques)
     signal_bus_names = {};
     joints = {'Hip', 'Spine', 'Torso', 'LS', 'RS', 'LE', 'RE', 'LW', 'RW', 'LScap', 'RScap', 'LF', 'RF'};
-    
+
     for i = 1:length(joints)
         joint = joints{i};
         signal_bus_names = [signal_bus_names, {
@@ -243,7 +243,7 @@ function column_names = createColumnNames(num_columns)
             [joint '_GlobalAngularVelocity'], [joint '_Rotation_Transform']
         }];
     end
-    
+
     % Add rotation matrix components (9 components per joint)
     rotation_names = {};
     for i = 1:length(joints)
@@ -254,13 +254,13 @@ function column_names = createColumnNames(num_columns)
             end
         end
     end
-    
+
     % Combine all column names
     column_names = [column_names, logsout_names, torque_names, signal_bus_names, rotation_names];
-    
+
     % Ensure unique names
     column_names = unique(column_names, 'stable');
-    
+
     % If we have more columns than names, add generic names
     if length(column_names) < num_columns
         for i = length(column_names) + 1:num_columns
@@ -274,27 +274,27 @@ end
 
 function createDatasetSummary(config, all_data, column_names, successful_trials, failed_trials, trial_files)
     % Create a summary file with dataset information
-    
+
     try
         fid = fopen(config.output_summary, 'w');
         if fid == -1
             fprintf('✗ Could not create summary file\n');
             return;
         end
-        
+
         fprintf(fid, 'Complete Golf Dataset Summary\n');
         fprintf(fid, '============================\n\n');
         fprintf(fid, 'Generated: %s\n', datestr(now));
         fprintf(fid, 'Compiled from: %s\n', config.trial_folder);
         fprintf(fid, '\n');
-        
+
         fprintf(fid, 'Trial Statistics:\n');
         fprintf(fid, '  Total trial files found: %d\n', length(trial_files));
         fprintf(fid, '  Successful trials: %d\n', successful_trials);
         fprintf(fid, '  Failed trials: %d\n', failed_trials);
         fprintf(fid, '  Success rate: %.1f%%\n', (successful_trials / length(trial_files)) * 100);
         fprintf(fid, '\n');
-        
+
         fprintf(fid, 'Dataset Statistics:\n');
         fprintf(fid, '  Total data points: %d\n', size(all_data, 1));
         fprintf(fid, '  Total columns: %d\n', size(all_data, 2));
@@ -302,12 +302,12 @@ function createDatasetSummary(config, all_data, column_names, successful_trials,
             fprintf(fid, '  Data points per trial: %d\n', size(all_data, 1) / successful_trials);
         end
         fprintf(fid, '\n');
-        
+
         fprintf(fid, 'Column Categories:\n');
         fprintf(fid, '  Time and ID: 2 columns\n');
         fprintf(fid, '  Data columns: %d columns\n', size(all_data, 2) - 2);
         fprintf(fid, '\n');
-        
+
         fprintf(fid, 'Data Types Included:\n');
         fprintf(fid, '  ✓ Joint positions (X, Y, Z)\n');
         fprintf(fid, '  ✓ Joint velocities (X, Y, Z)\n');
@@ -322,28 +322,28 @@ function createDatasetSummary(config, all_data, column_names, successful_trials,
         fprintf(fid, '  ✓ Club and hand data\n');
         fprintf(fid, '  ✓ Model workspace variables\n');
         fprintf(fid, '\n');
-        
+
         fprintf(fid, 'Joints Included:\n');
         joints = {'Hip', 'Spine', 'Torso', 'LS', 'RS', 'LE', 'RE', 'LW', 'RW', 'LScap', 'RScap', 'LF', 'RF'};
         for i = 1:length(joints)
             fprintf(fid, '  - %s\n', joints{i});
         end
         fprintf(fid, '\n');
-        
+
         fprintf(fid, 'Trial Files Used:\n');
         for i = 1:length(trial_files)
             fprintf(fid, '  %s\n', trial_files(i).name);
         end
         fprintf(fid, '\n');
-        
+
         fprintf(fid, 'Output Files:\n');
         fprintf(fid, '  CSV Dataset: %s\n', config.output_csv);
         fprintf(fid, '  Summary: %s\n', config.output_summary);
-        
+
         fclose(fid);
         fprintf('✓ Summary saved to: %s\n', config.output_summary);
-        
+
     catch ME
         fprintf('✗ Error creating summary: %s\n', ME.message);
     end
-end 
+end

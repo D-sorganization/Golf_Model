@@ -1,6 +1,6 @@
 # GUI Directory Cleanup Summary
 
-**Date:** August 2, 2025  
+**Date:** August 2, 2025
 **Operation:** Moved unused functions to Archive/Unused_Functions/
 
 ## Files Remaining in Main Directory (Essential Functions)
@@ -99,5 +99,5 @@
 
 The main directory now contains only the files that are actively used by the `Data_GUI.m` script, making it much cleaner and easier to work with. All unused functions have been preserved in the archive for potential future reference or restoration if needed.
 
-**Total Files in Main Directory:** 8 files + 5 directories  
-**Total Files Moved to Archive:** 47 files 
+**Total Files in Main Directory:** 8 files + 5 directories
+**Total Files Moved to Archive:** 47 files

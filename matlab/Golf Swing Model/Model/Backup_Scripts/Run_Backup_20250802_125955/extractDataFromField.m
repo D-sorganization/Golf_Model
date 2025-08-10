@@ -1,7 +1,7 @@
 function data_array = extractDataFromField(field_value, expected_length)
     % Extract numeric data from various field formats
     data_array = [];
-    
+
     try
         if isa(field_value, 'timeseries')
             data_array = field_value.Data;
@@ -19,7 +19,7 @@ function data_array = extractDataFromField(field_value, expected_length)
         elseif isnumeric(field_value)
             data_array = field_value;
         end
-        
+
         % Validate data length
         if ~isempty(data_array) && size(data_array, 1) ~= expected_length
             data_array = [];
@@ -27,4 +27,4 @@ function data_array = extractDataFromField(field_value, expected_length)
     catch
         data_array = [];
     end
-end 
+end

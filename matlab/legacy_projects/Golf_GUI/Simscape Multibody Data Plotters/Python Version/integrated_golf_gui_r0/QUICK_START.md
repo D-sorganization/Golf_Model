@@ -42,7 +42,7 @@ python golf_wiffle_main.py
 
 ### **Excel Sheets Supported**
 - `TW_ProV1` - Top Wood ProV1 data
-- `TW_wiffle` - Top Wood Wiffle data  
+- `TW_wiffle` - Top Wood Wiffle data
 - `GW_ProV11` - Ground Wood ProV1 data
 - `GW_wiffle` - Ground Wood Wiffle data
 
@@ -139,4 +139,4 @@ python -c "import moderngl; print('OpenGL OK')"
 
 **Ready to visualize your golf swing data! 🏌️‍♂️**
 
-*This is the most refined version with full Excel support, professional UI, and advanced analysis capabilities.* 
+*This is the most refined version with full Excel support, professional UI, and advanced analysis capabilities.*

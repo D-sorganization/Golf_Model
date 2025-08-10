@@ -672,8 +672,8 @@ LSMOFLArm.AutoScaleFactor=LEMOFLArmQuiver.ScaleFactor/LSMOFLArm.ScaleFactor;
 
 %Generate Left Arm Quivers
 LeftArm=quiver3(BASEQ.LSx(:,1),BASEQ.LSy(:,1),BASEQ.LSz(:,1),BASEQ.LeftArmdx(:,1),BASEQ.LeftArmdy(:,1),BASEQ.LeftArmdz(:,1),0);
-LeftArm.ShowArrowHead='off';		
-LeftArm.LineWidth=1;			   
+LeftArm.ShowArrowHead='off';
+LeftArm.LineWidth=1;
 LeftArm.Color=[0 0 0];
 
 %Add Legend to Plot
@@ -743,7 +743,7 @@ RSMOFRArm.AutoScaleFactor=REMOFRArmQuiver.ScaleFactor/RSMOFRArm.ScaleFactor;
 %Generate Right Arm Quivers
 RightArm=quiver3(BASEQ.RSx(:,1),BASEQ.RSy(:,1),BASEQ.RSz(:,1),BASEQ.RightArmdx(:,1),BASEQ.RightArmdy(:,1),BASEQ.RightArmdz(:,1),0);
 RightArm.ShowArrowHead='off';
-RightArm.LineWidth=1;			   
+RightArm.LineWidth=1;
 RightArm.Color=[0 0 0];
 
 %Add Legend to Plot
@@ -811,8 +811,8 @@ LWristMOFLForearm.AutoScaleFactor=LEMOFLForearmQuiver.ScaleFactor/LWristMOFLFore
 
 %Generate LeftForearm Quivers
 LeftForearm=quiver3(BASEQ.LEx(:,1),BASEQ.LEy(:,1),BASEQ.LEz(:,1),BASEQ.LeftForearmdx(:,1),BASEQ.LeftForearmdy(:,1),BASEQ.LeftForearmdz(:,1),0);
-LeftForearm.ShowArrowHead='off';		
-LeftForearm.LineWidth=1;			   
+LeftForearm.ShowArrowHead='off';
+LeftForearm.LineWidth=1;
 LeftForearm.Color=[0 0 0];
 
 %Add Legend to Plot
@@ -881,8 +881,8 @@ RWristMOFLForearm.AutoScaleFactor=REMOFLForearmQuiver.ScaleFactor/RWristMOFLFore
 %Generate Right Forearm Quivers
 RightForearm=quiver3(BASEQ.REx(:,1),BASEQ.REy(:,1),BASEQ.REz(:,1),BASEQ.RightForearmdx(:,1),BASEQ.RightForearmdy(:,1),BASEQ.RightForearmdz(:,1),0);
 RightForearm.ShowArrowHead='off';
-RightForearm.LineWidth=1;			   
-RightForearm.Color=[0 0 0];	
+RightForearm.LineWidth=1;
+RightForearm.Color=[0 0 0];
 
 %Add Legend to Plot
 legend('','','','','RH Force','RE Force','RE MOF','RH MOF');
@@ -1911,7 +1911,7 @@ COMDots.Marker='o';
 
 %%% START FILE: SCRIPT_QuiverClubandShaftBaseData.m %%%
 %Reads from a Table named Data in main workspace Generated from the Quivers
-%Plots tab on the main worksheets. 
+%Plots tab on the main worksheets.
 
 %Generate Shaft Quivers
 Shaft=quiver3(BASEQ.RHx(:,1),BASEQ.RHy(:,1),BASEQ.RHz(:,1),BASEQ.Shaftdx(:,1),BASEQ.Shaftdy(:,1),BASEQ.Shaftdz(:,1),0);

@@ -516,8 +516,7 @@ class AdaptiveRedundancyOptimizer:
             print(f"Specified joints: {len(current_specified)}")
 
             # Optimize with current configuration
-            from golf_swing_motion_matching import \
-                PolynomialCoefficientOptimizer
+            from golf_swing_motion_matching import PolynomialCoefficientOptimizer
 
             optimizer = PolynomialCoefficientOptimizer(
                 self.kinematics, current_specified, time_duration=1.0

@@ -219,7 +219,7 @@ figure(704);
 hold on;
 plot(BASEQ.Time,BASEQ.ForceAlongHandPath,'LineWidth',3);
 plot(ZTCFQ.Time,ZTCFQ.ForceAlongHandPath,'--','LineWidth',3);
-plot(DELTAQ.Time,DELTAQ.ForceAlongHandPath,':','LineWidth',3); 
+plot(DELTAQ.Time,DELTAQ.ForceAlongHandPath,':','LineWidth',3);
 
 xlabel('Time (s)');
 ylabel('Force (N)');
@@ -1613,7 +1613,7 @@ COMDots.Marker='o';
 
 %%% START FILE: SCRIPT_QuiverClubandShaftBaseData.m %%%
 %Reads from a Table named Data in main workspace Generated from the Quivers
-%Plots tab on the main worksheets. 
+%Plots tab on the main worksheets.
 
 %Generate Shaft Quivers
 Shaft=quiver3(BASEQ.RHx(:,1),BASEQ.RHy(:,1),BASEQ.RHz(:,1),BASEQ.Shaftdx(:,1),BASEQ.Shaftdy(:,1),BASEQ.Shaftdz(:,1),0);

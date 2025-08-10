@@ -1,18 +1,18 @@
 % I want to start with this script as a starting point. (GolfClubInverseDynamicsGUI). Then I want to make it complete the tasks below:
-% 
-% Analyze the excel file attached and use it as a standard input format for data analysis. There are 4 tabs of interest in the spreadsheet and we are looking to read the data from each of the tabs as it pertains to 4 swings. Two swings with golfer TW and two swings with golfer GW. One club is made with a wiffle ball and one swing is made with a real ball. 
-% 
-% Multiple filtering options will be evaluated (as shown in the starting file). The inverse dynamics should be computed using each filtering method and the force vector on the club should be computed with each. Additionally, the equivalent mid hands torque should be computed. This corresponds to the couple applied to the club calculated as if the total force was applied at the mid hands point on the club. 
-% 
-% The GUI calculation should also be able to have a variation in the midhands point to evaluate what would happen to the torque calculated when the evaluation point is moved one inch up or down the shaft. This can be done with a drop down menu and the default value for the dropdown menu should be zero adjustment (at the midhands point). 
-% 
-% The XYZ data should be used for both the center of the clubface and the mid hands for all four golfers. A preliminary script should put this information into a .csv file with a common format that will be useful for future use. Then the program will read this .csv with a loading function and compute the inverse dynamics on the data with each of the filtering methods. 
-% 
+%
+% Analyze the excel file attached and use it as a standard input format for data analysis. There are 4 tabs of interest in the spreadsheet and we are looking to read the data from each of the tabs as it pertains to 4 swings. Two swings with golfer TW and two swings with golfer GW. One club is made with a wiffle ball and one swing is made with a real ball.
+%
+% Multiple filtering options will be evaluated (as shown in the starting file). The inverse dynamics should be computed using each filtering method and the force vector on the club should be computed with each. Additionally, the equivalent mid hands torque should be computed. This corresponds to the couple applied to the club calculated as if the total force was applied at the mid hands point on the club.
+%
+% The GUI calculation should also be able to have a variation in the midhands point to evaluate what would happen to the torque calculated when the evaluation point is moved one inch up or down the shaft. This can be done with a drop down menu and the default value for the dropdown menu should be zero adjustment (at the midhands point).
+%
+% The XYZ data should be used for both the center of the clubface and the mid hands for all four golfers. A preliminary script should put this information into a .csv file with a common format that will be useful for future use. Then the program will read this .csv with a loading function and compute the inverse dynamics on the data with each of the filtering methods.
+%
 % The output from the inverse dynamics should be similarly stored in csv files for each filtering method every time a golfer is analyzed. The data should be stored to the same folder that the script is in, in a folder labelled results that will be generated if it doesn't exist.
-% 
-% The graphics should display a golf club moving through each frame of the motion. This can be represented by a cylinder running between the mid hands point and the center of the club face. Future graphical improvements would be beneficial. 
-% 
-% 
+%
+% The graphics should display a golf club moving through each frame of the motion. This can be represented by a cylinder running between the mid hands point and the center of the club face. Future graphical improvements would be beneficial.
+%
+%
 
 
 

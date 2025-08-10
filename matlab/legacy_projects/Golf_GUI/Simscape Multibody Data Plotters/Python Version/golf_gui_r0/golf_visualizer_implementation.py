@@ -232,66 +232,66 @@ class OpenGLRenderer:
         # Shader sources
         self.vertex_shader_source = """
         #version 330 core
-        
+
         layout (location = 0) in vec3 position;
         layout (location = 1) in vec3 normal;
         layout (location = 2) in vec2 texCoord;
-        
+
         uniform mat4 model;
         uniform mat4 view;
         uniform mat4 projection;
         uniform mat3 normalMatrix;
-        
+
         out vec3 FragPos;
         out vec3 Normal;
         out vec2 TexCoord;
-        
+
         void main() {
             FragPos = vec3(model * vec4(position, 1.0));
             Normal = normalMatrix * normal;
             TexCoord = texCoord;
-            
+
             gl_Position = projection * view * vec4(FragPos, 1.0);
         }
         """
 
         self.fragment_shader_source = """
         #version 330 core
-        
+
         in vec3 FragPos;
         in vec3 Normal;
         in vec2 TexCoord;
-        
+
         out vec4 FragColor;
-        
+
         // Material properties
         uniform vec3 materialColor;
         uniform float materialSpecular;
         uniform float materialShininess;
         uniform float opacity;
-        
+
         // Lighting
         uniform vec3 lightPosition;
         uniform vec3 lightColor;
         uniform vec3 viewPosition;
         uniform float ambientStrength;
-        
+
         void main() {
             // Ambient lighting
             vec3 ambient = ambientStrength * lightColor;
-            
+
             // Diffuse lighting
             vec3 norm = normalize(Normal);
             vec3 lightDir = normalize(lightPosition - FragPos);
             float diff = max(dot(norm, lightDir), 0.0);
             vec3 diffuse = diff * lightColor;
-            
+
             // Specular lighting (Blinn-Phong)
             vec3 viewDir = normalize(viewPosition - FragPos);
             vec3 halfwayDir = normalize(lightDir + viewDir);
             float spec = pow(max(dot(norm, halfwayDir), 0.0), materialShininess);
             vec3 specular = materialSpecular * spec * lightColor;
-            
+
             vec3 result = (ambient + diffuse + specular) * materialColor;
             FragColor = vec4(result, opacity);
         }
@@ -324,7 +324,7 @@ class OpenGLRenderer:
         uniform vec3 start_pos;
         uniform vec3 vector;
         uniform float scale;
-        
+
         void main() {
             vec3 world_pos = start_pos + position * scale * length(vector);
             gl_Position = mvp * vec4(world_pos, 1.0);
@@ -336,7 +336,7 @@ class OpenGLRenderer:
         out vec4 FragColor;
         uniform vec3 color;
         uniform float opacity;
-        
+
         void main() {
             FragColor = vec4(color, opacity);
         }
@@ -972,18 +972,18 @@ class ModernGolfVisualizerApp(QMainWindow):
             background-color: #2b2b2b;
             color: #ffffff;
         }
-        
+
         QDockWidget {
             color: #ffffff;
             background-color: #3c3c3c;
         }
-        
+
         QDockWidget::title {
             background-color: #4a4a4a;
             padding: 5px;
             border: 1px solid #5a5a5a;
         }
-        
+
         QPushButton {
             background-color: #4a4a4a;
             border: 1px solid #6a6a6a;
@@ -991,22 +991,22 @@ class ModernGolfVisualizerApp(QMainWindow):
             padding: 8px;
             border-radius: 4px;
         }
-        
+
         QPushButton:hover {
             background-color: #5a5a5a;
         }
-        
+
         QPushButton:pressed {
             background-color: #3a3a3a;
         }
-        
+
         QSlider::groove:horizontal {
             border: 1px solid #5a5a5a;
             height: 8px;
             background: #3a3a3a;
             border-radius: 4px;
         }
-        
+
         QSlider::handle:horizontal {
             background: #0078d4;
             border: 1px solid #005a9e;
@@ -1014,27 +1014,27 @@ class ModernGolfVisualizerApp(QMainWindow):
             margin: -2px 0;
             border-radius: 9px;
         }
-        
+
         QCheckBox {
             color: #ffffff;
             spacing: 5px;
         }
-        
+
         QCheckBox::indicator {
             width: 13px;
             height: 13px;
         }
-        
+
         QCheckBox::indicator:unchecked {
             background-color: #3a3a3a;
             border: 1px solid #6a6a6a;
         }
-        
+
         QCheckBox::indicator:checked {
             background-color: #0078d4;
             border: 1px solid #005a9e;
         }
-        
+
         QGroupBox {
             color: #ffffff;
             border: 2px solid #5a5a5a;
@@ -1042,7 +1042,7 @@ class ModernGolfVisualizerApp(QMainWindow):
             margin-top: 10px;
             font-weight: bold;
         }
-        
+
         QGroupBox::title {
             subcontrol-origin: margin;
             subcontrol-position: top center;

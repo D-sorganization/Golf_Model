@@ -15,4 +15,3 @@ Data.TotalLEPower=Data.LEonForearmAngularPower+Data.LEonForearmLinearPower;
 Data.TotalREPower=Data.REonForearmAngularPower+Data.REonForearmLinearPower;
 Data.TotalLWPower=Data.LWonClubAngularPower+Data.LWonClubLinearPower;
 Data.TotalRWPower=Data.RWonClubAngularPower+Data.RWonClubLinearPower;
-

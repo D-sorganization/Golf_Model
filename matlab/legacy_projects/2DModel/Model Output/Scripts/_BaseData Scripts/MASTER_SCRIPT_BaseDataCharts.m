@@ -48,5 +48,3 @@ SCRIPT_146_QUIVER_BaseData_NetForceEquivalantCoupleShaftsAdded;
 SCRIPT_148_PLOT_BaseData_LocalHandForces;
 
 % clear PauseTime;
-
-

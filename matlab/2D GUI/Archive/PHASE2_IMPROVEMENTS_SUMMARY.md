@@ -264,8 +264,8 @@ The GUI is now ready for professional use in golf swing research, education, and
 
 ---
 
-**Version**: Phase 2  
-**Last Updated**: December 2024  
-**Compatibility**: MATLAB R2020b+, Simulink, Simscape  
-**Test Status**: ✅ All tests passing  
+**Version**: Phase 2
+**Last Updated**: December 2024
+**Compatibility**: MATLAB R2020b+, Simulink, Simscape
+**Test Status**: ✅ All tests passing
 **Documentation**: Complete

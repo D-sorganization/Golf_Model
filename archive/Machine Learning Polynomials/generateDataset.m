@@ -51,43 +51,43 @@ fprintf('Running %d simulations in %d batches...\n', nSimulations, nBatches);
 
 for batch = 1:nBatches
     fprintf('Processing batch %d/%d...\n', batch, nBatches);
-    
+
     % Get indices for this batch
     startIdx = (batch-1) * batchSize + 1;
     endIdx = min(batch * batchSize, nSimulations);
     batchIndices = startIdx:endIdx;
-    
+
     % Generate simulation inputs for this batch
     batchCoeffs = coeffMatrix(batchIndices, :);
     simInputs = generateSimInputs(batchCoeffs, simFlags);
-    
+
     try
         % Run batch simulation
         simOut = parsim(simInputs, 'ShowProgress', false, ...
                        'TransferBaseWorkspaceVariables', 'on', ...
                        'ReuseBlockConfigurations', true);
-        
+
         % Process each simulation in the batch
         for i = 1:length(batchIndices)
             simIdx = batchIndices(i);
-            
+
             try
                 % Extract kinematics from simulation output
                 simData = extractSimKinematics(simOut(i));
-                
+
                 % Store successful simulation
                 allData.simulations{simIdx} = simData;
                 allData.successful(simIdx) = true;
-                
+
                 fprintf('  Simulation %d: Success (CHS: %.1f mph)\n', ...
                        simIdx, max(simData.CHS_mph));
-                
+
             catch ME
                 fprintf('  Simulation %d: Failed - %s\n', simIdx, ME.message);
                 allData.successful(simIdx) = false;
             end
         end
-        
+
     catch ME
         fprintf('  Batch %d failed: %s\n', batch, ME.message);
         allData.successful(batchIndices) = false;
@@ -116,21 +116,21 @@ for i = 1:nSuccessful
     simIdx = successfulSims(i);
     simData = allData.simulations{simIdx};
     coeffs = allData.coeffs(simIdx, :);
-    
+
     % Extract features and targets
     q = simData.q;      % Joint positions
     qd = simData.qd;    % Joint velocities
     qdd = simData.qdd;  % Joint accelerations (target)
     tau = simData.tau;  % Joint torques
-    
+
     nFrames = size(q, 1);
-    
+
     % Create feature matrix for this simulation
     % Features: [q, qd, tau, coeffs] for each time step
     coeffsMatrix = repmat(coeffs, nFrames, 1);
     X_i = [q, qd, tau, coeffsMatrix];
     Y_i = qdd;
-    
+
     % Append to training data
     X = [X; X_i];
     Y = [Y; Y_i];
@@ -177,23 +177,23 @@ plotDatasetStats(allData, successfulSims);
 function coeffs = addRealisticConstraints(coeffs, nJoints, polyOrder)
     % Add realistic constraints to make swings more physically plausible
     % This is a simple example - you might want more sophisticated constraints
-    
+
     % Example: Reduce high-order coefficients for stability
     for j = 1:nJoints
         offset = (j-1) * polyOrder;
         % Reduce magnitude of higher-order terms
         coeffs(offset + 4:offset + 7) = coeffs(offset + 4:offset + 7) * 0.5;
     end
-    
+
     % Example: Add some symmetry between left/right joints
     % This would depend on your specific joint ordering
 end
 
 function plotDatasetStats(allData, successfulSims)
     % Plot some basic statistics about the generated dataset
-    
+
     figure('Name', 'Dataset Statistics');
-    
+
     % Plot successful vs failed simulations
     subplot(2,2,1);
     successful = allData.successful;
@@ -201,7 +201,7 @@ function plotDatasetStats(allData, successfulSims)
     set(gca, 'XTickLabel', {'Successful', 'Failed'});
     title('Simulation Success Rate');
     ylabel('Count');
-    
+
     % Plot coefficient distribution
     subplot(2,2,2);
     coeffs = allData.coeffs(successfulSims, :);
@@ -209,7 +209,7 @@ function plotDatasetStats(allData, successfulSims)
     title('Coefficient Distribution');
     xlabel('Coefficient Value');
     ylabel('Frequency');
-    
+
     % Plot clubhead speeds
     subplot(2,2,3);
     chs_values = [];
@@ -221,7 +221,7 @@ function plotDatasetStats(allData, successfulSims)
     title('Clubhead Speed Distribution');
     xlabel('Max CHS (mph)');
     ylabel('Frequency');
-    
+
     % Plot simulation durations
     subplot(2,2,4);
     durations = [];
@@ -233,6 +233,6 @@ function plotDatasetStats(allData, successfulSims)
     title('Simulation Duration Distribution');
     xlabel('Duration (s)');
     ylabel('Frequency');
-    
+
     sgtitle('Golf Swing Dataset Statistics');
-end 
+end

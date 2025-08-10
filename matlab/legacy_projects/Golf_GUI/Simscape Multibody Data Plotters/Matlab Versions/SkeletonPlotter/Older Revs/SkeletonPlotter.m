@@ -165,7 +165,7 @@ function updateZoom(zoom_factor)
     all_x = [BASEQ.Buttx; BASEQ.CHx; BASEQ.MPx; BASEQ.LWx; BASEQ.LEx; BASEQ.LSx; BASEQ.RWx; BASEQ.REx; BASEQ.RSx; BASEQ.HUBx];
     all_y = [BASEQ.Butty; BASEQ.CHy; BASEQ.MPy; BASEQ.LWy; BASEQ.LEy; BASEQ.LSy; BASEQ.RWy; BASEQ.REy; BASEQ.RSy; BASEQ.HUBy];
     all_z = [BASEQ.Buttz; BASEQ.CHz; BASEQ.MPz; BASEQ.LWz; BASEQ.LEz; BASEQ.LSz; BASEQ.RWz; BASEQ.REz; BASEQ.RSz; BASEQ.HUBz];
-    
+
     % Apply zoom scaling to axis limits
     xlim(handles.ax, [min(all_x) - margin, max(all_x) + margin] * zoom_factor);
     ylim(handles.ax, [min(all_y) - margin, max(all_y) + margin] * zoom_factor);

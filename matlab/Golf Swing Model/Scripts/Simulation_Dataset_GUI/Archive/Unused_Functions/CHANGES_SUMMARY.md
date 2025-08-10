@@ -124,4 +124,4 @@ test_animation_fix
 2. **GUI Reset**: System automatically resets to startup state after completion
 3. **Enhanced Stop**: Red button now actually stops running simulations
 4. **Script Backup**: Automatic backup before each run in `Script_Backup_YYYYMMDD_HHMMSS/` folders
-5. **1x1 Matrix Support**: All scalar signals now properly captured 
+5. **1x1 Matrix Support**: All scalar signals now properly captured

@@ -76,13 +76,13 @@ class SimulationConfigPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setup_ui()
-    
+
     def setup_ui(self):
         # Add checkbox for Simscape Results Explorer
         self.simscape_checkbox = QCheckBox("Enable Simscape Results Explorer")
         self.simscape_checkbox.setChecked(True)  # Default enabled
         self.simscape_checkbox.setToolTip("Disable for faster simulation (if using signal bus)")
-        
+
         # Add to layout
         layout = QVBoxLayout()
         layout.addWidget(self.simscape_checkbox)
@@ -95,7 +95,7 @@ class SimulationConfigPanel(QWidget):
 class EnhancedMatlabDataLoader:
     def __init__(self):
         self.supported_formats = ['traditional', 'signal_bus', 'opaque']
-    
+
     def load_datasets(self, baseq_file, ztcfq_file, delta_file):
         # Try different loading strategies
         for format_type in self.supported_formats:
@@ -104,7 +104,7 @@ class EnhancedMatlabDataLoader:
             except Exception as e:
                 print(f"Failed to load with {format_type}: {e}")
                 continue
-        
+
         raise ValueError("Could not load data with any supported format")
 ```
 
@@ -151,14 +151,14 @@ def test_gui_compatibility():
     # Load new data files
     loader = EnhancedMatlabDataLoader()
     datasets = loader.load_datasets('BASEQ.mat', 'ZTCFQ.mat', 'DELTAQ.mat')
-    
+
     # Test frame processor
     processor = FrameProcessor(datasets, RenderConfig())
-    
+
     # Verify data integrity
     assert processor.get_num_frames() > 0
     assert all(col in datasets[0].columns for col in ['CHx', 'CHy', 'CHz'])
-    
+
     print("✅ GUI compatibility test passed!")
 ```
 
@@ -187,4 +187,4 @@ The signal bus implementation is a good approach for performance and data organi
 2. **Add the Simscape Results Explorer toggle** to the GUI for performance optimization
 3. **Test the complete pipeline** to ensure everything works together
 
-The GUI architecture is well-designed to handle the new data structure once the export format is corrected. 
+The GUI architecture is well-designed to handle the new data structure once the export format is corrected.

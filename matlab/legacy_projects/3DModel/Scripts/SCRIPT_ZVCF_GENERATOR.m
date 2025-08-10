@@ -1,5 +1,5 @@
 % ZVCF Data Generation Script
-% 
+%
 % This script generates the data for a scenario in which you take the
 % applied joint torques at any given point in the swing and apply them to a
 % golfer in the same static pose. "Zero Velocity Counterfactual". This can
@@ -16,7 +16,7 @@
 % The ZVCF is calculated by importing starting positions / pose of the
 % model and assigning all velocities to be zero. The joint torques are
 % applied as constant values and the joint interaction forces are
-% calculated at time zero and tabulated. 
+% calculated at time zero and tabulated.
 
 cd(matlabdrive);
 cd '3DModel';
@@ -42,14 +42,14 @@ warning off Simulink:cgxe:LeakedJITEngine;
 % cd(matlabdrive);
 % cd '3DModel';
 % copyfile Scripts/'_ZVCF Scripts'/'3DModelInputs_ZVCF.mat';
-% 
+%
 % % Delete the file that was copied into the ZVCF Scripts folder
 % cd(matlabdrive);
 % cd '3DModel';
 % cd 'Scripts/';
 % cd '_ZVCF Scripts';
 % delete '3DModelInputs_ZVCF.mat';
-%  
+%
 % % Go back to the main folder. Open GolfSwing3D_ZVCF model. The model needs to be
 % % set to look for ModelInputs_ZVCF when it is opened.
 % cd(matlabdrive);
@@ -89,7 +89,7 @@ SCRIPT_TableGeneration_3D;
 
 % Copy Data to ZTCF Table to Get Variable Names
 ZVCFTable=Data; %Create a table called ZTCFTable from Data.
-ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks 
+ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
 
 %Now we have a table with all of the right columns and variables that can
 %be written to from the output of the ZVCF model when it generates data.
@@ -100,7 +100,7 @@ ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
 % time zero will be copied into the ZVCF table generated to receive data
 % above. The only issue is that all times will be zero. The time will then
 % be generated using the step time data from the loop once the row has been
-% copied. 
+% copied.
 
 % Begin Generation of ZVCF Data by Looping
 
@@ -129,7 +129,7 @@ ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
     LScapTorqueX=interp1(BASE.Time,BASE.LScapTorqueXInput,j,'linear');
     LScapTorqueY=interp1(BASE.Time,BASE.LScapTorqueYInput,j,'linear');
     RScapTorqueX=interp1(BASE.Time,BASE.RScapTorqueXInput,j,'linear');
-    RScapTorqueY=interp1(BASE.Time,BASE.RScapTorqueYInput,j,'linear');   
+    RScapTorqueY=interp1(BASE.Time,BASE.RScapTorqueYInput,j,'linear');
     LSTorqueX=interp1(BASE.Time,BASE.LSTorqueXInput,j,'linear');
     LSTorqueY=interp1(BASE.Time,BASE.LSTorqueYInput,j,'linear');
     LSTorqueZ=interp1(BASE.Time,BASE.LSTorqueZInput,j,'linear');
@@ -144,14 +144,14 @@ ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
     LWTorqueY=interp1(BASE.Time,BASE.LWTorqueYInput,j,'linear');
     RWTorqueX=interp1(BASE.Time,BASE.RWTorqueXInput,j,'linear');
     RWTorqueY=interp1(BASE.Time,BASE.RWTorqueYInput,j,'linear');
-    
+
     %Read the position values at the counter time and convert to degrees
     HipPositionX=interp1(BASE.Time,BASE.HipPositionX,j,'linear');
     HipPositionY=interp1(BASE.Time,BASE.HipPositionY,j,'linear');
     HipPositionZ=interp1(BASE.Time,BASE.HipPositionZ,j,'linear');
     HipGlobalPositionX=interp1(BASE.Time,BASE.HipGlobalPositionX,j,'linear');
     HipGlobalPositionY=interp1(BASE.Time,BASE.HipGlobalPositionY,j,'linear');
-    HipGlobalPositionZ=interp1(BASE.Time,BASE.HipGlobalPositionZ,j,'linear'); 
+    HipGlobalPositionZ=interp1(BASE.Time,BASE.HipGlobalPositionZ,j,'linear');
     TorsoPosition=interp1(BASE.Time,BASE.TorsoPosition,j,'linear');
     SpinePositionX=interp1(BASE.Time,BASE.SpinePositionX,j,'linear');
     SpinePositionY=interp1(BASE.Time,BASE.SpinePositionY,j,'linear');
@@ -190,7 +190,7 @@ ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
     assignin(mdlWks,'ZVCFRScapTorqueY',Simulink.Parameter(RScapTorqueY));
     assignin(mdlWks,'ZVCFLSTorqueX',Simulink.Parameter(LSTorqueX));
     assignin(mdlWks,'ZVCFLSTorqueY',Simulink.Parameter(LSTorqueY));
-    assignin(mdlWks,'ZVCFLSTorqueZ',Simulink.Parameter(LSTorqueZ));  
+    assignin(mdlWks,'ZVCFLSTorqueZ',Simulink.Parameter(LSTorqueZ));
     assignin(mdlWks,'ZVCFRSTorqueX',Simulink.Parameter(RSTorqueX));
     assignin(mdlWks,'ZVCFRSTorqueY',Simulink.Parameter(RSTorqueY));
     assignin(mdlWks,'ZVCFRSTorqueZ',Simulink.Parameter(RSTorqueZ));
@@ -202,7 +202,7 @@ ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
     assignin(mdlWks,'ZVCFLWTorqueY',Simulink.Parameter(LWTorqueY));
     assignin(mdlWks,'ZVCFRWTorqueX',Simulink.Parameter(RWTorqueX));
     assignin(mdlWks,'ZVCFRWTorqueY',Simulink.Parameter(RWTorqueY));
-    
+
     % Assign in position and velocity values to the model workspace
     assignin(mdlWks,'HipStartPositionX',Simulink.Parameter(HipPositionX));
     assignin(mdlWks,'HipStartPositionY',Simulink.Parameter(HipPositionY));
@@ -225,7 +225,7 @@ ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
     assignin(mdlWks,'RScapStartPositionX',Simulink.Parameter(RScapPositionX));
     assignin(mdlWks,'RScapStartPositionY',Simulink.Parameter(RScapPositionY));
     assignin(mdlWks,'RScapStartVelocityX',Simulink.Parameter(0));
-    assignin(mdlWks,'RScapStartVelocityY',Simulink.Parameter(0));   
+    assignin(mdlWks,'RScapStartVelocityY',Simulink.Parameter(0));
     assignin(mdlWks,'LEStartPosition',Simulink.Parameter(LEPosition));
     assignin(mdlWks,'LEStartVelocity',Simulink.Parameter(0));
     assignin(mdlWks,'REStartPosition',Simulink.Parameter(REPosition));
@@ -269,7 +269,7 @@ ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
     clear TranslationForceZ;
     clear TorsoTorque;
     clear SpineTorqueX;
-    clear SpineTorqueY;    
+    clear SpineTorqueY;
     clear LScapTorqueX;
     clear LScapTorqueY;
     clear RScapTorqueX;
@@ -327,9 +327,3 @@ cd '3DModel';
 cd 'Scripts/_ZVCF Scripts';
 SCRIPT_ZVCF_QTableGenerate_3D;
 cd(matlabdrive);
-
-
-    
-    
-    
-   

@@ -119,18 +119,3 @@ clear t_zero;
 clear TimeofAlphaReversal;
 clear TimeofZeroAoA;
 clear AoAatMaxCHS;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

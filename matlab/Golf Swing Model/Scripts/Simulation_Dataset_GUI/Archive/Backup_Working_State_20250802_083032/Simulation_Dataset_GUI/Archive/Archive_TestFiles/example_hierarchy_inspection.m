@@ -18,33 +18,33 @@ fprintf('  Method C: Get from workspace if already available\n\n');
 if exist('simOut', 'var')
     fprintf('✓ Found simOut in workspace!\n');
     fprintf('  Class: %s\n', class(simOut));
-    
+
     if isfield(simOut, 'simlog')
         fprintf('  Has simlog field: YES\n');
         fprintf('  Simlog class: %s\n\n', class(simOut.simlog));
-        
+
         % Step 2: Run the inspection
         fprintf('Step 2: Running hierarchy inspection...\n\n');
         inspect_simscape_hierarchy(simOut);
-        
+
     else
         fprintf('  Has simlog field: NO\n');
         fprintf('  ❌ This simOut does not contain Simscape logging data\n');
         fprintf('  Make sure your model has Simscape logging enabled\n\n');
     end
-    
+
 else
     fprintf('❌ No simOut variable found in workspace\n\n');
     fprintf('To use this example:\n');
     fprintf('1. Run a simulation that produces simOut:\n');
     fprintf('   simOut = sim(''YourModelName'');\n\n');
     fprintf('2. Then run this example script again\n\n');
-    
+
     % Alternative: Try to load from a file
     fprintf('Alternatively, if you have a saved simOut file:\n');
     fprintf('   load(''path/to/your/simOut.mat'');\n');
     fprintf('   example_hierarchy_inspection\n\n');
-    
+
     % Show what the inspection output looks like
     fprintf('--- SAMPLE OUTPUT FORMAT ---\n');
     fprintf('The hierarchy inspection will show something like:\n\n');
@@ -74,4 +74,4 @@ function showUsageTips()
 end
 
 % Call tips function
-showUsageTips(); 
+showUsageTips();

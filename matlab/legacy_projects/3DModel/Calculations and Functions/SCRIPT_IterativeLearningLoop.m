@@ -1,6 +1,6 @@
 % This file is designed to iteratively control the 3D golf swing model. It
-% will set target controls and then measure the deviation in each angular 
-% position and velocityat the time of interest defined in this script. 
+% will set target controls and then measure the deviation in each angular
+% position and velocityat the time of interest defined in this script.
 % Based on this a correction will be made to the control parameters and the
 % model will be rerun for a desired number of learning loops.
 

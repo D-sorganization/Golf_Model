@@ -373,11 +373,11 @@ class CustomAnalysisPlugin:
     def __init__(self):
         self.name = "Custom Analysis"
         self.version = "1.0"
-    
+
     def process_frame(self, frame_data):
         # Custom analysis logic
         return results
-    
+
     def get_ui_widget(self):
         # Return PyQt6 widget for controls
         return widget

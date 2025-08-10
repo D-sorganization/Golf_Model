@@ -9,7 +9,7 @@
    ```bash
    pip install numpy pandas matplotlib scipy openpyxl
    ```
-   
+
    Or use the requirements file:
    ```bash
    pip install -r requirements.txt

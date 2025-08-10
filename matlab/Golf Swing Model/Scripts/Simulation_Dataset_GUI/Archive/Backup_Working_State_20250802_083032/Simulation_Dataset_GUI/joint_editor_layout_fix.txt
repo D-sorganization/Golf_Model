@@ -1,31 +1,31 @@
 --- a/Data_GUI.m
 +++ b/Data_GUI.m
 @@ -1055,7 +1055,7 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
-     
+
      % Selection row - leave a little more room for the panel title so the
      % controls do not overlap with it
 -    y = 0.88;
 +    y = 0.85;
      rowHeight = 0.08;
-     
+
      uicontrol('Parent', panel, ...
 @@ -1110,9 +1110,9 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                                           'Enable', 'off');
-     
+
      % Coefficient edit boxes - spaced a bit lower to avoid crowding the
 -    % selector row
 -    y = 0.68;
 -    coeff_labels = {'A', 'B', 'C', 'D', 'E', 'F', 'G'};
-+    % selector row  
++    % selector row
 +    y = 0.62;
 +    coeff_labels = {'A', 'B', 'C', 'D', 'E', 'F', 'G'};
      coeff_powers = {'t⁶', 't⁵', 't⁴', 't³', 't²', 't', '1'};  % Powers for each coefficient
      handles.joint_coeff_edits = gobjects(1, 7);
-     
+
 @@ -1122,7 +1122,7 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
      for i = 1:7
          xPos = coeffSpacing + (i-1) * (coeffWidth + coeffSpacing);
-         
+
 -        % Color code G coefficient (constant term)
 +        % Color code G coefficient (constant term)
          if i == 7
@@ -42,16 +42,16 @@
                    'FontSize', 9, ...
 @@ -1153,9 +1153,8 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
      end
-     
+
      % Action buttons - positioned after the coefficient section (label + text box)
 -    % Extra spacing keeps all elements comfortably within the panel
 -    y = y - 0.08 - 0.06 - 0.05;  % Start after coefficient text boxes, minus label height, minus spacing
--    
-+    % Extra spacing keeps all elements comfortably within the panel 
+-
++    % Extra spacing keeps all elements comfortably within the panel
 +    y = 0.40;  % Fixed position for buttons
      % Action buttons
      buttonHeight = 0.08;
-     
+
 @@ -1188,7 +1187,7 @@ function handles = createJointEditorPanel(parent, handles, yPos, height)
                                      'String', sprintf('Ready - %s selected', param_info.joint_names{1}), ...
                                      'Units', 'normalized', ...

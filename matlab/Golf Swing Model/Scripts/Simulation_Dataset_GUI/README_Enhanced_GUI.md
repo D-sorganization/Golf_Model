@@ -184,7 +184,7 @@ resumeFromPause(handles);
 function feature_list = addCustomFeature(feature_list, data, feature_name)
     % Calculate custom feature
     custom_value = calculateCustomMetric(data);
-    
+
     % Add to feature list
     feature_list = addFeature(feature_list, feature_name, ...
                             custom_value, 'Custom metric', 'units', 'category');
@@ -312,4 +312,4 @@ end
 
 ---
 
-*For technical support or feature requests, please refer to the project documentation or contact the development team.* 
+*For technical support or feature requests, please refer to the project documentation or contact the development team.*

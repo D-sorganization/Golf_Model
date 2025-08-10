@@ -38,29 +38,29 @@ for bc_idx = 1:length(bus_creators)
     bus_creator = bus_creators(bc_idx);
     block_path = get(bus_creator, 'Parent');
     block_name = get(bus_creator, 'Name');
-    
+
     fprintf('\n--- Bus Creator %d: %s at %s ---\n', bc_idx, block_name, block_path);
-    
+
     try
         % Get input ports
         in_ports = get(bus_creator, 'PortHandles');
-        
+
         if ~isfield(in_ports, 'Inport')
             fprintf('  No input ports found\n');
             continue;
         end
-        
+
         num_inputs = length(in_ports.Inport);
         fprintf('  Number of inputs: %d\n', num_inputs);
-        
+
         % Get signal names for each input port
         signal_names = cell(num_inputs, 1);
-        
+
         for i = 1:num_inputs
             try
                 % Get the line connected to this input port
                 line_handle = get(in_ports.Inport(i), 'Line');
-                
+
                 if line_handle > 0
                     % Get the signal name
                     signal_name = get(line_handle, 'Name');
@@ -76,36 +76,36 @@ for bc_idx = 1:length(bus_creators)
                 else
                     signal_name = sprintf('Unconnected_Port_%d', i);
                 end
-                
+
                 signal_names{i} = signal_name;
-                
+
                 % Check if signal name contains "Signal" (case insensitive)
                 if contains(lower(signal_name), 'signal')
                     fprintf('  Port %2d: %s (contains "signal")\n', i, signal_name);
-                    
+
                     % Store for later analysis
                     all_signal_names{end+1} = signal_name;
                     all_signal_locations{end+1} = sprintf('%s/%s:Port%d', block_path, block_name, i);
                 end
-                
+
             catch ME
                 signal_names{i} = sprintf('Error_Port_%d', i);
                 fprintf('  Port %2d: Error - %s\n', i, ME.message);
             end
         end
-        
+
         % Check for duplicates within this Bus Creator
         [unique_names, ~, name_indices] = unique(signal_names);
         name_counts = accumarray(name_indices, 1);
         duplicate_names = unique_names(name_counts > 1);
-        
+
         if ~isempty(duplicate_names)
             fprintf('  ⚠️  Duplicate signal names found in this Bus Creator:\n');
             for i = 1:length(duplicate_names)
                 dup_name = duplicate_names{i};
                 dup_ports = find(strcmp(signal_names, dup_name));
                 fprintf('    "%s" at ports: %s\n', dup_name, mat2str(dup_ports));
-                
+
                 % Check if this includes ports 15, 17, 18
                 problematic_ports = intersect(dup_ports, [15, 17, 18]);
                 if ~isempty(problematic_ports)
@@ -113,7 +113,7 @@ for bc_idx = 1:length(bus_creators)
                 end
             end
         end
-        
+
     catch ME
         fprintf('  ❌ Error analyzing this Bus Creator: %s\n', ME.message);
     end
@@ -124,18 +124,18 @@ fprintf('\n--- Analysis of All Signal Names ---\n');
 
 if ~isempty(all_signal_names)
     fprintf('Found %d signals with "signal" in the name:\n', length(all_signal_names));
-    
+
     % Find unique signal names and their counts
     [unique_names, ~, name_indices] = unique(all_signal_names);
     name_counts = accumarray(name_indices, 1);
-    
+
     for i = 1:length(unique_names)
         signal_name = unique_names{i};
         count = name_counts(i);
-        
+
         if count > 1
             fprintf('  ❌ "%s" appears %d times:\n', signal_name, count);
-            
+
             % Find all locations where this signal appears
             signal_locations = all_signal_locations(strcmp(all_signal_names, signal_name));
             for j = 1:length(signal_locations)
@@ -159,7 +159,7 @@ duplicate_signals = {};
 for i = 1:length(all_unique_signals)
     signal_name = all_unique_signals{i};
     count = sum(strcmp(all_signal_names, signal_name));
-    
+
     if count > 1
         duplicate_signals{end+1} = signal_name;
         fprintf('❌ Duplicate signal: "%s" appears %d times\n', signal_name, count);
@@ -178,4 +178,4 @@ if bdIsLoaded(model_name)
     fprintf('\n✅ Model closed\n');
 end
 
-fprintf('\n=== Analysis Complete ===\n'); 
+fprintf('\n=== Analysis Complete ===\n');

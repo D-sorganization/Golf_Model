@@ -249,4 +249,4 @@ If issues persist after trying these solutions:
 - [ ] Use crash recovery tools
 - [ ] Optimize system settings
 - [ ] Close unnecessary applications
-- [ ] Have backup/recovery plan 
+- [ ] Have backup/recovery plan

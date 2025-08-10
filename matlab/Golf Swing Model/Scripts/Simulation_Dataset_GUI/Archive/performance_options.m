@@ -113,7 +113,7 @@ end
 function update_simscape_info(~, ~)
     simscape_check = getappdata(fig, 'simscape_check');
     simscape_info = getappdata(fig, 'simscape_info');
-    
+
     if get(simscape_check, 'Value')
         set(simscape_info, 'String', '✅ Provides ~5% speed improvement', ...
            'ForegroundColor', [0, 0.5, 0]);
@@ -127,12 +127,12 @@ function ok_clicked(~, ~)
     simscape_check = getappdata(fig, 'simscape_check');
     memory_check = getappdata(fig, 'memory_check');
     fast_restart_check = getappdata(fig, 'fast_restart_check');
-    
+
     settings.disable_simscape_results = get(simscape_check, 'Value');
     settings.optimize_memory = get(memory_check, 'Value');
     settings.fast_restart = get(fast_restart_check, 'Value');
     settings.apply_settings = true;
-    
+
     setappdata(fig, 'settings', settings);
     uiresume(fig);
 end
@@ -183,4 +183,4 @@ script_lines{end+1} = 'apply_param_changes = true;';
 
 script = strjoin(script_lines, '\n');
 
-end 
+end

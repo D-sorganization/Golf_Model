@@ -27,4 +27,4 @@ catch ME
     catch ME2
         fprintf('Error launching original GUI: %s\n', ME2.message);
     end
-end 
+end

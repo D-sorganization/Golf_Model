@@ -3,7 +3,7 @@ function plotShaftShapeFromIndividualP(startIndex, endIndex)
 
     runIDs = Simulink.sdi.getAllRunIDs;
     runObj = Simulink.sdi.getRun(runIDs(end));
-    
+
     numNodes = endIndex - startIndex + 1;
     shaftShape = NaN(numNodes, 3);  % Initialize one time point
 

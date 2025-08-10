@@ -12,7 +12,7 @@ loggedLines = find_system('GolfSwing3D_KineticallyDriven', 'FindAll', 'on', 'Typ
 % for i = 1:length(loggedLines)
 %     set(loggedLines(i), 'SignalLogging', 'off');
 % end
-% 
+%
 % % Save the model (optional)
 % save_system('GolfSwing3D_KineticallyDriven');
 

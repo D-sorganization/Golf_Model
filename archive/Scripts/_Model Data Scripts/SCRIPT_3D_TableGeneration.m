@@ -71,62 +71,62 @@ Data.RightShoulderdz=Data.RSz-Data.HUBz;
 % Data.HipConstraintTorqueX=Data.HipTorqueLocal(:,1)-Data.HipTorqueXInput;
 % Data.HipConstraintTorqueY=Data.HipTorqueLocal(:,2)-Data.HipTorqueYInput;
 % Data.HipConstraintTorqueZ=Data.HipTorqueLocal(:,3)-Data.HipTorqueZInput;
-% 
-% % Generate Torso Constraint Torque 
+%
+% % Generate Torso Constraint Torque
 % Data.TorsoConstraintTorqueX=Data.TorsoTorqueLocal(:,1); % No x input
 % Data.TorsoConstraintTorqueY=Data.TorsoTorqueLocal(:,2); % No x input
 % Data.TorsoConstraintTorqueZ=Data.TorsoTorqueLocal(:,3)-Data.TorsoTorqueInput;
-% 
+%
 % % Generate Spine Constraint Torque
 % Data.SpineConstraintTorqueX=Data.SpineTorqueLocal(:,1)-Data.SpineTorqueXInput;
 % Data.SpineConstraintTorqueY=Data.SpineTorqueLocal(:,2)-Data.SpineTorqueYInput;
 % Data.SpineConstraintTorqueZ=Data.SpineTorqueLocal(:,3); % No z input
-% 
+%
 % % Generate LScap Constraint Torque
 % Data.LScapConstraintTorqueX=Data.LScapTorqueLocal(:,1)-Data.LScapTorqueXInput;
 % Data.LScapConstraintTorqueY=Data.LScapTorqueLocal(:,2)-Data.LScapTorqueYInput;
 % Data.LScapConstraintTorqueZ=Data.LScapTorqueLocal(:,3); % No z input
-% 
+%
 % % Generate RScap Constraint Torque
 % Data.RScapConstraintTorqueX=Data.RScapTorqueLocal(:,1)-Data.RScapTorqueXInput;
 % Data.RScapConstraintTorqueY=Data.RScapTorqueLocal(:,2)-Data.RScapTorqueYInput;
 % Data.RScapConstraintTorqueZ=Data.RScapTorqueLocal(:,3); % No z input
-% 
+%
 % % Generate LS Constraint Torque
 % Data.LSConstraintTorqueX=Data.LSTorqueLocal(:,1)-Data.LSTorqueXInput;
 % Data.LSConstraintTorqueY=Data.LSTorqueLocal(:,2)-Data.LSTorqueYInput;
 % Data.LSConstraintTorqueZ=Data.LSTorqueLocal(:,3)-Data.LSTorqueZInput;
-% 
+%
 % % Generate RS Constraint Torque
 % Data.RSConstraintTorqueX=Data.RSTorqueLocal(:,1)-Data.RSTorqueXInput;
 % Data.RSConstraintTorqueY=Data.RSTorqueLocal(:,2)-Data.RSTorqueYInput;
 % Data.RSConstraintTorqueZ=Data.RSTorqueLocal(:,3)-Data.RSTorqueZInput;
-% 
-% % Generate LE Constraint Torque 
+%
+% % Generate LE Constraint Torque
 % Data.LEConstraintTorqueX=Data.LETorqueLocal(:,1); % No x input
 % Data.LEConstraintTorqueY=Data.LETorqueLocal(:,2); % No x input
 % Data.LEConstraintTorqueZ=Data.LETorqueLocal(:,3)-Data.LETorqueInput;
-% 
-% % Generate RE Constraint Torque 
+%
+% % Generate RE Constraint Torque
 % Data.REConstraintTorqueX=Data.RETorqueLocal(:,1); % No x input
 % Data.REConstraintTorqueY=Data.RETorqueLocal(:,2); % No x input
 % Data.REConstraintTorqueZ=Data.RETorqueLocal(:,3)-Data.RETorqueInput;
-% 
-% % Generate LF Constraint Torque 
+%
+% % Generate LF Constraint Torque
 % Data.LFConstraintTorqueX=Data.LFTorqueLocal(:,1); % No x input
 % Data.LFConstraintTorqueY=Data.LFTorqueLocal(:,2); % No y input
 % Data.LFConstraintTorqueZ=Data.LFTorqueLocal(:,3)-Data.LFTorqueInput;
-% 
-% % Generate RF Constraint Torque 
+%
+% % Generate RF Constraint Torque
 % Data.RFConstraintTorqueX=Data.RFTorqueLocal(:,1); % No x input
 % Data.RFConstraintTorqueY=Data.RFTorqueLocal(:,2); % No x input
 % Data.RFConstraintTorqueZ=Data.RFTorqueLocal(:,3)-Data.RFTorqueInput;
-% 
+%
 % % Generate LW Constraint Torque
 % Data.LWConstraintTorqueX=Data.LWTorqueLocal(:,1)-Data.LWTorqueXInput;
 % Data.LWConstraintTorqueY=Data.LWTorqueLocal(:,2)-Data.LWTorqueYInput;
 % Data.LWConstraintTorqueZ=Data.LWTorqueLocal(:,3); % No z input
-% 
+%
 % % Generate RW Constraint Torque
 % Data.RWConstraintTorqueX=Data.RWTorqueLocal(:,1)-Data.RWTorqueXInput;
 % Data.RWConstraintTorqueY=Data.RWTorqueLocal(:,2)-Data.RWTorqueYInput;

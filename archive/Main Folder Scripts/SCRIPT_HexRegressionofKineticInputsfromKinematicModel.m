@@ -101,8 +101,8 @@ assignin(mdlWks,'HipInputZD',Simulink.Parameter(Coefficients(4)));
 assignin(mdlWks,'HipInputZE',Simulink.Parameter(Coefficients(5)));
 assignin(mdlWks,'HipInputZF',Simulink.Parameter(Coefficients(6)));
 assignin(mdlWks,'HipInputZG',Simulink.Parameter(Coefficients(7)));
-% 
-% 
+%
+%
 % %%%%%%%%%%%%%%%%%%% Translation X %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Define X,Y
 x=Data.Time;

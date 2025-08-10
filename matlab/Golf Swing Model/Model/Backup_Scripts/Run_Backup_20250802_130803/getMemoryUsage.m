@@ -1,11 +1,11 @@
 function memory_usage = getMemoryUsage()
     % GETMEMORYUSAGE - Get current system memory usage in GB
-    % 
+    %
     % Returns:
     %   memory_usage - Current memory usage in GB
     %
     % This function provides a cross-platform way to get memory usage.
-    
+
     try
         % Try to get memory info using memory function (Windows)
         if ispc
@@ -19,4 +19,4 @@ function memory_usage = getMemoryUsage()
         % Fallback if memory function fails
         memory_usage = 0;
     end
-end 
+end

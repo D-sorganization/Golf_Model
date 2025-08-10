@@ -24,14 +24,14 @@ Data.Gripdz=Data.RWz-Data.Buttz;
 Data.Shaftdx=Data.CHx-Data.RWx;
 Data.Shaftdy=Data.CHy-Data.RWy;
 Data.Shaftdz=Data.CHz-Data.RWz;
- 
+
 % %Generate Hand Path Vector
 % counter=height(Data)-1;
-% 
+%
 % for i= i=1:counter;
 %     HandPathdx=(Data.MidHandPosition(i+1,1)-Data.MidHandPosition(i,1))
 %     HandPathdy=(Data.MidHandPosition(i+1,2)-Data.MidHandPosition(i,2))
 %     HandPathdz=(Data.MidHandPosition(i+1,3)-Data.MidHandPosition(i,3))
 % end
-% 
+%
 % %Add Hand Path Vector Data to Table

@@ -10,4 +10,4 @@ function merged = mergeTables(varargin)
             end
         end
     end
-end 
+end

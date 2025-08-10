@@ -15,5 +15,5 @@ numba>=0.55.0
 pytest>=6.2.0
 flake8>=4.0.0
 
-# Biomechanics 
+# Biomechanics
 filterpy>=1.4.5

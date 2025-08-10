@@ -43,4 +43,3 @@ Pop=diff(Crackle,t);
 % expand(Acceleration);
 % expand(Velocity);
 % expand(Position);
-

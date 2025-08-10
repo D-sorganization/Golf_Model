@@ -16,13 +16,13 @@ end
 set_params_script = 'Golf Swing Model/Scripts/Simulation_Dataset_GUI/setModelParameters.m';
 if exist(set_params_script, 'file')
     fprintf('✓ Found setModelParameters.m\n');
-    
+
     % Check if the fix is in place
     fid = fopen(set_params_script, 'r');
     if fid ~= -1
         content = fread(fid, '*char')';
         fclose(fid);
-        
+
         if contains(content, 'AnimationMode') && contains(content, 'accelerator mode not available')
             fprintf('✓ Animation control fix is in place\n');
         else
@@ -37,13 +37,13 @@ end
 extract_script = 'Golf Swing Model/Scripts/Simulation_Dataset_GUI/extractFromCombinedSignalBus.m';
 if exist(extract_script, 'file')
     fprintf('✓ Found extractFromCombinedSignalBus.m\n');
-    
+
     % Check if 1x1 matrix handling is in place
     fid = fopen(extract_script, 'r');
     if fid ~= -1
         content = fread(fid, '*char')';
         fclose(fid);
-        
+
         if contains(content, 'num_elements == 1') && contains(content, 'scalar value')
             fprintf('✓ 1x1 matrix handling is in place\n');
         else
@@ -63,10 +63,10 @@ try
     else
         fprintf('✓ Model already loaded\n');
     end
-    
+
     % Test animation control
     fprintf('\n--- Testing Animation Control ---\n');
-    
+
     % Test accelerator mode (should fail gracefully)
     try
         set_param(model_name, 'SimulationMode', 'accelerator');
@@ -79,7 +79,7 @@ try
     catch ME
         fprintf('⚠ Accelerator mode failed (expected): %s\n', ME.message);
     end
-    
+
     % Test normal mode with animation off
     try
         set_param(model_name, 'SimulationMode', 'normal');
@@ -88,7 +88,7 @@ try
     catch ME
         fprintf('⚠ Animation control failed: %s\n', ME.message);
     end
-    
+
 catch ME
     fprintf('✗ Failed to load model: %s\n', ME.message);
 end
@@ -96,4 +96,4 @@ end
 fprintf('\nTest completed!\n');
 fprintf('\nTo run the actual GUI, use:\n');
 fprintf('cd(''Golf Swing Model/Scripts/Simulation_Dataset_GUI'')\n');
-fprintf('Data_GUI\n'); 
+fprintf('Data_GUI\n');

@@ -15,7 +15,7 @@ if ~exist('out', 'var')
     fprintf('✗ Variable ''out'' not found in workspace\n');
     fprintf('Please run the model manually in MATLAB first, then run this script\n');
     fprintf('The model should create a variable called ''out'' with logged data\n\n');
-    
+
     fprintf('To run the model manually:\n');
     fprintf('1. Open the GolfSwing3D_Kinetic model in Simulink\n');
     fprintf('2. Load the input data (3DModelInputs.mat)\n');
@@ -26,7 +26,7 @@ if ~exist('out', 'var')
 else
     fprintf('✓ Found variable ''out'' in workspace\n');
     fprintf('  Type: %s\n', class(out));
-    
+
     % Debug: Check what fields are actually in out
     fprintf('  Fields in out:\n');
     if isstruct(out)
@@ -40,11 +40,11 @@ else
         try
             simOut = out;
             fprintf('    SimOut fields:\n');
-            
+
             % Get all properties of the Simulink.SimulationOutput object
             props = properties(simOut);
             fprintf('      Properties: %s\n', strjoin(props, ', '));
-            
+
             % Check specific fields
             if isfield(simOut, 'out')
                 fprintf('      ✓ out field found\n');
@@ -64,7 +64,7 @@ else
             if isfield(simOut, 'ErrorMessage')
                 fprintf('      ✓ ErrorMessage field found\n');
             end
-            
+
             % Try to access the data directly
             fprintf('    Trying to access data directly:\n');
             try
@@ -76,7 +76,7 @@ else
             catch ME
                 fprintf('      ✗ Error accessing simOut.out: %s\n', ME.message);
             end
-            
+
             try
                 if ~isempty(simOut.logsout)
                     fprintf('      ✓ simOut.logsout has data\n');
@@ -86,7 +86,7 @@ else
             catch ME
                 fprintf('      ✗ Error accessing simOut.logsout: %s\n', ME.message);
             end
-            
+
             try
                 if ~isempty(simOut.simlog)
                     fprintf('      ✓ simOut.simlog has data\n');
@@ -96,7 +96,7 @@ else
             catch ME
                 fprintf('      ✗ Error accessing simOut.simlog: %s\n', ME.message);
             end
-            
+
         catch ME
             fprintf('    Error accessing SimOut fields: %s\n', ME.message);
         end
@@ -144,16 +144,16 @@ end
 if ~logsoutFound
     fprintf('✗ No logsout data found in any expected field\n');
 else
-    
+
     if isa(logsout, 'Simulink.SimulationData.Dataset')
         fprintf('  Elements: %d\n', logsout.numElements);
-        
+
         % Extract all signals from logsout
         for i = 1:logsout.numElements
             try
                 element = logsout.getElement(i);
                 signalName = element.Name;
-                
+
                 % Get data from Simulink.SimulationData.Signal
                 if isa(element, 'Simulink.SimulationData.Signal')
                     data = element.Values.Data;
@@ -167,9 +167,9 @@ else
                         time = element.Time;
                     end
                 end
-                
+
                 logsoutData.(signalName) = struct('data', data, 'time', time);
-                
+
                 % Check if it's torque-related
                 if contains(lower(signalName), {'torque', 'tau', 'actuator', 'force', 'moment'}) || ...
                    contains(lower(signalName), {'joint', 'motor', 'drive'})
@@ -178,16 +178,16 @@ else
                 else
                     fprintf('  ✓ Signal: %s (%d time points)\n', signalName, length(time));
                 end
-                
+
             catch ME
                 fprintf('  ✗ Error extracting signal %d: %s\n', i, ME.message);
             end
         end
-        
+
         fprintf('\nLogsout extraction complete:\n');
         fprintf('  Total signals: %d\n', logsout.numElements);
         fprintf('  Torque-related signals: %d\n', logsoutTorqueCount);
-        
+
     else
         fprintf('✗ logsout is not a Dataset\n');
     end
@@ -210,7 +210,7 @@ foundLogStructs = {};
 
 for i = 1:length(expectedLogStructs)
     structName = expectedLogStructs{i};
-    
+
     try
         % For Simulink.SimulationOutput objects, we need to access properties differently
         if isa(out, 'Simulink.SimulationOutput')
@@ -218,7 +218,7 @@ for i = 1:length(expectedLogStructs)
             if ~isempty(out.(structName))
                 fprintf('✓ Found %s\n', structName);
                 foundLogStructs{end+1} = structName;
-                
+
                 % Get the struct
                 logStruct = out.(structName);
             else
@@ -230,7 +230,7 @@ for i = 1:length(expectedLogStructs)
             if isfield(out, structName)
                 fprintf('✓ Found %s\n', structName);
                 foundLogStructs{end+1} = structName;
-                
+
                 % Get the struct
                 logStruct = out.(structName);
             else
@@ -238,21 +238,21 @@ for i = 1:length(expectedLogStructs)
                 continue;
             end
         end
-        
+
         if isstruct(logStruct)
             % Get all fields in this struct
             structFields = fieldnames(logStruct);
             fprintf('  Fields: %s\n', strjoin(structFields, ', '));
-            
+
                             % Extract each field
                 for j = 1:length(structFields)
                     fieldName = structFields{j};
                     % Create a valid field name for the struct
                     fullFieldName = sprintf('%s_%s', structName, fieldName);
-                    
+
                     try
                         fieldData = logStruct.(fieldName);
-                    
+
                     % Check if it's a timeseries or has time data
                     if isa(fieldData, 'timeseries')
                         data = fieldData.Data;
@@ -267,10 +267,10 @@ for i = 1:length(expectedLogStructs)
                         data = fieldData;
                         time = [];
                     end
-                    
+
                     % Store the data
                     signalBusData.(fullFieldName) = struct('data', data, 'time', time);
-                    
+
                     % Check if it's torque-related
                     if contains(lower(fieldName), {'torque', 'tau', 'actuator', 'force', 'moment'}) || ...
                        contains(lower(fieldName), {'joint', 'motor', 'drive'})
@@ -287,7 +287,7 @@ for i = 1:length(expectedLogStructs)
                             fprintf('    ✓ Field: %s (no time vector)\n', fieldName);
                         end
                     end
-                    
+
                 catch ME
                     fprintf('    ✗ Error extracting %s: %s\n', fieldName, ME.message);
                 end
@@ -330,11 +330,11 @@ try
             fprintf('✗ out.simlog not found\n');
         end
     end
-    
+
     % Extract Simscape data
     if isa(simlog, 'simscape.logging.Node')
         fprintf('  Extracting Simscape node data...\n');
-        
+
         % Get all child nodes (joints, bodies, etc.)
         try
             childNodes = simlog.Children;
@@ -351,35 +351,35 @@ try
                 end
             end
         end
-        
+
         if ~isempty(childNodes)
             fprintf('  Found %d child nodes\n', length(childNodes));
-            
+
             for i = 1:length(childNodes)
             childNode = childNodes(i);
             nodeName = childNode.Name;
             fprintf('  Processing node: %s\n', nodeName);
-            
+
             % Look for joint-related nodes
             if contains(lower(nodeName), {'joint', 'actuator', 'motor', 'drive'})
                 fprintf('    ✓ Joint-related node found\n');
-                
+
                 % Get all signals in this node
                 signals = childNode.Children;
                 fprintf('    Signals: %d\n', length(signals));
-                
+
                 for j = 1:length(signals)
                     signal = signals(j);
                     signalName = signal.Name;
                     fullSignalName = sprintf('%s.%s', nodeName, signalName);
-                    
+
                     try
                         % Get signal data
                         if hasData(signal)
                             [data, time] = getData(signal);
-                            
+
                             simscapeData.(fullSignalName) = struct('data', data, 'time', time);
-                            
+
                             % Check if it's torque-related
                             if contains(lower(signalName), {'torque', 'tau', 'actuator', 'force', 'moment'}) || ...
                                contains(lower(signalName), {'joint', 'motor', 'drive'})
@@ -391,7 +391,7 @@ try
                         else
                             fprintf('      ✗ No data in signal: %s\n', signalName);
                         end
-                        
+
                     catch ME
                         fprintf('      ✗ Error extracting signal %s: %s\n', signalName, ME.message);
                     end
@@ -401,11 +401,11 @@ try
             end
         end
         end
-        
+
         fprintf('\nSimscape extraction complete:\n');
         fprintf('  Total signals: %d\n', length(fieldnames(simscapeData)));
         fprintf('  Torque-related signals: %d\n', simscapeTorqueCount);
-        
+
     else
         fprintf('✗ simlog is not a simscape.logging.Node\n');
     end
@@ -427,10 +427,10 @@ if totalTorqueCount > 0
     fprintf('  Logsout torques: %d\n', logsoutTorqueCount);
     fprintf('  Signal bus torques: %d\n', signalBusTorqueCount);
     fprintf('  Simscape torques: %d\n', simscapeTorqueCount);
-    
+
     % Combine all torque data
     allTorqueData = struct();
-    
+
     % Add logsout torques
     if ~isempty(logsoutData)
         logsoutFields = fieldnames(logsoutData);
@@ -442,7 +442,7 @@ if totalTorqueCount > 0
             end
         end
     end
-    
+
     % Add signal bus torques
     if ~isempty(signalBusData)
         signalBusFields = fieldnames(signalBusData);
@@ -454,7 +454,7 @@ if totalTorqueCount > 0
             end
         end
     end
-    
+
     % Add Simscape torques
     if ~isempty(simscapeData)
         simscapeFields = fieldnames(simscapeData);
@@ -466,7 +466,7 @@ if totalTorqueCount > 0
             end
         end
     end
-    
+
     % List all torque signals
     fprintf('\nAll torque signals found:\n');
     torqueFields = fieldnames(allTorqueData);
@@ -474,7 +474,7 @@ if totalTorqueCount > 0
         signalName = torqueFields{i};
         data = allTorqueData.(signalName).data;
         time = allTorqueData.(signalName).time;
-        
+
         fprintf('  %d: %s\n', i, signalName);
         fprintf('    Data size: %s\n', mat2str(size(data)));
         if ~isempty(time)
@@ -485,31 +485,31 @@ if totalTorqueCount > 0
         end
         fprintf('\n');
     end
-    
+
     % Check for specific joint torques
     fprintf('Looking for specific joint activation torques:\n');
-    
+
     % Define expected joint torque patterns
     expectedJoints = {'Hip', 'Spine', 'Shoulder', 'Elbow', 'Wrist', 'LS', 'RS', 'LE', 'RE', 'LW', 'RW', 'Torso'};
-    
+
     for joint = expectedJoints
         jointName = joint{1};
         foundTorques = {};
-        
+
         for i = 1:length(torqueFields)
             signalName = torqueFields{i};
             if contains(signalName, jointName)
                 foundTorques{end+1} = signalName;
             end
         end
-        
+
         if ~isempty(foundTorques)
             fprintf('  ✓ %s torques: %s\n', jointName, strjoin(foundTorques, ', '));
         else
             fprintf('  ✗ No %s torques found\n', jointName);
         end
     end
-    
+
 else
     fprintf('⚠️  No torque-related signals found\n');
 end
@@ -552,10 +552,10 @@ saveFiles = 'y';
         timestamp = datestr(now, 'yyyymmdd_HHMMSS');
         filename = sprintf('complete_joint_data_%s.mat', timestamp);
         save(filename, 'logsoutData', 'signalBusData', 'simscapeData', 'allTorqueData', 'out');
-        
+
         fprintf('✓ Complete joint data saved to: %s\n', filename);
         fprintf('✓ Contains: logsoutData, signalBusData, simscapeData, allTorqueData, out\n');
-        
+
         % Save summary
         summaryFilename = sprintf('complete_joint_data_summary_%s.txt', timestamp);
         fid = fopen(summaryFilename, 'w');
@@ -567,19 +567,19 @@ saveFiles = 'y';
             fprintf(fid, '\nLogsout data:\n');
             fprintf(fid, '  Total signals: %d\n', length(fieldnames(logsoutData)));
             fprintf(fid, '  Torque-related signals: %d\n', logsoutTorqueCount);
-            
+
             fprintf(fid, '\nSignal bus data:\n');
             fprintf(fid, '  Found log structs: %s\n', strjoin(foundLogStructs, ', '));
             fprintf(fid, '  Total fields: %d\n', length(fieldnames(signalBusData)));
             fprintf(fid, '  Torque-related fields: %d\n', signalBusTorqueCount);
-            
+
             fprintf(fid, '\nSimscape data:\n');
             fprintf(fid, '  Total signals: %d\n', length(fieldnames(simscapeData)));
             fprintf(fid, '  Torque-related signals: %d\n', simscapeTorqueCount);
-            
+
             fprintf(fid, '\nCombined torque data:\n');
             fprintf(fid, '  Total torque signals: %d\n', totalTorqueCount);
-            
+
             if totalTorqueCount > 0
                 fprintf(fid, '\nAll torque signals:\n');
                 torqueFields = fieldnames(allTorqueData);
@@ -587,11 +587,11 @@ saveFiles = 'y';
                     fprintf(fid, '  %d: %s\n', i, torqueFields{i});
                 end
             end
-            
+
             fclose(fid);
             fprintf('✓ Summary saved to: %s\n', summaryFilename);
         end
-        
+
     catch ME
         fprintf('✗ Error saving data: %s\n', ME.message);
     end
@@ -619,14 +619,14 @@ fprintf('  Total torque signals: %d\n', totalTorqueCount);
 if totalTorqueCount > 0
     fprintf('\n✅ SUCCESS: Joint activation torques are being captured!\n');
     fprintf('The model IS logging joint torques from multiple sources.\n');
-    
+
     fprintf('\n📋 JOINT TORQUE CAPTURE STATUS:\n');
     fprintf('✅ Signal buses are working\n');
     fprintf('✅ Individual log structs are working\n');
     fprintf('✅ Simscape Results Explorer is working\n');
     fprintf('✅ Torque data is being logged\n');
     fprintf('✅ Data is accessible from multiple sources\n');
-    
+
 else
     fprintf('\n⚠️  WARNING: No torque-related signals found\n');
     fprintf('The model may not be configured to log joint torques.\n');
@@ -654,18 +654,18 @@ cleanupVars = 'y';
                 'torqueFields', 'joint', 'jointName', 'foundTorques', 'tout', ...
                 'timestamp', 'filename', 'summaryFilename', 'fid', 'saveFiles', ...
                 'cleanupVars', 'tempVars'};
-    
+
     % Clean up temporary variables
     for i = 1:length(tempVars)
         if exist(tempVars{i}, 'var')
             clear(tempVars{i});
         end
     end
-    
+
     fprintf('✓ Temporary variables cleaned up\n');
     fprintf('✓ Kept: logsoutData, signalBusData, simscapeData, allTorqueData, out\n');
 else
     fprintf('✓ Keeping all variables in workspace\n');
 end
 
-fprintf('\n=== Complete Joint Data Extraction Complete ===\n'); 
+fprintf('\n=== Complete Joint Data Extraction Complete ===\n');

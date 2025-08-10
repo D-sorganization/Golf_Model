@@ -2,7 +2,7 @@ figure(704);
 hold on;
 plot(BASEQ.Time,BASEQ.ForceAlongHandPath,'LineWidth',3);
 plot(ZTCFQ.Time,ZTCFQ.ForceAlongHandPath,'--','LineWidth',3);
-plot(DELTAQ.Time,DELTAQ.ForceAlongHandPath,':','LineWidth',3); 
+plot(DELTAQ.Time,DELTAQ.ForceAlongHandPath,':','LineWidth',3);
 
 xlabel('Time (s)');
 ylabel('Force (N)');

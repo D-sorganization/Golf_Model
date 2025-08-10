@@ -1,6 +1,6 @@
 function ZTCFTable = generateZTCFTable(modelName, killTimes, stopTimeBuffer)
 % Generates ZTCF data using variable simulation stop times.
-% 
+%
 % Inputs:
 %   modelName        - e.g. 'GolfSwing3D_KineticallyDriven'
 %   killTimes        - Vector of kill switch times (in seconds)
@@ -34,7 +34,7 @@ function ZTCFTable = generateZTCFTable(modelName, killTimes, stopTimeBuffer)
         handForce = logsout.get('LeadHandForce').Values.Data(end, :);
         handTorque = logsout.get('LeadHandTorque').Values.Data(end, :);
         timeVal = logsout.get('LeadHandForce').Values.Time(end);
-        
+
         ZTCFResults{i} = table(killTimes(i), timeVal, handForce, handTorque, ...
             'VariableNames', {'KillTime', 'ActualTime', 'Force', 'Torque'});
     end

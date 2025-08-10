@@ -84,10 +84,10 @@ while true
     if isempty(folder_name)
         folder_name = 'training_data_csv';
     end
-    
+
     % Create full path
     config.output_folder = fullfile(folder_location, folder_name);
-    
+
     % Check if folder exists or can be created
     if exist(config.output_folder, 'dir')
         overwrite = input('Folder already exists. Overwrite existing data? (y/n): ', 's');
@@ -217,10 +217,10 @@ progress.current_trial = 0;
 if use_parallel
     % Parallel execution with progress tracking
     fprintf('Running simulations in parallel...\n');
-    
+
     % Create array to store results
     trial_results = cell(config.num_simulations, 1);
-    
+
     % Run simulations in parallel
     parfor sim_idx = 1:config.num_simulations
         try
@@ -228,7 +228,7 @@ if use_parallel
             trial_start_time = tic;
             [trial_result, ~] = runSingleTrialWithCSV(sim_idx, config); % Don't capture signal_names in parfor
             trial_time = toc(trial_start_time);
-            
+
             % Store trial result in cell array - ensure it's properly structured
             if ~isempty(trial_result)
                 trial_result.trial_time = trial_time;
@@ -236,16 +236,16 @@ if use_parallel
             else
                 trial_results{sim_idx} = struct('success', false, 'trial_time', trial_time);
             end
-            
+
             fprintf('Worker: Trial %d completed in %.2f seconds\n', sim_idx, trial_time);
-            
+
         catch ME
             fprintf('Worker: Simulation %d failed: %s\n', sim_idx, ME.message);
             % Store failed result
             trial_results{sim_idx} = struct('success', false, 'trial_time', 0);
         end
     end
-    
+
     % Process results and collect metrics
     for sim_idx = 1:config.num_simulations
         result = trial_results{sim_idx};
@@ -254,7 +254,7 @@ if use_parallel
             performance_metrics.trial_times = [performance_metrics.trial_times, result.trial_time];
             performance_metrics.total_data_points = performance_metrics.total_data_points + result.data_points;
             performance_metrics.total_columns = result.columns;
-            
+
             fprintf('✓ Trial %d completed successfully (%.2f seconds)\n', sim_idx, result.trial_time);
             fprintf('  CSV file: %s\n', result.filename);
             fprintf('  Data points: %d, Columns: %d\n', result.data_points, result.columns);
@@ -263,47 +263,47 @@ if use_parallel
             fprintf('✗ Trial %d failed\n', sim_idx);
         end
     end
-    
+
 else
     % Sequential execution with detailed progress tracking
     fprintf('Running simulations sequentially...\n');
-    
+
     for sim_idx = 1:config.num_simulations
     progress.current_trial = sim_idx;
-    
+
     % Calculate progress and ETA
     if sim_idx > 1
         progress.avg_trial_time = mean(performance_metrics.trial_times);
         remaining_trials = config.num_simulations - sim_idx;
         progress.eta_estimate = remaining_trials * progress.avg_trial_time;
-        
+
         fprintf('\n--- Trial %d/%d (%.1f%% complete) ---\n', sim_idx, config.num_simulations, (sim_idx-1)/config.num_simulations*100);
         fprintf('Average trial time: %.2f seconds\n', progress.avg_trial_time);
         fprintf('Estimated time remaining: %.1f minutes\n', progress.eta_estimate/60);
     else
         fprintf('\n--- Trial %d/%d ---\n', sim_idx, config.num_simulations);
     end
-    
+
     try
         trial_start_time = tic;
         [result, signal_names] = runSingleTrialWithCSV(sim_idx, config);
         trial_time = toc(trial_start_time);
-        
+
         if ~isempty(result)
             performance_metrics.successful_trials = performance_metrics.successful_trials + 1;
             performance_metrics.trial_times = [performance_metrics.trial_times, trial_time];
             performance_metrics.total_data_points = performance_metrics.total_data_points + result.data_points;
             performance_metrics.total_columns = result.columns;
-            
+
             fprintf('✓ Trial %d completed successfully (%.2f seconds)\n', sim_idx, trial_time);
             fprintf('  CSV file: %s\n', result.filename);
             fprintf('  Data points: %d, Columns: %d\n', result.data_points, result.columns);
-            
+
         else
             performance_metrics.failed_trials = performance_metrics.failed_trials + 1;
             fprintf('✗ Trial %d failed\n', sim_idx);
         end
-        
+
     catch ME
         performance_metrics.failed_trials = performance_metrics.failed_trials + 1;
         fprintf('✗ Simulation %d failed: %s\n', sim_idx, ME.message);
@@ -372,7 +372,7 @@ catch ME_main
         fprintf('  %s (line %d)\n', ME_main.stack(i).name, ME_main.stack(i).line);
     end
     fprintf('\nPerforming emergency cleanup...\n');
-    
+
     % Try to save any partial performance data
     try
         if exist('config', 'var') && exist('performance_metrics', 'var')
@@ -399,7 +399,7 @@ fprintf('\n=== Cleaning up workspace ===\n');
 try
     % First, clean up Simulink-specific items
     fprintf('Cleaning up Simulink states...\n');
-    
+
     % Clear Simulation Data Inspector runs
     try
         Simulink.sdi.clear();
@@ -407,7 +407,7 @@ try
     catch
         fprintf('⚠️  Could not clear SDI runs (may not be available)\n');
     end
-    
+
     % Close any open Simulink models that might have been opened during simulation
     try
         models = find_system('Type', 'block_diagram');
@@ -424,7 +424,7 @@ try
     catch
         fprintf('⚠️  Could not close Simulink models\n');
     end
-    
+
     % Clean up parallel pool if we started it
     if exist('use_parallel', 'var') && use_parallel
         try
@@ -437,22 +437,22 @@ try
             fprintf('⚠️  Could not close parallel pool\n');
         end
     end
-    
+
     % Clean up base workspace variables
     fprintf('Cleaning up base workspace variables...\n');
     if evalin('base', 'exist(''initial_vars_backup'', ''var'')')
         % Get the initial variables list
         initial_vars_backup = evalin('base', 'initial_vars_backup');
-        
+
         % Get current variables in base workspace
         current_vars = evalin('base', 'who');
-        
+
         % Find variables to remove (current vars that weren't in initial list)
         vars_to_remove = setdiff(current_vars, initial_vars_backup);
-        
+
         % Also remove our backup variables
         vars_to_remove = union(vars_to_remove, {'initial_vars_backup', 'warning_state_backup'});
-        
+
         if ~isempty(vars_to_remove)
             % Remove the variables
             for i = 1:length(vars_to_remove)
@@ -471,14 +471,14 @@ try
         end
     else
         fprintf('⚠️  No initial_vars_backup found. Performing basic cleanup...\n');
-        
+
         % Fallback: remove common temporary variables that this script creates
         common_temp_vars = {'config', 'performance_metrics', 'progress', 'trial_results', ...
                           'simInput', 'simOut', 'use_parallel', 'pool', 'confirm', ...
                           'num_trials_str', 'sim_time_str', 'folder_location', 'folder_name', ...
                           'sample_rate_str', 'exec_mode', 'overwrite', 'fid', 'ME', ...
                           'initial_vars_backup', 'warning_state_backup'};
-        
+
         for i = 1:length(common_temp_vars)
             if evalin('base', ['exist(''', common_temp_vars{i}, ''', ''var'')'])
                 try
@@ -490,7 +490,7 @@ try
         end
         fprintf('✓ Cleared common temporary variables from base workspace\n');
     end
-    
+
     % Restore warning state
     fprintf('Restoring warning settings...\n');
     try
@@ -508,13 +508,13 @@ try
     catch
         fprintf('⚠️  Could not restore warning settings\n');
     end
-    
+
     % Clear function workspace variables (local to this function)
     fprintf('Cleaning up function workspace...\n');
     clearvars -except % This clears all local variables in the function
-    
+
     fprintf('✓ Workspace cleanup complete\n');
-    
+
 catch ME_cleanup
     fprintf('⚠️  Workspace cleanup encountered errors: %s\n', ME_cleanup.message);
     fprintf('   Some variables may remain in workspace\n');
@@ -537,12 +537,12 @@ function [trial_data, signal_names, success] = addColumnSafely(trial_data, signa
             success = false;
             return;
         end
-        
+
         % Ensure data_column is a column vector with correct dimensions
         if ~iscolumn(data_column)
             data_column = data_column(:);
         end
-        
+
         % Check if dimensions match
         if size(trial_data, 1) == size(data_column, 1)
             trial_data = [trial_data, data_column];
@@ -564,20 +564,20 @@ end
 function [trial_data, signal_names] = extractModelWorkspaceData(model_name, trial_data, signal_names, num_time_points)
     % Extract segment lengths, inertials, and anthropomorphic parameters from model workspace
     % This captures critical data for matching anthropomorphies to motion patterns
-    
+
     try
         % Validate inputs
         if isempty(num_time_points) || num_time_points <= 0
             fprintf('    ⚠️  Invalid num_time_points: %s\n', mat2str(num_time_points));
             return;
         end
-        
+
         % Get model workspace
         model_workspace = get_param(model_name, 'ModelWorkspace');
         workspace_vars = model_workspace.whos;
-        
+
         fprintf('    Extracting model workspace data...\n');
-        
+
         % Define categories of variables to extract
         anthropomorphic_vars = {
             % Segment lengths
@@ -586,44 +586,44 @@ function [trial_data, signal_names] = extractModelWorkspaceData(model_name, tria
             'left_forearm_length', 'right_forearm_length', 'left_upper_arm_length', 'right_upper_arm_length',
             'left_thigh_length', 'right_thigh_length', 'left_shank_length', 'right_shank_length',
             'neck_length', 'head_height', 'shoulder_width', 'hip_width',
-            
+
             % Segment masses
             'segment_masses', 'arm_mass', 'leg_mass', 'torso_mass', 'spine_mass',
             'left_arm_mass', 'right_arm_mass', 'left_leg_mass', 'right_leg_mass',
             'left_forearm_mass', 'right_forearm_mass', 'left_upper_arm_mass', 'right_upper_arm_mass',
             'left_thigh_mass', 'right_thigh_mass', 'left_shank_mass', 'right_shank_mass',
             'neck_mass', 'head_mass', 'total_mass', 'golfer_mass',
-            
+
             % Segment inertias
             'segment_inertias', 'arm_inertia', 'leg_inertia', 'torso_inertia', 'spine_inertia',
             'left_arm_inertia', 'right_arm_inertia', 'left_leg_inertia', 'right_leg_inertia',
             'left_forearm_inertia', 'right_forearm_inertia', 'left_upper_arm_inertia', 'right_upper_arm_inertia',
             'left_thigh_inertia', 'right_thigh_inertia', 'left_shank_inertia', 'right_shank_inertia',
             'neck_inertia', 'head_inertia',
-            
+
             % Anthropomorphic parameters
             'golfer_height', 'golfer_weight', 'golfer_bmi', 'golfer_age', 'golfer_gender',
             'shoulder_height', 'hip_height', 'knee_height', 'ankle_height',
             'arm_span', 'sitting_height', 'standing_height',
-            
+
             % Club parameters
             'club_length', 'club_mass', 'club_inertia', 'club_cg', 'club_moi',
             'grip_length', 'shaft_length', 'head_mass', 'head_cg',
-            
+
             % Joint parameters
             'joint_limits', 'joint_stiffness', 'joint_damping', 'joint_friction',
             'muscle_parameters', 'tendon_parameters', 'activation_parameters'
         };
-        
+
         extracted_count = 0;
-        
+
         % Extract anthropomorphic variables
         for i = 1:length(anthropomorphic_vars)
             var_name = anthropomorphic_vars{i};
             if model_workspace.hasVariable(var_name)
                 try
                     var_value = model_workspace.getVariable(var_name);
-                    
+
                     % Handle different data types
                     if isnumeric(var_value)
                         if isscalar(var_value)
@@ -633,7 +633,7 @@ function [trial_data, signal_names] = extractModelWorkspaceData(model_name, tria
                             if success
                                 extracted_count = extracted_count + 1;
                             end
-                            
+
                         elseif isvector(var_value)
                             % Vector value - handle as time-invariant parameters
                             for j = 1:length(var_value)
@@ -643,7 +643,7 @@ function [trial_data, signal_names] = extractModelWorkspaceData(model_name, tria
                                     extracted_count = extracted_count + 1;
                                 end
                             end
-                            
+
                         elseif ismatrix(var_value) && size(var_value, 1) == 3 && size(var_value, 2) == 3
                             % 3x3 matrix (e.g., inertia tensor) - flatten to 9 components
                             flat_inertia = var_value(:)'; % Flatten to row vector
@@ -662,19 +662,19 @@ function [trial_data, signal_names] = extractModelWorkspaceData(model_name, tria
                 end
             end
         end
-        
 
-            
+
+
             % Skip if already processed or if it's a system variable
             if any(strcmp(anthropomorphic_vars, var_name)) || ...
                startsWith(var_name, 'sl_') || startsWith(var_name, 'sim_') || ...
                startsWith(var_name, 'gcs_') || startsWith(var_name, 'gcb_')
                 continue;
             end
-            
+
             try
                 var_value = model_workspace.getVariable(var_name);
-                
+
                 % Only extract numeric variables
                 if isnumeric(var_value)
                     if isscalar(var_value)
@@ -683,7 +683,7 @@ function [trial_data, signal_names] = extractModelWorkspaceData(model_name, tria
                         if success
                             extracted_count = extracted_count + 1;
                         end
-                        
+
                     elseif isvector(var_value) && length(var_value) <= 10
                         % Small vectors - extract each component
                         for j = 1:length(var_value)
@@ -700,9 +700,9 @@ function [trial_data, signal_names] = extractModelWorkspaceData(model_name, tria
                 % Continue to next variable
             end
         end
-        
+
         fprintf('    ✓ Extracted %d model workspace variables\n', extracted_count);
-        
+
     catch ME
         fprintf('    ⚠️  Could not extract model workspace data: %s\n', ME.message);
     end
@@ -710,10 +710,10 @@ end
 
 function [trial_data, signal_names] = filterDiscreteVariables(trial_data, signal_names)
     % Filter out discrete variables that are all zeros (unused signals)
-    
+
     try
         fprintf('    Filtering discrete variables...\n');
-        
+
         % Find discrete variable columns
         discrete_indices = [];
         for i = 1:length(signal_names)
@@ -721,12 +721,12 @@ function [trial_data, signal_names] = filterDiscreteVariables(trial_data, signal
                 discrete_indices = [discrete_indices, i];
             end
         end
-        
+
         if isempty(discrete_indices)
             fprintf('    ✓ No discrete variables found to filter\n');
             return;
         end
-        
+
         % Check which discrete variables are all zeros
         zero_discrete_indices = [];
         for i = 1:length(discrete_indices)
@@ -737,7 +737,7 @@ function [trial_data, signal_names] = filterDiscreteVariables(trial_data, signal
                 end
             end
         end
-        
+
         % Remove zero discrete variables
         if ~isempty(zero_discrete_indices)
             % Remove from trial_data (in reverse order to maintain indices)
@@ -747,7 +747,7 @@ function [trial_data, signal_names] = filterDiscreteVariables(trial_data, signal
                     trial_data(:, col_idx) = [];
                 end
             end
-            
+
             % Remove from signal_names (in reverse order to maintain indices)
             for i = length(zero_discrete_indices):-1:1
                 col_idx = zero_discrete_indices(i);
@@ -755,12 +755,12 @@ function [trial_data, signal_names] = filterDiscreteVariables(trial_data, signal
                     signal_names(col_idx) = [];
                 end
             end
-            
+
             fprintf('    ✓ Filtered out %d zero discrete variables\n', length(zero_discrete_indices));
         else
             fprintf('    ✓ No zero discrete variables found\n');
         end
-        
+
     catch ME
         fprintf('    ⚠️  Error filtering discrete variables: %s\n', ME.message);
     end
@@ -768,76 +768,76 @@ end
 
 function [result, signal_names] = runSingleTrialWithCSV(sim_idx, config)
     % Run a single trial and save as CSV file with complete data
-    
+
     try
         % Generate unique polynomial coefficients for this trial
         polynomial_coeffs = generateRandomPolynomialCoefficients();
-        
+
         % Create simulation input
         simInput = Simulink.SimulationInput(config.model_name);
-        
+
         % Set simulation time
         simInput = simInput.setModelParameter('StopTime', num2str(config.simulation_time));
-        
+
         % Set polynomial coefficients as variables
         simInput = setPolynomialVariables(simInput, polynomial_coeffs);
-        
+
         % Configure logging
         simInput = simInput.setModelParameter('SignalLogging', 'on');
         simInput = simInput.setModelParameter('SignalLoggingName', 'out');
         simInput = simInput.setModelParameter('SignalLoggingSaveFormat', 'Dataset');
-        
+
         % Disable visualization to suppress Multibody Explorer warnings
         simInput = simInput.setModelParameter('SimMechanicsOpenEditorOnUpdate', 'off');
         simInput = simInput.setModelParameter('SimMechanicsOpenEditorOnUpdate', 'off');
-        
+
         % Suppress Multibody Explorer warnings
         warning('off', 'Simulink:Simulation:DesktopSimHelper');
-        
+
         % Run simulation
         fprintf('  Running simulation...\n');
         simOut = sim(simInput);
-        
+
         % Extract all data from this simulation
         fprintf('  Extracting data...\n');
         [trial_data, signal_names] = extractCompleteTrialData(simOut, sim_idx, config);
-        
+
         if ~isempty(trial_data)
             % Create comprehensive CSV file
             fprintf('  Creating CSV file...\n');
-            
+
             % Create table with all data
             data_table = array2table(trial_data, 'VariableNames', signal_names);
-            
+
             % Save as CSV file
             timestamp = datestr(now, 'yyyymmdd_HHMMSS');
             filename = sprintf('trial_%03d_%s.csv', sim_idx, timestamp);
             filepath = fullfile(config.output_folder, filename);
-            
+
             % Save CSV file
             writetable(data_table, filepath);
-            
+
             result = struct();
             result.success = true;
             result.filename = filename;
             result.data_points = size(trial_data, 1);
             result.columns = size(trial_data, 2);
             result.trial_time = 0; % Will be set by caller
-            
+
             fprintf('  ✓ CSV file created: %s\n', filename);
         else
             result = [];
             signal_names = {}; % Ensure signal_names is empty if trial_data is empty
         end
-        
+
         % Clean up trial-specific variables to avoid memory buildup
         clearvars polynomial_coeffs simInput simOut trial_data data_table timestamp filename filepath
-        
+
     catch ME
         fprintf('  Trial %d error: %s\n', sim_idx, ME.message);
         result = [];
         signal_names = {}; % Ensure signal_names is empty on error
-        
+
         % Clean up even on error
         clearvars polynomial_coeffs simInput simOut trial_data data_table timestamp filename filepath
     end
@@ -846,13 +846,13 @@ end
 function coeffs = generateRandomPolynomialCoefficients()
     % Generate random polynomial coefficients for different joints
     coeffs = struct();
-    
+
     % Define joints that use polynomial inputs
     joints = {'Hip', 'Spine', 'LS', 'RS', 'LE', 'RE', 'LW', 'RW'};
-    
+
     for i = 1:length(joints)
         joint = joints{i};
-        
+
         % Generate random coefficients for 3rd order polynomial (4 coefficients)
         % Range: -100 to 100 for reasonable torque values
         coeffs.([joint '_coeffs']) = (rand(1, 4) - 0.5) * 200;
@@ -861,12 +861,12 @@ end
 
 function simInput = setPolynomialVariables(simInput, coeffs)
     % Set polynomial coefficients as variables in the simulation input
-    
+
     fields = fieldnames(coeffs);
     for i = 1:length(fields)
         field_name = fields{i};
         coeff_values = coeffs.(field_name);
-        
+
         % Set as variable in simulation input
         simInput = simInput.setVariable(field_name, coeff_values);
     end
@@ -875,7 +875,7 @@ end
 function [trial_data, signal_names] = extractCompleteTrialData(simOut, sim_idx, config)
     % Extract all available data from simulation output for a single trial
     % Uses the same robust extraction methods as test_sim_data_extraction.m
-    
+
     try
         % Get time vector and resample to target sample rate
         time_vector = simOut.tout;
@@ -884,45 +884,45 @@ function [trial_data, signal_names] = extractCompleteTrialData(simOut, sim_idx, 
             signal_names = {};
             return;
         end
-        
+
         % Resample to target sample rate
         target_time = 0:1/config.sample_rate:config.simulation_time;
         target_time = target_time(target_time <= config.simulation_time);
-        
+
         % Initialize data matrix and signal names
         num_time_points = length(target_time);
         trial_data = zeros(num_time_points, 0); % Will grow as we add columns
         signal_names = {'time', 'simulation_id'}; % Start with time and simulation ID
-        
+
         % Add time and simulation ID
         [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, target_time, 'time');
         if ~success
             fprintf('    ⚠️  Failed to add time column\n');
         end
-        
+
         [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, repmat(sim_idx, num_time_points, 1), 'simulation_id');
         if ~success
             fprintf('    ⚠️  Failed to add simulation_id column\n');
         end
-        
+
         % Extract model workspace data (NEW: segment lengths, inertials, anthropomorphies)
         [trial_data, signal_names] = extractModelWorkspaceData(config.model_name, trial_data, signal_names, num_time_points);
-        
+
         % Extract logsout data (same as test script)
         [trial_data, signal_names] = extractLogsoutData(simOut, trial_data, signal_names, target_time);
-        
+
         % Extract signal log structs (same as test script)
         [trial_data, signal_names] = extractSignalLogStructs(simOut, trial_data, signal_names, target_time);
-        
+
         % Extract Simscape Results Explorer data (same as test script)
         [trial_data, signal_names] = extractSimscapeResultsData(simOut, trial_data, signal_names, target_time);
-        
+
         % Filter out discrete variables that are all zeros (NEW)
         [trial_data, signal_names] = filterDiscreteVariables(trial_data, signal_names);
-        
+
         % Ensure unique column names
         signal_names = makeUniqueColumnNames(signal_names);
-        
+
         % Final validation - ensure trial_data and signal_names are consistent
         if size(trial_data, 2) ~= length(signal_names)
             fprintf('    ⚠️  Data/signal name mismatch detected. Truncating to match...\n');
@@ -930,15 +930,15 @@ function [trial_data, signal_names] = extractCompleteTrialData(simOut, sim_idx, 
             trial_data = trial_data(:, 1:min_length);
             signal_names = signal_names(1:min_length);
         end
-        
+
         % Clean up temporary variables
         clearvars time_vector target_time num_time_points
-        
+
     catch ME
         fprintf('    Error extracting trial data: %s\n', ME.message);
         trial_data = [];
         signal_names = {};
-        
+
         % Clean up even on error
         clearvars time_vector target_time num_time_points
     end
@@ -950,7 +950,7 @@ function [trial_data, signal_names] = extractLogsoutData(simOut, trial_data, sig
         if ~isfield(simOut, 'logsout') || isempty(simOut.logsout)
             return;
         end
-        
+
         logsout = simOut.logsout;
         for i = 1:logsout.numElements
             try
@@ -967,7 +967,7 @@ function [trial_data, signal_names] = extractLogsoutData(simOut, trial_data, sig
                 name = strrep(name, '\', '_');
                 data = element.Values.Data;
                 time = element.Values.Time;
-                
+
                 % Handle rotation matrices and other multi-dimensional data
                 if ismatrix(data) && size(data, 2) > 1
                     % Multi-dimensional data - extract each component
@@ -987,13 +987,13 @@ function [trial_data, signal_names] = extractLogsoutData(simOut, trial_data, sig
                         fprintf('      ⚠️  Failed to add logsout column %s\n', name);
                     end
                 end
-                
+
             catch ME
                 fprintf('      ⚠️  Error processing logsout element %d: %s\n', i, ME.message);
                 % Continue to next signal
             end
         end
-        
+
     catch ME
         fprintf('      ⚠️  Error extracting logsout data: %s\n', ME.message);
         % Continue without logsout data
@@ -1004,14 +1004,14 @@ function [trial_data, signal_names] = extractSignalLogStructs(simOut, trial_data
     % Extract data from signal log structs with improved rotation matrix handling
     try
         fields = fieldnames(simOut);
-        
+
         % Look for signal log structs (like RScapLogs, HipLogs, etc.)
         for i = 1:length(fields)
             field = fields{i};
             if endsWith(field, 'Logs') && isstruct(simOut.(field))
                 log_struct = simOut.(field);
                 struct_fields = fieldnames(log_struct);
-                
+
                 for j = 1:length(struct_fields)
                     subfield = struct_fields{j};
                     try
@@ -1028,19 +1028,19 @@ function [trial_data, signal_names] = extractSignalLogStructs(simOut, trial_data
                             elseif ndims(val) == 3 && size(val, 1) == 3 && size(val, 2) == 3
                                 % 3D rotation matrix (3x3xN array) - extract each component
                                 fprintf('      Found 3D rotation matrix in signal log: %s.%s (size: %s)\n', field, subfield, mat2str(size(val)));
-                                
+
                                 % Extract each element of the 3x3 matrix as a separate column
                                 for row = 1:3
                                     for col = 1:3
                                         % Extract the time series for this matrix element
                                         element_data = squeeze(val(row, col, :));
-                                        
+
                                         % Resample to target time
                                         resampled_data = resampleSignal(element_data, 1:length(element_data), target_time);
-                                        
+
                                         % Create column name for this matrix element
                                         element_name = sprintf('%s_%s_%d%d', field, subfield, row, col);
-                                        
+
                                         [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, resampled_data, element_name);
                                         if ~success
                                             fprintf('      ⚠️  Failed to add rotation matrix element %s\n', element_name);
@@ -1067,7 +1067,7 @@ function [trial_data, signal_names] = extractSignalLogStructs(simOut, trial_data
                 end
             end
         end
-        
+
         % Also check for other numeric vectors in simOut
         for i = 1:length(fields)
             field = fields{i};
@@ -1101,7 +1101,7 @@ function [trial_data, signal_names] = extractSignalLogStructs(simOut, trial_data
                 end
             end
         end
-        
+
     catch ME
         fprintf('      ⚠️  Error extracting signal log structs: %s\n', ME.message);
         % Continue without signal log data
@@ -1116,14 +1116,14 @@ function [trial_data, signal_names] = extractSimscapeResultsData(simOut, trial_d
             latest_run_id = runIDs(end);
             run_obj = Simulink.sdi.getRun(latest_run_id);
             all_signals = run_obj.getAllSignals;
-            
+
             for i = 1:length(all_signals)
                 sig = all_signals(i);
                 try
                     % Get signal data using the correct method
                     data = sig.Values.Data;
                     time = sig.Values.Time;
-                    
+
                     % Use original signal name, but clean it for table compatibility
                     original_name = sig.Name;
                     % Replace problematic characters but preserve parentheses (they indicate vector components)
@@ -1137,31 +1137,31 @@ function [trial_data, signal_names] = extractSimscapeResultsData(simOut, trial_d
                     clean_name = strrep(clean_name, ']', '');
                     clean_name = strrep(clean_name, '/', '_');
                     clean_name = strrep(clean_name, '\', '_');
-                    
+
                     % Handle 3D rotation matrices (3x3xN arrays)
                     if ndims(data) == 3 && size(data, 1) == 3 && size(data, 2) == 3
                         % This is a 3D rotation matrix - extract each component
                         fprintf('      Found 3D rotation matrix: %s (size: %s)\n', clean_name, mat2str(size(data)));
-                        
+
                         % Extract each element of the 3x3 matrix as a separate column
                         for row = 1:3
                             for col = 1:3
                                 % Extract the time series for this matrix element
                                 element_data = squeeze(data(row, col, :));
-                                
+
                                 % Resample to target time
                                 resampled_data = resampleSignal(element_data, time, target_time);
-                                
+
                                 % Create column name for this matrix element
                                 element_name = sprintf('%s_%d%d', clean_name, row, col);
-                                
+
                                 [trial_data, signal_names, success] = addColumnSafely(trial_data, signal_names, resampled_data, element_name);
                                 if ~success
                                     fprintf('      ⚠️  Failed to add rotation matrix element %s\n', element_name);
                                 end
                             end
                         end
-                        
+
                     % Handle 2D matrices (time x components)
                     elseif ismatrix(data) && size(data, 2) > 1
                         % Multi-dimensional data - extract each component
@@ -1181,14 +1181,14 @@ function [trial_data, signal_names] = extractSimscapeResultsData(simOut, trial_d
                             fprintf('      ⚠️  Failed to add Simscape column %s\n', clean_name);
                         end
                     end
-                    
+
                 catch ME
                     fprintf('      ⚠️  Error processing Simscape signal %d: %s\n', i, ME.message);
                     % Continue to next signal
                 end
             end
         end
-        
+
     catch ME
         fprintf('      ⚠️  Error extracting Simscape results data: %s\n', ME.message);
         % Continue without Simscape data
@@ -1197,12 +1197,12 @@ end
 
 function resampled_data = resampleSignal(data, time, target_time)
     % Resample signal data to target time points
-    
+
     if isempty(time) || isempty(data)
         resampled_data = zeros(length(target_time), 1);
         return;
     end
-    
+
     try
         % Handle different data dimensions
         if isvector(data)
@@ -1213,7 +1213,7 @@ function resampled_data = resampleSignal(data, time, target_time)
             % Multi-dimensional data
             [n_rows, n_cols] = size(data);
             resampled_data = zeros(length(target_time), n_cols);
-            
+
             for col = 1:n_cols
                 resampled_data(:, col) = interp1(time, data(:, col), target_time, 'linear', 'extrap');
             end
@@ -1229,10 +1229,10 @@ end
 
 function unique_names = makeUniqueColumnNames(names)
     % Make column names unique by appending numbers to duplicates
-    
+
     unique_names = names;
     seen_names = containers.Map('KeyType', 'char', 'ValueType', 'any');
-    
+
     for i = 1:length(names)
         name = names{i};
         if isKey(seen_names, name)
@@ -1259,9 +1259,9 @@ end
 function performEmergencyCleanup()
     % Emergency cleanup function - can be called if script fails unexpectedly
     % This function can be called manually by the user if needed
-    
+
     fprintf('\n=== Emergency Workspace Cleanup ===\n');
-    
+
     try
         % Clean up Simulink states
         try
@@ -1270,7 +1270,7 @@ function performEmergencyCleanup()
         catch
             fprintf('⚠️  Could not clear SDI runs\n');
         end
-        
+
         % Close parallel pool
         try
             pool = gcp('nocreate');
@@ -1281,7 +1281,7 @@ function performEmergencyCleanup()
         catch
             fprintf('⚠️  Could not close parallel pool\n');
         end
-        
+
         % Close any open Simulink models
         try
             models = find_system('Type', 'block_diagram');
@@ -1298,14 +1298,14 @@ function performEmergencyCleanup()
         catch
             fprintf('⚠️  Could not close Simulink models\n');
         end
-        
+
         % Clean up common variables
         common_temp_vars = {'config', 'performance_metrics', 'progress', 'trial_results', ...
                           'simInput', 'simOut', 'use_parallel', 'pool', 'confirm', ...
                           'num_trials_str', 'sim_time_str', 'folder_location', 'folder_name', ...
                           'sample_rate_str', 'exec_mode', 'overwrite', 'fid', 'ME', ...
                           'initial_vars_backup', 'warning_state_backup'};
-        
+
         cleared_count = 0;
         for i = 1:length(common_temp_vars)
             if evalin('base', ['exist(''', common_temp_vars{i}, ''', ''var'')'])
@@ -1317,11 +1317,11 @@ function performEmergencyCleanup()
                 end
             end
         end
-        
+
         if cleared_count > 0
             fprintf('✓ Cleared %d common temporary variables\n', cleared_count);
         end
-        
+
         % Restore warnings
         try
             warning('on', 'Simulink:Simulation:DesktopSimHelper');
@@ -1331,11 +1331,11 @@ function performEmergencyCleanup()
         catch
             fprintf('⚠️  Could not restore warning settings\n');
         end
-        
+
         fprintf('✓ Emergency cleanup complete\n');
         fprintf('Note: If you need to run this cleanup manually, call: performEmergencyCleanup()\n');
-        
+
     catch ME_emergency
         fprintf('✗ Emergency cleanup failed: %s\n', ME_emergency.message);
     end
-end 
+end

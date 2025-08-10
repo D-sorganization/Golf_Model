@@ -30,7 +30,7 @@ F=constants.F;
 Acceleration=A*t^3 + B*t^2 + C*t + D
 Velocity=(A*t^4)/4 + (B*t^3)/3 + (C*t^2)/2 + D*t + E
 Position=(A*t^5)/20 + (B*t^4)/12 + (C*t^3)/6 + (D*t^2)/2 + E*t + F
-% 
+%
 % Calculate Jerk and Snap - Higher order derivatives that can be used to
 % make a signal coming out of the function block that can be minimized in
 % the trajectory optimization.
@@ -42,4 +42,3 @@ Pop=gradient(Crackle,t);
 EquationAvgJerk=AJ==(Af-Ao)/Tt;
 EquationAvgAccel=AA==(Vf-Vo)/Tt;
 EquationAvgVel=AV==(Pf-Po)/Tt;
-

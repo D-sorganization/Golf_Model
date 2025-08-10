@@ -207,7 +207,7 @@ assignin(mdlWks,"HipVCGainZ",Simulink.Parameter(HipVCGainZ));
 % assignin(mdlWks,"TranslationPCGainY",Simulink.Parameter(TranslationPCGainY));
 % TranslationPCGainZ=1/(1-FinalTargetDeltaTranslationPositionZ/InitialTargetDeltaTranslationPositionZ);
 % assignin(mdlWks,"TranslationPCGainZ",Simulink.Parameter(TranslationPCGainZ));
-% 
+%
 % TranslationVCGainX=1/(1-FinalTargetDeltaTranslationVelocityX/InitialTargetDeltaTranslationVelocityX);
 % assignin(mdlWks,"TranslationVCGainX",Simulink.Parameter(TranslationVCGainX));
 % TranslationVCGainY=1/(1-FinalTargetDeltaTranslationVelocityY/InitialTargetDeltaTranslationVelocityY);
@@ -331,17 +331,3 @@ clear(varsnew{:});
 
 % Save Model Workspace
 save(mdlWks,'3DModelInputs.mat')
-
-
-
-
-
-
-
-
-
-
-
-
-
-

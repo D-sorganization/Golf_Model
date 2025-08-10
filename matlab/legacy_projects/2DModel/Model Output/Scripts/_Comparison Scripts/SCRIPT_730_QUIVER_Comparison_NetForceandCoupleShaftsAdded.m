@@ -64,4 +64,3 @@ clear GripAlpha;
 clear GripMaxCHS;
 clear ShaftAlpha;
 clear ShaftMaxCHS;
-

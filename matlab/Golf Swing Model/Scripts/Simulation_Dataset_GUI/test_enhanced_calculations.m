@@ -98,17 +98,17 @@ options1.include_force_moments = true;
 
 try
     [ZTCFQ_result1, DELTAQ_result1] = calculateWorkPowerAndAngularImpulse3D(ZTCFQ, DELTAQ, options1);
-    
+
     fprintf('✓ Power calculations successful\n');
     fprintf('  - Linear power columns added: %s\n', mat2str(isfield(ZTCFQ_result1, 'Total_Linear_Power')));
     fprintf('  - Angular power columns added: %s\n', mat2str(isfield(ZTCFQ_result1, 'Total_Angular_Power')));
     fprintf('  - Work columns added: %s\n', mat2str(isfield(ZTCFQ_result1, 'Total_Linear_Work')));
     fprintf('  - Angular impulse columns added: %s\n', mat2str(isfield(ZTCFQ_result1, 'Total_Angular_Impulse_X')));
-    
+
     % Display some sample values
     fprintf('  - Sample linear power values: [%.2f, %.2f, %.2f]\n', ...
         ZTCFQ_result1.Total_Linear_Power(1), ZTCFQ_result1.Total_Linear_Power(50), ZTCFQ_result1.Total_Linear_Power(end));
-    
+
 catch ME
     fprintf('✗ Power calculations failed: %s\n', ME.message);
 end
@@ -127,15 +127,15 @@ options2.include_force_moments = true;
 
 try
     [ZTCFQ_result2, DELTAQ_result2] = calculateWorkPowerAndAngularImpulse3D(ZTCFQ, DELTAQ, options2);
-    
+
     fprintf('✓ Work calculations successful\n');
     fprintf('  - Work columns added: %s\n', mat2str(isfield(ZTCFQ_result2, 'Total_Linear_Work')));
     fprintf('  - Angular work columns added: %s\n', mat2str(isfield(ZTCFQ_result2, 'Total_Angular_Work')));
-    
+
     % Display some sample values
     fprintf('  - Sample linear work values: [%.2f, %.2f, %.2f]\n', ...
         ZTCFQ_result2.Total_Linear_Work(1), ZTCFQ_result2.Total_Linear_Work(50), ZTCFQ_result2.Total_Linear_Work(end));
-    
+
 catch ME
     fprintf('✗ Work calculations failed: %s\n', ME.message);
 end
@@ -203,13 +203,13 @@ calculation_options.include_force_moments = true;
 
 try
     result = calculateWorkAndPowerEnhanced(processed_trial, calculation_options);
-    
+
     fprintf('✓ Enhanced PostProcessingModule integration successful\n');
     fprintf('  - Power calculated: %s\n', mat2str(isfield(result.joint_data.joint1, 'power')));
     fprintf('  - Work calculated: %s\n', mat2str(isfield(result.joint_data.joint1, 'work')));
     fprintf('  - Angular impulse calculated: %s\n', mat2str(isfield(result.joint_data.joint1, 'angular_impulse')));
     fprintf('  - Calculation options stored: %s\n', mat2str(isfield(result, 'calculation_options')));
-    
+
 catch ME
     fprintf('✗ Enhanced PostProcessingModule integration failed: %s\n', ME.message);
 end
