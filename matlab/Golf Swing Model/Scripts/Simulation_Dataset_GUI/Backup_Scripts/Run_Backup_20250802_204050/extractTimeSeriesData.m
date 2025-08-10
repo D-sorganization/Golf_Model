@@ -2,7 +2,7 @@
 function [time_data, values_data] = extractTimeSeriesData(data_obj, signal_path)
     time_data = [];
     values_data = [];
-    
+
     try
         if isa(data_obj, 'timeseries')
             % MATLAB timeseries object
@@ -50,7 +50,7 @@ function [time_data, values_data] = extractTimeSeriesData(data_obj, signal_path)
                 fprintf('Debug: Extracted direct numeric data from %s (%d elements)\n', signal_path, num_elements);
             end
         end
-        
+
         % Ensure column vectors
         if ~isempty(time_data)
             time_data = time_data(:);
@@ -60,8 +60,8 @@ function [time_data, values_data] = extractTimeSeriesData(data_obj, signal_path)
                 values_data = values_data(:);
             end
         end
-        
+
     catch ME
         fprintf('Debug: Error extracting time series from %s: %s\n', signal_path, ME.message);
     end
-end 
+end

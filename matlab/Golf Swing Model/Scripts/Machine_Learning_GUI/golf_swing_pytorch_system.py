@@ -1194,9 +1194,11 @@ class MotionMatchingSystem:
         trial_df = self.sim_processor.load_trial_data()
 
         # Extract training data
-        trajectory_features, coefficients, metadata = (
-            self.sim_processor.extract_training_data(trial_df)
-        )
+        (
+            trajectory_features,
+            coefficients,
+            metadata,
+        ) = self.sim_processor.extract_training_data(trial_df)
 
         self.sim_data = {
             "trajectory_features": trajectory_features,

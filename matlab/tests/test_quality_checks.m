@@ -6,7 +6,7 @@ end
 function test_quality_config_function_exists(testCase)
     % Test that the quality config function exists and can be called
     verifyTrue(testCase, exist('matlab_quality_config', 'file') == 2);
-    
+
     % Test that it can be called without errors
     try
         matlab_quality_config();
@@ -19,7 +19,7 @@ end
 function test_test_runner_function_exists(testCase)
     % Test that the test runner function exists and can be called
     verifyTrue(testCase, exist('run_matlab_tests', 'file') == 2);
-    
+
     % Test that it can be called without errors
     try
         run_matlab_tests();

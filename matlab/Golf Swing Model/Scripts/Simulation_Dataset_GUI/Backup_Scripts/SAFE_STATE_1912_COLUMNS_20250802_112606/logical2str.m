@@ -4,4 +4,4 @@ function str = logical2str(logical_val)
     else
         str = 'disabled';
     end
-end 
+end

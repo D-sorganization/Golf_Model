@@ -32,8 +32,8 @@ LSMOFLArm.AutoScaleFactor=LEMOFLArmQuiver.ScaleFactor/LSMOFLArm.ScaleFactor;
 
 %Generate Left Arm Quivers
 LeftArm=quiver3(BASEQ.LSx(:,1),BASEQ.LSy(:,1),BASEQ.LSz(:,1),BASEQ.LeftArmdx(:,1),BASEQ.LeftArmdy(:,1),BASEQ.LeftArmdz(:,1),0);
-LeftArm.ShowArrowHead='off';		
-LeftArm.LineWidth=1;			   
+LeftArm.ShowArrowHead='off';
+LeftArm.LineWidth=1;
 LeftArm.Color=[0 0 0];
 
 %Add Legend to Plot

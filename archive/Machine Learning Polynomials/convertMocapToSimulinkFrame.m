@@ -8,7 +8,7 @@ function aligned = convertMocapToSimulinkFrame(mocap)
 %   aligned.MH_R     [3×3×T] rotation matrices in Simulink frame
 
     T = size(mocap.Position, 1);
-    
+
     % Define static transformation (example: MoCap Z-up → Simulink Z-up)
     T_rot = [1 0 0;
              0 0 1;

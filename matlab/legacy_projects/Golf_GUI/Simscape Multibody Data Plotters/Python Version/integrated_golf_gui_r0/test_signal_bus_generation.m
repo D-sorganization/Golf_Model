@@ -68,7 +68,7 @@ fprintf('\n--- Checking Signal Bus Data ---\n');
 if isfield(simOut, 'logsout') && ~isempty(simOut.logsout)
     logsout = simOut.logsout;
     fprintf('✅ Logsout data found with %d elements\n', logsout.numElements);
-    
+
     % List all logged signals
     fprintf('Logged signals:\n');
     for i = 1:logsout.numElements
@@ -111,10 +111,10 @@ try
     else
         time_vector = (0:0.001:0.1)';  % Default time vector
     end
-    
+
     % Initialize data arrays
     num_time_points = length(time_vector);
-    
+
     % Create sample data structure (replace with actual signal extraction)
     sample_data = struct();
     sample_data.time = time_vector;
@@ -124,27 +124,27 @@ try
     sample_data.MPx = zeros(num_time_points, 1);  % Midpoint X position
     sample_data.MPy = zeros(num_time_points, 1);  % Midpoint Y position
     sample_data.MPz = zeros(num_time_points, 1);  % Midpoint Z position
-    
+
     % Convert to matrix format for GUI
     signal_names = {'time', 'CHx', 'CHy', 'CHz', 'MPx', 'MPy', 'MPz'};
     data_matrix = [time_vector, sample_data.CHx, sample_data.CHy, sample_data.CHz, ...
                    sample_data.MPx, sample_data.MPy, sample_data.MPz];
-    
+
     % Save in GUI-compatible format
     BASEQ = data_matrix;
     ZTCFQ = data_matrix;  % Same structure for now
     DELTAQ = data_matrix; % Same structure for now
-    
+
     save('test_BASEQ.mat', 'BASEQ');
     save('test_ZTCFQ.mat', 'ZTCFQ');
     save('test_DELTAQ.mat', 'DELTAQ');
-    
+
     fprintf('✅ Created test data files:\n');
     fprintf('  test_BASEQ.mat\n');
     fprintf('  test_ZTCFQ.mat\n');
     fprintf('  test_DELTAQ.mat\n');
     fprintf('  Data shape: %s\n', mat2str(size(data_matrix)));
-    
+
 catch ME
     fprintf('❌ Error creating test data: %s\n', ME.message);
 end
@@ -183,4 +183,4 @@ fprintf('3. 🚀 Disable Simscape Results Explorer for better performance\n');
 fprintf('4. 🧪 Test the GUI with the generated test files\n');
 fprintf('5. 📊 Monitor simulation performance with different settings\n');
 
-fprintf('\n=== Test Complete ===\n'); 
+fprintf('\n=== Test Complete ===\n');

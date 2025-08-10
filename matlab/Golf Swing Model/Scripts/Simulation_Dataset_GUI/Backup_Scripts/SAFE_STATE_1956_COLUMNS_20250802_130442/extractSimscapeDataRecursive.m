@@ -5,23 +5,23 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
     try
         % DETAILED DIAGNOSTICS
         fprintf('=== SIMSCAPE DIAGNOSTIC START ===\n');
-        
+
         if isempty(simlog)
             fprintf('❌ simlog is EMPTY\n');
             fprintf('=== SIMSCAPE DIAGNOSTIC END ===\n');
             return;
         end
-        
+
         fprintf('✅ simlog exists, class: %s\n', class(simlog));
-        
+
         if ~isa(simlog, 'simscape.logging.Node')
             fprintf('❌ simlog is not a simscape.logging.Node\n');
             fprintf('=== SIMSCAPE DIAGNOSTIC END ===\n');
             return;
         end
-        
+
         fprintf('✅ simlog is valid simscape.logging.Node\n');
-        
+
         % Try to inspect the simlog structure
         try
             fprintf(' Inspecting simlog properties...\n');
@@ -30,7 +30,7 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
         catch
             fprintf('❌ Could not get simlog properties\n');
         end
-        
+
         % Try to get children (properties ARE the children in Multibody)
         try
             children_ids = simlog.children();
@@ -38,7 +38,7 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
         catch ME
             fprintf('❌ Could not get children method: %s\n', ME.message);
             fprintf(' Using properties as children (Multibody approach)\n');
-            
+
             % Get properties excluding system properties
             all_props = properties(simlog);
             children_ids = {};
@@ -51,14 +51,14 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
             end
             fprintf('✅ Found %d children from properties: %s\n', length(children_ids), strjoin(children_ids, ', '));
         end
-        
+
         % Try to inspect first child
         if ~isempty(children_ids)
             try
                 first_child_id = children_ids{1};
                 first_child = simlog.(first_child_id);
                 fprintf(' First child (%s) class: %s\n', first_child_id, class(first_child));
-                
+
                 % Try to get series from first child
                 try
                     series_children = first_child.series.children();
@@ -66,12 +66,12 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
                 catch ME2
                     fprintf('❌ First child series access failed: %s\n', ME2.message);
                 end
-                
+
             catch ME
                 fprintf('❌ Could not inspect first child: %s\n', ME.message);
             end
         end
-        
+
         fprintf('=== SIMSCAPE DIAGNOSTIC END ===\n');
 
         % Recursively collect all series data using primary traversal method
@@ -79,10 +79,10 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
 
         if isempty(time_data) || isempty(all_signals)
             fprintf('⚠️  Primary method found no data. Trying fallback methods...\n');
-            
+
             % FALLBACK METHOD: Simple property inspection
             [time_data, all_signals] = fallbackSimlogExtraction(simlog);
-            
+
             if isempty(time_data) || isempty(all_signals)
                 fprintf('❌ All extraction methods failed. No usable Simscape data found.\n');
                 return;
@@ -119,4 +119,4 @@ function simscape_data = extractSimscapeDataRecursive(simlog)
     catch ME
         fprintf('Error extracting Simscape data recursively: %s\n', ME.message);
     end
-end 
+end

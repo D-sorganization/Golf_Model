@@ -16,7 +16,7 @@ CHvx = simlog_GolfSwing3D_KineticallyDriven.Clubhead.CHvx.series.values;
 CH_vel = CHvx;
 
 % === Clubhead Speed and AoA ===
-CHS = vecnorm(CH_vel, 2, 2);       
+CHS = vecnorm(CH_vel, 2, 2);
 CHS_mph = CHS * 2.23694;
 AoA_rad = atan2(CH_vel(:,3), CH_vel(:,1));
 AoA_deg = rad2deg(AoA_rad);

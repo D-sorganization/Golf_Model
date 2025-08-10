@@ -37,7 +37,7 @@ fprintf('\n=== PATTERN ANALYSIS ===\n');
 missing_patterns = {};
 for i = 1:length(missing_columns)
     col = missing_columns{i};
-    
+
     % Extract base name (before last underscore)
     parts = strsplit(col, '_');
     if length(parts) > 1
@@ -45,7 +45,7 @@ for i = 1:length(missing_columns)
     else
         base_name = col;
     end
-    
+
     if ~ismember(base_name, missing_patterns)
         missing_patterns{end+1} = base_name;
     end
@@ -68,4 +68,4 @@ for i = 1:length(missing_columns)
 end
 fclose(fid);
 
-fprintf('\nAnalysis complete. Results saved to missing_columns_analysis.txt\n'); 
+fprintf('\nAnalysis complete. Results saved to missing_columns_analysis.txt\n');

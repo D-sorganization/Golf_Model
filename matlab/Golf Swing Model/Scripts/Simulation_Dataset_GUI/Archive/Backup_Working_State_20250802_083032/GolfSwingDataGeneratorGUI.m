@@ -1,7 +1,7 @@
 function GolfSwingDataGeneratorGUI()
     % GolfSwingDataGeneratorGUI - Generate golf swing training data
     % This GUI provides an interface for configuring and running simulation trials
-    
+
     % Create main figure with responsive sizing
     fig = figure('Name', 'Golf Swing Training Data Generator', ...
                  'Position', [100, 100, 1200, 800], ...
@@ -10,30 +10,30 @@ function GolfSwingDataGeneratorGUI()
                  'Resize', 'on', ...
                  'Color', [0.94, 0.94, 0.94], ...
                  'ResizeFcn', @(src,evt) resizeGUI(src, evt));
-    
+
     % Initialize handles structure
     handles = struct();
     handles.should_stop = false;
     handles.trial_table_data = [];
-    
+
     % Create main layout with proper spacing
     createMainLayout(fig, handles);
-    
+
     % Store handles in figure
     guidata(fig, handles);
-    
+
     fprintf('GUI launched successfully!\n');
 end
 
 function createMainLayout(fig, handles)
     % Create responsive layout with proper spacing
-    
+
     % Main container panel
     main_panel = uipanel('Parent', fig, ...
                         'Position', [0.01, 0.01, 0.98, 0.98], ...
                         'BackgroundColor', [0.94, 0.94, 0.94], ...
                         'BorderType', 'none');
-    
+
     % Configuration Panel with proper spacing to prevent overlaps
     config_panel = uipanel('Parent', main_panel, ...
                           'Title', 'Configuration', ...
@@ -41,35 +41,35 @@ function createMainLayout(fig, handles)
                           'BackgroundColor', [0.97, 0.97, 0.97], ...
                           'FontSize', 12, ...
                           'FontWeight', 'bold');
-    
+
     % Trial Settings - smaller and better positioned
     trial_panel = uipanel('Parent', config_panel, ...
                          'Title', 'Trial Settings', ...
                          'Position', [0.02, 0.74, 0.47, 0.24], ...
                          'BackgroundColor', [0.98, 0.98, 0.98], ...
                          'FontSize', 10);
-    
+
     % Data Sources panel - smaller and better positioned
     data_panel = uipanel('Parent', config_panel, ...
                         'Title', 'Data Sources', ...
                         'Position', [0.51, 0.74, 0.47, 0.24], ...
                         'BackgroundColor', [0.98, 0.98, 0.98], ...
                         'FontSize', 10);
-    
+
     % Modeling panel - much more space and better positioned
     modeling_panel = uipanel('Parent', config_panel, ...
                            'Title', 'Modeling Mode & Torque Scenarios', ...
                            'Position', [0.02, 0.38, 0.96, 0.34], ...
                            'BackgroundColor', [0.98, 0.98, 0.98], ...
                            'FontSize', 10);
-    
+
     % Output settings panel - more space
     output_panel = uipanel('Parent', config_panel, ...
                           'Title', 'Output Settings', ...
                           'Position', [0.02, 0.02, 0.96, 0.34], ...
                           'BackgroundColor', [0.98, 0.98, 0.98], ...
                           'FontSize', 10);
-    
+
     % Progress panel at bottom - smaller to make room
     progress_panel = uipanel('Parent', main_panel, ...
                            'Title', 'Progress', ...
@@ -77,7 +77,7 @@ function createMainLayout(fig, handles)
                            'BackgroundColor', [0.97, 0.97, 0.97], ...
                            'FontSize', 12, ...
                            'FontWeight', 'bold');
-    
+
     % Create controls with proper spacing
     createTrialSettings(trial_panel, handles);
     createDataSourceSettings(data_panel, handles);
@@ -90,7 +90,7 @@ function createTrialSettings(parent, handles)
     % Trial settings with proper spacing to prevent overlaps
     y_pos = 0.75;
     spacing = 0.18;
-    
+
     % Number of Trials
     uicontrol('Parent', parent, ...
               'Style', 'text', ...
@@ -99,16 +99,16 @@ function createTrialSettings(parent, handles)
               'Position', [0.05, y_pos, 0.35, 0.12], ...
               'HorizontalAlignment', 'left', ...
               'FontSize', 9);
-    
+
     handles.num_trials = uicontrol('Parent', parent, ...
                                    'Style', 'edit', ...
                                    'String', '10', ...
                                    'Units', 'normalized', ...
                                    'Position', [0.42, y_pos, 0.2, 0.12], ...
                                    'FontSize', 9);
-    
+
     y_pos = y_pos - spacing;
-    
+
     % Duration
     uicontrol('Parent', parent, ...
               'Style', 'text', ...
@@ -117,16 +117,16 @@ function createTrialSettings(parent, handles)
               'Position', [0.05, y_pos, 0.35, 0.12], ...
               'HorizontalAlignment', 'left', ...
               'FontSize', 9);
-    
+
     handles.duration = uicontrol('Parent', parent, ...
                                  'Style', 'edit', ...
                                  'String', '0.3', ...
                                  'Units', 'normalized', ...
                                  'Position', [0.42, y_pos, 0.2, 0.12], ...
                                  'FontSize', 9);
-    
+
     y_pos = y_pos - spacing;
-    
+
     % Sample Rate
     uicontrol('Parent', parent, ...
               'Style', 'text', ...
@@ -135,16 +135,16 @@ function createTrialSettings(parent, handles)
               'Position', [0.05, y_pos, 0.35, 0.12], ...
               'HorizontalAlignment', 'left', ...
               'FontSize', 9);
-    
+
     handles.sample_rate = uicontrol('Parent', parent, ...
                                     'Style', 'edit', ...
                                     'String', '100', ...
                                     'Units', 'normalized', ...
                                     'Position', [0.42, y_pos, 0.2, 0.12], ...
                                     'FontSize', 9);
-    
+
     y_pos = y_pos - spacing;
-    
+
     % Execution Mode
     uicontrol('Parent', parent, ...
               'Style', 'text', ...
@@ -153,7 +153,7 @@ function createTrialSettings(parent, handles)
               'Position', [0.05, y_pos, 0.35, 0.12], ...
               'HorizontalAlignment', 'left', ...
               'FontSize', 9);
-    
+
     handles.execution_mode = uicontrol('Parent', parent, ...
                                        'Style', 'popupmenu', ...
                                        'String', {'Sequential', 'Parallel'}, ...
@@ -166,7 +166,7 @@ function createDataSourceSettings(parent, handles)
     % Data source checkboxes with better spacing
     y_pos = 0.8;
     spacing = 0.18;
-    
+
     handles.logsout_data = uicontrol('Parent', parent, ...
                                      'Style', 'checkbox', ...
                                      'String', 'Logsout Data', ...
@@ -174,9 +174,9 @@ function createDataSourceSettings(parent, handles)
                                      'Position', [0.05, y_pos, 0.9, 0.15], ...
                                      'Value', 1, ...
                                      'FontSize', 9);
-    
+
     y_pos = y_pos - spacing;
-    
+
     handles.signal_bus_data = uicontrol('Parent', parent, ...
                                         'Style', 'checkbox', ...
                                         'String', 'Signal Bus Data', ...
@@ -184,9 +184,9 @@ function createDataSourceSettings(parent, handles)
                                         'Position', [0.05, y_pos, 0.9, 0.15], ...
                                         'Value', 1, ...
                                         'FontSize', 9);
-    
+
     y_pos = y_pos - spacing;
-    
+
     handles.simscape_results = uicontrol('Parent', parent, ...
                                          'Style', 'checkbox', ...
                                          'String', 'Simscape Results', ...
@@ -194,9 +194,9 @@ function createDataSourceSettings(parent, handles)
                                          'Position', [0.05, y_pos, 0.9, 0.15], ...
                                          'Value', 1, ...
                                          'FontSize', 9);
-    
+
     y_pos = y_pos - spacing;
-    
+
     handles.model_workspace = uicontrol('Parent', parent, ...
                                         'Style', 'checkbox', ...
                                         'String', 'Model Workspace', ...
@@ -208,7 +208,7 @@ end
 
 function createModelingSettings(parent, handles)
     % Modeling mode and torque settings with proper spacing to prevent overlaps
-    
+
     % Row 1: Modeling Mode
     uicontrol('Parent', parent, ...
               'Style', 'text', ...
@@ -217,7 +217,7 @@ function createModelingSettings(parent, handles)
               'Position', [0.02, 0.82, 0.15, 0.12], ...
               'HorizontalAlignment', 'left', ...
               'FontSize', 9);
-    
+
     handles.modeling_mode = uicontrol('Parent', parent, ...
                                       'Style', 'edit', ...
                                       'String', 'Mode 3 (Hex Polynomial)', ...
@@ -225,7 +225,7 @@ function createModelingSettings(parent, handles)
                                       'Position', [0.18, 0.82, 0.25, 0.12], ...
                                       'FontSize', 9, ...
                                       'Enable', 'off');
-    
+
     % Constant Value (same row)
     uicontrol('Parent', parent, ...
               'Style', 'text', ...
@@ -234,14 +234,14 @@ function createModelingSettings(parent, handles)
               'Position', [0.48, 0.82, 0.15, 0.12], ...
               'HorizontalAlignment', 'left', ...
               'FontSize', 9);
-    
+
     handles.constant_value = uicontrol('Parent', parent, ...
                                        'Style', 'edit', ...
                                        'String', '10', ...
                                        'Units', 'normalized', ...
                                        'Position', [0.64, 0.82, 0.08, 0.12], ...
                                        'FontSize', 9);
-    
+
     % Coefficient Range (same row)
     uicontrol('Parent', parent, ...
               'Style', 'text', ...
@@ -250,15 +250,15 @@ function createModelingSettings(parent, handles)
               'Position', [0.75, 0.82, 0.13, 0.12], ...
               'HorizontalAlignment', 'left', ...
               'FontSize', 9);
-    
+
     handles.coeff_range = uicontrol('Parent', parent, ...
                                     'Style', 'edit', ...
                                     'String', '50', ...
                                     'Units', 'normalized', ...
                                     'Position', [0.89, 0.82, 0.08, 0.12], ...
                                     'FontSize', 9);
-    
-    % Row 2: Torque Scenario  
+
+    % Row 2: Torque Scenario
     uicontrol('Parent', parent, ...
               'Style', 'text', ...
               'String', 'Torque Scenario:', ...
@@ -266,14 +266,14 @@ function createModelingSettings(parent, handles)
               'Position', [0.02, 0.65, 0.15, 0.12], ...
               'HorizontalAlignment', 'left', ...
               'FontSize', 9);
-    
+
     handles.torque_scenario = uicontrol('Parent', parent, ...
                                         'Style', 'popupmenu', ...
                                         'String', {'Variable Torques (A-G varied)', 'Fixed Torques'}, ...
                                         'Units', 'normalized', ...
                                         'Position', [0.18, 0.65, 0.35, 0.12], ...
                                         'FontSize', 9);
-    
+
     % Row 3: Model
     uicontrol('Parent', parent, ...
               'Style', 'text', ...
@@ -282,7 +282,7 @@ function createModelingSettings(parent, handles)
               'Position', [0.02, 0.48, 0.08, 0.12], ...
               'HorizontalAlignment', 'left', ...
               'FontSize', 9);
-    
+
     handles.model = uicontrol('Parent', parent, ...
                               'Style', 'edit', ...
                               'String', 'GolfSwing3D_Kinetic', ...
@@ -295,7 +295,7 @@ function createOutputSettings(parent, handles)
     % Output settings with improved spacing
     y_pos = 0.8;
     spacing = 0.3;
-    
+
     % Output Folder
     uicontrol('Parent', parent, ...
               'Style', 'text', ...
@@ -304,14 +304,14 @@ function createOutputSettings(parent, handles)
               'Position', [0.02, y_pos, 0.12, 0.15], ...
               'HorizontalAlignment', 'left', ...
               'FontSize', 9);
-    
+
     handles.output_folder = uicontrol('Parent', parent, ...
                                       'Style', 'edit', ...
                                       'String', 'C:\Users\diete\Golf_Model\Golf Swing Model\Scripts\Simulink', ...
                                       'Units', 'normalized', ...
                                       'Position', [0.15, y_pos-0.02, 0.6, 0.18], ...
                                       'FontSize', 9);
-    
+
     handles.browse_btn = uicontrol('Parent', parent, ...
                                    'Style', 'pushbutton', ...
                                    'String', 'Browse', ...
@@ -319,9 +319,9 @@ function createOutputSettings(parent, handles)
                                    'Position', [0.77, y_pos-0.02, 0.1, 0.18], ...
                                    'FontSize', 9, ...
                                    'Callback', @(src,evt) browseFolder(handles));
-    
+
     y_pos = y_pos - spacing;
-    
+
     % Folder Name
     uicontrol('Parent', parent, ...
               'Style', 'text', ...
@@ -330,7 +330,7 @@ function createOutputSettings(parent, handles)
               'Position', [0.02, y_pos, 0.12, 0.15], ...
               'HorizontalAlignment', 'left', ...
               'FontSize', 9);
-    
+
     handles.folder_name = uicontrol('Parent', parent, ...
                                     'Style', 'edit', ...
                                     'String', 'training_data_csv', ...
@@ -341,7 +341,7 @@ end
 
 function createProgressSection(parent, handles)
     % Progress section with better layout
-    
+
     % Status text
     handles.status_text = uicontrol('Parent', parent, ...
                                    'Style', 'text', ...
@@ -351,7 +351,7 @@ function createProgressSection(parent, handles)
                                    'HorizontalAlignment', 'left', ...
                                    'FontSize', 10, ...
                                    'FontWeight', 'bold');
-    
+
     % Trial progress
     handles.trial_progress = uicontrol('Parent', parent, ...
                                       'Style', 'text', ...
@@ -360,7 +360,7 @@ function createProgressSection(parent, handles)
                                       'Position', [0.02, 0.73, 0.96, 0.1], ...
                                       'HorizontalAlignment', 'left', ...
                                       'FontSize', 9);
-    
+
     % Log area
     handles.log_text = uicontrol('Parent', parent, ...
                                  'Style', 'listbox', ...
@@ -369,13 +369,13 @@ function createProgressSection(parent, handles)
                                  'Position', [0.02, 0.15, 0.96, 0.55], ...
                                  'FontSize', 9, ...
                                  'BackgroundColor', [1, 1, 1]);
-    
+
     % Control buttons
     button_panel = uipanel('Parent', parent, ...
                           'Position', [0.02, 0.02, 0.96, 0.12], ...
                           'BackgroundColor', [0.97, 0.97, 0.97], ...
                           'BorderType', 'none');
-    
+
     handles.start_btn = uicontrol('Parent', button_panel, ...
                                   'Style', 'pushbutton', ...
                                   'String', 'Start Generation', ...
@@ -386,7 +386,7 @@ function createProgressSection(parent, handles)
                                   'BackgroundColor', [0.2, 0.8, 0.2], ...
                                   'ForegroundColor', 'white', ...
                                   'Callback', @(src,evt) startGeneration(handles));
-    
+
     handles.stop_btn = uicontrol('Parent', button_panel, ...
                                  'Style', 'pushbutton', ...
                                  'String', 'Stop', ...
@@ -398,7 +398,7 @@ function createProgressSection(parent, handles)
                                  'ForegroundColor', 'white', ...
                                  'Enable', 'off', ...
                                  'Callback', @(src,evt) stopGeneration(handles));
-    
+
     handles.clear_log_btn = uicontrol('Parent', button_panel, ...
                                       'Style', 'pushbutton', ...
                                       'String', 'Clear Log', ...
@@ -418,17 +418,17 @@ end
 function startGeneration(handles)
     % Start the data generation process
     updateLog(handles, 'Starting data generation...');
-    
+
     % Get current settings
     num_trials = str2double(get(handles.num_trials, 'String'));
     duration = str2double(get(handles.duration, 'String'));
     sample_rate = str2double(get(handles.sample_rate, 'String'));
-    
+
     % Update UI state
     set(handles.start_btn, 'Enable', 'off');
     set(handles.stop_btn, 'Enable', 'on');
     set(handles.status_text, 'String', sprintf('Generating %d trials...', num_trials));
-    
+
     % Call the actual generation function
     try
         runTrials(handles);
@@ -444,7 +444,7 @@ function stopGeneration(handles)
     handles.should_stop = true;
     guidata(gcbf, handles);
     updateLog(handles, 'Generation stopped by user.');
-    
+
     set(handles.start_btn, 'Enable', 'on');
     set(handles.stop_btn, 'Enable', 'off');
     set(handles.status_text, 'String', 'Stopped');
@@ -460,11 +460,11 @@ function updateLog(handles, message)
     current_log = get(handles.log_text, 'String');
     timestamp = datestr(now, 'HH:MM:SS');
     new_message = sprintf('[%s] %s', timestamp, message);
-    
+
     if ischar(current_log)
         current_log = {current_log};
     end
-    
+
     updated_log = [current_log; {new_message}];
     set(handles.log_text, 'String', updated_log);
     set(handles.log_text, 'Value', length(updated_log));
@@ -482,36 +482,36 @@ end
 function runTrials(handles)
     % Main trial execution function
     % This function handles the CombinedSignalBus data structure
-    
+
     num_trials = str2double(get(handles.num_trials, 'String'));
-    
+
     for i = 1:num_trials
         if handles.should_stop
             break;
         end
-        
+
         % Update progress
         set(handles.trial_progress, 'String', sprintf('Running trial %d of %d...', i, num_trials));
         set(handles.status_text, 'String', sprintf('Trial %d/%d in progress...', i, num_trials));
-        
+
         try
             % Run single trial with CombinedSignalBus handling
             trial_data = runSingleTrialWithSignalBus(i, handles);
-            
+
             % Process CombinedSignalBus data structure
             if isfield(trial_data, 'CombinedSignalBus')
                 processCombinedSignalBus(trial_data.CombinedSignalBus, i, handles);
             end
-            
+
             updateLog(handles, sprintf('Trial %d completed successfully', i));
-            
+
         catch ME
             updateLog(handles, sprintf('Trial %d failed: %s', i, ME.message));
         end
-        
+
         drawnow;
     end
-    
+
     % Finalization
     set(handles.start_btn, 'Enable', 'on');
     set(handles.stop_btn, 'Enable', 'off');
@@ -521,29 +521,29 @@ end
 
 function trial_data = runSingleTrialWithSignalBus(trial_num, handles)
     % Run a single trial and handle CombinedSignalBus data
-    
+
     % This function calls the actual simulation and handles the
     % CombinedSignalBus structure: out.CombinedSignalBus.{SignalCategory}.{SignalName}
-    
+
     updateLog(handles, sprintf('Starting simulation for trial %d', trial_num));
-    
+
     % Call the actual simulation function
     try
         % This would call the actual Simulink model
         out = sim('GolfSwing3D_Kinetic');
-        
+
         % Extract data from CombinedSignalBus if present
         trial_data = struct();
         if isfield(out, 'CombinedSignalBus')
             trial_data.CombinedSignalBus = out.CombinedSignalBus;
             updateLog(handles, sprintf('Trial %d: CombinedSignalBus data extracted', trial_num));
         end
-        
+
         % Add other data sources as needed
         if isfield(out, 'logsout')
             trial_data.logsout = out.logsout;
         end
-        
+
     catch ME
         updateLog(handles, sprintf('Simulation error in trial %d: %s', trial_num, ME.message));
         rethrow(ME);
@@ -553,31 +553,31 @@ end
 function processCombinedSignalBus(signal_bus, trial_num, handles)
     % Process the CombinedSignalBus data structure
     % Structure: CombinedSignalBus.{SignalCategory}.{SignalName}
-    
+
     try
         categories = fieldnames(signal_bus);
-        
+
         for i = 1:length(categories)
             category = categories{i};
             signals = fieldnames(signal_bus.(category));
-            
+
             updateLog(handles, sprintf('Processing category: %s with %d signals', category, length(signals)));
-            
+
             for j = 1:length(signals)
                 signal_name = signals{j};
                 signal_data = signal_bus.(category).(signal_name);
-                
+
                 % Save signal data to CSV
                 filename = sprintf('trial_%03d_%s_%s.csv', trial_num, category, signal_name);
                 output_folder = get(handles.output_folder, 'String');
                 folder_name = get(handles.folder_name, 'String');
                 full_path = fullfile(output_folder, folder_name, filename);
-                
+
                 % Ensure directory exists
                 if ~exist(fullfile(output_folder, folder_name), 'dir')
                     mkdir(fullfile(output_folder, folder_name));
                 end
-                
+
                 % Write data to file
                 if isstruct(signal_data) && isfield(signal_data, 'Data')
                     csvwrite(full_path, signal_data.Data);
@@ -586,10 +586,10 @@ function processCombinedSignalBus(signal_bus, trial_num, handles)
                 end
             end
         end
-        
+
         updateLog(handles, sprintf('Trial %d: All CombinedSignalBus data saved', trial_num));
-        
+
     catch ME
         updateLog(handles, sprintf('Error processing CombinedSignalBus for trial %d: %s', trial_num, ME.message));
     end
-end 
+end

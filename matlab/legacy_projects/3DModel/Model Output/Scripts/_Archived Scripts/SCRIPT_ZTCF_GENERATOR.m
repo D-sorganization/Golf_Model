@@ -40,25 +40,25 @@ ZTCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
 
     for i=0:280
     %parfor i=0:280
- 
+
     %Scale counter to match desired times
     j=i/1000;
-    
+
     %Write step time to model workspace
-    assignin(mdlWks,'KillswitchStepTime',j);     
+    assignin(mdlWks,'KillswitchStepTime',j);
     out=sim(GolfSwing);
     SCRIPT_TableGeneration;
     ZTCFData=Data;
-    
-    %Find the row where the KillswitchState first becomes zero  
+
+    %Find the row where the KillswitchState first becomes zero
     row=find(ZTCFData.KillswitchState==0,1);
 
     %Copy ZTCF Data Table to ZTCF
     ZTCF=ZTCFData;
-    
+
     %Rewrite first row in ZTCF to the values in "row" calculated above
     ZTCF(1,:)=ZTCFData(row,:);
-    
+
     %Find height of table and subtract 1 (number of rows to delete)
     H=height(ZTCF)-1;
 
@@ -71,13 +71,13 @@ ZTCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
     clear k;
     clear H;
     clear DelRow;
-    
+
     %This has generated the table row and labels for ZTCF. Now it needs to
     %get compiled and added to the ZTCFTable generated earlier
     ZTCFTable=[ZTCFTable;ZTCF];
 
 end
-    
+
 %Cleanup Workspace and Only Leave Important Stuff
 clear j;
 clear out;
@@ -101,7 +101,7 @@ BaseDataTime=seconds(BaseData.Time);
 ZTCFTime=seconds(ZTCF.Time);
 
 %Create versions of the tables to modify:
-BaseDataTemp=BaseData; 
+BaseDataTemp=BaseData;
 ZTCFTemp=ZTCF;
 
 %Write duration times into the tables:

@@ -92,10 +92,10 @@ clear S;
 %     LW=trapz(x,y);
 %     LinearWorkNumerical(i,1)=LW;
 % end
-% 
+%
 % %Write the values to the DELTA table to replace:
 % DELTA.("LinearWorkonClub")=LinearWorkNumerical;
-% 
+%
 % clear x;
 % clear y;
 % clear LW;
@@ -111,10 +111,10 @@ clear S;
 %     LHLW=trapz(x,y);
 %     LHLinearWorkNumerical(i,1)=LHLW;
 % end
-% 
+%
 % %Write the values to the DELTA table to replace:
 % DELTA.("LeftHandLinearWorkonClub")=LHLinearWorkNumerical;
-% 
+%
 % clear x;
 % clear y;
 % clear LHLW;
@@ -130,10 +130,10 @@ clear S;
 %     RHLW=trapz(x,y);
 %     RHLinearWorkNumerical(i,1)=RHLW;
 % end
-% 
+%
 % %Write the values to the DELTA table to replace:
 % DELTA.("RightHandLinearWorkonClub")=RHLinearWorkNumerical;
-% 
+%
 % clear x;
 % clear y;
 % clear H;
@@ -143,7 +143,7 @@ clear S;
 % clear dRHFHP;
 % clear RHProd;
 % clear H;
-% 
+%
 % clear LHLinearWorkNumerical;
 % clear RHLinearWorkNumerical;
 % clear LinearWorkNumerical;

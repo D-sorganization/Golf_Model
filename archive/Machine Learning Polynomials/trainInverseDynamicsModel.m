@@ -222,9 +222,9 @@ fprintf('Test RMSE: %.4f\n', test_rmse);
 
 function plotTrainingResults(Y_train, Y_train_pred, Y_val, Y_val_pred, Y_test, Y_test_pred, nJoints)
     % Plot training results and analysis
-    
+
     figure('Name', 'Inverse Dynamics Model Results', 'Position', [100, 100, 1200, 800]);
-    
+
     % Plot 1: Training history (if available)
     subplot(2,3,1);
     % This would show training/validation loss over epochs
@@ -234,7 +234,7 @@ function plotTrainingResults(Y_train, Y_train_pred, Y_val, Y_val_pred, Y_test, Y
     xlabel('Epoch');
     ylabel('Loss');
     grid on;
-    
+
     % Plot 2: Predicted vs Actual (scatter plot)
     subplot(2,3,2);
     all_actual = [Y_train(:); Y_val(:); Y_test(:)];
@@ -248,7 +248,7 @@ function plotTrainingResults(Y_train, Y_train_pred, Y_val, Y_val_pred, Y_test, Y
     ylabel('Predicted Torque');
     title('Predicted vs Actual Torques');
     grid on;
-    
+
     % Plot 3: Error distribution
     subplot(2,3,3);
     errors = all_pred - all_actual;
@@ -257,7 +257,7 @@ function plotTrainingResults(Y_train, Y_train_pred, Y_val, Y_val_pred, Y_test, Y
     xlabel('Error');
     ylabel('Frequency');
     grid on;
-    
+
     % Plot 4: Joint-wise RMSE
     subplot(2,3,4);
     joint_rmse = zeros(nJoints, 1);
@@ -269,7 +269,7 @@ function plotTrainingResults(Y_train, Y_train_pred, Y_val, Y_val_pred, Y_test, Y
     xlabel('Joint Index');
     ylabel('RMSE');
     grid on;
-    
+
     % Plot 5: Sample trajectory comparison
     subplot(2,3,5);
     sample_idx = 1:min(100, size(Y_test, 1));
@@ -281,7 +281,7 @@ function plotTrainingResults(Y_train, Y_train_pred, Y_val, Y_val_pred, Y_test, Y
     ylabel('Torque');
     legend;
     grid on;
-    
+
     % Plot 6: Torque magnitude distribution
     subplot(2,3,6);
     actual_magnitudes = vecnorm(Y_test, 2, 2);
@@ -294,6 +294,6 @@ function plotTrainingResults(Y_train, Y_train_pred, Y_val, Y_val_pred, Y_test, Y
     ylabel('Frequency');
     legend;
     grid on;
-    
+
     sgtitle('Inverse Dynamics Model Performance Analysis');
-end 
+end

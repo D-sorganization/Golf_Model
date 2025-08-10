@@ -1,7 +1,7 @@
 # Repository Safety Guardrails Guidelines
 
-This document defines a **universal standard** for implementing safety guardrails across any repository. 
-It is intended for use by humans and IDE AI assistants to verify whether a project meets safety, linting, 
+This document defines a **universal standard** for implementing safety guardrails across any repository.
+It is intended for use by humans and IDE AI assistants to verify whether a project meets safety, linting,
 and continuous integration (CI) quality goals.
 
 ---
@@ -160,20 +160,20 @@ jobs:
 
 ## 7. Completion Checklist
 
-✅ `.pre-commit-config.yaml` present with `ruff` + `mypy` + exclusions  
-✅ `ruff.toml` present with matching exclusions  
-✅ `mypy.ini` present with matching exclusions  
-✅ GitHub Actions CI workflow present and passing  
-✅ Branch protection rules require CI to pass  
-✅ All maintained source files pass `pre-commit` locally and in CI  
-✅ Legacy, experimental, and third-party code excluded from checks  
+✅ `.pre-commit-config.yaml` present with `ruff` + `mypy` + exclusions
+✅ `ruff.toml` present with matching exclusions
+✅ `mypy.ini` present with matching exclusions
+✅ GitHub Actions CI workflow present and passing
+✅ Branch protection rules require CI to pass
+✅ All maintained source files pass `pre-commit` locally and in CI
+✅ Legacy, experimental, and third-party code excluded from checks
 
 ---
 
 ## 8. Final Notes
 
-- Avoid **bypassing** guardrails unless absolutely necessary (`--no-verify` should be rare).  
-- Exclusion lists should be **minimal** and periodically reviewed.  
+- Avoid **bypassing** guardrails unless absolutely necessary (`--no-verify` should be rare).
+- Exclusion lists should be **minimal** and periodically reviewed.
 - CI should reflect **exactly** what runs locally in `pre-commit` to avoid drift.
 
 ---

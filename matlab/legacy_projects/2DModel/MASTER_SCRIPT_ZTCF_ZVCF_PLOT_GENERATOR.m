@@ -57,8 +57,8 @@ ZTCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
 % Begin Generation of ZTCF Data by Looping
 
 %for i=0:280
-for i=0:28    
-     
+for i=0:28
+
     %Scale counter to match desired times
     %j=i/1000;
     j=i/100;
@@ -66,22 +66,22 @@ for i=0:28
     %Display Percentage
     %ZTCFPercentComplete=i/280*100
     ZTCFPercentComplete=i/28*100
-   
+
     %Write step time to model workspace
-    assignin(mdlWks,'KillswitchStepTime',Simulink.Parameter(j));     
+    assignin(mdlWks,'KillswitchStepTime',Simulink.Parameter(j));
     out=sim(GolfSwing);
     SCRIPT_TableGeneration;
     ZTCFData=Data;
-    
-    %Find the row where the KillswitchState first becomes zero  
+
+    %Find the row where the KillswitchState first becomes zero
     row=find(ZTCFData.KillswitchState==0,1);
 
     %Copy ZTCF Data Table to ZTCF
     ZTCF=ZTCFData;
-    
+
     %Rewrite first row in ZTCF to the values in "row" calculated above
     ZTCF(1,:)=ZTCFData(row,:);
-    
+
     %Find height of table and subtract 1 (number of rows to delete)
     H=height(ZTCF)-1;
 
@@ -94,13 +94,13 @@ for i=0:28
     clear k;
     clear H;
     clear DelRow;
-    
+
     %This has generated the table row and labels for ZTCF. Now it needs to
     %get compiled and added to the ZTCFTable generated earlier
     ZTCFTable=[ZTCFTable;ZTCF];
 
 end
-    
+
 %Cleanup Workspace and Only Leave Important Stuff
 clear j;
 clear out;
@@ -113,7 +113,7 @@ ZTCF=ZTCFTable;
 clear ZTCFTable;
 
 % Reset the killswitch time to 1
-assignin(mdlWks,'KillswitchStepTime',Simulink.Parameter(1)); 
+assignin(mdlWks,'KillswitchStepTime',Simulink.Parameter(1));
 
 % Make timetable formats with BaseData and ZTCF Tables to put them in a
 % format where I can use the retime() function
@@ -123,7 +123,7 @@ BaseDataTime=seconds(BaseData.Time);
 ZTCFTime=seconds(ZTCF.Time);
 
 %Create versions of the tables to modify:
-BaseDataTemp=BaseData; 
+BaseDataTemp=BaseData;
 ZTCFTemp=ZTCF;
 
 %Write duration times into the tables:

@@ -128,7 +128,7 @@ simOut = sim('YourModel');
 ### Signal Table
 - **Time Column**: Simulation time vector
 - **Signal Columns**: All extracted signals as individual columns
-- **Naming Convention**: 
+- **Naming Convention**:
   - 1D signals: `SignalName`
   - 3D vectors: `SignalName_1`, `SignalName_2`, `SignalName_3`
   - 3×3 matrices: `SignalName_1_1`, `SignalName_1_2`, ..., `SignalName_3_3`
@@ -249,6 +249,6 @@ For issues or questions:
 
 ---
 
-**Version**: 2.0  
-**Last Updated**: December 2024  
-**Compatibility**: MATLAB R2020b+, Simulink, Simscape 
+**Version**: 2.0
+**Last Updated**: December 2024
+**Compatibility**: MATLAB R2020b+, Simulink, Simscape

@@ -30,7 +30,7 @@ This folder contains all the temporary files, test scripts, and development vers
 
 These files were created during the debugging process to:
 1. **Identify the root cause** of "Caught unexpected exception of unknown type" errors
-2. **Test different approaches** to fix Java component issues  
+2. **Test different approaches** to fix Java component issues
 3. **Create working alternatives** that avoid problematic Java components
 4. **Provide diagnostic tools** for troubleshooting
 
@@ -48,4 +48,4 @@ Only the essential working files:
 The original GUI failed because it used Java components (`uitable` and `popupmenu`) that caused crashes. The fixed version uses only native MATLAB components (`listbox`, `uicontrol`) for 100% compatibility.
 
 ---
-*These archived files can be safely removed from the MATLAB path as they are no longer needed for normal operation.* 
+*These archived files can be safely removed from the MATLAB path as they are no longer needed for normal operation.*

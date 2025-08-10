@@ -9,21 +9,21 @@ function verbosity_control(varargin)
     %   verbosity_control('debug')             % Maximum debugging output
     %   verbosity_control('set', level)        % Set specific level
     %   verbosity_control('test')              % Test all verbosity levels
-    
+
     global verbosity_level;
-    
+
     % Initialize default verbosity level if not set
     if isempty(verbosity_level)
         verbosity_level = 'normal';
     end
-    
+
     if nargin == 0
         displayVerbosityStatus();
         return;
     end
-    
+
     action = varargin{1};
-    
+
     switch lower(action)
         case 'silent'
             setVerbosityLevel('silent');
@@ -51,16 +51,16 @@ end
 function setVerbosityLevel(level)
     % Set the verbosity level
     global verbosity_level;
-    
+
     valid_levels = {'silent', 'normal', 'verbose', 'debug'};
-    
+
     if ~ismember(lower(level), valid_levels)
         error('Invalid verbosity level: %s. Valid levels: %s', ...
             level, strjoin(valid_levels, ', '));
     end
-    
+
     verbosity_level = lower(level);
-    
+
     % Display confirmation based on new level
     switch verbosity_level
         case 'silent'
@@ -77,16 +77,16 @@ end
 function displayVerbosityStatus()
     % Display current verbosity status
     global verbosity_level;
-    
+
     fprintf('\n=== Verbosity Control ===\n');
     fprintf('Current level: %s\n', upper(verbosity_level));
-    
+
     fprintf('\nAvailable levels:\n');
     fprintf('  SILENT   - Minimal output (performance mode)\n');
     fprintf('  NORMAL   - Standard output (default)\n');
     fprintf('  VERBOSE  - Detailed progress information\n');
     fprintf('  DEBUG    - Maximum debugging output\n');
-    
+
     fprintf('\nUsage:\n');
     fprintf('  verbosity_control(''silent'')   - Set to silent mode\n');
     fprintf('  verbosity_control(''normal'')   - Set to normal mode\n');
@@ -97,13 +97,13 @@ end
 function testVerbosityLevels()
     % Test all verbosity levels
     fprintf('Testing verbosity levels...\n\n');
-    
+
     levels = {'silent', 'normal', 'verbose', 'debug'};
-    
+
     for i = 1:length(levels)
         fprintf('=== Testing %s level ===\n', upper(levels{i}));
         setVerbosityLevel(levels{i});
-        
+
         % Test different types of messages
         logMessage('info', 'This is an info message');
         logMessage('progress', 'Processing trial 1/100...');
@@ -111,10 +111,10 @@ function testVerbosityLevels()
         logMessage('error', 'This is an error message');
         logMessage('debug', 'This is a debug message');
         logMessage('performance', 'Trial completed in 1.23 seconds');
-        
+
         fprintf('\n');
     end
-    
+
     % Reset to normal
     setVerbosityLevel('normal');
     fprintf('Verbosity testing complete - reset to NORMAL\n');
@@ -123,18 +123,18 @@ end
 function logMessage(message_type, message, varargin)
     % Log a message based on current verbosity level
     global verbosity_level;
-    
+
     if isempty(verbosity_level)
         verbosity_level = 'normal';
     end
-    
+
     % Determine if message should be displayed
     should_display = shouldDisplayMessage(message_type, verbosity_level);
-    
+
     if should_display
         % Format the message
         formatted_message = formatMessage(message_type, message, varargin{:});
-        
+
         % Display the message
         fprintf('%s\n', formatted_message);
     end
@@ -142,7 +142,7 @@ end
 
 function should_display = shouldDisplayMessage(message_type, verbosity_level)
     % Determine if a message should be displayed based on verbosity level
-    
+
     % Define message priorities
     message_priorities = struct();
     message_priorities.error = 1;      % Always show errors
@@ -151,31 +151,31 @@ function should_display = shouldDisplayMessage(message_type, verbosity_level)
     message_priorities.progress = 4;   % Show progress in verbose+
     message_priorities.performance = 5; % Show performance in verbose+
     message_priorities.debug = 6;      % Show debug only in debug mode
-    
+
     % Define verbosity level thresholds
     verbosity_thresholds = struct();
     verbosity_thresholds.silent = 1;   % Only errors
     verbosity_thresholds.normal = 3;   % Errors, warnings, info
     verbosity_thresholds.verbose = 5;  % All except debug
     verbosity_thresholds.debug = 6;    % Everything
-    
+
     % Get message priority
     if isfield(message_priorities, message_type)
         message_priority = message_priorities.(message_type);
     else
         message_priority = 3; % Default to info level
     end
-    
+
     % Get verbosity threshold
     threshold = verbosity_thresholds.(verbosity_level);
-    
+
     % Determine if message should be displayed
     should_display = message_priority <= threshold;
 end
 
 function formatted_message = formatMessage(message_type, message, varargin)
     % Format a message with appropriate prefix and styling
-    
+
     % Define message prefixes and colors
     prefixes = struct();
     prefixes.error = '❌ ERROR: ';
@@ -184,14 +184,14 @@ function formatted_message = formatMessage(message_type, message, varargin)
     prefixes.progress = '🔄 ';
     prefixes.performance = '⚡ ';
     prefixes.debug = '🐛 DEBUG: ';
-    
+
     % Get prefix
     if isfield(prefixes, message_type)
         prefix = prefixes.(message_type);
     else
         prefix = '';
     end
-    
+
     % Format the message with any additional arguments
     if ~isempty(varargin)
         formatted_message = sprintf([prefix, message], varargin{:});
@@ -203,13 +203,13 @@ end
 function logProgress(current, total, message)
     % Log progress with percentage
     global verbosity_level;
-    
+
     if strcmp(verbosity_level, 'silent')
         return;
     end
-    
+
     percentage = 100 * current / total;
-    
+
     if strcmp(verbosity_level, 'normal')
         % Simple progress in normal mode
         fprintf('\r%s: %d/%d (%.1f%%)', message, current, total, percentage);
@@ -225,11 +225,11 @@ end
 function logPerformance(operation, duration, details)
     % Log performance metrics
     global verbosity_level;
-    
+
     if strcmp(verbosity_level, 'silent')
         return;
     end
-    
+
     if strcmp(verbosity_level, 'normal')
         % Only log significant operations in normal mode
         if duration > 1.0
@@ -248,11 +248,11 @@ end
 function logTrialResult(trial_num, success, duration, error_msg)
     % Log trial results with appropriate verbosity
     global verbosity_level;
-    
+
     if strcmp(verbosity_level, 'silent')
         return;
     end
-    
+
     if success
         if strcmp(verbosity_level, 'normal')
             % Only log failures in normal mode
@@ -274,13 +274,13 @@ end
 function logBatchResult(batch_num, batch_size, successful, failed, duration)
     % Log batch results
     global verbosity_level;
-    
+
     if strcmp(verbosity_level, 'silent')
         return;
     end
-    
+
     success_rate = 100 * successful / batch_size;
-    
+
     if strcmp(verbosity_level, 'normal')
         logMessage('info', 'Batch %d: %d/%d successful (%.1f%%) in %.1f seconds', ...
             batch_num, successful, batch_size, success_rate, duration);
@@ -293,11 +293,11 @@ end
 function logMemoryStatus(current_memory, change)
     % Log memory status
     global verbosity_level;
-    
+
     if strcmp(verbosity_level, 'silent')
         return;
     end
-    
+
     if strcmp(verbosity_level, 'normal')
         % Only log significant memory changes in normal mode
         if abs(change) > 100
@@ -320,30 +320,30 @@ end
 function logCheckpoint(save_time, file_size)
     % Log checkpoint information
     global verbosity_level;
-    
+
     if strcmp(verbosity_level, 'silent')
         return;
     end
-    
+
     if strcmp(verbosity_level, 'normal')
         logMessage('info', 'Checkpoint saved (%.1f MB) in %.2f seconds', file_size, save_time);
     else
         logMessage('info', 'Checkpoint saved: %.1f MB in %.3f seconds', file_size, save_time);
     end
-end 
+end
 
 function logWorkspaceCapture(enabled, num_variables)
     % Log workspace capture status
     global verbosity_level;
-    
+
     if isempty(verbosity_level)
         verbosity_level = 'normal';
     end
-    
+
     if strcmp(verbosity_level, 'silent')
         return;
     end
-    
+
     if enabled
         if strcmp(verbosity_level, 'normal')
             logMessage('info', 'Workspace capture enabled (%d variables)', num_variables);
@@ -353,4 +353,4 @@ function logWorkspaceCapture(enabled, num_variables)
     else
         logMessage('info', 'Workspace capture disabled - model parameters excluded');
     end
-end 
+end

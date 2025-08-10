@@ -24,12 +24,12 @@ function ClubDataGUI_v2()
 
     % Control panel
     panel = uipanel('Parent', fig, 'Title', 'Controls', 'FontSize', 10, 'Units', 'normalized', 'Position', [0.01 0.01 0.3 0.98]);
-    
 
-    
+
+
 
     % File selection dropdown
-    
+
     handles.fileMenu = uicontrol(panel, 'Style', 'popupmenu', 'String', matFiles, 'Units', 'normalized', 'Position', [0.1 0.94 0.8 0.035], ...
         'Callback', @(src,~) changeFile(src, handles));
 
@@ -115,7 +115,7 @@ handles.line = plot3(handles.ax, NaN, NaN, NaN, 'k-', 'LineWidth', 2);
         handles.velHand, 'Hand Velocity';
         handles.accHand, 'Hand Acceleration'
     };
-    
+
 
     % Extend legendItems
     handles.legendItems(end+1:end+4, :) = {
@@ -146,7 +146,7 @@ handles.line = plot3(handles.ax, NaN, NaN, NaN, 'k-', 'LineWidth', 2);
 
     % Keyframe jump dropdown
     keyLabels = {'Address', 'TopOfBackswing', 'Impact', 'Finish'};
-    
+
     handles.keyMenu = uicontrol(panel, 'Style', 'popupmenu', 'String', keyLabels, 'Units', 'normalized', 'Position', [0.1 0.9 0.8 0.035], ...
         'Callback', @(src,~) jumpToKeyframe(src));
 

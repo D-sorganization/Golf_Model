@@ -54,4 +54,3 @@ SCRIPT_948_3D_PLOT_Data_LocalHandForces;
 clear ClubQuiverAlphaReversalData;
 clear ClubQuiverMaxCHSData;
 clear PauseTime;
-

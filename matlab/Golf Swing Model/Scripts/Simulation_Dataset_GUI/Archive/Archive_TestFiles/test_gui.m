@@ -1,7 +1,7 @@
 function working_gui_simplified()
     % Based on the working debug GUI, gradually add main GUI components
     fprintf('DEBUG: Starting simplified working GUI\n');
-    
+
     try
         % Use the exact same figure creation as the working debug version
         fprintf('DEBUG: Creating figure...\n');
@@ -13,19 +13,19 @@ function working_gui_simplified()
                      'Color', [0.96, 0.96, 0.98], ...
                      'NumberTitle', 'off');
         fprintf('DEBUG: Figure created successfully\n');
-        
+
         % Initialize handles structure (same as debug version)
         fprintf('DEBUG: Initializing handles structure...\n');
         handles = struct();
         handles.should_stop = false;
         handles.trial_table_data = [];
         fprintf('DEBUG: Handles initialized\n');
-        
+
         % Store handles in figure BEFORE creating any complex layout
         fprintf('DEBUG: Storing handles with guidata...\n');
         guidata(fig, handles);
         fprintf('DEBUG: guidata successful\n');
-        
+
         % NOW try the title panel from main GUI (this might be where it fails)
         fprintf('DEBUG: Creating title panel (main GUI style)...\n');
         title_panel = uipanel('Parent', fig, ...
@@ -34,7 +34,7 @@ function working_gui_simplified()
                              'BackgroundColor', [0.2, 0.4, 0.8], ...
                              'BorderType', 'none');
         fprintf('DEBUG: Title panel created\n');
-        
+
         % Title text (main GUI style)
         fprintf('DEBUG: Creating title text (main GUI style)...\n');
         uicontrol('Parent', title_panel, ...
@@ -47,7 +47,7 @@ function working_gui_simplified()
                   'BackgroundColor', [0.2, 0.4, 0.8], ...
                   'HorizontalAlignment', 'left');
         fprintf('DEBUG: Title text created\n');
-        
+
         % Subtitle (this is different from debug version)
         fprintf('DEBUG: Creating subtitle...\n');
         uicontrol('Parent', title_panel, ...
@@ -59,17 +59,17 @@ function working_gui_simplified()
                   'BackgroundColor', [0.2, 0.4, 0.8], ...
                   'HorizontalAlignment', 'left');
         fprintf('DEBUG: Subtitle created\n');
-        
+
         % Main content area (main GUI style)
         fprintf('DEBUG: Creating main content area...\n');
         main_panel = uipanel('Parent', fig, ...
                             'Position', [20, 50, 1360, 770], ...
                             'BackgroundColor', [0.96, 0.96, 0.98]);
         fprintf('DEBUG: Main content area created\n');
-        
+
         % Stop here for now - if this works, the issue is in the column creation or panel functions
         fprintf('SUCCESS: Simplified GUI created successfully!\n');
-        
+
     catch ME
         fprintf('\n=== CAUGHT EXCEPTION ===\n');
         fprintf('Message: %s\n', ME.message);
@@ -81,4 +81,4 @@ function working_gui_simplified()
         fprintf('\nFull Report:\n');
         disp(getReport(ME, 'extended', 'hyperlinks', 'off'));
     end
-end 
+end

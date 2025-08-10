@@ -15,20 +15,20 @@ function BaseData = generate_base_data(config, mdlWks)
 
     % Change to scripts directory
     cd(config.scripts_path);
-    
+
     % Run the model to generate BaseData table
     fprintf('🔄 Running base model simulation...\n');
     out = sim(config.model_name);
-    
+
     % Run table generation script
     SCRIPT_TableGeneration;
-    
+
     % Create BaseData table
     BaseData = Data;
-    
+
     fprintf('✅ Base data generated successfully\n');
     fprintf('   Data points: %d\n', height(BaseData));
     fprintf('   Time range: %.3f to %.3f seconds\n', ...
         BaseData.Time(1), BaseData.Time(end));
-    
+
 end

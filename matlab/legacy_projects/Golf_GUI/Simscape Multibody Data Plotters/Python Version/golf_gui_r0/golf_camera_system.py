@@ -555,10 +555,12 @@ class CameraController(QObject):
             self.target_state.elevation,
         )
 
-        new_distance, new_azimuth, new_elevation = (
-            SmoothAnimator.spherical_interpolation(
-                start_spherical, end_spherical, eased_progress
-            )
+        (
+            new_distance,
+            new_azimuth,
+            new_elevation,
+        ) = SmoothAnimator.spherical_interpolation(
+            start_spherical, end_spherical, eased_progress
         )
 
         self.current_state.distance = new_distance
@@ -720,9 +722,11 @@ class CameraController(QObject):
         spherical1 = (state1.distance, state1.azimuth, state1.elevation)
         spherical2 = (state2.distance, state2.azimuth, state2.elevation)
 
-        new_distance, new_azimuth, new_elevation = (
-            SmoothAnimator.spherical_interpolation(spherical1, spherical2, t)
-        )
+        (
+            new_distance,
+            new_azimuth,
+            new_elevation,
+        ) = SmoothAnimator.spherical_interpolation(spherical1, spherical2, t)
 
         self.current_state.distance = new_distance
         self.current_state.azimuth = new_azimuth

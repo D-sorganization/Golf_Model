@@ -181,7 +181,7 @@ function updateZoom(zoom_factor)
     all_x = [BASEQ.Buttx; BASEQ.CHx; BASEQ.MPx; BASEQ.LWx; BASEQ.LEx; BASEQ.LSx; BASEQ.RWx; BASEQ.REx; BASEQ.RSx; BASEQ.HUBx];
     all_y = [BASEQ.Butty; BASEQ.CHy; BASEQ.MPy; BASEQ.LWy; BASEQ.LEy; BASEQ.LSy; BASEQ.RWy; BASEQ.REy; BASEQ.RSy; BASEQ.HUBy];
     all_z = [BASEQ.Buttz; BASEQ.CHz; BASEQ.MPz; BASEQ.LWz; BASEQ.LEz; BASEQ.LSz; BASEQ.RWz; BASEQ.REz; BASEQ.RSz; BASEQ.HUBz];
-    
+
     % Apply zoom scaling to axis limits
     xlim(handles.ax, [min(all_x) - margin, max(all_x) + margin] * zoom_factor);
     ylim(handles.ax, [min(all_y) - margin, max(all_y) + margin] * zoom_factor);
@@ -338,22 +338,22 @@ function onDatasetChanged(src, ~)
     % Handle dataset selection change
     selected_dataset = src.String{src.Value};
     fprintf('🔄 Switching to dataset: %s\n', selected_dataset);
-    
+
     % Update the figure title to reflect the current dataset
     set(fig, 'Name', sprintf('Golf Swing Plotter - %s', selected_dataset));
-    
+
     % Update the plot with the new dataset
     updatePlot();
 end
 
 function updatePlot(~, ~)
     i = round(get(handles.slider, 'Value'));
-    
+
     % Get the selected dataset
     selected_dataset = get(handles.dataset_dropdown, 'String');
     selected_value = get(handles.dataset_dropdown, 'Value');
     current_dataset = selected_dataset{selected_value};
-    
+
     % Select the appropriate dataset for visualization
     if strcmp(current_dataset, 'BASEQ')
         data = BASEQ;

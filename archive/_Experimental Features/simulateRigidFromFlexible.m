@@ -30,4 +30,3 @@ function out = simulateRigidFromFlexible(flexibleModel, rigidModel, shaftShape, 
 
     fprintf('Rigid model "%s" simulated with inertia from flexible shaft.\n', rigidModel);
 end
-

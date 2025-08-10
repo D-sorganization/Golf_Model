@@ -1,22 +1,22 @@
 % FIXED: Extract from logsout with proper Signal handling
 function logsout_data = extractLogsoutDataFixed(logsout)
     logsout_data = [];
-    
+
     try
         fprintf('Debug: Extracting logsout data, type: %s\n', class(logsout));
-        
+
         % Handle modern Simulink.SimulationData.Dataset format
         if isa(logsout, 'Simulink.SimulationData.Dataset')
             fprintf('Debug: Processing Dataset format with %d elements\n', logsout.numElements);
-            
+
             if logsout.numElements == 0
                 fprintf('Debug: Dataset is empty\n');
                 return;
             end
-            
+
             % Get time from first element
             first_element = logsout.getElement(1);  % Use getElement instead of {}
-            
+
             % Handle Signal objects properly
             if isa(first_element, 'Simulink.SimulationData.Signal')
                 time = first_element.Values.Time;
@@ -28,25 +28,25 @@ function logsout_data = extractLogsoutDataFixed(logsout)
                 fprintf('Debug: Unknown first element type: %s\n', class(first_element));
                 return;
             end
-            
+
             data_cells = {time};
             var_names = {'time'};
             expected_length = length(time);
-            
+
             % Process each element in the dataset
             for i = 1:logsout.numElements
                 element = logsout.getElement(i);  % Use getElement
-                
+
                 if isa(element, 'Simulink.SimulationData.Signal')
                     signalName = element.Name;
                     if isempty(signalName)
                         signalName = sprintf('Signal_%d', i);
                     end
-                    
+
                     % Extract data from Signal object
                     data = element.Values.Data;
                     signal_time = element.Values.Time;
-                    
+
                     % Ensure data matches time length and is valid
                     if isnumeric(data) && length(signal_time) == expected_length && ~isempty(data)
                         % Check if data has the right dimensions
@@ -81,7 +81,7 @@ function logsout_data = extractLogsoutDataFixed(logsout)
                     else
                         fprintf('Debug: Skipping signal %s (time length mismatch: %d vs %d, or empty data)\n', signalName, length(signal_time), expected_length);
                     end
-                    
+
                 elseif isa(element, 'timeseries')
                     signalName = element.Name;
                     data = element.Data;
@@ -101,7 +101,7 @@ function logsout_data = extractLogsoutDataFixed(logsout)
                     fprintf('Debug: Skipping unknown element type: %s\n', class(element));
                 end
             end
-            
+
             % Create table if we have data
             if length(data_cells) > 1  % At least time + one signal
                 logsout_data = table(data_cells{:}, 'VariableNames', var_names);
@@ -109,11 +109,11 @@ function logsout_data = extractLogsoutDataFixed(logsout)
             else
                 fprintf('Debug: No valid signals found in logsout\n');
             end
-            
+
         else
             fprintf('Debug: Unsupported logsout format: %s\n', class(logsout));
         end
-        
+
     catch ME
         fprintf('Error extracting logsout data: %s\n', ME.message);
     end

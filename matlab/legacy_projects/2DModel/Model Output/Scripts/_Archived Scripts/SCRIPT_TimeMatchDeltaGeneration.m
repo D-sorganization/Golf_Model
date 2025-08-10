@@ -6,7 +6,7 @@ BaseDataTime=seconds(BaseData.Time);
 ZTCFTime=seconds(ZTCF.Time);
 
 %Create versions of the tables to modify:
-BaseDataTemp=BaseData; 
+BaseDataTemp=BaseData;
 ZTCFTemp=ZTCF;
 
 %Write duration times into the tables:

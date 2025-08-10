@@ -127,7 +127,7 @@ Create `.vscode/settings.json` (Cursor uses VS Code settings):
 2. **Conventional commit format**:
    ```
    type(scope): description
-   
+
    Examples:
    feat(gui): add user authentication dialog
    fix(data): resolve CSV parsing memory leak
@@ -269,26 +269,26 @@ from PyQt6.QtCore import Qt, pyqtSignal
 
 class MainWindow(QMainWindow):
     """Main application window with Cursor AI assistance."""
-    
+
     # Define signals for better separation of concerns
     data_changed = pyqtSignal(str)
-    
+
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Application Name")
         self.setGeometry(100, 100, 800, 600)
         self._init_ui()
         self._connect_signals()
-    
+
     def _init_ui(self) -> None:
         """Initialize the user interface components."""
         # Use Cursor to generate UI components
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
-        
+
         layout = QVBoxLayout(central_widget)
         # Add your widgets here
-    
+
     def _connect_signals(self) -> None:
         """Connect signals and slots."""
         # Use Cursor to help with signal connections
@@ -318,17 +318,17 @@ from src.project_name.main import YourClass
 
 class TestYourClass(unittest.TestCase):
     """Test cases for YourClass - use Cursor to generate test scenarios."""
-    
+
     def setUp(self) -> None:
         """Set up test fixtures before each test method."""
         self.instance = YourClass()
-    
+
     def test_basic_functionality(self) -> None:
         """Test basic functionality - ask Cursor for edge cases."""
         # Use Cursor chat: "Generate test cases for this function"
         result = self.instance.your_method("test_input")
         self.assertEqual(result, "expected_output")
-    
+
     @patch('src.project_name.main.external_dependency')
     def test_with_mocking(self, mock_dependency: MagicMock) -> None:
         """Test with mocked dependencies."""
@@ -376,24 +376,24 @@ end
 def complex_function(data: list, threshold: float = 0.5) -> dict:
     """
     Process data based on threshold criteria.
-    
+
     This function analyzes input data and applies filtering based on the
     specified threshold value. Generated with Cursor AI assistance.
-    
+
     Args:
         data: List of numerical values to process
         threshold: Filtering threshold (default: 0.5)
-    
+
     Returns:
         Dictionary containing processed results with keys:
         - 'filtered': List of values above threshold
         - 'count': Number of filtered items
         - 'average': Average of filtered values
-    
+
     Raises:
         ValueError: If data is empty or threshold is negative
         TypeError: If data contains non-numerical values
-    
+
     Example:
         >>> result = complex_function([0.2, 0.8, 0.6, 0.3], 0.5)
         >>> print(result['filtered'])

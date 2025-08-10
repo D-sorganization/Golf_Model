@@ -25,22 +25,22 @@ class ShaderLibrary:
         """Simple vertex shader with basic transformation"""
         return """
         #version 330 core
-        
+
         layout (location = 0) in vec3 position;
         layout (location = 1) in vec3 normal;
-        
+
         uniform mat4 model;
         uniform mat4 view;
         uniform mat4 projection;
-        
+
         out vec3 FragPos;
         out vec3 Normal;
-        
+
         void main() {
             vec4 worldPos = model * vec4(position, 1.0);
             FragPos = worldPos.xyz;
             Normal = mat3(model) * normal;
-            
+
             gl_Position = projection * view * worldPos;
         }
         """
@@ -50,35 +50,35 @@ class ShaderLibrary:
         """Simple fragment shader with basic lighting"""
         return """
         #version 330 core
-        
+
         in vec3 FragPos;
         in vec3 Normal;
-        
+
         out vec4 FragColor;
-        
+
         uniform vec3 materialColor;
         uniform vec3 lightPosition;
         uniform vec3 lightColor;
         uniform vec3 viewPosition;
         uniform float opacity;
-        
+
         void main() {
             vec3 N = normalize(Normal);
             vec3 L = normalize(lightPosition - FragPos);
             vec3 V = normalize(viewPosition - FragPos);
             vec3 R = reflect(-L, N);
-            
+
             // Ambient
             vec3 ambient = 0.3 * materialColor;
-            
+
             // Diffuse
             float diff = max(dot(N, L), 0.0);
             vec3 diffuse = diff * lightColor * materialColor;
-            
+
             // Specular
             float spec = pow(max(dot(V, R), 0.0), 32.0);
             vec3 specular = spec * lightColor * 0.5;
-            
+
             vec3 result = ambient + diffuse + specular;
             FragColor = vec4(result, opacity);
         }
@@ -89,16 +89,16 @@ class ShaderLibrary:
         """Simple vertex shader for ground plane"""
         return """
         #version 330 core
-        
+
         layout (location = 0) in vec3 position;
         layout (location = 1) in vec2 texCoord;
-        
+
         uniform mat4 model;
         uniform mat4 view;
         uniform mat4 projection;
-        
+
         out vec2 TexCoord;
-        
+
         void main() {
             gl_Position = projection * view * model * vec4(position, 1.0);
             TexCoord = texCoord;
@@ -110,21 +110,21 @@ class ShaderLibrary:
         """Simple fragment shader for ground with grid"""
         return """
         #version 330 core
-        
+
         in vec2 TexCoord;
-        
+
         out vec4 FragColor;
-        
+
         uniform vec3 grassColor;
         uniform vec3 gridColor;
         uniform float gridSpacing;
-        
+
         void main() {
             // Simple grid pattern
             vec2 grid = fract(TexCoord * gridSpacing);
             float line = min(grid.x, grid.y);
             float gridStrength = 1.0 - smoothstep(0.0, 0.1, line);
-            
+
             vec3 color = mix(grassColor, gridColor, gridStrength * 0.3);
             FragColor = vec4(color, 1.0);
         }

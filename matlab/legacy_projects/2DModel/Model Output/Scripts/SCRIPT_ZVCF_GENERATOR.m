@@ -1,5 +1,5 @@
 % ZVCF Data Generation Script
-% 
+%
 % This script generates the data for a scenario in which you take the
 % applied joint torques at any given point in the swing and apply them to a
 % golfer in the same static pose. "Zero Velocity Counterfactual". This can
@@ -16,7 +16,7 @@
 % The ZVCF is calculated by importing starting positions / pose of the
 % model and assigning all velocities to be zero. The joint torques are
 % applied as constant values and the joint interaction forces are
-% calculated at time zero and tabulated. 
+% calculated at time zero and tabulated.
 
 cd(matlabdrive);
 cd '2DModel';
@@ -80,7 +80,7 @@ SCRIPT_TableGeneration;
 
 % Copy Data to ZTCF Table to Get Variable Names
 ZVCFTable=Data; %Create a table called ZTCFTable from Data.
-ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks 
+ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
 
 %Now we have a table with all of the right columns and variables that can
 %be written to from the output of the ZVCF model when it generates data.
@@ -91,7 +91,7 @@ ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
 % time zero will be copied into the ZVCF table generated to receive data
 % above. The only issue is that all times will be zero. The time will then
 % be generated using the step time data from the loop once the row has been
-% copied. 
+% copied.
 
 % Begin Generation of ZVCF Data by Looping
 
@@ -211,7 +211,6 @@ cd(matlabdrive);
 cd '2DModel';
 
 
-    
-    
-    
-   
+
+
+

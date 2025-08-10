@@ -33,8 +33,8 @@ RWristMOFLForearm.AutoScaleFactor=REMOFLForearmQuiver.ScaleFactor/RWristMOFLFore
 %Generate Right Forearm Quivers
 RightForearm=quiver3(ZTCFQ.REx(:,1),ZTCFQ.REy(:,1),ZTCFQ.REz(:,1),DELTAQ.RightForearmdx(:,1),DELTAQ.RightForearmdy(:,1),DELTAQ.RightForearmdz(:,1),0);
 RightForearm.ShowArrowHead='off';
-RightForearm.LineWidth=1;			   
-RightForearm.Color=[0 0 0];	
+RightForearm.LineWidth=1;
+RightForearm.Color=[0 0 0];
 
 %Add Legend to Plot
 legend('','','','','RH Force','RE Force','RE MOF','RH MOF');

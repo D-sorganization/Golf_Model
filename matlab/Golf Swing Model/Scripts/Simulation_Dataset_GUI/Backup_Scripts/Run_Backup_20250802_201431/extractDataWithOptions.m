@@ -1,6 +1,6 @@
 function [signal_table, signal_info] = extractDataWithOptions(simOut)
     % EXTRACTDATAWITHOPTIONS - GUI for selecting data extraction options
-    % 
+    %
     % This function provides a simple GUI interface for selecting which data
     % sources to extract from the Simulink simulation output.
     %
@@ -14,12 +14,12 @@ function [signal_table, signal_info] = extractDataWithOptions(simOut)
     % Example:
     %   simOut = sim('YourModel');
     %   [data, info] = extractDataWithOptions(simOut);
-    
+
     % Check what data sources are available
     available_sources = struct();
     available_sources.combined_bus = isprop(simOut, 'CombinedSignalBus');
     available_sources.logsout = isprop(simOut, 'logsout');
-    
+
     % Check for Simscape Results Explorer
     try
         simscapeRuns = Simulink.sdi.getAllRunIDs;
@@ -27,14 +27,14 @@ function [signal_table, signal_info] = extractDataWithOptions(simOut)
     catch
         available_sources.simscape = false;
     end
-    
+
     % Create GUI figure
     fig = figure('Name', 'Data Extraction Options', ...
                  'Position', [300, 300, 400, 300], ...
                  'MenuBar', 'none', ...
                  'NumberTitle', 'off', ...
                  'Resize', 'off');
-    
+
     % Create main panel
     mainPanel = uipanel('Parent', fig, ...
                        'Units', 'normalized', ...
@@ -42,7 +42,7 @@ function [signal_table, signal_info] = extractDataWithOptions(simOut)
                        'Title', 'Select Data Sources to Extract', ...
                        'FontSize', 12, ...
                        'FontWeight', 'bold');
-    
+
     % Title
     uicontrol('Parent', mainPanel, ...
               'Style', 'text', ...
@@ -51,11 +51,11 @@ function [signal_table, signal_info] = extractDataWithOptions(simOut)
               'Position', [0.1, 0.85, 0.8, 0.1], ...
               'FontSize', 11, ...
               'HorizontalAlignment', 'left');
-    
+
     % Checkboxes for data sources
     y_pos = 0.75;
     spacing = 0.15;
-    
+
     % CombinedSignalBus checkbox
     combined_bus_cb = uicontrol('Parent', mainPanel, ...
                                'Style', 'checkbox', ...
@@ -65,7 +65,7 @@ function [signal_table, signal_info] = extractDataWithOptions(simOut)
                                'Value', available_sources.combined_bus, ...
                                'Enable', ifelse(available_sources.combined_bus, 'on', 'off'), ...
                                'FontSize', 10);
-    
+
     if ~available_sources.combined_bus
         uicontrol('Parent', mainPanel, ...
                   'Style', 'text', ...
@@ -76,9 +76,9 @@ function [signal_table, signal_info] = extractDataWithOptions(simOut)
                   'ForegroundColor', [0.6, 0.6, 0.6], ...
                   'HorizontalAlignment', 'left');
     end
-    
+
     y_pos = y_pos - spacing;
-    
+
     % Logsout checkbox
     logsout_cb = uicontrol('Parent', mainPanel, ...
                           'Style', 'checkbox', ...
@@ -88,7 +88,7 @@ function [signal_table, signal_info] = extractDataWithOptions(simOut)
                           'Value', available_sources.logsout, ...
                           'Enable', ifelse(available_sources.logsout, 'on', 'off'), ...
                           'FontSize', 10);
-    
+
     if ~available_sources.logsout
         uicontrol('Parent', mainPanel, ...
                   'Style', 'text', ...
@@ -99,9 +99,9 @@ function [signal_table, signal_info] = extractDataWithOptions(simOut)
                   'ForegroundColor', [0.6, 0.6, 0.6], ...
                   'HorizontalAlignment', 'left');
     end
-    
+
     y_pos = y_pos - spacing;
-    
+
     % Simscape Results Explorer checkbox
     simscape_cb = uicontrol('Parent', mainPanel, ...
                            'Style', 'checkbox', ...
@@ -111,7 +111,7 @@ function [signal_table, signal_info] = extractDataWithOptions(simOut)
                            'Value', available_sources.simscape, ...
                            'Enable', ifelse(available_sources.simscape, 'on', 'off'), ...
                            'FontSize', 10);
-    
+
     if ~available_sources.simscape
         uicontrol('Parent', mainPanel, ...
                   'Style', 'text', ...
@@ -122,9 +122,9 @@ function [signal_table, signal_info] = extractDataWithOptions(simOut)
                   'ForegroundColor', [0.6, 0.6, 0.6], ...
                   'HorizontalAlignment', 'left');
     end
-    
+
     y_pos = y_pos - spacing;
-    
+
     % Verbose output checkbox
     verbose_cb = uicontrol('Parent', mainPanel, ...
                           'Style', 'checkbox', ...
@@ -133,13 +133,13 @@ function [signal_table, signal_info] = extractDataWithOptions(simOut)
                           'Position', [0.1, y_pos, 0.8, 0.08], ...
                           'Value', 1, ...
                           'FontSize', 10);
-    
+
     y_pos = y_pos - spacing;
-    
+
     % Buttons
     button_width = 0.35;
     button_height = 0.08;
-    
+
     % Extract button
     extract_btn = uicontrol('Parent', mainPanel, ...
                            'Style', 'pushbutton', ...
@@ -151,7 +151,7 @@ function [signal_table, signal_info] = extractDataWithOptions(simOut)
                            'BackgroundColor', [0.2, 0.6, 0.2], ...
                            'ForegroundColor', 'white', ...
                            'Callback', @extractCallback);
-    
+
     % Cancel button
     cancel_btn = uicontrol('Parent', mainPanel, ...
                           'Style', 'pushbutton', ...
@@ -162,14 +162,14 @@ function [signal_table, signal_info] = extractDataWithOptions(simOut)
                           'BackgroundColor', [0.6, 0.2, 0.2], ...
                           'ForegroundColor', 'white', ...
                           'Callback', @cancelCallback);
-    
+
     % Initialize output variables
     signal_table = [];
     signal_info = struct();
-    
+
     % Wait for user input
     uiwait(fig);
-    
+
     function extractCallback(~, ~)
         % Get user selections
         options = struct();
@@ -177,25 +177,25 @@ function [signal_table, signal_info] = extractDataWithOptions(simOut)
         options.extract_logsout = get(logsout_cb, 'Value');
         options.extract_simscape = get(simscape_cb, 'Value');
         options.verbose = get(verbose_cb, 'Value');
-        
+
         % Check if at least one source is selected
         if ~options.extract_combined_bus && ~options.extract_logsout && ~options.extract_simscape
             errordlg('Please select at least one data source to extract.', 'No Source Selected');
             return;
         end
-        
+
         % Close the GUI
         delete(fig);
-        
+
         % Extract data using the enhanced function
         [signal_table, signal_info] = extractAllSignalsFromBus(simOut, options);
-        
+
         % Show results
         if ~isempty(signal_table)
             msg = sprintf('Successfully extracted %d signals!\n\n', signal_info.total_signals);
             msg = [msg sprintf('Table size: %d rows × %d columns\n', height(signal_table), width(signal_table))];
             msg = [msg sprintf('Time points: %d\n\n', signal_info.time_points)];
-            
+
             if isfield(signal_info, 'source_info')
                 if signal_info.source_info.combined_bus.extracted
                     msg = [msg sprintf('CombinedSignalBus: %d signals\n', signal_info.source_info.combined_bus.signals)];
@@ -207,13 +207,13 @@ function [signal_table, signal_info] = extractDataWithOptions(simOut)
                     msg = [msg sprintf('Simscape: %d signals\n', signal_info.source_info.simscape.signals)];
                 end
             end
-            
+
             msgbox(msg, 'Extraction Complete', 'help');
         else
             errordlg('No data was extracted. Please check your simulation output.', 'Extraction Failed');
         end
     end
-    
+
     function cancelCallback(~, ~)
         % Close the GUI without extracting
         delete(fig);
@@ -227,4 +227,4 @@ function result = ifelse(condition, true_value, false_value)
     else
         result = false_value;
     end
-end 
+end

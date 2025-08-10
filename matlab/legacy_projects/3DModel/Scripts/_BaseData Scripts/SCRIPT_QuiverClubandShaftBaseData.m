@@ -1,5 +1,5 @@
 %Reads from a Table named Data in main workspace Generated from the Quivers
-%Plots tab on the main worksheets. 
+%Plots tab on the main worksheets.
 
 %Generate Shaft Quivers
 Shaft=quiver3(BASEQ.RHx(:,1),BASEQ.RHy(:,1),BASEQ.RHz(:,1),BASEQ.Shaftdx(:,1),BASEQ.Shaftdy(:,1),BASEQ.Shaftdz(:,1),0);

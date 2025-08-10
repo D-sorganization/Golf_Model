@@ -1,5 +1,5 @@
 %Reads from a Table named Data in main workspace Generated from the Quivers
-%Plots tab on the main worksheets. 
+%Plots tab on the main worksheets.
 
 %Generate Shaft Quivers
 Shaft=quiver3(Data.RHx(:,1),Data.RHy(:,1),Data.RHz(:,1),Data.Shaftdx(:,1),Data.Shaftdy(:,1),Data.Shaftdz(:,1),0);

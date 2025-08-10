@@ -35,16 +35,16 @@ fprintf('Calculating joint power and work...\n');
 for i = 1:size(joints, 1)
     joint_name = joints{i, 1};
     dof = joints{i, 2};
-    
+
     fprintf('Processing %s joint (%d DOF)...\n', joint_name, dof);
-    
+
     % Extract data for this joint
     [power_data, work_data] = processJoint(simulation_data, joint_name, dof, dt);
-    
+
     % Store results
     joint_powers.(joint_name) = power_data;
     joint_work.(joint_name) = work_data;
-    
+
     % Prepare data for export (flatten for CSV)
     joint_data = addJointToExport(joint_data, joint_name, power_data, work_data);
 end
@@ -97,28 +97,28 @@ switch joint_name
         if dof == 2
             omega = omega(:, 1:2);
         end
-        
+
     case {'LS', 'RS'}
         % 3-DOF joints
         field_base = [joint_name 'Logs_GlobalAngularVelocity_'];
         omega = [sim_data.([field_base '1']), ...
                  sim_data.([field_base '2']), ...
                  sim_data.([field_base '3'])];
-                 
+
     case {'LF', 'RF'}
         % 1-DOF joints (only Z component typically)
         field_base = [joint_name 'Logs_GlobalAngularVelocity_'];
         omega = sim_data.([field_base '3']); % Z-component
-        
+
     case 'Spine'
         % 2-DOF joint
         omega = [sim_data.SpineLogs_GlobalAngularVelocity_1, ...
                  sim_data.SpineLogs_GlobalAngularVelocity_2];
-                 
+
     case 'Torso'
         % 1-DOF joint
         omega = sim_data.TorsoLogs_GlobalAngularVelocity_3; % Z-rotation
-        
+
     otherwise
         error('Unknown joint: %s', joint_name);
 end
@@ -134,20 +134,20 @@ switch joint_name
         % Assuming actuator torques are in global coordinates
         tau = [sim_data.([joint_name 'Logs_ActuatorTorqueX']), ...
                sim_data.([joint_name 'Logs_ActuatorTorqueY'])];
-               
+
     case {'LS', 'RS'}
         tau = [sim_data.([joint_name 'Logs_ActuatorTorqueX']), ...
                sim_data.([joint_name 'Logs_ActuatorTorqueY']), ...
                sim_data.([joint_name 'Logs_ActuatorTorqueZ'])];
-               
+
     case {'LF', 'RF'}
         % Single DOF - usually Z torque
         tau = sim_data.([joint_name 'Logs_ActuatorTorqueZ']);
-        
+
     case 'Spine'
         tau = [sim_data.SpineLogs_ActuatorTorqueX, ...
                sim_data.SpineLogs_ActuatorTorqueY];
-               
+
     case 'Torso'
         % Check if torso has actuator torque field
         if isfield(sim_data, 'TorsoLogs_ActuatorTorque')
@@ -155,7 +155,7 @@ switch joint_name
         else
             tau = zeros(size(sim_data.time)); % No actuator torque
         end
-        
+
     otherwise
         error('Unknown joint: %s', joint_name);
 end
@@ -266,9 +266,9 @@ end
 
 %% Example usage:
 % [powers, work, export_data] = calculateJointPowerWork(simulation_data);
-% 
+%
 % % Add to existing data for export
 % enhanced_data = [simulation_data, export_data];
-% 
+%
 % % Export to CSV
 % writetable(struct2table(enhanced_data), 'enhanced_golf_data.csv');

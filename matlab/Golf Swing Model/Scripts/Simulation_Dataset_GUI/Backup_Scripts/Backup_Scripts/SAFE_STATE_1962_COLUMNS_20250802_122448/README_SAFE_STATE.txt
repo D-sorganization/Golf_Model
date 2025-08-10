@@ -68,4 +68,4 @@ CRITICAL FILES:
 - Data_GUI.m: Main GUI with script backup system and dynamic updates
 - setModelParameters.m: Simplified simulation parameters for reliable data capture
 
-This state should be preserved as a reference point for future development. 
+This state should be preserved as a reference point for future development.

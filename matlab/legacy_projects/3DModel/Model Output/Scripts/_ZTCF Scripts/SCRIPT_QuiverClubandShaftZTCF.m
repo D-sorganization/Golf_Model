@@ -1,5 +1,5 @@
 %Reads from a Table named ZTCF in main workspace Generated from the Quivers
-%Plots tab on the main worksheets. 
+%Plots tab on the main worksheets.
 
 %Generate Shaft Quivers
 Shaft=quiver3(ZTCFQ.RWx(:,1),ZTCFQ.RWy(:,1),ZTCFQ.RWz(:,1),ZTCFQ.Shaftdx(:,1),ZTCFQ.Shaftdy(:,1),ZTCFQ.Shaftdz(:,1),0);

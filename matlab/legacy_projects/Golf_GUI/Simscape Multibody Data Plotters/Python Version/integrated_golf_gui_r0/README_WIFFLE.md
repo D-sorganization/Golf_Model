@@ -64,7 +64,7 @@ numba>=0.55.0
 pytest>=6.2.0
 flake8>=4.0.0
 
-# Biomechanics 
+# Biomechanics
 filterpy>=1.4.5
 ```
 
@@ -106,7 +106,7 @@ Each sheet should contain the following columns (or similar):
 # Position data columns
 'Time'          # Time vector
 'CHx', 'CHy', 'CHz'    # Clubhead position
-'Bx', 'By', 'Bz'       # Butt position  
+'Bx', 'By', 'Bz'       # Butt position
 'MPx', 'MPy', 'MPz'    # Midpoint position
 'LWx', 'LWy', 'LWz'    # Left wrist position
 'LEx', 'LEy', 'LEz'    # Left elbow position
@@ -321,6 +321,6 @@ This project is part of the Golf Swing Visualization research system. Please res
 
 ---
 
-**Version**: 1.0  
-**Last Updated**: 2024  
-**Status**: Production Ready 
+**Version**: 1.0
+**Last Updated**: 2024
+**Status**: Production Ready

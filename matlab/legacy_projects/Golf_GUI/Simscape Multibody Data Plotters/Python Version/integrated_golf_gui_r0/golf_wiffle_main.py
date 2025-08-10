@@ -11,10 +11,23 @@ import numpy as np
 from golf_gui_application import GolfVisualizerWidget
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QAction, QFont
-from PyQt6.QtWidgets import (QApplication, QCheckBox, QComboBox, QDockWidget,
-                             QFileDialog, QGroupBox, QHBoxLayout, QLabel,
-                             QMainWindow, QMessageBox, QProgressBar,
-                             QPushButton, QTextEdit, QVBoxLayout, QWidget)
+from PyQt6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QComboBox,
+    QDockWidget,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 from wiffle_data_loader import WiffleDataConfig, WiffleDataLoader
 
 # ============================================================================

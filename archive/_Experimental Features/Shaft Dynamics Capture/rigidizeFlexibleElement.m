@@ -1,6 +1,6 @@
 function rigidBody = rigidizeFlexibleElement(flexData, massPerSegment, segmentCenters)
 % Rigidizes a flexible shaft using its frozen shape at a given time.
-% 
+%
 % Inputs:
 %   flexData         - Nx3 matrix of marker positions or nodes (frozen shape)
 %   massPerSegment   - 1xN-1 vector of mass of each segment

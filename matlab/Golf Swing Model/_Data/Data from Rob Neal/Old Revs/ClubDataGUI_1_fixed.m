@@ -216,7 +216,7 @@ end
 function togglePlayback(src, handles)
     % togglePlayback:  Handles the play/pause button.
     handles = guidata(src);
-    
+
     if get(src, 'Value') == 1  % Button is pressed (Play)
         set(src, 'String', 'Pause');
         try

@@ -1,7 +1,7 @@
 function coeffs = generatePolynomialCoefficients(config)
     % Standalone function for generating polynomial coefficients
     % This function can be called from parfor loops
-    
+
     % Define all joint coefficient names based on the actual model
     % Updated based on debug output showing actual variable names
     joint_coeffs = {
@@ -49,14 +49,14 @@ function coeffs = generatePolynomialCoefficients(config)
         % Right foot
         {'RFInputA', 'RFInputB', 'RFInputC', 'RFInputD', 'RFInputE', 'RFInputF', 'RFInputG'};
     };
-    
+
     coeffs = struct();
-    
+
     for i = 1:length(joint_coeffs)
         joint_set = joint_coeffs{i};
         for j = 1:length(joint_set)
             coeff_name = joint_set{j};
-            
+
             switch config.torque_scenario
                 case 1 % Variable torques (A-G varied)
                     coeffs.(coeff_name) = (rand(1) - 0.5) * 2 * config.coeff_range;
@@ -71,4 +71,4 @@ function coeffs = generatePolynomialCoefficients(config)
             end
         end
     end
-end 
+end

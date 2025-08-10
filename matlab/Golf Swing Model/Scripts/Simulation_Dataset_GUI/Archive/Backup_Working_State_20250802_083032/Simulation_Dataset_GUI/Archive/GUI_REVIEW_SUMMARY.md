@@ -13,7 +13,7 @@ December 2024
 ### 2. Missing Callback Functions
 - **Problem**: Several callbacks were referenced but not implemented:
   - `browseInputFile`
-  - `clearInputFile` 
+  - `clearInputFile`
   - `browseOutputFolder`
   - `torqueScenarioCallback`
   - `coefficientCellEditCallback`

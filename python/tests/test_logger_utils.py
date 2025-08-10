@@ -3,7 +3,8 @@
 import logging
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from logger_utils import get_logger
 
 
@@ -37,10 +38,10 @@ def test_logger_level_setting() -> None:
     """Test that logger level can be set and retrieved."""
     logger = get_logger("test_level")
     original_level = logger.level
-    
+
     # Set to DEBUG level
     logger.setLevel(logging.DEBUG)
     assert logger.level == logging.DEBUG
-    
+
     # Restore original level
     logger.setLevel(original_level)

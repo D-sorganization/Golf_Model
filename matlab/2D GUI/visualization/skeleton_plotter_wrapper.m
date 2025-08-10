@@ -13,48 +13,48 @@ function skeleton_plotter_wrapper(BASEQ, ZTCFQ, DELTAQ)
     if nargin < 3
         error('Skeleton plotter requires BASEQ, ZTCFQ, and DELTAQ data tables');
     end
-    
+
     % Validate data structure
     if ~istable(BASEQ) || ~istable(ZTCFQ) || ~istable(DELTAQ)
         error('All inputs must be tables');
     end
-    
+
     % Check for required columns in BASEQ
     required_columns = {'Buttx', 'Butty', 'Buttz', 'CHx', 'CHy', 'CHz', ...
                        'MPx', 'MPy', 'MPz', 'LWx', 'LWy', 'LWz', ...
                        'LEx', 'LEy', 'LEz', 'LSx', 'LSy', 'LSz', ...
                        'RWx', 'RWy', 'RWz', 'REx', 'REy', 'REz', ...
                        'RSx', 'RSy', 'RSz', 'HUBx', 'HUBy', 'HUBz'};
-    
+
     missing_columns = setdiff(required_columns, BASEQ.Properties.VariableNames);
     if ~isempty(missing_columns)
         warning('Missing columns in BASEQ: %s', strjoin(missing_columns, ', '));
     end
-    
+
     % Check for force and torque data
     force_columns = {'TotalHandForceGlobal', 'EquivalentMidpointCoupleGlobal'};
     missing_forces = setdiff(force_columns, BASEQ.Properties.VariableNames);
     if ~isempty(missing_forces)
         warning('Missing force/torque columns: %s', strjoin(missing_forces, ', '));
     end
-    
+
     fprintf('🦴 Launching Skeleton Plotter...\n');
     fprintf('   BASEQ data points: %d\n', height(BASEQ));
     fprintf('   ZTCFQ data points: %d\n', height(ZTCFQ));
     fprintf('   DELTAQ data points: %d\n', height(DELTAQ));
-    
+
     try
         % Launch the skeleton plotter
         SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ);
-        
+
         fprintf('✅ Skeleton Plotter launched successfully\n');
-        
+
     catch ME
         fprintf('❌ Error launching Skeleton Plotter: %s\n', ME.message);
         fprintf('📍 Error location: %s (line %d)\n', ME.stack(1).name, ME.stack(1).line);
         rethrow(ME);
     end
-    
+
 end
 
 function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)
@@ -294,7 +294,7 @@ function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)
         % Get current frame
         current_frame = round(get(handles.slider, 'Value'));
         handles.current_frame = current_frame;
-        
+
         % Clear previous plots
         delete(handles.plot_handles.shaft);
         delete(handles.plot_handles.face_normal);
@@ -306,7 +306,7 @@ function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)
         delete(handles.plot_handles.right_shoulderneck);
         delete(handles.plot_handles.forces);
         delete(handles.plot_handles.torques);
-        
+
         % Reset arrays
         handles.plot_handles.shaft = [];
         handles.plot_handles.face_normal = [];
@@ -318,48 +318,48 @@ function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)
         handles.plot_handles.right_shoulderneck = [];
         handles.plot_handles.forces = [];
         handles.plot_handles.torques = [];
-        
+
         % Plot segments based on checkboxes
         if get(handles.checkbox_list(8), 'Value') % Shaft
             plotShaft(current_frame);
         end
-        
+
         if get(handles.checkbox_list(9), 'Value') % Face Normal
             plotFaceNormal(current_frame);
         end
-        
+
         % Plot body segments
         if get(handles.checkbox_list(10), 'Value') % Left Forearm
             plotLeftForearm(current_frame);
         end
-        
+
         if get(handles.checkbox_list(11), 'Value') % Left Upper Arm
             plotLeftUpperArm(current_frame);
         end
-        
+
         if get(handles.checkbox_list(12), 'Value') % Left Shoulder-Neck
             plotLeftShoulderNeck(current_frame);
         end
-        
+
         if get(handles.checkbox_list(13), 'Value') % Right Forearm
             plotRightForearm(current_frame);
         end
-        
+
         if get(handles.checkbox_list(14), 'Value') % Right Upper Arm
             plotRightUpperArm(current_frame);
         end
-        
+
         if get(handles.checkbox_list(15), 'Value') % Right Shoulder-Neck
             plotRightShoulderNeck(current_frame);
         end
-        
+
         % Plot forces and torques
         plotForcesAndTorques(current_frame);
-        
+
         % Update title with frame info
         title(handles.ax, sprintf('Golf Swing - Frame %d/%d (%.3f s)', ...
             current_frame, num_frames, BASEQ.Time(current_frame)));
-        
+
         drawnow;
     end
 
@@ -368,7 +368,7 @@ function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)
         x = [BASEQ.MPx(frame), BASEQ.CHx(frame)];
         y = [BASEQ.MPy(frame), BASEQ.CHy(frame)];
         z = [BASEQ.MPz(frame), BASEQ.CHz(frame)];
-        
+
         handles.plot_handles.shaft = plot3(handles.ax, x, y, z, 'k-', 'LineWidth', 3);
     end
 
@@ -382,7 +382,7 @@ function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)
         x = [BASEQ.LWx(frame), BASEQ.LEx(frame)];
         y = [BASEQ.LWy(frame), BASEQ.LEy(frame)];
         z = [BASEQ.LWz(frame), BASEQ.LEz(frame)];
-        
+
         handles.plot_handles.left_forearm = plot3(handles.ax, x, y, z, 'Color', skin_color, 'LineWidth', forearm_diameter*1000);
     end
 
@@ -391,7 +391,7 @@ function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)
         x = [BASEQ.LEx(frame), BASEQ.LSx(frame)];
         y = [BASEQ.LEy(frame), BASEQ.LSy(frame)];
         z = [BASEQ.LEz(frame), BASEQ.LSz(frame)];
-        
+
         handles.plot_handles.left_upperarm = plot3(handles.ax, x, y, z, 'Color', skin_color, 'LineWidth', upperarm_diameter*1000);
     end
 
@@ -400,7 +400,7 @@ function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)
         x = [BASEQ.LSx(frame), BASEQ.HUBx(frame)];
         y = [BASEQ.LSy(frame), BASEQ.HUBy(frame)];
         z = [BASEQ.LSz(frame), BASEQ.HUBz(frame)];
-        
+
         handles.plot_handles.left_shoulderneck = plot3(handles.ax, x, y, z, 'Color', shirt_color, 'LineWidth', shoulderneck_diameter*1000);
     end
 
@@ -409,7 +409,7 @@ function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)
         x = [BASEQ.RWx(frame), BASEQ.REx(frame)];
         y = [BASEQ.RWy(frame), BASEQ.REy(frame)];
         z = [BASEQ.RWz(frame), BASEQ.REz(frame)];
-        
+
         handles.plot_handles.right_forearm = plot3(handles.ax, x, y, z, 'Color', skin_color, 'LineWidth', forearm_diameter*1000);
     end
 
@@ -418,7 +418,7 @@ function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)
         x = [BASEQ.REx(frame), BASEQ.RSx(frame)];
         y = [BASEQ.REy(frame), BASEQ.RSy(frame)];
         z = [BASEQ.REz(frame), BASEQ.RSz(frame)];
-        
+
         handles.plot_handles.right_upperarm = plot3(handles.ax, x, y, z, 'Color', skin_color, 'LineWidth', upperarm_diameter*1000);
     end
 
@@ -427,18 +427,18 @@ function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)
         x = [BASEQ.RSx(frame), BASEQ.HUBx(frame)];
         y = [BASEQ.RSy(frame), BASEQ.HUBy(frame)];
         z = [BASEQ.RSz(frame), BASEQ.HUBz(frame)];
-        
+
         handles.plot_handles.right_shoulderneck = plot3(handles.ax, x, y, z, 'Color', shirt_color, 'LineWidth', shoulderneck_diameter*1000);
     end
 
     function plotForcesAndTorques(frame)
         % Plot forces and torques for all datasets
         scale_factor = get(handles.scale_slider, 'Value');
-        
+
         for i = 1:size(datasets, 1)
             dataset_name = datasets{i, 1};
             dataset = datasets{i, 2};
-            
+
             % Plot forces
             if get(handles.checkbox_list(i), 'Value') && isfield(dataset, 'TotalHandForceGlobal')
                 force = dataset.TotalHandForceGlobal(frame, :);
@@ -450,7 +450,7 @@ function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)
                            'Color', colors_force{i}, 'LineWidth', 2, 'MaxHeadSize', 0.5);
                 end
             end
-            
+
             % Plot torques
             if get(handles.checkbox_list(i+3), 'Value') && isfield(dataset, 'EquivalentMidpointCoupleGlobal')
                 torque = dataset.EquivalentMidpointCoupleGlobal(frame, :);
@@ -484,10 +484,10 @@ function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)
             stop(handles.timer);
             delete(handles.timer);
         end
-        
+
         speed = get(handles.speed_slider, 'Value');
         interval = 0.1 / speed; % 10 FPS base
-        
+
         handles.timer = timer('ExecutionMode', 'fixedRate', ...
                             'Period', interval, ...
                             'TimerFcn', @playbackTimer);
@@ -508,7 +508,7 @@ function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)
             if current_frame > num_frames
                 current_frame = 1; % Loop back to start
             end
-            
+
             set(handles.slider, 'Value', current_frame);
             updatePlot();
         end
@@ -517,7 +517,7 @@ function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)
     function updateZoom(zoom_factor)
         % Update zoom level
         zoom_factor = 3 - zoom_factor; % Invert the factor
-        
+
         margin = 0.3;
         xlim(handles.ax, [min(all_x) - margin, max(all_x) + margin] * zoom_factor);
         ylim(handles.ax, [min(all_y) - margin, max(all_y) + margin] * zoom_factor);
@@ -540,7 +540,7 @@ function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)
 
     % Clean up function
     set(fig, 'CloseRequestFcn', @closeFigure);
-    
+
     function closeFigure(src, ~)
         stopPlayback();
         delete(src);

@@ -1,32 +1,32 @@
 function bus_data = extractCombinedSignalBusData(combined_bus)
     bus_data = [];
-    
+
     try
         fprintf('Debug: Extracting CombinedSignalBus data\n');
-        
+
         if ~isstruct(combined_bus)
             fprintf('Debug: CombinedSignalBus is not a struct\n');
             return;
         end
-        
+
         fields = fieldnames(combined_bus);
         fprintf('Debug: Found %d fields in CombinedSignalBus\n', length(fields));
-        
+
         % Get time from the first timeseries we find
         time_data = [];
         expected_length = 0;
-        
+
         % Find time data from first available timeseries
         for i = 1:length(fields)
             field_name = fields{i};
             field_value = combined_bus.(field_name);
-            
+
             if isstruct(field_value)
                 sub_fields = fieldnames(field_value);
                 for j = 1:length(sub_fields)
                     sub_field_name = sub_fields{j};
                     sub_field_value = field_value.(sub_field_name);
-                    
+
                     if isa(sub_field_value, 'timeseries')
                         time_data = sub_field_value.Time;
                         expected_length = length(time_data);
@@ -44,34 +44,34 @@ function bus_data = extractCombinedSignalBusData(combined_bus)
                 break;
             end
         end
-        
+
         if isempty(time_data)
             fprintf('Debug: No time data found in CombinedSignalBus\n');
             return;
         end
-        
+
         data_cells = {time_data(:)};
         var_names = {'time'};
         used_names = {'time'}; % Track used names to avoid duplicates
-        
+
         % Extract all timeseries data
         for i = 1:length(fields)
             field_name = fields{i};
             field_value = combined_bus.(field_name);
-            
+
             if isstruct(field_value)
                 % Handle struct fields (most common case)
                 sub_fields = fieldnames(field_value);
                 fprintf('Debug: Processing struct field %s with %d sub-fields\n', field_name, length(sub_fields));
-                
+
                 for j = 1:length(sub_fields)
                     sub_field_name = sub_fields{j};
                     sub_field_value = field_value.(sub_field_name);
-                    
+
                     if isa(sub_field_value, 'timeseries')
                         % Extract data from timeseries
                         data = sub_field_value.Data;
-                        
+
                         if isnumeric(data) && ~isempty(data)
                             % Handle different data dimensions
                             if size(data, 1) == expected_length
@@ -84,7 +84,7 @@ function bus_data = extractCombinedSignalBusData(combined_bus)
                                             base_name = sprintf('%s_%s_%d', field_name, sub_field_name, col);
                                             unique_name = makeUniqueName(base_name, used_names);
                                             used_names{end+1} = unique_name;
-                                            
+
                                             data_cells{end+1} = col_data;
                                             var_names{end+1} = unique_name;
                                             fprintf('Debug: Added %s (length: %d)\n', unique_name, length(col_data));
@@ -98,7 +98,7 @@ function bus_data = extractCombinedSignalBusData(combined_bus)
                                         base_name = sprintf('%s_%s', field_name, sub_field_name);
                                         unique_name = makeUniqueName(base_name, used_names);
                                         used_names{end+1} = unique_name;
-                                        
+
                                         data_cells{end+1} = flat_data;
                                         var_names{end+1} = unique_name;
                                         fprintf('Debug: Added %s (length: %d)\n', unique_name, length(flat_data));
@@ -113,7 +113,7 @@ function bus_data = extractCombinedSignalBusData(combined_bus)
             elseif isa(field_value, 'timeseries')
                 % Handle direct timeseries fields
                 data = field_value.Data;
-                
+
                 if isnumeric(data) && ~isempty(data)
                     if size(data, 1) == expected_length
                         if size(data, 2) > 1
@@ -125,7 +125,7 @@ function bus_data = extractCombinedSignalBusData(combined_bus)
                                     base_name = sprintf('%s_%d', field_name, col);
                                     unique_name = makeUniqueName(base_name, used_names);
                                     used_names{end+1} = unique_name;
-                                    
+
                                     data_cells{end+1} = col_data;
                                     var_names{end+1} = unique_name;
                                     fprintf('Debug: Added %s (length: %d)\n', unique_name, length(col_data));
@@ -138,7 +138,7 @@ function bus_data = extractCombinedSignalBusData(combined_bus)
                                 % Create unique column name
                                 unique_name = makeUniqueName(field_name, used_names);
                                 used_names{end+1} = unique_name;
-                                
+
                                 data_cells{end+1} = flat_data;
                                 var_names{end+1} = unique_name;
                                 fprintf('Debug: Added %s (length: %d)\n', unique_name, length(flat_data));
@@ -150,7 +150,7 @@ function bus_data = extractCombinedSignalBusData(combined_bus)
                 end
             end
         end
-        
+
         % Create table if we have data
         if length(data_cells) > 1
             % Validate all data vectors have the same length
@@ -176,7 +176,7 @@ function bus_data = extractCombinedSignalBusData(combined_bus)
         else
             fprintf('Debug: No valid data found in CombinedSignalBus\n');
         end
-        
+
     catch ME
         fprintf('Error extracting CombinedSignalBus data: %s\n', ME.message);
         fprintf('Stack trace:\n');
@@ -190,7 +190,7 @@ function unique_name = makeUniqueName(base_name, used_names)
     % Helper function to create unique variable names
     unique_name = base_name;
     counter = 1;
-    
+
     while ismember(unique_name, used_names)
         unique_name = sprintf('%s_dup%d', base_name, counter);
         counter = counter + 1;

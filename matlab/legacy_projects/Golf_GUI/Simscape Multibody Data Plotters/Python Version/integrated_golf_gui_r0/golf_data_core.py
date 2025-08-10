@@ -13,9 +13,11 @@ from typing import Dict, List, Tuple
 import numpy as np
 import pandas as pd
 import scipy.io
-from golf_inverse_dynamics import (butter_lowpass_filter,
-                                   calculate_inverse_dynamics,
-                                   savitzky_golay_filter)
+from golf_inverse_dynamics import (
+    butter_lowpass_filter,
+    calculate_inverse_dynamics,
+    savitzky_golay_filter,
+)
 from numba import njit
 
 # ============================================================================

@@ -1,5 +1,5 @@
 %Reads from a Table named Data in main workspace Generated from the Quivers
-%Plots tab on the main worksheets. 
+%Plots tab on the main worksheets.
 
 %Generate Club and Shaft Plot
 QuiverClubandShaftExcel;

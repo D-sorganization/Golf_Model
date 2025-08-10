@@ -3,4 +3,4 @@
 
 fprintf('Launching Golf Swing Training Data Generator GUI...\n');
 Data_GUI();
-fprintf('GUI launched successfully!\n'); 
+fprintf('GUI launched successfully!\n');

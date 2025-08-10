@@ -2,14 +2,14 @@ function GolfSwingDataGeneratorGUI_rev2()
     % GolfSwingDataGeneratorGUI_rev2 - Enhanced GUI for generating golf swing training data
     % This GUI provides an intuitive interface for configuring and running
     % multiple simulation trials with different torque scenarios and data sources.
-    % 
+    %
     % Features:
     % - Preview table showing test scenarios and parameter values
     % - Detailed explanations of modeling modes and torque scenarios
     % - Enhanced responsive layout with scroll functionality
     % - Fixed button positioning and proper spacing
     % - Left/right column organization for better usability
-    
+
     % Create main figure with enhanced styling and scroll capability
     fig = figure('Name', 'Golf Swing Data Generator v2.0', ...
                  'Position', [50, 50, 1400, 900], ...
@@ -19,12 +19,12 @@ function GolfSwingDataGeneratorGUI_rev2()
                  'Color', [0.94, 0.94, 0.94], ...
                  'NumberTitle', 'off', ...
                  'ResizeFcn', @figureResizeCallback);
-    
+
     % Initialize handles structure
     handles = struct();
     handles.should_stop = false;
     handles.fig = fig;
-    
+
     % Create scrollable main layout
     createScrollableLayout(fig, handles);
 
@@ -33,20 +33,20 @@ function GolfSwingDataGeneratorGUI_rev2()
 
     % Store handles in figure
     guidata(fig, handles);
-    
+
     % Initialize preview
     updatePreview([], [], handles);
 end
 
 function createScrollableLayout(fig, handles)
     % Create the main scrollable layout with all panels and controls
-    
+
     % Create main scroll panel
     main_scroll = uipanel('Parent', fig, ...
                          'Position', [0, 0, 1, 1], ...
                          'BackgroundColor', [0.94, 0.94, 0.94], ...
                          'BorderType', 'none');
-    
+
     % Title panel
     title_panel = uipanel('Parent', main_scroll, ...
                          'Title', 'Golf Swing Data Generator v2.0 - Enhanced Features', ...
@@ -56,35 +56,35 @@ function createScrollableLayout(fig, handles)
                          'Position', [0.02, 0.94, 0.96, 0.05], ...
                          'BackgroundColor', [0.85, 0.90, 0.95], ...
                          'ForegroundColor', [0.1, 0.1, 0.4]);
-    
+
     % Main content area with enhanced spacing
     content_panel = uipanel('Parent', main_scroll, ...
                            'Position', [0.02, 0.02, 0.96, 0.90], ...
                            'BackgroundColor', [0.94, 0.94, 0.94], ...
                            'BorderType', 'none');
-    
+
     % Create left and right columns with proper spacing
     left_column = uipanel('Parent', content_panel, ...
                          'Position', [0.01, 0.01, 0.48, 0.98], ...
                          'BackgroundColor', [0.94, 0.94, 0.94], ...
                          'BorderType', 'none');
-    
+
     right_column = uipanel('Parent', content_panel, ...
                           'Position', [0.51, 0.01, 0.48, 0.98], ...
                           'BackgroundColor', [0.94, 0.94, 0.94], ...
                           'BorderType', 'none');
-    
+
     % Create panels in left column
     createTrialSettingsPanel(left_column, handles);
     createDataSourcesPanel(left_column, handles);
     createModelingPanel(left_column, handles);
     createOutputSettingsPanel(left_column, handles);
-    
+
     % Create panels in right column
     createPreviewPanel(right_column, handles);
     createProgressPanel(right_column, handles);
     createControlButtonsPanel(right_column, handles);
-    
+
     % Store panel references
     handles.main_scroll = main_scroll;
     handles.left_column = left_column;
@@ -120,10 +120,10 @@ function createTrialSettingsPanel(parent, handles)
                          'FontWeight', 'bold', ...
                          'Position', [0.02, 0.78, 0.96, 0.20], ...
                          'BackgroundColor', [0.97, 0.97, 0.97]);
-    
+
     % Create grid layout for better organization
     y_positions = [0.70, 0.50, 0.30, 0.10];
-    
+
     % Number of trials
     uicontrol('Parent', trial_panel, ...
               'Style', 'text', ...
@@ -132,14 +132,14 @@ function createTrialSettingsPanel(parent, handles)
               'HorizontalAlignment', 'left', ...
               'FontSize', 10, ...
               'FontWeight', 'bold');
-    
+
     handles.num_trials_edit = uicontrol('Parent', trial_panel, ...
                                        'Style', 'edit', ...
                                        'String', '10', ...
                                        'Position', [170, y_positions(1)*100, 80, 25], ...
                                        'FontSize', 10, ...
                                        'BackgroundColor', 'white');
-    
+
     % Simulation duration
     uicontrol('Parent', trial_panel, ...
               'Style', 'text', ...
@@ -148,14 +148,14 @@ function createTrialSettingsPanel(parent, handles)
               'HorizontalAlignment', 'left', ...
               'FontSize', 10, ...
               'FontWeight', 'bold');
-    
+
     handles.sim_time_edit = uicontrol('Parent', trial_panel, ...
                                      'Style', 'edit', ...
                                      'String', '0.3', ...
                                      'Position', [170, y_positions(2)*100, 80, 25], ...
                                      'FontSize', 10, ...
                                      'BackgroundColor', 'white');
-    
+
     % Sample rate
     uicontrol('Parent', trial_panel, ...
               'Style', 'text', ...
@@ -164,14 +164,14 @@ function createTrialSettingsPanel(parent, handles)
               'HorizontalAlignment', 'left', ...
               'FontSize', 10, ...
               'FontWeight', 'bold');
-    
+
     handles.sample_rate_edit = uicontrol('Parent', trial_panel, ...
                                         'Style', 'edit', ...
                                         'String', '100', ...
                                         'Position', [170, y_positions(3)*100, 80, 25], ...
                                         'FontSize', 10, ...
                                         'BackgroundColor', 'white');
-    
+
     % Execution mode
     uicontrol('Parent', trial_panel, ...
               'Style', 'text', ...
@@ -180,14 +180,14 @@ function createTrialSettingsPanel(parent, handles)
               'HorizontalAlignment', 'left', ...
               'FontSize', 10, ...
               'FontWeight', 'bold');
-    
+
     handles.execution_mode_popup = uicontrol('Parent', trial_panel, ...
                                             'Style', 'popupmenu', ...
                                             'String', {'Sequential (Stable)', 'Parallel (Faster)'}, ...
                                             'Position', [170, y_positions(4)*100, 140, 25], ...
                                             'FontSize', 10, ...
                                             'BackgroundColor', 'white');
-    
+
     % Store panel reference
     handles.trial_panel = trial_panel;
 end
@@ -201,10 +201,10 @@ function createDataSourcesPanel(parent, handles)
                         'FontWeight', 'bold', ...
                         'Position', [0.02, 0.56, 0.96, 0.20], ...
                         'BackgroundColor', [0.97, 0.97, 0.97]);
-    
+
     % Checkboxes with descriptions
     y_positions = [0.75, 0.55, 0.35, 0.15];
-    
+
     handles.use_model_workspace = uicontrol('Parent', data_panel, ...
                                            'Style', 'checkbox', ...
                                            'String', 'Model Workspace (Input Parameters)', ...
@@ -212,7 +212,7 @@ function createDataSourcesPanel(parent, handles)
                                            'Value', 1, ...
                                            'FontSize', 10, ...
                                            'FontWeight', 'bold');
-    
+
     handles.use_logsout = uicontrol('Parent', data_panel, ...
                                    'Style', 'checkbox', ...
                                    'String', 'Logsout (Standard Signal Logging)', ...
@@ -220,7 +220,7 @@ function createDataSourcesPanel(parent, handles)
                                    'Value', 1, ...
                                    'FontSize', 10, ...
                                    'FontWeight', 'bold');
-    
+
     handles.use_signal_bus = uicontrol('Parent', data_panel, ...
                                       'Style', 'checkbox', ...
                                       'String', 'Signal Bus (ToWorkspace Blocks)', ...
@@ -228,7 +228,7 @@ function createDataSourcesPanel(parent, handles)
                                       'Value', 1, ...
                                       'FontSize', 10, ...
                                       'FontWeight', 'bold');
-    
+
     handles.use_simscape = uicontrol('Parent', data_panel, ...
                                     'Style', 'checkbox', ...
                                     'String', 'Simscape Results (Primary Kinematic Data)', ...
@@ -236,7 +236,7 @@ function createDataSourcesPanel(parent, handles)
                                     'Value', 1, ...
                                     'FontSize', 10, ...
                                     'FontWeight', 'bold');
-    
+
     % Store panel reference
     handles.data_panel = data_panel;
 end
@@ -250,7 +250,7 @@ function createModelingPanel(parent, handles)
                             'FontWeight', 'bold', ...
                             'Position', [0.02, 0.25, 0.96, 0.29], ...
                             'BackgroundColor', [0.97, 0.97, 0.97]);
-    
+
     % Modeling mode explanation
     uicontrol('Parent', modeling_panel, ...
               'Style', 'text', ...
@@ -261,7 +261,7 @@ function createModelingPanel(parent, handles)
               'FontSize', 10, ...
               'FontWeight', 'bold', ...
               'BackgroundColor', [0.9, 0.95, 1.0]);
-    
+
     % Torque scenario selection
     uicontrol('Parent', modeling_panel, ...
               'Style', 'text', ...
@@ -270,7 +270,7 @@ function createModelingPanel(parent, handles)
               'HorizontalAlignment', 'left', ...
               'FontSize', 11, ...
               'FontWeight', 'bold');
-    
+
     handles.torque_scenario_popup = uicontrol('Parent', modeling_panel, ...
                                              'Style', 'popupmenu', ...
                                              'String', {'Variable Torques (Training Data)', 'Zero Torque (Passive Motion)', 'Constant Torque (Single Value)'}, ...
@@ -278,7 +278,7 @@ function createModelingPanel(parent, handles)
                                              'FontSize', 10, ...
                                              'BackgroundColor', 'white', ...
                                              'Callback', @(src,evt) torqueScenarioCallback(src, evt, handles));
-    
+
     % Coefficient range (for variable torques)
     uicontrol('Parent', modeling_panel, ...
               'Style', 'text', ...
@@ -287,14 +287,14 @@ function createModelingPanel(parent, handles)
               'HorizontalAlignment', 'left', ...
               'FontSize', 10, ...
               'FontWeight', 'bold');
-    
+
     handles.coeff_range_edit = uicontrol('Parent', modeling_panel, ...
                                         'Style', 'edit', ...
                                         'String', '50', ...
                                         'Position', [170, 145, 80, 25], ...
                                         'FontSize', 10, ...
                                         'BackgroundColor', 'white');
-    
+
     % Constant value (for constant torque)
     uicontrol('Parent', modeling_panel, ...
               'Style', 'text', ...
@@ -303,14 +303,14 @@ function createModelingPanel(parent, handles)
               'HorizontalAlignment', 'left', ...
               'FontSize', 10, ...
               'FontWeight', 'bold');
-    
+
     handles.constant_value_edit = uicontrol('Parent', modeling_panel, ...
                                            'Style', 'edit', ...
                                            'String', '10', ...
                                            'Position', [390, 145, 80, 25], ...
                                            'FontSize', 10, ...
                                            'BackgroundColor', 'white');
-    
+
     % Model selection
     uicontrol('Parent', modeling_panel, ...
               'Style', 'text', ...
@@ -319,14 +319,14 @@ function createModelingPanel(parent, handles)
               'HorizontalAlignment', 'left', ...
               'FontSize', 10, ...
               'FontWeight', 'bold');
-    
+
     handles.model_edit = uicontrol('Parent', modeling_panel, ...
                                   'Style', 'edit', ...
                                   'String', 'GolfSwing3D_Kinetic', ...
                                   'Position', [170, 110, 200, 25], ...
                                   'FontSize', 10, ...
                                   'BackgroundColor', 'white');
-    
+
     % Detailed explanation text
     explanation_text = sprintf([...
         'Torque Scenario Details:\n', ...
@@ -339,7 +339,7 @@ function createModelingPanel(parent, handles)
         '• Constant Torque: Coefficients A-F=0, G=constant value\n', ...
         '  - Applies constant torque throughout swing\n', ...
         '  - Useful for specific control studies']);
-    
+
     uicontrol('Parent', modeling_panel, ...
               'Style', 'text', ...
               'String', explanation_text, ...
@@ -347,7 +347,7 @@ function createModelingPanel(parent, handles)
               'HorizontalAlignment', 'left', ...
               'FontSize', 9, ...
               'BackgroundColor', [0.95, 0.95, 0.95]);
-    
+
     % Store panel reference
     handles.modeling_panel = modeling_panel;
 end
@@ -361,7 +361,7 @@ function createOutputSettingsPanel(parent, handles)
                           'FontWeight', 'bold', ...
                           'Position', [0.02, 0.02, 0.96, 0.21], ...
                           'BackgroundColor', [0.97, 0.97, 0.97]);
-    
+
     % Output folder selection
     uicontrol('Parent', output_panel, ...
               'Style', 'text', ...
@@ -370,21 +370,21 @@ function createOutputSettingsPanel(parent, handles)
               'HorizontalAlignment', 'left', ...
               'FontSize', 10, ...
               'FontWeight', 'bold');
-    
+
     handles.output_folder_edit = uicontrol('Parent', output_panel, ...
                                           'Style', 'edit', ...
                                           'String', pwd, ...
                                           'Position', [150, 130, 250, 25], ...
                                           'FontSize', 10, ...
                                           'BackgroundColor', 'white');
-    
+
     handles.browse_button = uicontrol('Parent', output_panel, ...
                                      'Style', 'pushbutton', ...
                                      'String', 'Browse...', ...
                                      'Position', [410, 130, 80, 25], ...
                                      'FontSize', 10, ...
                                      'Callback', @(src,evt) browseOutputFolder(src, evt, handles));
-    
+
     % Folder name
     uicontrol('Parent', output_panel, ...
               'Style', 'text', ...
@@ -393,14 +393,14 @@ function createOutputSettingsPanel(parent, handles)
               'HorizontalAlignment', 'left', ...
               'FontSize', 10, ...
               'FontWeight', 'bold');
-    
+
     handles.folder_name_edit = uicontrol('Parent', output_panel, ...
                                         'Style', 'edit', ...
                                         'String', 'training_data_csv', ...
                                         'Position', [150, 95, 200, 25], ...
                                         'FontSize', 10, ...
                                         'BackgroundColor', 'white');
-    
+
     % File format options
     uicontrol('Parent', output_panel, ...
               'Style', 'text', ...
@@ -409,14 +409,14 @@ function createOutputSettingsPanel(parent, handles)
               'HorizontalAlignment', 'left', ...
               'FontSize', 10, ...
               'FontWeight', 'bold');
-    
+
     handles.format_popup = uicontrol('Parent', output_panel, ...
                                     'Style', 'popupmenu', ...
                                     'String', {'CSV Files (.csv)', 'MAT Files (.mat)', 'Both CSV and MAT'}, ...
                                     'Position', [150, 60, 150, 25], ...
                                     'FontSize', 10, ...
                                     'BackgroundColor', 'white');
-    
+
     % Progress indicator
     uicontrol('Parent', output_panel, ...
               'Style', 'text', ...
@@ -425,7 +425,7 @@ function createOutputSettingsPanel(parent, handles)
               'HorizontalAlignment', 'left', ...
               'FontSize', 9, ...
               'BackgroundColor', [0.9, 0.9, 0.9]);
-    
+
     % Store panel reference
     handles.output_panel = output_panel;
 end
@@ -439,7 +439,7 @@ function createPreviewPanel(parent, handles)
                            'FontWeight', 'bold', ...
                            'Position', [0.02, 0.50, 0.96, 0.48], ...
                            'BackgroundColor', [0.97, 0.97, 0.97]);
-    
+
     % Update preview button
     handles.update_preview_button = uicontrol('Parent', preview_panel, ...
                                              'Style', 'pushbutton', ...
@@ -450,7 +450,7 @@ function createPreviewPanel(parent, handles)
                                              'BackgroundColor', [0.2, 0.7, 0.2], ...
                                              'ForegroundColor', 'white', ...
                                              'Callback', @(src,evt) updatePreview(src, evt, handles));
-    
+
     % Preview table with enhanced features
     handles.preview_table = uitable('Parent', preview_panel, ...
                                    'Position', [20, 60, 600, 275], ...
@@ -460,7 +460,7 @@ function createPreviewPanel(parent, handles)
                                    'BackgroundColor', [1, 1, 1; 0.95, 0.95, 0.95], ...
                                    'RowStriping', 'on', ...
                                    'ColumnEditable', [false, false, false, false]);
-    
+
     % Instructions
     uicontrol('Parent', preview_panel, ...
               'Style', 'text', ...
@@ -470,7 +470,7 @@ function createPreviewPanel(parent, handles)
               'HorizontalAlignment', 'left', ...
               'FontSize', 9, ...
               'BackgroundColor', [0.9, 0.9, 1.0]);
-    
+
     % Store panel reference
     handles.preview_panel = preview_panel;
 end
@@ -484,7 +484,7 @@ function createProgressPanel(parent, handles)
                             'FontWeight', 'bold', ...
                             'Position', [0.02, 0.25, 0.96, 0.23], ...
                             'BackgroundColor', [0.97, 0.97, 0.97]);
-    
+
     % Progress bar
     handles.progress_bar = uicontrol('Parent', progress_panel, ...
                                     'Style', 'text', ...
@@ -494,7 +494,7 @@ function createProgressPanel(parent, handles)
                                     'FontSize', 11, ...
                                     'FontWeight', 'bold', ...
                                     'BackgroundColor', [0.9, 0.9, 0.9]);
-    
+
     % Status text
     handles.status_text = uicontrol('Parent', progress_panel, ...
                                    'Style', 'text', ...
@@ -502,7 +502,7 @@ function createProgressPanel(parent, handles)
                                    'Position', [20, 130, 600, 20], ...
                                    'HorizontalAlignment', 'left', ...
                                    'FontSize', 10);
-    
+
     % Log text area with scroll
     handles.log_text = uicontrol('Parent', progress_panel, ...
                                 'Style', 'listbox', ...
@@ -510,7 +510,7 @@ function createProgressPanel(parent, handles)
                                 'Position', [20, 15, 600, 110], ...
                                 'FontSize', 9, ...
                                 'BackgroundColor', [0.95, 0.95, 0.95]);
-    
+
     % Clear log button
     handles.clear_log_button = uicontrol('Parent', progress_panel, ...
                                         'Style', 'pushbutton', ...
@@ -518,7 +518,7 @@ function createProgressPanel(parent, handles)
                                         'Position', [520, 155, 80, 20], ...
                                         'FontSize', 9, ...
                                         'Callback', @(src,evt) clearLog(src, evt, handles));
-    
+
     % Store panel reference
     handles.progress_panel = progress_panel;
 end
@@ -532,7 +532,7 @@ function createControlButtonsPanel(parent, handles)
                           'FontWeight', 'bold', ...
                           'Position', [0.02, 0.02, 0.96, 0.21], ...
                           'BackgroundColor', [0.97, 0.97, 0.97]);
-    
+
     % Start generation button - properly positioned
     handles.start_button = uicontrol('Parent', button_panel, ...
                                     'Style', 'pushbutton', ...
@@ -543,7 +543,7 @@ function createControlButtonsPanel(parent, handles)
                                     'BackgroundColor', [0.2, 0.6, 0.2], ...
                                     'ForegroundColor', 'white', ...
                                     'Callback', @(src,evt) startGeneration(src, evt, handles));
-    
+
     % Stop generation button - properly positioned
     handles.stop_button = uicontrol('Parent', button_panel, ...
                                    'Style', 'pushbutton', ...
@@ -555,7 +555,7 @@ function createControlButtonsPanel(parent, handles)
                                    'ForegroundColor', 'white', ...
                                    'Callback', @(src,evt) stopGeneration(src, evt, handles), ...
                                    'Enable', 'off');
-    
+
     % Additional control buttons
     handles.validate_button = uicontrol('Parent', button_panel, ...
                                        'Style', 'pushbutton', ...
@@ -563,21 +563,21 @@ function createControlButtonsPanel(parent, handles)
                                        'Position', [50, 60, 120, 30], ...
                                        'FontSize', 10, ...
                                        'Callback', @(src,evt) validateSettings(src, evt, handles));
-    
+
     handles.save_config_button = uicontrol('Parent', button_panel, ...
                                           'Style', 'pushbutton', ...
                                           'String', 'Save Config', ...
                                           'Position', [180, 60, 100, 30], ...
                                           'FontSize', 10, ...
                                           'Callback', @(src,evt) saveConfiguration(src, evt, handles));
-    
+
     handles.load_config_button = uicontrol('Parent', button_panel, ...
                                           'Style', 'pushbutton', ...
                                           'String', 'Load Config', ...
                                           'Position', [290, 60, 100, 30], ...
                                           'FontSize', 10, ...
                                           'Callback', @(src,evt) loadConfiguration(src, evt, handles));
-    
+
     % Status indicators
     uicontrol('Parent', button_panel, ...
               'Style', 'text', ...
@@ -586,7 +586,7 @@ function createControlButtonsPanel(parent, handles)
               'HorizontalAlignment', 'left', ...
               'FontSize', 9, ...
               'BackgroundColor', [0.9, 0.9, 1.0]);
-    
+
     % Store panel reference
     handles.button_panel = button_panel;
 end
@@ -614,7 +614,7 @@ end
 function torqueScenarioCallback(src, ~, handles)
     % Handle torque scenario selection with enhanced logic
     scenario_idx = get(src, 'Value');
-    
+
     % Enable/disable controls based on scenario
     switch scenario_idx
         case 1 % Variable Torques
@@ -627,10 +627,10 @@ function torqueScenarioCallback(src, ~, handles)
             set(handles.coeff_range_edit, 'Enable', 'off', 'BackgroundColor', [0.9, 0.9, 0.9]);
             set(handles.constant_value_edit, 'Enable', 'on', 'BackgroundColor', 'white');
     end
-    
+
     % Update preview automatically
     updatePreview([], [], handles);
-    
+
     % Log the change
     scenarios = {'Variable Torques', 'Zero Torque', 'Constant Torque'};
     updateLog(sprintf('Torque scenario changed to: %s', scenarios{scenario_idx}), handles);
@@ -657,7 +657,7 @@ function updatePreview(~, ~, handles)
         scenario_idx = get(handles.torque_scenario_popup, 'Value');
         coeff_range = str2double(get(handles.coeff_range_edit, 'String'));
         constant_value = str2double(get(handles.constant_value_edit, 'String'));
-        
+
         % Create comprehensive preview data
         preview_data = {
             'Number of Trials', num2str(num_trials), 'Total simulation runs', 'Determines dataset size';
@@ -666,11 +666,11 @@ function updatePreview(~, ~, handles)
             'Expected Data Points', num2str(round(sim_time * sample_rate)), 'Per trial time series length', 'Total temporal samples';
             'Modeling Mode', '3 (Hexagonal Polynomial)', 'Input function complexity', 'Uses 7 coefficients (A-G)';
         };
-        
+
         % Add scenario-specific parameters
         scenarios = get(handles.torque_scenario_popup, 'String');
         current_scenario = scenarios{scenario_idx};
-        
+
         switch scenario_idx
             case 1 % Variable Torques
                 preview_data = [preview_data; {
@@ -691,7 +691,7 @@ function updatePreview(~, ~, handles)
                     'Other Coefficients', '0 (A-F)', 'Only G coefficient active', 'Simplified torque pattern'
                 }];
         end
-        
+
         % Add data source information
         data_sources = {};
         data_impact = {};
@@ -711,29 +711,29 @@ function updatePreview(~, ~, handles)
             data_sources{end+1} = 'Simscape Results';
             data_impact{end+1} = 'Primary kinematics';
         end
-        
+
         preview_data = [preview_data; {
             'Data Sources', strjoin(data_sources, ', '), 'Extraction methods', strjoin(data_impact, ' + ')
         }];
-        
+
         % Add output information
         output_folder = get(handles.output_folder_edit, 'String');
         folder_name = get(handles.folder_name_edit, 'String');
         format_options = get(handles.format_popup, 'String');
         selected_format = format_options{get(handles.format_popup, 'Value')};
-        
+
         preview_data = [preview_data; {
             'Output Location', fullfile(output_folder, folder_name), 'File destination', 'Complete path for results';
             'File Format', selected_format, 'Data storage type', 'Determines file structure';
             'Estimated Files', num2str(num_trials), 'One per trial', 'Individual trial datasets'
         }];
-        
+
         % Update table
         set(handles.preview_table, 'Data', preview_data);
-        
+
         % Update status
         updateLog('Preview table updated with current settings', handles);
-        
+
     catch ME
         % Handle errors gracefully
         error_data = {'Error', 'Invalid input detected', 'Please check settings', 'Correct invalid values'};
@@ -750,24 +750,24 @@ function startGeneration(~, ~, handles)
         if isempty(config)
             return;
         end
-        
+
         % Update UI state
         set(handles.start_button, 'Enable', 'off');
         set(handles.stop_button, 'Enable', 'on');
         handles.should_stop = false;
-        
+
         % Store config and update handles
         handles.config = config;
         guidata(handles.fig, handles);
-        
+
         % Log start
         updateLog('=== STARTING DATA GENERATION ===', handles);
         updateLog(sprintf('Configuration: %d trials, %.2fs duration, %dHz sample rate', ...
             config.num_simulations, config.simulation_time, config.sample_rate), handles);
-        
+
         % Start generation process
         runGeneration(handles);
-        
+
     catch ME
         updateLog(sprintf('Error starting generation: %s', ME.message), handles);
         set(handles.start_button, 'Enable', 'on');
@@ -780,10 +780,10 @@ function stopGeneration(~, ~, handles)
     % Enhanced stop generation
     handles.should_stop = true;
     guidata(handles.fig, handles);
-    
+
     updateLog('=== STOPPING DATA GENERATION ===', handles);
     updateStatus('Stopping...', handles);
-    
+
     % Reset UI state
     set(handles.start_button, 'Enable', 'on');
     set(handles.stop_button, 'Enable', 'off');
@@ -856,7 +856,7 @@ function config = validateInputs(handles)
         num_trials = str2double(get(handles.num_trials_edit, 'String'));
         sim_time = str2double(get(handles.sim_time_edit, 'String'));
         sample_rate = str2double(get(handles.sample_rate_edit, 'String'));
-        
+
         % Validate numeric inputs with specific limits
         if isnan(num_trials) || num_trials <= 0 || num_trials > 10000
             error('Number of trials must be between 1 and 10,000');
@@ -867,12 +867,12 @@ function config = validateInputs(handles)
         if isnan(sample_rate) || sample_rate <= 0 || sample_rate > 10000
             error('Sample rate must be between 1 and 10,000 Hz');
         end
-        
+
         % Get scenario settings
         scenario_idx = get(handles.torque_scenario_popup, 'Value');
         coeff_range = str2double(get(handles.coeff_range_edit, 'String'));
         constant_value = str2double(get(handles.constant_value_edit, 'String'));
-        
+
         % Validate scenario-specific inputs
         if scenario_idx == 1 && (isnan(coeff_range) || coeff_range <= 0)
             error('Coefficient range must be a positive number for variable torques');
@@ -880,7 +880,7 @@ function config = validateInputs(handles)
         if scenario_idx == 3 && isnan(constant_value)
             error('Constant value must be a valid number for constant torque mode');
         end
-        
+
         % Validate data sources
         if ~get(handles.use_model_workspace, 'Value') && ...
            ~get(handles.use_logsout, 'Value') && ...
@@ -888,15 +888,15 @@ function config = validateInputs(handles)
            ~get(handles.use_simscape, 'Value')
             error('Please select at least one data source');
         end
-        
+
         % Validate output settings
         output_folder = get(handles.output_folder_edit, 'String');
         folder_name = get(handles.folder_name_edit, 'String');
-        
+
         if isempty(output_folder) || isempty(folder_name)
             error('Please specify output folder and dataset folder name');
         end
-        
+
         % Create comprehensive config structure
         config = struct();
         config.model_name = get(handles.model_edit, 'String');
@@ -911,15 +911,15 @@ function config = validateInputs(handles)
         config.use_logsout = get(handles.use_logsout, 'Value');
         config.use_signal_bus = get(handles.use_signal_bus, 'Value');
         config.use_simscape = get(handles.use_simscape, 'Value');
-        
+
         % Execution mode
         exec_options = get(handles.execution_mode_popup, 'String');
         config.execution_mode = lower(exec_options{get(handles.execution_mode_popup, 'Value')});
-        
+
         % Output settings
         config.output_folder = fullfile(output_folder, folder_name);
         config.file_format = get(handles.format_popup, 'Value');
-        
+
     catch ME
         errordlg(ME.message, 'Input Validation Error');
         config = [];
@@ -938,7 +938,7 @@ function applyConfiguration(config, handles)
     set(handles.use_logsout, 'Value', config.use_logsout);
     set(handles.use_signal_bus, 'Value', config.use_signal_bus);
     set(handles.use_simscape, 'Value', config.use_simscape);
-    
+
     [folder, name] = fileparts(config.output_folder);
     set(handles.output_folder_edit, 'String', folder);
     set(handles.folder_name_edit, 'String', name);
@@ -948,32 +948,32 @@ function runGeneration(handles)
     % Enhanced generation function with proper error handling
     try
         config = handles.config;
-        
+
         % Create output directory
         if ~exist(config.output_folder, 'dir')
             mkdir(config.output_folder);
         end
-        
+
         updateLog(sprintf('Output directory created: %s', config.output_folder), handles);
         updateStatus('Starting trial generation...', handles);
-        
+
         % Initialize tracking
         successful_trials = 0;
         failed_trials = 0;
-        
+
         % Run trials
         for trial = 1:config.num_simulations
             if handles.should_stop
                 updateLog('Generation stopped by user', handles);
                 break;
             end
-            
+
             updateProgress(sprintf('Processing trial %d/%d...', trial, config.num_simulations), handles);
-            
+
             try
                 % Run single trial (this would call your existing runSingleTrial function)
                 result = runSingleTrialWithSignalBus(trial, config);
-                
+
                 if result.success
                     successful_trials = successful_trials + 1;
                     updateLog(sprintf('Trial %d completed: %s', trial, result.filename), handles);
@@ -981,27 +981,27 @@ function runGeneration(handles)
                     failed_trials = failed_trials + 1;
                     updateLog(sprintf('Trial %d failed: %s', trial, result.error), handles);
                 end
-                
+
             catch ME
                 failed_trials = failed_trials + 1;
                 updateLog(sprintf('Trial %d error: %s', trial, ME.message), handles);
             end
-            
+
             % Update progress
             progress_pct = trial / config.num_simulations * 100;
             updateProgress(sprintf('Progress: %.1f%% (%d/%d trials)', progress_pct, trial, config.num_simulations), handles);
         end
-        
+
         % Final summary
         updateLog('=== GENERATION COMPLETE ===', handles);
         updateLog(sprintf('Total trials: %d, Successful: %d, Failed: %d', ...
             config.num_simulations, successful_trials, failed_trials), handles);
         updateStatus('Generation completed', handles);
-        
+
         % Reset UI
         set(handles.start_button, 'Enable', 'on');
         set(handles.stop_button, 'Enable', 'off');
-        
+
     catch ME
         updateLog(sprintf('Generation error: %s', ME.message), handles);
         updateStatus('Generation failed', handles);
@@ -1016,13 +1016,13 @@ function updateLog(message, handles)
     current_log = get(handles.log_text, 'String');
     timestamp = datestr(now, 'HH:MM:SS');
     new_entry = sprintf('[%s] %s', timestamp, message);
-    
+
     % Add to log and limit size
     current_log{end+1} = new_entry;
     if length(current_log) > 100
         current_log = current_log(end-99:end); % Keep last 100 entries
     end
-    
+
     set(handles.log_text, 'String', current_log);
     set(handles.log_text, 'Value', length(current_log));
     drawnow;
@@ -1047,7 +1047,7 @@ function result = runSingleTrialWithSignalBus(trial_num, config)
     result.success = true;
     result.filename = sprintf('trial_%03d.csv', trial_num);
     result.error = '';
-    
+
     % Simulate some processing time
     pause(0.1);
-end 
+end

@@ -38,10 +38,13 @@ except ImportError as e:
 # Import core modules with error handling
 try:
     from golf_camera_system import CameraController, CameraMode, CameraPreset
-    from golf_data_core import (FrameProcessor, MatlabDataLoader,
-                                PerformanceStats, RenderConfig)
-    from golf_gui_application import (GolfVisualizerMainWindow,
-                                      GolfVisualizerWidget)
+    from golf_data_core import (
+        FrameProcessor,
+        MatlabDataLoader,
+        PerformanceStats,
+        RenderConfig,
+    )
+    from golf_gui_application import GolfVisualizerMainWindow, GolfVisualizerWidget
     from golf_opengl_renderer import OpenGLRenderer
 except ImportError as e:
     logger.error(f"Failed to import core modules: {e}")
@@ -526,9 +529,16 @@ class EnhancedMainWindow(GolfVisualizerMainWindow):
 
     def _show_export_dialog(self):
         """Show export options dialog"""
-        from PyQt6.QtWidgets import (QCheckBox, QComboBox, QDialog,
-                                     QHBoxLayout, QLabel, QPushButton,
-                                     QSpinBox, QVBoxLayout)
+        from PyQt6.QtWidgets import (
+            QCheckBox,
+            QComboBox,
+            QDialog,
+            QHBoxLayout,
+            QLabel,
+            QPushButton,
+            QSpinBox,
+            QVBoxLayout,
+        )
 
         dialog = QDialog(self)
         dialog.setWindowTitle("Export Options")

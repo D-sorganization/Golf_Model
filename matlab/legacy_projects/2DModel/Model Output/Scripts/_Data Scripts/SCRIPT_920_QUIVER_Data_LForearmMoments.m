@@ -32,8 +32,8 @@ LWristMOFLForearm.AutoScaleFactor=LEMOFLForearmQuiver.ScaleFactor/LWristMOFLFore
 
 %Generate LeftForearm Quivers
 LeftForearm=quiver3(Data.LEx(:,1),Data.LEy(:,1),Data.LEz(:,1),Data.LeftForearmdx(:,1),Data.LeftForearmdy(:,1),Data.LeftForearmdz(:,1),0);
-LeftForearm.ShowArrowHead='off';		
-LeftForearm.LineWidth=1;			   
+LeftForearm.ShowArrowHead='off';
+LeftForearm.LineWidth=1;
 LeftForearm.Color=[0 0 0];
 
 %Add Legend to Plot

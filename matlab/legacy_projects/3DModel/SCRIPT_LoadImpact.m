@@ -21,7 +21,7 @@ load("3DModelInputs_Impact.mat")
 assignin(mdlWks,"HipStartPositionX",Simulink.Parameter(HipStartPositionX.Value))
 assignin(mdlWks,"HipStartPositionY",Simulink.Parameter(HipStartPositionY.Value))
 assignin(mdlWks,"HipStartPositionZ",Simulink.Parameter(HipStartPositionZ.Value))
- 
+
 % Hip Rotation Velocity Targets
 assignin(mdlWks,"HipStartVelocityX",Simulink.Parameter(HipStartVelocityX.Value))
 assignin(mdlWks,"HipStartVelocityY",Simulink.Parameter(HipStartVelocityY.Value))
@@ -31,7 +31,7 @@ assignin(mdlWks,"HipStartVelocityZ",Simulink.Parameter(HipStartVelocityZ.Value))
 assignin(mdlWks,"TranslationStartPositionX",Simulink.Parameter(TranslationStartPositionX.Value))
 assignin(mdlWks,"TranslationStartPositionY",Simulink.Parameter(TranslationStartPositionY.Value))
 assignin(mdlWks,"TranslationStartPositionZ",Simulink.Parameter(TranslationStartPositionZ.Value))
- 
+
 % Hip Translation Velocity Targets
 assignin(mdlWks,"TranslationStartVelocityX",Simulink.Parameter(TranslationStartVelocityX.Value))
 assignin(mdlWks,"TranslationStartVelocityY",Simulink.Parameter(TranslationStartVelocityY.Value))

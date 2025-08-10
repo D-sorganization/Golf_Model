@@ -8,7 +8,7 @@ This document describes the improvements made to the golf swing visualization sy
 ### 1. Fixed Camera Views
 **Problem**: Face-on and down-the-line views were 180° apart instead of 90° apart.
 
-**Solution**: 
+**Solution**:
 - Face-on view: 0° azimuth (looking at golfer from front)
 - Down-the-line view: 90° azimuth (90° from face-on, not 180°)
 - Behind view: 180° azimuth (behind the golfer)
@@ -16,7 +16,7 @@ This document describes the improvements made to the golf swing visualization sy
 
 **Usage**:
 - Press `1`: Face-on view
-- Press `2`: Down-the-line view  
+- Press `2`: Down-the-line view
 - Press `3`: Behind view
 - Press `4`: Overhead view
 - Press `R`: Reset camera to frame data
@@ -103,7 +103,7 @@ ball_position = frame_data.clubhead + ball_offset
 ### Keyboard Shortcuts
 - `1`: Face-on view
 - `2`: Down-the-line view
-- `3`: Behind view  
+- `3`: Behind view
 - `4`: Overhead view
 - `R`: Reset camera
 - `Space`: Toggle playback

@@ -42,7 +42,7 @@ function ZVCFTable = generateZVCFTable(modelName, freezeTimes, stopTimeBuffer)
         handForce = logsout.get('LeadHandForce').Values.Data(end, :);
         handTorque = logsout.get('LeadHandTorque').Values.Data(end, :);
         timeVal = logsout.get('LeadHandForce').Values.Time(end);
-        
+
         ZVCFResults{i} = table(freezeTimes(i), timeVal, handForce, handTorque, ...
             'VariableNames', {'FreezeTime', 'ActualTime', 'Force', 'Torque'});
     end

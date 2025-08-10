@@ -2,12 +2,12 @@
 function [time_data, all_signals] = fallbackSimlogExtraction(simlog)
     time_data = [];
     all_signals = {};
-    
+
     try
         % Method 1: Try direct property enumeration
         try
             props = properties(simlog);
-            
+
             for i = 1:length(props)
                 prop_name = props{i};
                 if ~ismember(prop_name, {'id', 'savable', 'exportable'})
@@ -54,7 +54,7 @@ function [time_data, all_signals] = fallbackSimlogExtraction(simlog)
         catch ME
             fprintf('Debug: Property enumeration failed: %s\n', ME.message);
         end
-        
+
         % Method 2: Try common Simscape Multibody patterns
         if isempty(time_data) || isempty(all_signals)
             try
@@ -85,14 +85,14 @@ function [time_data, all_signals] = fallbackSimlogExtraction(simlog)
                 fprintf('Debug: Common property search failed: %s\n', ME.message);
             end
         end
-        
+
     catch ME
         fprintf('Debug: Fallback extraction failed: %s\n', ME.message);
     end
-    
+
     if ~isempty(time_data) && ~isempty(all_signals)
         fprintf('Debug: Fallback extraction successful - found %d signals\n', length(all_signals));
     else
         fprintf('Debug: Fallback extraction found no data\n');
     end
-end 
+end

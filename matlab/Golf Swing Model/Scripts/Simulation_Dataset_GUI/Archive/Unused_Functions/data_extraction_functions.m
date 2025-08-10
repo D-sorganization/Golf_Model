@@ -3,22 +3,22 @@
 
 function logsout_data = extractLogsoutDataFixed(logsout)
     logsout_data = [];
-    
+
     try
         fprintf('Debug: Extracting logsout data, type: %s\n', class(logsout));
-        
+
         % Handle modern Simulink.SimulationData.Dataset format
         if isa(logsout, 'Simulink.SimulationData.Dataset')
             fprintf('Debug: Processing Dataset format with %d elements\n', logsout.numElements);
-            
+
             if logsout.numElements == 0
                 fprintf('Debug: Dataset is empty\n');
                 return;
             end
-            
+
             % Get time from first element
             first_element = logsout.getElement(1);  % Use getElement instead of {}
-            
+
             % Handle Signal objects properly
             if isa(first_element, 'Simulink.SimulationData.Signal')
                 time = first_element.Values.Time;
@@ -30,25 +30,25 @@ function logsout_data = extractLogsoutDataFixed(logsout)
                 fprintf('Debug: Unknown first element type: %s\n', class(first_element));
                 return;
             end
-            
+
             data_cells = {time};
             var_names = {'time'};
             expected_length = length(time);
-            
+
             % Process each element in the dataset
             for i = 1:logsout.numElements
                 element = logsout.getElement(i);  % Use getElement
-                
+
                 if isa(element, 'Simulink.SimulationData.Signal')
                     signalName = element.Name;
                     if isempty(signalName)
                         signalName = sprintf('Signal_%d', i);
                     end
-                    
+
                     % Extract data from Signal object
                     data = element.Values.Data;
                     signal_time = element.Values.Time;
-                    
+
                     % Ensure data matches time length and is valid
                     if isnumeric(data) && length(signal_time) == expected_length && ~isempty(data)
                         % Check if data has the right dimensions
@@ -83,7 +83,7 @@ function logsout_data = extractLogsoutDataFixed(logsout)
                     else
                         fprintf('Debug: Skipping signal %s (time length mismatch: %d vs %d, or empty data)\n', signalName, length(signal_time), expected_length);
                     end
-                    
+
                 elseif isa(element, 'timeseries')
                     signalName = element.Name;
                     data = element.Data;
@@ -103,7 +103,7 @@ function logsout_data = extractLogsoutDataFixed(logsout)
                     fprintf('Debug: Element %d is type: %s\n', i, class(element));
                 end
             end
-            
+
             % Validate all data vectors have the same length before creating table
             if length(data_cells) > 1
                 % Check that all vectors have the same length
@@ -129,11 +129,11 @@ function logsout_data = extractLogsoutDataFixed(logsout)
             else
                 fprintf('Debug: No valid data found in logsout Dataset\n');
             end
-            
+
         else
             fprintf('Debug: Logsout format not supported: %s\n', class(logsout));
         end
-        
+
     catch ME
         fprintf('Error extracting logsout data: %s\n', ME.message);
         fprintf('Stack trace:\n');
@@ -145,10 +145,10 @@ end
 
 function simscape_data = extractSimscapeDataFixed(simlog)
     simscape_data = [];
-    
+
     try
         fprintf('Debug: Extracting Simscape data\n');
-        
+
         if ~isempty(simlog) && isa(simlog, 'simscape.logging.Node')
             % Get series data - this is the correct way to access Simscape data
             try
@@ -156,14 +156,14 @@ function simscape_data = extractSimscapeDataFixed(simlog)
                 if ~isempty(series_info)
                     time = series_info.time;
                     fprintf('Debug: Found Simscape time series, length: %d\n', length(time));
-                    
+
                     data_cells = {time};
                     var_names = {'time'};
-                    
+
                     % Get all logged variables
                     logged_vars = simlog.listVariables('-all');
                     fprintf('Debug: Found %d Simscape variables\n', length(logged_vars));
-                    
+
                     for i = 1:length(logged_vars)
                         var_name = logged_vars{i};
                         try
@@ -181,7 +181,7 @@ function simscape_data = extractSimscapeDataFixed(simlog)
                             continue;
                         end
                     end
-                    
+
                     if length(data_cells) > 1
                         simscape_data = table(data_cells{:}, 'VariableNames', var_names);
                         fprintf('Debug: Created Simscape table with %d columns\n', width(simscape_data));
@@ -193,7 +193,7 @@ function simscape_data = extractSimscapeDataFixed(simlog)
         else
             fprintf('Debug: Simlog is not a valid Simscape logging node\n');
         end
-        
+
     catch ME
         fprintf('Error extracting Simscape data: %s\n', ME.message);
     end
@@ -201,19 +201,19 @@ end
 
 function workspace_data = extractWorkspaceOutputs(simOut)
     workspace_data = [];
-    
+
     try
         fprintf('Debug: Extracting workspace outputs\n');
-        
+
         % Get available properties
         if isa(simOut, 'Simulink.SimulationOutput')
             available = simOut.who;
         else
             available = fieldnames(simOut);
         end
-        
+
         fprintf('Debug: Available outputs: %s\n', strjoin(available, ', '));
-        
+
         % Look for tout (time output)
         time_data = [];
         if ismember('tout', available)
@@ -224,15 +224,15 @@ function workspace_data = extractWorkspaceOutputs(simOut)
             end
             fprintf('Debug: Found tout with length: %d\n', length(time_data));
         end
-        
+
         if isempty(time_data)
             fprintf('Debug: No time output found\n');
             return;
         end
-        
+
         data_cells = {time_data(:)};
         var_names = {'time'};
-        
+
         % Look for xout (state output)
         if ismember('xout', available)
             if isa(simOut, 'Simulink.SimulationOutput')
@@ -240,7 +240,7 @@ function workspace_data = extractWorkspaceOutputs(simOut)
             else
                 xout = simOut.xout;
             end
-            
+
             if ~isempty(xout) && size(xout, 1) == length(time_data)
                 for i = 1:size(xout, 2)
                     data_cells{end+1} = xout(:, i);
@@ -249,23 +249,23 @@ function workspace_data = extractWorkspaceOutputs(simOut)
                 fprintf('Debug: Added xout with %d states\n', size(xout, 2));
             end
         end
-        
+
         % Look for other numeric outputs
         for i = 1:length(available)
             var_name = available{i};
-            
+
             % Skip already processed variables
             if ismember(var_name, {'tout', 'xout', 'logsout', 'simlog', 'CombinedSignalBus'})
                 continue;
             end
-            
+
             try
                 if isa(simOut, 'Simulink.SimulationOutput')
                     var_data = simOut.get(var_name);
                 else
                     var_data = simOut.(var_name);
                 end
-                
+
                 if isnumeric(var_data) && length(var_data) == length(time_data)
                     data_cells{end+1} = var_data(:);
                     var_names{end+1} = var_name;
@@ -276,12 +276,12 @@ function workspace_data = extractWorkspaceOutputs(simOut)
                 continue;
             end
         end
-        
+
         if length(data_cells) > 1
             workspace_data = table(data_cells{:}, 'VariableNames', var_names);
             fprintf('Debug: Created workspace outputs table with %d columns\n', width(workspace_data));
         end
-        
+
     catch ME
         fprintf('Error extracting workspace outputs: %s\n', ME.message);
     end

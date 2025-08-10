@@ -12,20 +12,20 @@ catch_count = 0;
 while ~feof(fid)
     line = fgetl(fid);
     line_num = line_num + 1;
-    
+
     if ~ischar(line)
         break;
     end
-    
+
     % Remove comments and strings for cleaner parsing
     line = regexprep(line, '%.*$', '');
     line = strtrim(line);
-    
+
     % Skip empty lines
     if isempty(line)
         continue;
     end
-    
+
     % Check for opening blocks
     if ~isempty(regexp(line, '^\s*(if|for|while|parfor|function|switch|try)\s', 'once'))
         if contains(line, 'try')
@@ -34,7 +34,7 @@ while ~feof(fid)
         end
         block_stack{end+1} = sprintf('Line %d: %s', line_num, line);
     end
-    
+
     % Check for closing blocks
     if ~isempty(regexp(line, '^\s*end\s*$', 'once'))
         if ~isempty(block_stack)
@@ -45,7 +45,7 @@ while ~feof(fid)
             fprintf('Line %d: UNMATCHED END!\n', line_num);
         end
     end
-    
+
     % Check for catch
     if ~isempty(regexp(line, '^\s*catch\s', 'once'))
         catch_count = catch_count + 1;

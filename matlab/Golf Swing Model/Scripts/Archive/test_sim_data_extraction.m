@@ -28,19 +28,19 @@ if exist('out', 'var')
     manual_run = true;
 else
     fprintf('No "out" variable found, running simulation programmatically...\n');
-    
+
     % Ensure model is loaded
     if ~bdIsLoaded(model_name)
         load_system(model_name);
     end
-    
+
     % Set up logging
     set_param(model_name, 'StopTime', num2str(sim_time));
     set_param(model_name, 'SignalLogging', 'on');
     set_param(model_name, 'SignalLoggingName', 'out');
     set_param(model_name, 'SignalLoggingSaveFormat', 'Dataset');
     set_param(model_name, 'SimscapeLogType', 'all'); % Ensure Simscape logging is on
-    
+
     % Run simulation
     simOut = sim(model_name);
     manual_run = false;
@@ -73,7 +73,7 @@ if isfield(simOut, 'logsout') && ~isempty(simOut.logsout)
     logsout = simOut.logsout;
     fprintf('\n=== Extracting logsout data ===\n');
     fprintf('logsout has %d elements\n', logsout.numElements);
-    
+
     % Extract all signals
     all_names = {};
     all_data = {};
@@ -94,7 +94,7 @@ if isfield(simOut, 'logsout') && ~isempty(simOut.logsout)
             fprintf('  ✗ Error extracting element %d: %s\n', i, ME.message);
         end
     end
-    
+
     % Align all signals to the common time vector
     if ~isempty(all_names)
         T = table(all_time, 'VariableNames', {'time'});
@@ -139,7 +139,7 @@ for i = 1:length(signal_log_fields)
     log_struct = simOut.(field);
     struct_fields = fieldnames(log_struct);
     fprintf('  %s has %d fields: %s\n', field, length(struct_fields), strjoin(struct_fields, ', '));
-    
+
     for j = 1:length(struct_fields)
         subfield = struct_fields{j};
         try
@@ -208,7 +208,7 @@ try
         run_obj = Simulink.sdi.getRun(latest_run_id);
         all_signals = run_obj.getAllSignals;
         fprintf('Found %d Simscape signals\n', length(all_signals));
-        
+
         all_names = {};
         all_data = {};
         all_time = [];
@@ -218,7 +218,7 @@ try
                 % Get signal data using the correct method
                 data = sig.Values.Data;
                 time = sig.Values.Time;
-                
+
                 % Use original signal name, but clean it for table compatibility
                 original_name = sig.Name;
                 % Replace problematic characters but keep descriptive names
@@ -231,7 +231,7 @@ try
                 clean_name = strrep(clean_name, ']', '');
                 clean_name = strrep(clean_name, '/', '_');
                 clean_name = strrep(clean_name, '\', '_');
-                
+
                 all_names{end+1} = clean_name;
                 all_data{end+1} = data(:);
                 if isempty(all_time)
@@ -242,7 +242,7 @@ try
                 fprintf('  ✗ Error extracting signal %s: %s\n', sig.Name, ME.message);
             end
         end
-        
+
         if ~isempty(all_names)
             T3 = table(all_time, 'VariableNames', {'time'});
             for i = 1:length(all_names)
@@ -273,4 +273,4 @@ fprintf('  test_signal_logs.csv, test_signal_logs.mat\n');
 fprintf('  test_simscape_data.csv, test_simscape_data.mat\n');
 
 %% Restore workspace
-restoreWorkspace(initial_vars); 
+restoreWorkspace(initial_vars);

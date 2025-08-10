@@ -49,7 +49,7 @@ H=height(BASEQ);
 %Find number of times to iterate ommiting last row
 h=H-1;
 
-%Generate 
+%Generate
 for i=1:h
 j=i+1;
 
@@ -419,62 +419,62 @@ Data.RightShoulderdz=Data.RSz-Data.HUBz;
 % Data.HipConstraintTorqueX=Data.HipTorqueLocal(:,1)-Data.HipTorqueXInput;
 % Data.HipConstraintTorqueY=Data.HipTorqueLocal(:,2)-Data.HipTorqueYInput;
 % Data.HipConstraintTorqueZ=Data.HipTorqueLocal(:,3)-Data.HipTorqueZInput;
-% 
-% % Generate Torso Constraint Torque 
+%
+% % Generate Torso Constraint Torque
 % Data.TorsoConstraintTorqueX=Data.TorsoTorqueLocal(:,1); % No x input
 % Data.TorsoConstraintTorqueY=Data.TorsoTorqueLocal(:,2); % No x input
 % Data.TorsoConstraintTorqueZ=Data.TorsoTorqueLocal(:,3)-Data.TorsoTorqueInput;
-% 
+%
 % % Generate Spine Constraint Torque
 % Data.SpineConstraintTorqueX=Data.SpineTorqueLocal(:,1)-Data.SpineTorqueXInput;
 % Data.SpineConstraintTorqueY=Data.SpineTorqueLocal(:,2)-Data.SpineTorqueYInput;
 % Data.SpineConstraintTorqueZ=Data.SpineTorqueLocal(:,3); % No z input
-% 
+%
 % % Generate LScap Constraint Torque
 % Data.LScapConstraintTorqueX=Data.LScapTorqueLocal(:,1)-Data.LScapTorqueXInput;
 % Data.LScapConstraintTorqueY=Data.LScapTorqueLocal(:,2)-Data.LScapTorqueYInput;
 % Data.LScapConstraintTorqueZ=Data.LScapTorqueLocal(:,3); % No z input
-% 
+%
 % % Generate RScap Constraint Torque
 % Data.RScapConstraintTorqueX=Data.RScapTorqueLocal(:,1)-Data.RScapTorqueXInput;
 % Data.RScapConstraintTorqueY=Data.RScapTorqueLocal(:,2)-Data.RScapTorqueYInput;
 % Data.RScapConstraintTorqueZ=Data.RScapTorqueLocal(:,3); % No z input
-% 
+%
 % % Generate LS Constraint Torque
 % Data.LSConstraintTorqueX=Data.LSTorqueLocal(:,1)-Data.LSTorqueXInput;
 % Data.LSConstraintTorqueY=Data.LSTorqueLocal(:,2)-Data.LSTorqueYInput;
 % Data.LSConstraintTorqueZ=Data.LSTorqueLocal(:,3)-Data.LSTorqueZInput;
-% 
+%
 % % Generate RS Constraint Torque
 % Data.RSConstraintTorqueX=Data.RSTorqueLocal(:,1)-Data.RSTorqueXInput;
 % Data.RSConstraintTorqueY=Data.RSTorqueLocal(:,2)-Data.RSTorqueYInput;
 % Data.RSConstraintTorqueZ=Data.RSTorqueLocal(:,3)-Data.RSTorqueZInput;
-% 
-% % Generate LE Constraint Torque 
+%
+% % Generate LE Constraint Torque
 % Data.LEConstraintTorqueX=Data.LETorqueLocal(:,1); % No x input
 % Data.LEConstraintTorqueY=Data.LETorqueLocal(:,2); % No x input
 % Data.LEConstraintTorqueZ=Data.LETorqueLocal(:,3)-Data.LETorqueInput;
-% 
-% % Generate RE Constraint Torque 
+%
+% % Generate RE Constraint Torque
 % Data.REConstraintTorqueX=Data.RETorqueLocal(:,1); % No x input
 % Data.REConstraintTorqueY=Data.RETorqueLocal(:,2); % No x input
 % Data.REConstraintTorqueZ=Data.RETorqueLocal(:,3)-Data.RETorqueInput;
-% 
-% % Generate LF Constraint Torque 
+%
+% % Generate LF Constraint Torque
 % Data.LFConstraintTorqueX=Data.LFTorqueLocal(:,1); % No x input
 % Data.LFConstraintTorqueY=Data.LFTorqueLocal(:,2); % No x input
 % Data.LFConstraintTorqueZ=Data.LFTorqueLocal(:,3)-Data.LFTorqueInput;
-% 
-% % Generate RF Constraint Torque 
+%
+% % Generate RF Constraint Torque
 % Data.RFConstraintTorqueX=Data.RFTorqueLocal(:,1); % No x input
 % Data.RFConstraintTorqueY=Data.RFTorqueLocal(:,2); % No x input
 % Data.RFConstraintTorqueZ=Data.RFTorqueLocal(:,3)-Data.RFTorqueInput;
-% 
+%
 % % Generate LW Constraint Torque
 % Data.LWConstraintTorqueX=Data.LWTorqueLocal(:,1)-Data.LWTorqueXInput;
 % Data.LWConstraintTorqueY=Data.LWTorqueLocal(:,2)-Data.LWTorqueYInput;
 % Data.LWConstraintTorqueZ=Data.LWTorqueLocal(:,3); % No z input
-% 
+%
 % % Generate RW Constraint Torque
 % Data.RWConstraintTorqueX=Data.RWTorqueLocal(:,1)-Data.RWTorqueXInput;
 % Data.RWConstraintTorqueY=Data.RWTorqueLocal(:,2)-Data.RWTorqueYInput;
@@ -876,7 +876,7 @@ load("3DModelInputs_Impact.mat")
 assignin(mdlWks,"HipStartPositionX",Simulink.Parameter(HipStartPositionX.Value))
 assignin(mdlWks,"HipStartPositionY",Simulink.Parameter(HipStartPositionY.Value))
 assignin(mdlWks,"HipStartPositionZ",Simulink.Parameter(HipStartPositionZ.Value))
- 
+
 % Hip Rotation Velocity Targets
 assignin(mdlWks,"HipStartVelocityX",Simulink.Parameter(HipStartVelocityX.Value))
 assignin(mdlWks,"HipStartVelocityY",Simulink.Parameter(HipStartVelocityY.Value))
@@ -886,7 +886,7 @@ assignin(mdlWks,"HipStartVelocityZ",Simulink.Parameter(HipStartVelocityZ.Value))
 assignin(mdlWks,"TranslationStartPositionX",Simulink.Parameter(TranslationStartPositionX.Value))
 assignin(mdlWks,"TranslationStartPositionY",Simulink.Parameter(TranslationStartPositionY.Value))
 assignin(mdlWks,"TranslationStartPositionZ",Simulink.Parameter(TranslationStartPositionZ.Value))
- 
+
 % Hip Translation Velocity Targets
 assignin(mdlWks,"TranslationStartVelocityX",Simulink.Parameter(TranslationStartVelocityX.Value))
 assignin(mdlWks,"TranslationStartVelocityY",Simulink.Parameter(TranslationStartVelocityY.Value))
@@ -1600,7 +1600,7 @@ clear S;
 
 %%% START FILE: SCRIPT_ZVCF_GENERATOR.m %%%
 % ZVCF Data Generation Script
-% 
+%
 % This script generates the data for a scenario in which you take the
 % applied joint torques at any given point in the swing and apply them to a
 % golfer in the same static pose. "Zero Velocity Counterfactual". This can
@@ -1617,7 +1617,7 @@ clear S;
 % The ZVCF is calculated by importing starting positions / pose of the
 % model and assigning all velocities to be zero. The joint torques are
 % applied as constant values and the joint interaction forces are
-% calculated at time zero and tabulated. 
+% calculated at time zero and tabulated.
 
 cd(matlabdrive);
 cd '3DModel';
@@ -1643,14 +1643,14 @@ warning off Simulink:cgxe:LeakedJITEngine;
 % cd(matlabdrive);
 % cd '3DModel';
 % copyfile Scripts/'_ZVCF Scripts'/'3DModelInputs_ZVCF.mat';
-% 
+%
 % % Delete the file that was copied into the ZVCF Scripts folder
 % cd(matlabdrive);
 % cd '3DModel';
 % cd 'Scripts/';
 % cd '_ZVCF Scripts';
 % delete '3DModelInputs_ZVCF.mat';
-%  
+%
 % % Go back to the main folder. Open GolfSwing3D_ZVCF model. The model needs to be
 % % set to look for ModelInputs_ZVCF when it is opened.
 % cd(matlabdrive);
@@ -1690,7 +1690,7 @@ SCRIPT_TableGeneration_3D;
 
 % Copy Data to ZTCF Table to Get Variable Names
 ZVCFTable=Data; %Create a table called ZTCFTable from Data.
-ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks 
+ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
 
 %Now we have a table with all of the right columns and variables that can
 %be written to from the output of the ZVCF model when it generates data.
@@ -1701,7 +1701,7 @@ ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
 % time zero will be copied into the ZVCF table generated to receive data
 % above. The only issue is that all times will be zero. The time will then
 % be generated using the step time data from the loop once the row has been
-% copied. 
+% copied.
 
 % Begin Generation of ZVCF Data by Looping
 
@@ -1730,7 +1730,7 @@ ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
     LScapTorqueX=interp1(BASE.Time,BASE.LScapTorqueXInput,j,'linear');
     LScapTorqueY=interp1(BASE.Time,BASE.LScapTorqueYInput,j,'linear');
     RScapTorqueX=interp1(BASE.Time,BASE.RScapTorqueXInput,j,'linear');
-    RScapTorqueY=interp1(BASE.Time,BASE.RScapTorqueYInput,j,'linear');   
+    RScapTorqueY=interp1(BASE.Time,BASE.RScapTorqueYInput,j,'linear');
     LSTorqueX=interp1(BASE.Time,BASE.LSTorqueXInput,j,'linear');
     LSTorqueY=interp1(BASE.Time,BASE.LSTorqueYInput,j,'linear');
     LSTorqueZ=interp1(BASE.Time,BASE.LSTorqueZInput,j,'linear');
@@ -1745,14 +1745,14 @@ ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
     LWTorqueY=interp1(BASE.Time,BASE.LWTorqueYInput,j,'linear');
     RWTorqueX=interp1(BASE.Time,BASE.RWTorqueXInput,j,'linear');
     RWTorqueY=interp1(BASE.Time,BASE.RWTorqueYInput,j,'linear');
-    
+
     %Read the position values at the counter time and convert to degrees
     HipPositionX=interp1(BASE.Time,BASE.HipPositionX,j,'linear');
     HipPositionY=interp1(BASE.Time,BASE.HipPositionY,j,'linear');
     HipPositionZ=interp1(BASE.Time,BASE.HipPositionZ,j,'linear');
     HipGlobalPositionX=interp1(BASE.Time,BASE.HipGlobalPositionX,j,'linear');
     HipGlobalPositionY=interp1(BASE.Time,BASE.HipGlobalPositionY,j,'linear');
-    HipGlobalPositionZ=interp1(BASE.Time,BASE.HipGlobalPositionZ,j,'linear'); 
+    HipGlobalPositionZ=interp1(BASE.Time,BASE.HipGlobalPositionZ,j,'linear');
     TorsoPosition=interp1(BASE.Time,BASE.TorsoPosition,j,'linear');
     SpinePositionX=interp1(BASE.Time,BASE.SpinePositionX,j,'linear');
     SpinePositionY=interp1(BASE.Time,BASE.SpinePositionY,j,'linear');
@@ -1791,7 +1791,7 @@ ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
     assignin(mdlWks,'ZVCFRScapTorqueY',Simulink.Parameter(RScapTorqueY));
     assignin(mdlWks,'ZVCFLSTorqueX',Simulink.Parameter(LSTorqueX));
     assignin(mdlWks,'ZVCFLSTorqueY',Simulink.Parameter(LSTorqueY));
-    assignin(mdlWks,'ZVCFLSTorqueZ',Simulink.Parameter(LSTorqueZ));  
+    assignin(mdlWks,'ZVCFLSTorqueZ',Simulink.Parameter(LSTorqueZ));
     assignin(mdlWks,'ZVCFRSTorqueX',Simulink.Parameter(RSTorqueX));
     assignin(mdlWks,'ZVCFRSTorqueY',Simulink.Parameter(RSTorqueY));
     assignin(mdlWks,'ZVCFRSTorqueZ',Simulink.Parameter(RSTorqueZ));
@@ -1803,7 +1803,7 @@ ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
     assignin(mdlWks,'ZVCFLWTorqueY',Simulink.Parameter(LWTorqueY));
     assignin(mdlWks,'ZVCFRWTorqueX',Simulink.Parameter(RWTorqueX));
     assignin(mdlWks,'ZVCFRWTorqueY',Simulink.Parameter(RWTorqueY));
-    
+
     % Assign in position and velocity values to the model workspace
     assignin(mdlWks,'HipStartPositionX',Simulink.Parameter(HipPositionX));
     assignin(mdlWks,'HipStartPositionY',Simulink.Parameter(HipPositionY));
@@ -1826,7 +1826,7 @@ ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
     assignin(mdlWks,'RScapStartPositionX',Simulink.Parameter(RScapPositionX));
     assignin(mdlWks,'RScapStartPositionY',Simulink.Parameter(RScapPositionY));
     assignin(mdlWks,'RScapStartVelocityX',Simulink.Parameter(0));
-    assignin(mdlWks,'RScapStartVelocityY',Simulink.Parameter(0));   
+    assignin(mdlWks,'RScapStartVelocityY',Simulink.Parameter(0));
     assignin(mdlWks,'LEStartPosition',Simulink.Parameter(LEPosition));
     assignin(mdlWks,'LEStartVelocity',Simulink.Parameter(0));
     assignin(mdlWks,'REStartPosition',Simulink.Parameter(REPosition));
@@ -1870,7 +1870,7 @@ ZVCFTable(:,:)=[]; %Delete All Data in ZTCF Table and Replace with Blanks
     clear TranslationForceZ;
     clear TorsoTorque;
     clear SpineTorqueX;
-    clear SpineTorqueY;    
+    clear SpineTorqueY;
     clear LScapTorqueX;
     clear LScapTorqueY;
     clear RScapTorqueX;
@@ -1930,10 +1930,10 @@ SCRIPT_ZVCF_QTableGenerate_3D;
 cd(matlabdrive);
 
 
-    
-    
-    
-   
+
+
+
+
 
 %%% END FILE: SCRIPT_ZVCF_GENERATOR.m %%%
 
@@ -3439,8 +3439,8 @@ LSMOFLArm.AutoScaleFactor=LEMOFLArmQuiver.ScaleFactor/LSMOFLArm.ScaleFactor;
 
 %Generate Left Arm Quivers
 LeftArm=quiver3(BASEQ.LSx(:,1),BASEQ.LSy(:,1),BASEQ.LSz(:,1),BASEQ.LeftArmdx(:,1),BASEQ.LeftArmdy(:,1),BASEQ.LeftArmdz(:,1),0);
-LeftArm.ShowArrowHead='off';		
-LeftArm.LineWidth=1;			   
+LeftArm.ShowArrowHead='off';
+LeftArm.LineWidth=1;
 LeftArm.Color=[0 0 0];
 
 %Add Legend to Plot
@@ -3510,7 +3510,7 @@ RSMOFRArm.AutoScaleFactor=REMOFRArmQuiver.ScaleFactor/RSMOFRArm.ScaleFactor;
 %Generate Right Arm Quivers
 RightArm=quiver3(BASEQ.RSx(:,1),BASEQ.RSy(:,1),BASEQ.RSz(:,1),BASEQ.RightArmdx(:,1),BASEQ.RightArmdy(:,1),BASEQ.RightArmdz(:,1),0);
 RightArm.ShowArrowHead='off';
-RightArm.LineWidth=1;			   
+RightArm.LineWidth=1;
 RightArm.Color=[0 0 0];
 
 %Add Legend to Plot
@@ -3578,8 +3578,8 @@ LWristMOFLForearm.AutoScaleFactor=LEMOFLForearmQuiver.ScaleFactor/LWristMOFLFore
 
 %Generate LeftForearm Quivers
 LeftForearm=quiver3(BASEQ.LEx(:,1),BASEQ.LEy(:,1),BASEQ.LEz(:,1),BASEQ.LeftForearmdx(:,1),BASEQ.LeftForearmdy(:,1),BASEQ.LeftForearmdz(:,1),0);
-LeftForearm.ShowArrowHead='off';		
-LeftForearm.LineWidth=1;			   
+LeftForearm.ShowArrowHead='off';
+LeftForearm.LineWidth=1;
 LeftForearm.Color=[0 0 0];
 
 %Add Legend to Plot
@@ -3648,8 +3648,8 @@ RWristMOFLForearm.AutoScaleFactor=REMOFLForearmQuiver.ScaleFactor/RWristMOFLFore
 %Generate Right Forearm Quivers
 RightForearm=quiver3(BASEQ.REx(:,1),BASEQ.REy(:,1),BASEQ.REz(:,1),BASEQ.RightForearmdx(:,1),BASEQ.RightForearmdy(:,1),BASEQ.RightForearmdz(:,1),0);
 RightForearm.ShowArrowHead='off';
-RightForearm.LineWidth=1;			   
-RightForearm.Color=[0 0 0];	
+RightForearm.LineWidth=1;
+RightForearm.Color=[0 0 0];
 
 %Add Legend to Plot
 legend('','','','','RH Force','RE Force','RE MOF','RH MOF');
@@ -4678,7 +4678,7 @@ COMDots.Marker='o';
 
 %%% START FILE: _BaseData Scripts\SCRIPT_QuiverClubandShaftBaseData.m %%%
 %Reads from a Table named Data in main workspace Generated from the Quivers
-%Plots tab on the main worksheets. 
+%Plots tab on the main worksheets.
 
 %Generate Shaft Quivers
 Shaft=quiver3(BASEQ.RHx(:,1),BASEQ.RHy(:,1),BASEQ.RHz(:,1),BASEQ.Shaftdx(:,1),BASEQ.Shaftdy(:,1),BASEQ.Shaftdz(:,1),0);
@@ -4971,7 +4971,7 @@ figure(704);
 hold on;
 plot(BASEQ.Time,BASEQ.ForceAlongHandPath,'LineWidth',3);
 plot(ZTCFQ.Time,ZTCFQ.ForceAlongHandPath,'--','LineWidth',3);
-plot(DELTAQ.Time,DELTAQ.ForceAlongHandPath,':','LineWidth',3); 
+plot(DELTAQ.Time,DELTAQ.ForceAlongHandPath,':','LineWidth',3);
 
 xlabel('Time (s)');
 ylabel('Force (N)');
@@ -6365,7 +6365,7 @@ COMDots.Marker='o';
 
 %%% START FILE: _Comparison Scripts\SCRIPT_QuiverClubandShaftBaseData.m %%%
 %Reads from a Table named Data in main workspace Generated from the Quivers
-%Plots tab on the main worksheets. 
+%Plots tab on the main worksheets.
 
 %Generate Shaft Quivers
 Shaft=quiver3(BASEQ.RHx(:,1),BASEQ.RHy(:,1),BASEQ.RHz(:,1),BASEQ.Shaftdx(:,1),BASEQ.Shaftdy(:,1),BASEQ.Shaftdz(:,1),0);
@@ -7810,8 +7810,8 @@ LSMOFLArm.AutoScaleFactor=LEMOFLArmQuiver.ScaleFactor/LSMOFLArm.ScaleFactor;
 
 %Generate Left Arm Quivers
 LeftArm=quiver3(ZTCFQ.LSx(:,1),ZTCFQ.LSy(:,1),ZTCFQ.LSz(:,1),DELTAQ.LeftArmdx(:,1),DELTAQ.LeftArmdy(:,1),DELTAQ.LeftArmdz(:,1),0);
-LeftArm.ShowArrowHead='off';		
-LeftArm.LineWidth=1;			   
+LeftArm.ShowArrowHead='off';
+LeftArm.LineWidth=1;
 LeftArm.Color=[0 0 0];
 
 %Add Legend to Plot
@@ -7881,7 +7881,7 @@ RSMOFRArm.AutoScaleFactor=REMOFRArmQuiver.ScaleFactor/RSMOFRArm.ScaleFactor;
 %Generate Right Arm Quivers
 RightArm=quiver3(ZTCFQ.RSx(:,1),ZTCFQ.RSy(:,1),ZTCFQ.RSz(:,1),DELTAQ.RightArmdx(:,1),DELTAQ.RightArmdy(:,1),DELTAQ.RightArmdz(:,1),0);
 RightArm.ShowArrowHead='off';
-RightArm.LineWidth=1;			   
+RightArm.LineWidth=1;
 RightArm.Color=[0 0 0];
 
 %Add Legend to Plot
@@ -7949,8 +7949,8 @@ LWristMOFLForearm.AutoScaleFactor=LEMOFLForearmQuiver.ScaleFactor/LWristMOFLFore
 
 %Generate LeftForearm Quivers
 LeftForearm=quiver3(ZTCFQ.LEx(:,1),ZTCFQ.LEy(:,1),ZTCFQ.LEz(:,1),DELTAQ.LeftForearmdx(:,1),DELTAQ.LeftForearmdy(:,1),DELTAQ.LeftForearmdz(:,1),0);
-LeftForearm.ShowArrowHead='off';		
-LeftForearm.LineWidth=1;			   
+LeftForearm.ShowArrowHead='off';
+LeftForearm.LineWidth=1;
 LeftForearm.Color=[0 0 0];
 
 %Add Legend to Plot
@@ -8019,8 +8019,8 @@ RWristMOFLForearm.AutoScaleFactor=REMOFLForearmQuiver.ScaleFactor/RWristMOFLFore
 %Generate Right Forearm Quivers
 RightForearm=quiver3(ZTCFQ.REx(:,1),ZTCFQ.REy(:,1),ZTCFQ.REz(:,1),DELTAQ.RightForearmdx(:,1),DELTAQ.RightForearmdy(:,1),DELTAQ.RightForearmdz(:,1),0);
 RightForearm.ShowArrowHead='off';
-RightForearm.LineWidth=1;			   
-RightForearm.Color=[0 0 0];	
+RightForearm.LineWidth=1;
+RightForearm.Color=[0 0 0];
 
 %Add Legend to Plot
 legend('','','','','RH Force','RE Force','RE MOF','RH MOF');
@@ -9028,7 +9028,7 @@ COMDots.Marker='o';
 
 %%% START FILE: _Delta Scripts\SCRIPT_QuiverClubandShaftBaseData.m %%%
 %Reads from a Table named Data in main workspace Generated from the Quivers
-%Plots tab on the main worksheets. 
+%Plots tab on the main worksheets.
 
 %Generate Shaft Quivers
 Shaft=quiver3(BASEQ.RHx(:,1),BASEQ.RHy(:,1),BASEQ.RHz(:,1),BASEQ.Shaftdx(:,1),BASEQ.Shaftdy(:,1),BASEQ.Shaftdz(:,1),0);
@@ -9261,44 +9261,44 @@ save('DELTAQ.mat',"DELTAQ");
 
 %%% START FILE: _Model Data Scripts\SCRIPT_3D_QuiverBodyData.m %%%
 %Reads from a Table named Data in main workspace Generated from the Quivers
-%Plots tab on the main worksheets. 
+%Plots tab on the main worksheets.
 
 %Generate LeftForearm Quivers
 LeftForearm=quiver3(Data.LEx(:,1),Data.LEy(:,1),Data.LEz(:,1),Data.LeftForearmdx(:,1),Data.LeftForearmdy(:,1),Data.LeftForearmdz(:,1),0);
-LeftForearm.ShowArrowHead='off';		
-LeftForearm.LineWidth=1;			   
-LeftForearm.Color=[0 0 0.5];		
-hold on;				        
+LeftForearm.ShowArrowHead='off';
+LeftForearm.LineWidth=1;
+LeftForearm.Color=[0 0 0.5];
+hold on;
 
 %Generate Right Forearm Quivers
 RightForearm=quiver3(Data.REx(:,1),Data.REy(:,1),Data.REz(:,1),Data.RightForearmdx(:,1),Data.RightForearmdy(:,1),Data.RightForearmdz(:,1),0);
 RightForearm.ShowArrowHead='off';
-RightForearm.LineWidth=1;			   
-RightForearm.Color=[0 0.5 0];			   
+RightForearm.LineWidth=1;
+RightForearm.Color=[0 0.5 0];
 
 %Generate Left Arm Quivers
 LeftArm=quiver3(Data.LSx(:,1),Data.LSy(:,1),Data.LSz(:,1),Data.LeftArmdx(:,1),Data.LeftArmdy(:,1),Data.LeftArmdz(:,1),0);
-LeftArm.ShowArrowHead='off';		
-LeftArm.LineWidth=1;			   
-LeftArm.Color=[0 0 0.5];		
+LeftArm.ShowArrowHead='off';
+LeftArm.LineWidth=1;
+LeftArm.Color=[0 0 0.5];
 
 %Generate Right Arm Quivers
 RightArm=quiver3(Data.RSx(:,1),Data.RSy(:,1),Data.RSz(:,1),Data.RightArmdx(:,1),Data.RightArmdy(:,1),Data.RightArmdz(:,1),0);
 RightArm.ShowArrowHead='off';
-RightArm.LineWidth=1;			   
-RightArm.Color=[0 0.5 0];	
+RightArm.LineWidth=1;
+RightArm.Color=[0 0.5 0];
 
 %Generate Left Shoulder Quivers
 LeftShoulder=quiver3(Data.HUBx(:,1),Data.HUBy(:,1),Data.HUBz(:,1),Data.LeftShoulderdx(:,1),Data.LeftShoulderdy(:,1),Data.LeftShoulderdz(:,1),0);
-LeftShoulder.ShowArrowHead='off';		
-LeftShoulder.LineWidth=1;			   
-LeftShoulder.Color=[0 0 0.5];		
+LeftShoulder.ShowArrowHead='off';
+LeftShoulder.LineWidth=1;
+LeftShoulder.Color=[0 0 0.5];
 
 %Generate Right Shoulder Quivers
 RightShoulder=quiver3(Data.HUBx(:,1),Data.HUBy(:,1),Data.HUBz(:,1),Data.RightShoulderdx(:,1),Data.RightShoulderdy(:,1),Data.RightShoulderdz(:,1),0);
 RightShoulder.ShowArrowHead='off';
-RightShoulder.LineWidth=1;			   
-RightShoulder.Color=[0 0.5 0];	
+RightShoulder.LineWidth=1;
+RightShoulder.Color=[0 0.5 0];
 
 %%% END FILE: _Model Data Scripts\SCRIPT_3D_QuiverBodyData.m %%%
 
@@ -9312,7 +9312,7 @@ COMDots.Marker='o';
 
 %%% START FILE: _Model Data Scripts\SCRIPT_3D_QuiverClubandShaftData.m %%%
 %Reads from a Table named Data in main workspace Generated from the Quivers
-%Plots tab on the main worksheets. 
+%Plots tab on the main worksheets.
 
 %Generate Shaft Quivers
 Shaft=quiver3(Data.RHx(:,1),Data.RHy(:,1),Data.RHz(:,1),Data.Shaftdx(:,1),Data.Shaftdy(:,1),Data.Shaftdz(:,1),0);
@@ -9462,62 +9462,62 @@ Data.RightShoulderdz=Data.RSz-Data.HUBz;
 % Data.HipConstraintTorqueX=Data.HipTorqueLocal(:,1)-Data.HipTorqueXInput;
 % Data.HipConstraintTorqueY=Data.HipTorqueLocal(:,2)-Data.HipTorqueYInput;
 % Data.HipConstraintTorqueZ=Data.HipTorqueLocal(:,3)-Data.HipTorqueZInput;
-% 
-% % Generate Torso Constraint Torque 
+%
+% % Generate Torso Constraint Torque
 % Data.TorsoConstraintTorqueX=Data.TorsoTorqueLocal(:,1); % No x input
 % Data.TorsoConstraintTorqueY=Data.TorsoTorqueLocal(:,2); % No x input
 % Data.TorsoConstraintTorqueZ=Data.TorsoTorqueLocal(:,3)-Data.TorsoTorqueInput;
-% 
+%
 % % Generate Spine Constraint Torque
 % Data.SpineConstraintTorqueX=Data.SpineTorqueLocal(:,1)-Data.SpineTorqueXInput;
 % Data.SpineConstraintTorqueY=Data.SpineTorqueLocal(:,2)-Data.SpineTorqueYInput;
 % Data.SpineConstraintTorqueZ=Data.SpineTorqueLocal(:,3); % No z input
-% 
+%
 % % Generate LScap Constraint Torque
 % Data.LScapConstraintTorqueX=Data.LScapTorqueLocal(:,1)-Data.LScapTorqueXInput;
 % Data.LScapConstraintTorqueY=Data.LScapTorqueLocal(:,2)-Data.LScapTorqueYInput;
 % Data.LScapConstraintTorqueZ=Data.LScapTorqueLocal(:,3); % No z input
-% 
+%
 % % Generate RScap Constraint Torque
 % Data.RScapConstraintTorqueX=Data.RScapTorqueLocal(:,1)-Data.RScapTorqueXInput;
 % Data.RScapConstraintTorqueY=Data.RScapTorqueLocal(:,2)-Data.RScapTorqueYInput;
 % Data.RScapConstraintTorqueZ=Data.RScapTorqueLocal(:,3); % No z input
-% 
+%
 % % Generate LS Constraint Torque
 % Data.LSConstraintTorqueX=Data.LSTorqueLocal(:,1)-Data.LSTorqueXInput;
 % Data.LSConstraintTorqueY=Data.LSTorqueLocal(:,2)-Data.LSTorqueYInput;
 % Data.LSConstraintTorqueZ=Data.LSTorqueLocal(:,3)-Data.LSTorqueZInput;
-% 
+%
 % % Generate RS Constraint Torque
 % Data.RSConstraintTorqueX=Data.RSTorqueLocal(:,1)-Data.RSTorqueXInput;
 % Data.RSConstraintTorqueY=Data.RSTorqueLocal(:,2)-Data.RSTorqueYInput;
 % Data.RSConstraintTorqueZ=Data.RSTorqueLocal(:,3)-Data.RSTorqueZInput;
-% 
-% % Generate LE Constraint Torque 
+%
+% % Generate LE Constraint Torque
 % Data.LEConstraintTorqueX=Data.LETorqueLocal(:,1); % No x input
 % Data.LEConstraintTorqueY=Data.LETorqueLocal(:,2); % No x input
 % Data.LEConstraintTorqueZ=Data.LETorqueLocal(:,3)-Data.LETorqueInput;
-% 
-% % Generate RE Constraint Torque 
+%
+% % Generate RE Constraint Torque
 % Data.REConstraintTorqueX=Data.RETorqueLocal(:,1); % No x input
 % Data.REConstraintTorqueY=Data.RETorqueLocal(:,2); % No x input
 % Data.REConstraintTorqueZ=Data.RETorqueLocal(:,3)-Data.RETorqueInput;
-% 
-% % Generate LF Constraint Torque 
+%
+% % Generate LF Constraint Torque
 % Data.LFConstraintTorqueX=Data.LFTorqueLocal(:,1); % No x input
 % Data.LFConstraintTorqueY=Data.LFTorqueLocal(:,2); % No y input
 % Data.LFConstraintTorqueZ=Data.LFTorqueLocal(:,3)-Data.LFTorqueInput;
-% 
-% % Generate RF Constraint Torque 
+%
+% % Generate RF Constraint Torque
 % Data.RFConstraintTorqueX=Data.RFTorqueLocal(:,1); % No x input
 % Data.RFConstraintTorqueY=Data.RFTorqueLocal(:,2); % No x input
 % Data.RFConstraintTorqueZ=Data.RFTorqueLocal(:,3)-Data.RFTorqueInput;
-% 
+%
 % % Generate LW Constraint Torque
 % Data.LWConstraintTorqueX=Data.LWTorqueLocal(:,1)-Data.LWTorqueXInput;
 % Data.LWConstraintTorqueY=Data.LWTorqueLocal(:,2)-Data.LWTorqueYInput;
 % Data.LWConstraintTorqueZ=Data.LWTorqueLocal(:,3); % No z input
-% 
+%
 % % Generate RW Constraint Torque
 % Data.RWConstraintTorqueX=Data.RWTorqueLocal(:,1)-Data.RWTorqueXInput;
 % Data.RWConstraintTorqueY=Data.RWTorqueLocal(:,2)-Data.RWTorqueYInput;
@@ -10169,8 +10169,8 @@ LSMOFLArm.AutoScaleFactor=LEMOFLArmQuiver.ScaleFactor/LSMOFLArm.ScaleFactor;
 
 %Generate Left Arm Quivers
 LeftArm=quiver3(Data.LSx(:,1),Data.LSy(:,1),Data.LSz(:,1),Data.LeftArmdx(:,1),Data.LeftArmdy(:,1),Data.LeftArmdz(:,1),0);
-LeftArm.ShowArrowHead='off';		
-LeftArm.LineWidth=1;			   
+LeftArm.ShowArrowHead='off';
+LeftArm.LineWidth=1;
 LeftArm.Color=[0 0 0];
 
 %Add Legend to Plot
@@ -10242,7 +10242,7 @@ RSMOFRArm.AutoScaleFactor=REMOFRArmQuiver.ScaleFactor/RSMOFRArm.ScaleFactor;
 %Generate Right Arm Quivers
 RightArm=quiver3(Data.RSx(:,1),Data.RSy(:,1),Data.RSz(:,1),Data.RightArmdx(:,1),Data.RightArmdy(:,1),Data.RightArmdz(:,1),0);
 RightArm.ShowArrowHead='off';
-RightArm.LineWidth=1;			   
+RightArm.LineWidth=1;
 RightArm.Color=[0 0 0];
 
 %Add Legend to Plot
@@ -10312,8 +10312,8 @@ LWristMOFLForearm.AutoScaleFactor=LEMOFLForearmQuiver.ScaleFactor/LWristMOFLFore
 
 %Generate LeftForearm Quivers
 LeftForearm=quiver3(Data.LEx(:,1),Data.LEy(:,1),Data.LEz(:,1),Data.LeftForearmdx(:,1),Data.LeftForearmdy(:,1),Data.LeftForearmdz(:,1),0);
-LeftForearm.ShowArrowHead='off';		
-LeftForearm.LineWidth=1;			   
+LeftForearm.ShowArrowHead='off';
+LeftForearm.LineWidth=1;
 LeftForearm.Color=[0 0 0];
 
 %Add Legend to Plot
@@ -10384,8 +10384,8 @@ RWristMOFLForearm.AutoScaleFactor=REMOFLForearmQuiver.ScaleFactor/RWristMOFLFore
 %Generate Right Forearm Quivers
 RightForearm=quiver3(Data.REx(:,1),Data.REy(:,1),Data.REz(:,1),Data.RightForearmdx(:,1),Data.RightForearmdy(:,1),Data.RightForearmdz(:,1),0);
 RightForearm.ShowArrowHead='off';
-RightForearm.LineWidth=1;			   
-RightForearm.Color=[0 0 0];	
+RightForearm.LineWidth=1;
+RightForearm.Color=[0 0 0];
 
 %Add Legend to Plot
 legend('','','','','RH Force','RE Force','RE MOF','RH MOF');
@@ -11636,7 +11636,7 @@ H=height(Data);
 %Find number of times to iterate ommiting last row
 h=H-1;
 
-%Generate 
+%Generate
 for i=1:h
 j=i+1;
 
@@ -13264,8 +13264,8 @@ LSMOFLArm.AutoScaleFactor=LEMOFLArmQuiver.ScaleFactor/LSMOFLArm.ScaleFactor;
 
 %Generate Left Arm Quivers
 LeftArm=quiver3(ZTCFQ.LSx(:,1),ZTCFQ.LSy(:,1),ZTCFQ.LSz(:,1),ZTCFQ.LeftArmdx(:,1),ZTCFQ.LeftArmdy(:,1),ZTCFQ.LeftArmdz(:,1),0);
-LeftArm.ShowArrowHead='off';		
-LeftArm.LineWidth=1;			   
+LeftArm.ShowArrowHead='off';
+LeftArm.LineWidth=1;
 LeftArm.Color=[0 0 0];
 
 %Add Legend to Plot
@@ -13335,7 +13335,7 @@ RSMOFRArm.AutoScaleFactor=REMOFRArmQuiver.ScaleFactor/RSMOFRArm.ScaleFactor;
 %Generate Right Arm Quivers
 RightArm=quiver3(ZTCFQ.RSx(:,1),ZTCFQ.RSy(:,1),ZTCFQ.RSz(:,1),ZTCFQ.RightArmdx(:,1),ZTCFQ.RightArmdy(:,1),ZTCFQ.RightArmdz(:,1),0);
 RightArm.ShowArrowHead='off';
-RightArm.LineWidth=1;			   
+RightArm.LineWidth=1;
 RightArm.Color=[0 0 0];
 
 %Add Legend to Plot
@@ -13403,8 +13403,8 @@ LWristMOFLForearm.AutoScaleFactor=LEMOFLForearmQuiver.ScaleFactor/LWristMOFLFore
 
 %Generate LeftForearm Quivers
 LeftForearm=quiver3(ZTCFQ.LEx(:,1),ZTCFQ.LEy(:,1),ZTCFQ.LEz(:,1),ZTCFQ.LeftForearmdx(:,1),ZTCFQ.LeftForearmdy(:,1),ZTCFQ.LeftForearmdz(:,1),0);
-LeftForearm.ShowArrowHead='off';		
-LeftForearm.LineWidth=1;			   
+LeftForearm.ShowArrowHead='off';
+LeftForearm.LineWidth=1;
 LeftForearm.Color=[0 0 0];
 
 %Add Legend to Plot
@@ -13473,8 +13473,8 @@ RWristMOFLForearm.AutoScaleFactor=REMOFLForearmQuiver.ScaleFactor/RWristMOFLFore
 %Generate Right Forearm Quivers
 RightForearm=quiver3(ZTCFQ.REx(:,1),ZTCFQ.REy(:,1),ZTCFQ.REz(:,1),ZTCFQ.RightForearmdx(:,1),ZTCFQ.RightForearmdy(:,1),ZTCFQ.RightForearmdz(:,1),0);
 RightForearm.ShowArrowHead='off';
-RightForearm.LineWidth=1;			   
-RightForearm.Color=[0 0 0];	
+RightForearm.LineWidth=1;
+RightForearm.Color=[0 0 0];
 
 %Add Legend to Plot
 legend('','','','','RH Force','RE Force','RE MOF','RH MOF');
@@ -14461,87 +14461,87 @@ close(350);
 
 %%% START FILE: _ZTCF Scripts\SCRIPT_QuiverBodyData.m %%%
 %Reads from a Table named ZTCF in main workspace Generated from the Quivers
-%Plots tab on the main worksheets. 
+%Plots tab on the main worksheets.
 
 %Generate LeftForearm Quivers
 LeftForearm=quiver3(ZTCFQ.LEx(:,1),ZTCFQ.LEy(:,1),ZTCFQ.LEz(:,1),ZTCFQ.LeftForearmdx(:,1),ZTCFQ.LeftForearmdy(:,1),ZTCFQ.LeftForearmdz(:,1),0);
-LeftForearm.ShowArrowHead='off';		
-LeftForearm.LineWidth=1;			   
-LeftForearm.Color=[0 0 0.5];		
-hold on;				        
+LeftForearm.ShowArrowHead='off';
+LeftForearm.LineWidth=1;
+LeftForearm.Color=[0 0 0.5];
+hold on;
 
 %Generate Right Forearm Quivers
 RightForearm=quiver3(ZTCFQ.REx(:,1),ZTCFQ.REy(:,1),ZTCFQ.REz(:,1),ZTCFQ.RightForearmdx(:,1),ZTCFQ.RightForearmdy(:,1),ZTCFQ.RightForearmdz(:,1),0);
 RightForearm.ShowArrowHead='off';
-RightForearm.LineWidth=1;			   
-RightForearm.Color=[0 0.5 0];			   
+RightForearm.LineWidth=1;
+RightForearm.Color=[0 0.5 0];
 
 %Generate Left Arm Quivers
 LeftArm=quiver3(ZTCFQ.LSx(:,1),ZTCFQ.LSy(:,1),ZTCFQ.LSz(:,1),ZTCFQ.LeftArmdx(:,1),ZTCFQ.LeftArmdy(:,1),ZTCFQ.LeftArmdz(:,1),0);
-LeftArm.ShowArrowHead='off';		
-LeftArm.LineWidth=1;			   
-LeftArm.Color=[0 0 0.5];		
+LeftArm.ShowArrowHead='off';
+LeftArm.LineWidth=1;
+LeftArm.Color=[0 0 0.5];
 
 %Generate Right Arm Quivers
 RightArm=quiver3(ZTCFQ.RSx(:,1),ZTCFQ.RSy(:,1),ZTCFQ.RSz(:,1),ZTCFQ.RightArmdx(:,1),ZTCFQ.RightArmdy(:,1),ZTCFQ.RightArmdz(:,1),0);
 RightArm.ShowArrowHead='off';
-RightArm.LineWidth=1;			   
-RightArm.Color=[0 0.5 0];	
+RightArm.LineWidth=1;
+RightArm.Color=[0 0.5 0];
 
 %Generate Left Shoulder Quivers
 LeftShoulder=quiver3(ZTCFQ.HUBx(:,1),ZTCFQ.HUBy(:,1),ZTCFQ.HUBz(:,1),ZTCFQ.LeftShoulderdx(:,1),ZTCFQ.LeftShoulderdy(:,1),ZTCFQ.LeftShoulderdz(:,1),0);
-LeftShoulder.ShowArrowHead='off';		
-LeftShoulder.LineWidth=1;			   
-LeftShoulder.Color=[0 0 0.5];		
+LeftShoulder.ShowArrowHead='off';
+LeftShoulder.LineWidth=1;
+LeftShoulder.Color=[0 0 0.5];
 
 %Generate Right Shoulder Quivers
 RightShoulder=quiver3(ZTCFQ.HUBx(:,1),ZTCFQ.HUBy(:,1),ZTCFQ.HUBz(:,1),ZTCFQ.RightShoulderdx(:,1),ZTCFQ.RightShoulderdy(:,1),ZTCF.RightShoulderdz(:,1),0);
 RightShoulder.ShowArrowHead='off';
-RightShoulder.LineWidth=1;			   
-RightShoulder.Color=[0 0.5 0];	
+RightShoulder.LineWidth=1;
+RightShoulder.Color=[0 0.5 0];
 
 %%% END FILE: _ZTCF Scripts\SCRIPT_QuiverBodyData.m %%%
 
 %%% START FILE: _ZTCF Scripts\SCRIPT_QuiverBodyZTCF.m %%%
 %Reads from a Table named ZTCF in main workspace Generated from the Quivers
-%Plots tab on the main worksheets. 
+%Plots tab on the main worksheets.
 
 %Generate LeftForearm Quivers
 LeftForearm=quiver3(ZTCFQ.LEx(:,1),ZTCFQ.LEy(:,1),ZTCFQ.LEz(:,1),ZTCFQ.LeftForearmdx(:,1),ZTCFQ.LeftForearmdy(:,1),ZTCFQ.LeftForearmdz(:,1),0);
-LeftForearm.ShowArrowHead='off';		
-LeftForearm.LineWidth=1;			   
-LeftForearm.Color=[0 0 0.5];		
-hold on;				        
+LeftForearm.ShowArrowHead='off';
+LeftForearm.LineWidth=1;
+LeftForearm.Color=[0 0 0.5];
+hold on;
 
 %Generate Right Forearm Quivers
 RightForearm=quiver3(ZTCFQ.REx(:,1),ZTCFQ.REy(:,1),ZTCFQ.REz(:,1),ZTCFQ.RightForearmdx(:,1),ZTCFQ.RightForearmdy(:,1),ZTCFQ.RightForearmdz(:,1),0);
 RightForearm.ShowArrowHead='off';
-RightForearm.LineWidth=1;			   
-RightForearm.Color=[0 0.5 0];			   
+RightForearm.LineWidth=1;
+RightForearm.Color=[0 0.5 0];
 
 %Generate Left Arm Quivers
 LeftArm=quiver3(ZTCFQ.LSx(:,1),ZTCFQ.LSy(:,1),ZTCFQ.LSz(:,1),ZTCFQ.LeftArmdx(:,1),ZTCFQ.LeftArmdy(:,1),ZTCFQ.LeftArmdz(:,1),0);
-LeftArm.ShowArrowHead='off';		
-LeftArm.LineWidth=1;			   
-LeftArm.Color=[0 0 0.5];		
+LeftArm.ShowArrowHead='off';
+LeftArm.LineWidth=1;
+LeftArm.Color=[0 0 0.5];
 
 %Generate Right Arm Quivers
 RightArm=quiver3(ZTCFQ.RSx(:,1),ZTCFQ.RSy(:,1),ZTCFQ.RSz(:,1),ZTCFQ.RightArmdx(:,1),ZTCFQ.RightArmdy(:,1),ZTCFQ.RightArmdz(:,1),0);
 RightArm.ShowArrowHead='off';
-RightArm.LineWidth=1;			   
-RightArm.Color=[0 0.5 0];	
+RightArm.LineWidth=1;
+RightArm.Color=[0 0.5 0];
 
 %Generate Left Shoulder Quivers
 LeftShoulder=quiver3(ZTCFQ.HUBx(:,1),ZTCFQ.HUBy(:,1),ZTCFQ.HUBz(:,1),ZTCFQ.LeftShoulderdx(:,1),ZTCFQ.LeftShoulderdy(:,1),ZTCFQ.LeftShoulderdz(:,1),0);
-LeftShoulder.ShowArrowHead='off';		
-LeftShoulder.LineWidth=1;			   
-LeftShoulder.Color=[0 0 0.5];		
+LeftShoulder.ShowArrowHead='off';
+LeftShoulder.LineWidth=1;
+LeftShoulder.Color=[0 0 0.5];
 
 %Generate Right Shoulder Quivers
 RightShoulder=quiver3(ZTCFQ.HUBx(:,1),ZTCFQ.HUBy(:,1),ZTCFQ.HUBz(:,1),ZTCFQ.RightShoulderdx(:,1),ZTCFQ.RightShoulderdy(:,1),ZTCFQ.RightShoulderdz(:,1),0);
 RightShoulder.ShowArrowHead='off';
-RightShoulder.LineWidth=1;			   
-RightShoulder.Color=[0 0.5 0];	
+RightShoulder.LineWidth=1;
+RightShoulder.Color=[0 0.5 0];
 
 %%% END FILE: _ZTCF Scripts\SCRIPT_QuiverBodyZTCF.m %%%
 
@@ -14555,7 +14555,7 @@ COMDots.Marker='o';
 
 %%% START FILE: _ZTCF Scripts\SCRIPT_QuiverClubandShaftBaseData.m %%%
 %Reads from a Table named Data in main workspace Generated from the Quivers
-%Plots tab on the main worksheets. 
+%Plots tab on the main worksheets.
 
 %Generate Shaft Quivers
 Shaft=quiver3(BASEQ.RHx(:,1),BASEQ.RHy(:,1),BASEQ.RHz(:,1),BASEQ.Shaftdx(:,1),BASEQ.Shaftdy(:,1),BASEQ.Shaftdz(:,1),0);
@@ -14599,7 +14599,7 @@ clear H;
 
 %%% START FILE: _ZTCF Scripts\SCRIPT_QuiverClubandShaftZTCF.m %%%
 %Reads from a Table named ZTCF in main workspace Generated from the Quivers
-%Plots tab on the main worksheets. 
+%Plots tab on the main worksheets.
 
 %Generate Shaft Quivers
 Shaft=quiver3(ZTCFQ.RWx(:,1),ZTCFQ.RWy(:,1),ZTCFQ.RWz(:,1),ZTCFQ.Shaftdx(:,1),ZTCFQ.Shaftdy(:,1),ZTCFQ.Shaftdz(:,1),0);
@@ -14866,7 +14866,7 @@ clear PauseTime;
 
 %%% START FILE: _ZVCF Scripts\SCRIPT_QuiverClubandShaftBaseData_3D.m %%%
 %Reads from a Table named Data in main workspace Generated from the Quivers
-%Plots tab on the main worksheets. 
+%Plots tab on the main worksheets.
 
 %Generate Shaft Quivers
 Shaft=quiver3(BASEQ.RHx(:,1),BASEQ.RHy(:,1),BASEQ.RHz(:,1),BASEQ.Shaftdx(:,1),BASEQ.Shaftdy(:,1),BASEQ.Shaftdz(:,1),0);

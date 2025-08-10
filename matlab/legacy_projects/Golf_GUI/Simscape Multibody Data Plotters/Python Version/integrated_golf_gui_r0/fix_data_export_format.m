@@ -34,21 +34,21 @@ fprintf('\n2. Analyzing current data format...\n');
 for i = 1:length(existing_files)
     filename = existing_files{i};
     fprintf('\n   --- %s ---\n', filename);
-    
+
     try
         % Load the file
         data = load(filename);
-        
+
         % Get the main variable name (should be the filename without .mat)
         var_name = filename(1:end-4);
-        
+
         if isfield(data, var_name)
             current_data = data.(var_name);
             fprintf('   Current format: %s\n', class(current_data));
-            
+
             if isstruct(current_data)
                 fprintf('   Structure fields: %s\n', strjoin(fieldnames(current_data), ', '));
-                
+
                 % Check if it's the problematic MatlabOpaque format
                 if isfield(current_data, 's0') && isfield(current_data, 's1') && ...
                    isfield(current_data, 's2') && isfield(current_data, 'arr')
@@ -62,7 +62,7 @@ for i = 1:length(existing_files)
         else
             fprintf('   ❌ Expected variable %s not found\n', var_name);
         end
-        
+
     catch ME
         fprintf('   ❌ Error loading %s: %s\n', filename, ME.message);
     end
@@ -179,4 +179,4 @@ fprintf('   ✅ Export only required data (not all simulation variables)\n');
 fprintf('   ✅ Consider using Fast Restart for multiple simulations\n\n');
 
 fprintf('=== Fix Complete ===\n');
-fprintf('Test the GUI with the generated test_*.mat files to verify compatibility.\n'); 
+fprintf('Test the GUI with the generated test_*.mat files to verify compatibility.\n');
