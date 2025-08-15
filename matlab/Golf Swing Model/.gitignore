@@ -1,0 +1,46 @@
+# Checkpoint files from robust dataset generation
+checkpoint_*.mat
+*_backup.mat
+
+# Data files and datasets
+*.csv
+*.mat
+*.xlsx
+*.xls
+
+# Simulation output files
+trial_*.csv
+trial_*.mat
+
+# MATLAB temporary files
+*.asv
+*.autosave
+slprj/
+*.slxc
+
+# Log files
+*.log
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Compiled files
+*.mex*
+*.p
