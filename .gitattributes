@@ -9,4 +9,3 @@
 *.r20* filter=lfs diff=lfs merge=lfs -text
 
 # Only track large SLX files in LFS (over 1MB)
-*.slx filter=lfs diff=lfs merge=lfs -text
