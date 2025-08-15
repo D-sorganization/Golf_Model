@@ -1,0 +1,16 @@
+{
+    "name": "golf-model",
+    "description": "Golf swing analysis and simulation model with MATLAB and Python components",
+    "language": "python",
+    "framework": "matlab",
+    "preferences": {
+        "coding_style": "pep8",
+        "documentation_style": "google",
+        "testing_framework": "pytest"
+    },
+    "components": {
+        "matlab": "Golf swing simulation and analysis scripts",
+        "python": "Data processing and quality check tools",
+        "gui": "2D and 3D visualization interfaces"
+    }
+}
