@@ -17,7 +17,6 @@ slprj/
 *.mex*
 
 # IDE
-.cursor/
 *.cursor-chat
 .vscode/
 .idea/
