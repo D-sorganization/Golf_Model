@@ -32,15 +32,11 @@ output/**/temp/
 logs/
 *.log
 
-# Binary models/data via LFS
-*.slx
-*.mdl
-*.mat
+# Binary data via LFS (but NOT model files - those are critical!)
 *.h5
 *.zip
 
 # Local-only directories not in origin/main (added 2025-08-09)
-/Golf Swing Model/
 /Golf_GUI/
 
 # Generated datasets from Simulation Dataset GUI (CSV outputs)
