@@ -33,7 +33,6 @@ logs/
 *.log
 
 # Local-only directories not in origin/main (added 2025-08-09)
-/Golf Swing Model/
 /Golf_GUI/
 
 # Generated datasets from Simulation Dataset GUI (CSV outputs)
@@ -51,5 +50,35 @@ logs/
 **/Old Model Files/
 
 # Large data files (exclude from tracking)
-**/*.mat
 **/*.csv
+
+# Temporary/backup MAT files (exclude from tracking)
+**/slprj/**/*.mat
+**/Backups/**/*.mat
+**/Old Revs/**/*.mat
+**/Archive/**/*.mat
+**/Old Model Files/**/*.mat
+**/user_preferences.mat
+**/checksumOfCache.mat
+**/varInfo.mat
+**/jitEngineAccessInfo.mat
+**/emlReportAccessInfo.mat
+**/amsi_serial.mat
+**/binfo.mat
+**/autoInferAccessInfo.mat
+
+# Large simulation output data (exclude from tracking)
+**/SimulationOutputData/**/*.mat
+**/Tables/BASE.mat
+**/Tables/DELTA.mat
+**/Tables/ZTCF.mat
+**/Model Output/Tables/BASE.mat
+**/Model Output/Tables/DELTA.mat
+**/Model Output/Tables/ZTCF.mat
+
+# Specific exclusions for Golf Swing Model (not entire directory)
+/Golf Swing Model/_Archive/
+/Golf Swing Model/Model/Backups/
+/Golf Swing Model/Model/Old Revs/
+/Golf Swing Model/Scripts/slprj/
+/Golf Swing Model/_Data/Gears C3D Files/slprj/
