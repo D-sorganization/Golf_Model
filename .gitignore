@@ -41,3 +41,6 @@ logs/
 # Generated datasets from Simulation Dataset GUI (CSV outputs)
 /Golf Swing Model/Scripts/Simulation_Dataset_GUI/**/*.csv
 /Golf Swing Model/_Archive/Neural_Network_Pipeline/*.csv
+
+# Large data files that should not be in version control
+*.csv
