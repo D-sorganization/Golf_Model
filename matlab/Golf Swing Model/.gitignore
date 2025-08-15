@@ -1,16 +1,13 @@
 # Checkpoint files from robust dataset generation
 checkpoint_*.mat
-*_backup.mat
 
 # Data files and datasets
 *.csv
-*.mat
 *.xlsx
 *.xls
 
 # Simulation output files
 trial_*.csv
-trial_*.mat
 
 # MATLAB temporary files
 *.asv
