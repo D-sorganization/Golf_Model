@@ -3,22 +3,6 @@ function Data_GUI_Enhanced()
     % Enhanced Golf Swing Data Generator - Modern GUI with tabbed interface
     % Features: Tabbed structure, pause/resume, post-processing, multiple export formats
 
-    % Add current directory to path to ensure all functions are accessible
-    current_dir = fileparts(mfilename('fullpath'));
-    if ~contains(path, current_dir)
-        addpath(current_dir);
-    end
-    
-    % Force MATLAB to refresh function cache for this directory
-    rehash('path');
-    
-    % Verify critical functions are accessible
-    if ~exist('initializeLocalCluster', 'file')
-        warning('initializeLocalCluster not found. Adding path and retrying...');
-        addpath(genpath(current_dir));
-        rehash('path');
-    end
-
     % Professional color scheme - sharp, vibrant tones
     colors = struct();
     colors.primary = [0.2, 0.4, 0.8];        % Sharp blue
@@ -69,12 +53,6 @@ function Data_GUI_Enhanced()
 
     % Apply loaded preferences to UI
     applyUserPreferences(handles);
-    
-    % Load performance preferences after a short delay to ensure UI is ready
-    % Use a timer to load preferences after GUI is fully initialized
-    timer_obj = timer('ExecutionMode', 'singleShot', 'StartDelay', 1.0);
-    timer_obj.TimerFcn = @(src, event) loadPerformancePreferencesDelayed(handles.fig);
-    start(timer_obj);
 
     % Initialize preview
     updatePreview([], [], handles.fig);
@@ -222,18 +200,6 @@ function handles = createMainLayout(fig, handles)
                                           'FontSize', 10, ...
                                           'Callback', @switchToPostProcessingTab);
 
-    handles.performance_tab = uicontrol('Parent', tabBarPanel, ...
-                                       'Style', 'pushbutton', ...
-                                       'String', 'Performance Settings', ...
-                                       'Units', 'normalized', ...
-                                       'Position', [0.02 + 2*(tabWidth + tabSpacing), 0.1, tabWidth, 0.8], ...
-                                       'BackgroundColor', colors.tabInactive, ...
-                                       'ForegroundColor', colors.textLight, ...
-                                       'FontWeight', 'bold', ...
-                                       'FontName', 'Arial', ...
-                                       'FontSize', 10, ...
-                                       'Callback', @switchToPerformanceTab);
-
     % Content area
     contentTop = 1 - titleHeight - tabHeight - 0.01;
     contentPanel = uipanel('Parent', mainPanel, ...
@@ -257,26 +223,9 @@ function handles = createMainLayout(fig, handles)
                                           'BorderType', 'none', ...
                                           'Visible', 'off');
 
-    handles.performance_panel = uipanel('Parent', contentPanel, ...
-                                       'Units', 'normalized', ...
-                                       'Position', [0, 0, 1, 1], ...
-                                       'BackgroundColor', colors.background, ...
-                                       'BorderType', 'none', ...
-                                       'Visible', 'off');
-
     % Create content for each tab
     handles = createGenerationTabContent(handles.generation_panel, handles);
     handles = createPostProcessingTabContent(handles.postprocessing_panel, handles);
-    handles = createPerformanceTabContent(handles.performance_panel, handles);
-    
-    % Load performance preferences after UI is created
-    try
-        if isfield(handles, 'enable_parallel_checkbox') && ishandle(handles.enable_parallel_checkbox)
-            handles = loadPerformancePreferencesToUI(handles);
-        end
-    catch ME
-        fprintf('Note: Performance preferences will be loaded when UI is ready\n');
-    end
 end
 
 function handles = createGenerationTabContent(parent, handles)
@@ -312,14 +261,6 @@ function handles = createGenerationTabContent(parent, handles)
     % Create content (reuse existing functions)
     handles = createLeftColumnContent(leftPanel, handles);
     handles = createRightColumnContent(rightPanel, handles);
-end
-
-function handles = createPerformanceTabContent(parent, handles)
-    % Create content for the Performance Settings tab
-    colors = handles.colors;
-
-    % Create main layout for performance settings
-    handles = createPerformanceSettingsLayout(parent, handles);
 end
 
 function handles = createPostProcessingTabContent(parent, handles)
@@ -1137,12 +1078,10 @@ function switchToGenerationTab(~, ~)
     % Update tab appearances
     set(handles.generation_tab, 'BackgroundColor', handles.colors.tabActive, 'FontWeight', 'bold');
     set(handles.postprocessing_tab, 'BackgroundColor', handles.colors.tabInactive, 'FontWeight', 'normal');
-    set(handles.performance_tab, 'BackgroundColor', handles.colors.tabInactive, 'FontWeight', 'normal');
 
     % Show/hide panels
     set(handles.generation_panel, 'Visible', 'on');
     set(handles.postprocessing_panel, 'Visible', 'off');
-    set(handles.performance_panel, 'Visible', 'off');
 
     guidata(handles.fig, handles);
 end
@@ -1154,29 +1093,10 @@ function switchToPostProcessingTab(~, ~)
     % Update tab appearances
     set(handles.generation_tab, 'BackgroundColor', handles.colors.tabInactive, 'FontWeight', 'normal');
     set(handles.postprocessing_tab, 'BackgroundColor', handles.colors.tabActive, 'FontWeight', 'bold');
-    set(handles.performance_tab, 'BackgroundColor', handles.colors.tabInactive, 'FontWeight', 'normal');
 
     % Show/hide panels
     set(handles.generation_panel, 'Visible', 'off');
     set(handles.postprocessing_panel, 'Visible', 'on');
-    set(handles.performance_panel, 'Visible', 'off');
-
-    guidata(handles.fig, handles);
-end
-
-function switchToPerformanceTab(~, ~)
-    handles = guidata(gcbf);
-    handles.current_tab = 3;
-
-    % Update tab appearances
-    set(handles.generation_tab, 'BackgroundColor', handles.colors.tabInactive, 'FontWeight', 'normal');
-    set(handles.postprocessing_tab, 'BackgroundColor', handles.colors.tabInactive, 'FontWeight', 'normal');
-    set(handles.performance_tab, 'BackgroundColor', handles.colors.tabActive, 'FontWeight', 'bold');
-
-    % Show/hide panels
-    set(handles.generation_panel, 'Visible', 'off');
-    set(handles.postprocessing_panel, 'Visible', 'off');
-    set(handles.performance_panel, 'Visible', 'on');
 
     guidata(handles.fig, handles);
 end
@@ -1661,151 +1581,50 @@ end
 
 % Essential functions from original Data_GUI.m
 function handles = loadUserPreferences(handles)
-    % Load user preferences with safe defaults
-    script_dir = fileparts(mfilename('fullpath'));
-    pref_file = fullfile(script_dir, 'user_preferences.mat');
-
-    % Initialize default preferences
-    handles.preferences = struct();
-    handles.preferences.last_input_file = '';
-    handles.preferences.last_input_file_path = '';
-    handles.preferences.last_output_folder = pwd;
-    handles.preferences.default_num_trials = 10;
-    handles.preferences.default_sim_time = 0.3;
-    handles.preferences.default_sample_rate = 100;
-    handles.preferences.capture_workspace = true; % Default to capturing workspace data
-
-    % PERFORMANCE UPGRADES: Add last used model and input file preferences
-    handles.preferences.last_model_name = '';
-    handles.preferences.last_model_path = '';
-    handles.preferences.last_model_was_loaded = false;
-    handles.preferences.enable_model_caching = true;
-    handles.preferences.enable_preallocation = true;
-    handles.preferences.preallocation_buffer_size = 1000; % Default buffer size for preallocation
-
-    % Batch settings defaults
-    handles.preferences.default_batch_size = 50;
-    handles.preferences.default_save_interval = 25;
-    handles.preferences.enable_performance_monitoring = true;
-    handles.preferences.default_verbosity = 'Normal';
-    handles.preferences.enable_memory_monitoring = true;
-    handles.preferences.enable_master_dataset = true; % Default to creating master dataset
-
-    % PERFORMANCE UPGRADES: Add performance optimization settings
-    handles.preferences.enable_data_compression = true;
-    handles.preferences.compression_level = 6; % MATLAB's default compression level
-    handles.preferences.enable_parallel_processing = true;
-    handles.preferences.max_parallel_workers = 4; % Conservative default
-    handles.preferences.enable_memory_pooling = true;
-    handles.preferences.memory_pool_size = 100; % MB
-
-    % Try to load saved preferences
-    if exist(pref_file, 'file')
-        try
-            loaded_prefs = load(pref_file);
-            if isfield(loaded_prefs, 'preferences')
-                % Merge loaded preferences with defaults
-                pref_fields = fieldnames(loaded_prefs.preferences);
-                for i = 1:length(pref_fields)
-                    field_name = pref_fields{i};
-                    handles.preferences.(field_name) = loaded_prefs.preferences.(field_name);
-                end
-            end
-        catch
-            % Use defaults if loading fails
-            fprintf('Note: Could not load user preferences, using defaults.\n');
+    % Load user preferences
+    try
+        if exist('user_preferences.mat', 'file')
+            prefs = load('user_preferences.mat');
+            handles.preferences = prefs.preferences;
         end
+    catch
+        handles.preferences = struct();
     end
 end
 
 function applyUserPreferences(handles)
     % Apply user preferences to UI
     try
+        % Set default number of trials to 2
+        if isfield(handles, 'num_trials_edit')
+            set(handles.num_trials_edit, 'String', '2');
+        end
+
+        % Set default execution mode to parallel (index 2)
+        if isfield(handles, 'execution_mode_popup')
+            set(handles.execution_mode_popup, 'Value', 2);
+        end
+
+        % Set default master dataset creation to enabled
+        if isfield(handles, 'enable_master_dataset')
+            set(handles.enable_master_dataset, 'Value', 1);
+        end
+
+        % Apply other preferences if they exist
         if isfield(handles, 'preferences')
             prefs = handles.preferences;
 
-            % Apply last output folder
-            if isfield(handles, 'output_folder_edit') && ~isempty(prefs.last_output_folder)
-                set(handles.output_folder_edit, 'String', prefs.last_output_folder);
+            % Apply any other saved preferences here
+            if isfield(prefs, 'default_sim_time') && isfield(handles, 'sim_time_edit')
+                set(handles.sim_time_edit, 'String', num2str(prefs.default_sim_time));
             end
 
-            % Apply last input file
-            if isfield(handles, 'input_file_edit') && ~isempty(prefs.last_input_file_path)
-                if exist(prefs.last_input_file_path, 'file')
-                    handles.selected_input_file = prefs.last_input_file_path;
-                    [~, filename, ext] = fileparts(prefs.last_input_file_path);
-                    set(handles.input_file_edit, 'String', [filename ext]);
-                end
+            if isfield(prefs, 'default_sample_rate') && isfield(handles, 'sample_rate_edit')
+                set(handles.sample_rate_edit, 'String', num2str(prefs.default_sample_rate));
             end
 
-            % PERFORMANCE UPGRADES: Apply last used model
-            if isfield(handles, 'model_display') && ~isempty(prefs.last_model_name)
-                set(handles.model_display, 'String', prefs.last_model_name);
-                handles.model_name = prefs.last_model_name;
-                handles.model_path = prefs.last_model_path;
-                handles.model_was_loaded = prefs.last_model_was_loaded;
-            end
-
-            % Apply default values
-            if isfield(handles, 'num_trials_edit')
-                if isfield(prefs, 'default_num_trials')
-                    set(handles.num_trials_edit, 'String', num2str(prefs.default_num_trials));
-                else
-                    set(handles.num_trials_edit, 'String', '2'); % Default to 2
-                end
-            end
-
-            if isfield(handles, 'sim_time_edit')
-                if isfield(prefs, 'default_sim_time')
-                    set(handles.sim_time_edit, 'String', num2str(prefs.default_sim_time));
-                else
-                    set(handles.sim_time_edit, 'String', '0.3'); % Default to 0.3
-                end
-            end
-
-            if isfield(handles, 'sample_rate_edit')
-                if isfield(prefs, 'default_sample_rate')
-                    set(handles.sample_rate_edit, 'String', num2str(prefs.default_sample_rate));
-                else
-                    set(handles.sim_time_edit, 'String', '100'); % Default to 100
-                end
-            end
-
-            % Apply workspace capture setting
-            if isfield(handles, 'capture_workspace_checkbox') && isfield(prefs, 'capture_workspace')
-                set(handles.capture_workspace_checkbox, 'Value', double(prefs.capture_workspace));
-            end
-
-            % Apply batch settings
-            if isfield(handles, 'batch_size_edit') && isfield(prefs, 'default_batch_size')
-                set(handles.batch_size_edit, 'String', num2str(prefs.default_batch_size));
-            end
-
-            if isfield(handles, 'save_interval_edit') && isfield(prefs, 'default_save_interval')
-                set(handles.save_interval_edit, 'String', num2str(prefs.default_save_interval));
-            end
-
-            if isfield(handles, 'enable_performance_monitoring') && isfield(prefs, 'enable_performance_monitoring')
-                set(handles.enable_performance_monitoring, 'Value', prefs.enable_performance_monitoring);
-            end
-
-            if isfield(handles, 'verbosity_popup') && isfield(prefs, 'default_verbosity')
-                % Map verbosity strings to popup indices
-                verbosity_options = {'Quiet', 'Normal', 'Verbose'};
-                verbosity_idx = find(strcmp(verbosity_options, prefs.default_verbosity));
-                if ~isempty(verbosity_idx)
-                    set(handles.verbosity_popup, 'Value', verbosity_idx);
-                end
-            end
-
-            % Apply master dataset setting
             if isfield(handles, 'enable_master_dataset') && isfield(prefs, 'enable_master_dataset')
                 set(handles.enable_master_dataset, 'Value', prefs.enable_master_dataset);
-            end
-
-            % Set default execution mode to parallel (index 2)
-            if isfield(handles, 'execution_mode_popup')
-                set(handles.execution_mode_popup, 'Value', 2);
             end
         end
 
@@ -2089,7 +1908,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                             'Units', 'normalized', ...
                                             'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                             'BackgroundColor', 'white', ...
-                                            'Callback', @autoUpdateSummaryAndSave);
+                                            'Callback', @autoUpdateSummary);
 
     % Verbosity
     y = y - 0.05;
@@ -2125,7 +1944,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                        'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                        'BackgroundColor', 'white', ...
                                        'HorizontalAlignment', 'center', ...
-                                       'Callback', @updateCoefficientsPreviewAndSave);
+                                       'Callback', @updateCoefficientsPreview);
 
     % Duration
     y = y - 0.05;
@@ -2144,7 +1963,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                      'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                      'BackgroundColor', 'white', ...
                                      'HorizontalAlignment', 'center', ...
-                                     'Callback', @autoUpdateSummaryAndSave);
+                                     'Callback', @autoUpdateSummary);
 
     % Sample Rate
     y = y - 0.05;
@@ -2163,7 +1982,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                         'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                         'BackgroundColor', 'white', ...
                                         'HorizontalAlignment', 'center', ...
-                                        'Callback', @autoUpdateSummaryAndSave);
+                                        'Callback', @autoUpdateSummary);
 
     % Torque Scenario
     y = y - 0.05;
@@ -2200,7 +2019,7 @@ function handles = createTrialAndDataPanel(parent, handles, yPos, height)
                                         'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
                                         'BackgroundColor', 'white', ...
                                         'HorizontalAlignment', 'center', ...
-                                        'Callback', @updateCoefficientsPreviewAndSave);
+                                        'Callback', @updateCoefficientsPreview);
 
     % Data Sources
     y = y - 0.05;
@@ -2771,44 +2590,9 @@ end
 function browseInputFile(~, ~)
     handles = guidata(gcbf);
 
-    % Determine starting directory - prefer last used or common project locations
-    start_dir = pwd;
-    if isfield(handles, 'preferences') && ~isempty(handles.preferences.last_input_file_path)
-        [last_dir, ~, ~] = fileparts(handles.preferences.last_input_file_path);
-        if exist(last_dir, 'dir')
-            start_dir = last_dir;
-        end
-    else
-        % Try common project locations
-        possible_dirs = {
-            'Input Files',
-            'Model',
-            fullfile(pwd, 'Input Files'),
-            fullfile(pwd, 'Model'),
-            fullfile(pwd, '..', 'Input Files')
-        };
-
-        for i = 1:length(possible_dirs)
-            if exist(possible_dirs{i}, 'dir')
-                start_dir = possible_dirs{i};
-                break;
-            end
-        end
-    end
-
-    [filename, pathname] = uigetfile({'*.mat', 'MAT Files'; '*.*', 'All Files'}, 'Select Input File', start_dir);
-
+    [filename, pathname] = uigetfile('*.mat', 'Select Input File');
     if filename ~= 0
-        full_path = fullfile(pathname, filename);
-        handles.selected_input_file = full_path;
-
-        % Update display
-        set(handles.input_file_edit, 'String', filename);
-
-        % Save preferences with new input file
-        saveUserPreferences(handles);
-
-        guidata(handles.fig, handles);
+        set(handles.input_file_edit, 'String', fullfile(pathname, filename));
     end
 end
 
@@ -2821,20 +2605,6 @@ function autoUpdateSummary(~, ~, fig)
     % Update both summary and coefficients preview
     updatePreview([], [], fig);
     updateCoefficientsPreview([], [], fig);
-end
-
-function autoUpdateSummaryAndSave(~, ~, fig)
-    if nargin < 3 || isempty(fig)
-        fig = gcbf;
-    end
-    handles = guidata(fig);
-
-    % Update both summary and coefficients preview
-    updatePreview([], [], fig);
-    updateCoefficientsPreview([], [], fig);
-    
-    % Save preferences after updating
-    saveUserPreferences(handles);
 end
 
 function torqueScenarioCallback(src, ~)
@@ -2928,20 +2698,6 @@ function updateCoefficientsPreview(~, ~, fig)
         fig = gcbf;
     end
     handles = guidata(fig);
-end
-
-function updateCoefficientsPreviewAndSave(~, ~, fig)
-    if nargin < 3 || isempty(fig)
-        fig = gcbf;
-    end
-    handles = guidata(fig);
-    
-    % Update coefficients preview
-    updateCoefficientsPreview([], [], fig);
-    
-    % Save preferences after updating
-    saveUserPreferences(handles);
-end
 
     try
         % Get current settings
@@ -3417,10 +3173,8 @@ function selectSimulinkModel(src, evt)
         if ok
             handles.model_name = possible_models{selection};
             handles.model_path = possible_paths{selection};
-            handles.model_was_loaded = false; % Model was found but not loaded
             set(handles.model_display, 'String', handles.model_name);
             guidata(handles.fig, handles);
-            saveUserPreferences(handles);
         end
 
     else
@@ -3433,10 +3187,8 @@ function selectSimulinkModel(src, evt)
         if ok
             handles.model_name = open_models{selection};
             handles.model_path = which(handles.model_name);
-            handles.model_was_loaded = true; % Model is already loaded
             set(handles.model_display, 'String', handles.model_name);
             guidata(handles.fig, handles);
-            saveUserPreferences(handles);
         end
     end
 end
@@ -3469,70 +3221,18 @@ function clearAllCheckpoints(~, ~)
 end
 
 function saveUserPreferences(handles)
-    % Save current settings as preferences
+    % Save user preferences to file
     try
-        % Ensure preferences exist
-        if ~isfield(handles, 'preferences')
-            handles.preferences = struct();
-        end
-
-        % Update preferences with current settings
-        if isfield(handles, 'output_folder_edit')
-            folder = get(handles.output_folder_edit, 'String');
-            if ~isempty(folder)
-                handles.preferences.last_output_folder = folder;
-            end
-        end
-
-        % Save input file path if selected
-        if isfield(handles, 'selected_input_file') && ~isempty(handles.selected_input_file)
-            handles.preferences.last_input_file_path = handles.selected_input_file;
-            [~, filename, ext] = fileparts(handles.selected_input_file);
-            handles.preferences.last_input_file = [filename ext];
-        end
-
-        % Save model information if available
-        if isfield(handles, 'model_name')
-            handles.preferences.last_model_name = handles.model_name;
-        end
-        if isfield(handles, 'model_path')
-            handles.preferences.last_model_path = handles.model_path;
-        end
-        if isfield(handles, 'model_was_loaded')
-            handles.preferences.last_model_was_loaded = handles.model_was_loaded;
-        end
-
-        % Save other current settings
-        if isfield(handles, 'num_trials_edit')
-            value = str2double(get(handles.num_trials_edit, 'String'));
-            if ~isnan(value)
-                handles.preferences.default_num_trials = value;
-            end
-        end
-
-        if isfield(handles, 'sim_time_edit')
-            value = str2double(get(handles.sim_time_edit, 'String'));
-            if ~isnan(value)
-                handles.preferences.default_sim_time = value;
-            end
-        end
-
-        if isfield(handles, 'sample_rate_edit')
-            value = str2double(get(handles.sample_rate_edit, 'String'));
-            if ~isnan(value)
-                handles.preferences.default_sample_rate = value;
-            end
-        end
+        preferences = struct();
+        preferences.last_input_file_path = handles.selected_input_file;
+        preferences.output_folder = get(handles.output_folder_edit, 'String');
+        preferences.model_name = handles.model_name;
 
         if isfield(handles, 'enable_master_dataset')
-            handles.preferences.enable_master_dataset = get(handles.enable_master_dataset, 'Value');
+            preferences.enable_master_dataset = get(handles.enable_master_dataset, 'Value');
         end
 
-        % Save to file
-        script_dir = fileparts(mfilename('fullpath'));
-        pref_file = fullfile(script_dir, 'user_preferences.mat');
-        save(pref_file, 'preferences');
-
+        save('user_preferences.mat', 'preferences');
     catch ME
         fprintf('Warning: Could not save preferences: %s\n', ME.message);
     end
@@ -6152,1076 +5852,5 @@ function updatePreviewTable(~, ~)
 
     catch ME
         fprintf('Error updating preview table: %s\n', ME.message);
-    end
-end
-
-% ============================================================================
-% PERFORMANCE SETTINGS INTERFACE
-% ============================================================================
-
-function handles = createPerformanceSettingsLayout(parent, handles)
-    % Create comprehensive performance settings interface
-    colors = handles.colors;
-    
-    % Create scrollable panel for performance settings
-    scrollPanel = uipanel('Parent', parent, ...
-                         'Units', 'normalized', ...
-                         'Position', [0, 0, 1, 1], ...
-                         'BackgroundColor', colors.background, ...
-                         'BorderType', 'none');
-    
-    % Create overview description panel
-    handles = createPerformanceOverviewSection(scrollPanel, handles);
-    
-    % Create sections for different performance categories
-    handles = createParallelProcessingSection(scrollPanel, handles);
-    handles = createMemoryManagementSection(scrollPanel, handles);
-    handles = createOptimizationSection(scrollPanel, handles);
-    handles = createMonitoringSection(scrollPanel, handles);
-    handles = createActionButtons(scrollPanel, handles);
-    
-    % Load current preferences into UI (will be done after UI creation)
-end
-
-function handles = createPerformanceOverviewSection(parent, handles)
-    % Create overview description section for performance settings
-    colors = handles.colors;
-    
-    % Overview panel
-    overviewPanel = uipanel('Parent', parent, ...
-                           'Units', 'normalized', ...
-                           'Position', [0.02, 0.88, 0.96, 0.1], ...
-                           'BackgroundColor', colors.panel, ...
-                           'BorderType', 'line', ...
-                           'BorderWidth', 1, ...
-                           'HighlightColor', colors.border, ...
-                           'Title', 'Performance Settings Overview', ...
-                           'FontWeight', 'bold', ...
-                           'FontSize', 11);
-    
-    % Overview description
-    uicontrol('Parent', overviewPanel, ...
-              'Style', 'text', ...
-              'String', 'This tab allows you to configure performance optimization settings for the golf swing simulation GUI. Adjust these parameters to optimize simulation speed, memory usage, and overall system performance based on your hardware capabilities and workload requirements.', ...
-              'Units', 'normalized', ...
-              'Position', [0.02, 0.1, 0.96, 0.8], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 9);
-end
-
-function handles = createParallelProcessingSection(parent, handles)
-    % Create parallel processing settings section
-    colors = handles.colors;
-    
-    % Section title
-    sectionPanel = uipanel('Parent', parent, ...
-                          'Units', 'normalized', ...
-                          'Position', [0.02, 0.77, 0.96, 0.22], ...
-                          'BackgroundColor', colors.panel, ...
-                          'BorderType', 'line', ...
-                          'BorderWidth', 1, ...
-                          'HighlightColor', colors.border, ...
-                          'Title', 'Parallel Processing Settings', ...
-                          'FontWeight', 'bold', ...
-                          'FontSize', 11);
-    
-    % Left side - Controls
-    % Enable parallel processing checkbox
-    handles.enable_parallel_checkbox = uicontrol('Parent', sectionPanel, ...
-                                               'Style', 'checkbox', ...
-                                               'String', 'Enable Parallel Processing', ...
-                                               'Units', 'normalized', ...
-                                               'Position', [0.05, 0.75, 0.4, 0.15], ...
-                                               'BackgroundColor', colors.panel, ...
-                                               'FontWeight', 'bold', ...
-                                               'Callback', @updateParallelSettings);
-    
-    % Number of workers input
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Max Parallel Workers:', ...
-              'Units', 'normalized', ...
-              'Position', [0.05, 0.55, 0.3, 0.1], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontWeight', 'bold');
-    
-    handles.workers_edit = uicontrol('Parent', sectionPanel, ...
-                                    'Style', 'edit', ...
-                                    'Units', 'normalized', ...
-                                    'Position', [0.25, 0.55, 0.2, 0.1], ...
-                                    'String', '1', ...
-                                    'BackgroundColor', 'white', ...
-                                    'Callback', @updateWorkersInput);
-    
-    % Cluster profile selection
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Cluster Profile:', ...
-              'Units', 'normalized', ...
-              'Position', [0.05, 0.35, 0.3, 0.1], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontWeight', 'bold');
-    
-    handles.cluster_profile_popup = uicontrol('Parent', sectionPanel, ...
-                                             'Style', 'popupmenu', ...
-                                             'Units', 'normalized', ...
-                                             'Position', [0.25, 0.35, 0.2, 0.1], ...
-                                             'String', getAvailableClusterProfiles(), ...
-                                             'Callback', @updateClusterProfile);
-    
-    % Use local cluster checkbox
-    handles.use_local_cluster_checkbox = uicontrol('Parent', sectionPanel, ...
-                                                  'Style', 'checkbox', ...
-                                                  'String', 'Use Local Cluster Profile', ...
-                                                  'Units', 'normalized', ...
-                                                  'Position', [0.05, 0.15, 0.4, 0.15], ...
-                                                  'BackgroundColor', colors.panel, ...
-                                                  'FontWeight', 'bold', ...
-                                                  'Callback', @updateClusterSettings);
-    
-    % Test cluster button
-    handles.test_cluster_button = uicontrol('Parent', sectionPanel, ...
-                                           'Style', 'pushbutton', ...
-                                           'String', 'Test Cluster', ...
-                                           'Units', 'normalized', ...
-                                           'Position', [0.25, 0.15, 0.2, 0.1], ...
-                                           'BackgroundColor', colors.lightGrey, ...
-                                           'ForegroundColor', colors.text, ...
-                                           'FontWeight', 'bold', ...
-                                           'Callback', @testClusterConnection);
-    
-    % Right side - Descriptions
-    % Parallel processing description
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Parallel Processing distributes simulation workload across multiple CPU cores, significantly reducing total computation time for large datasets.', ...
-              'Units', 'normalized', ...
-              'Position', [0.5, 0.75, 0.45, 0.15], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 9);
-    
-    % Workers description
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Max Parallel Workers: Set the maximum number of CPU cores to use. Higher values increase speed but require more memory. Recommended: 50-80% of available cores.', ...
-              'Units', 'normalized', ...
-              'Position', [0.5, 0.55, 0.45, 0.1], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 9);
-    
-    % Cluster profile description
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Cluster Profile: Select the parallel computing profile to use. Local_Cluster is recommended for single-machine processing.', ...
-              'Units', 'normalized', ...
-              'Position', [0.5, 0.35, 0.45, 0.1], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 9);
-    
-    % Local cluster description
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Use Local Cluster Profile: When enabled, forces the use of the selected local cluster profile for better performance control.', ...
-              'Units', 'normalized', ...
-              'Position', [0.5, 0.15, 0.45, 0.15], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 9);
-end
-
-function handles = createMemoryManagementSection(parent, handles)
-    % Create memory management settings section
-    colors = handles.colors;
-    
-    % Section title
-    sectionPanel = uipanel('Parent', parent, ...
-                          'Units', 'normalized', ...
-                          'Position', [0.02, 0.54, 0.96, 0.22], ...
-                          'BackgroundColor', colors.panel, ...
-                          'BorderType', 'line', ...
-                          'BorderWidth', 1, ...
-                          'HighlightColor', colors.border, ...
-                          'Title', 'Memory Management', ...
-                          'FontWeight', 'bold', ...
-                          'FontSize', 11);
-    
-    % Left side - Controls
-    % Enable preallocation checkbox
-    handles.enable_preallocation_checkbox = uicontrol('Parent', sectionPanel, ...
-                                                     'Style', 'checkbox', ...
-                                                     'String', 'Enable Preallocation', ...
-                                                     'Units', 'normalized', ...
-                                                     'Position', [0.05, 0.75, 0.4, 0.15], ...
-                                                     'BackgroundColor', colors.panel, ...
-                                                     'FontWeight', 'bold', ...
-                                                     'Callback', @updatePreallocationSettings);
-    
-    % Preallocation buffer size
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Buffer Size:', ...
-              'Units', 'normalized', ...
-              'Position', [0.05, 0.55, 0.2, 0.1], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontWeight', 'bold');
-    
-    handles.buffer_size_edit = uicontrol('Parent', sectionPanel, ...
-                                        'Style', 'edit', ...
-                                        'Units', 'normalized', ...
-                                        'Position', [0.25, 0.55, 0.2, 0.1], ...
-                                        'String', '1000', ...
-                                        'BackgroundColor', 'white', ...
-                                        'Callback', @updateBufferSize);
-    
-    % Enable data compression checkbox
-    handles.enable_compression_checkbox = uicontrol('Parent', sectionPanel, ...
-                                                   'Style', 'checkbox', ...
-                                                   'String', 'Enable Data Compression', ...
-                                                   'Units', 'normalized', ...
-                                                   'Position', [0.05, 0.35, 0.4, 0.15], ...
-                                                   'BackgroundColor', colors.panel, ...
-                                                   'FontWeight', 'bold', ...
-                                                   'Callback', @updateCompressionSettings);
-    
-    % Compression level input
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Compression Level (1-9):', ...
-              'Units', 'normalized', ...
-              'Position', [0.05, 0.15, 0.3, 0.1], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontWeight', 'bold');
-    
-    handles.compression_edit = uicontrol('Parent', sectionPanel, ...
-                                        'Style', 'edit', ...
-                                        'Units', 'normalized', ...
-                                        'Position', [0.25, 0.15, 0.2, 0.1], ...
-                                        'String', '6', ...
-                                        'BackgroundColor', 'white', ...
-                                        'Callback', @updateCompressionInput);
-    
-    % Right side - Descriptions
-    % Preallocation description
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Preallocation reserves memory blocks in advance, preventing frequent memory reallocation during simulation execution. This significantly improves performance for large datasets.', ...
-              'Units', 'normalized', ...
-              'Position', [0.5, 0.75, 0.45, 0.15], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 9);
-    
-    % Buffer size description
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Buffer Size: Number of simulation trials to preallocate memory for. Larger buffers improve performance but use more memory. Recommended: 1000-5000 for typical workloads.', ...
-              'Units', 'normalized', ...
-              'Position', [0.5, 0.55, 0.45, 0.1], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 9);
-    
-    % Compression description
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Data Compression reduces memory usage by compressing simulation results. Higher levels save more memory but require more CPU time for compression/decompression.', ...
-              'Units', 'normalized', ...
-              'Position', [0.5, 0.35, 0.45, 0.15], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 9);
-    
-    % Compression level description
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Compression Level: 1=fast/less compression, 9=slow/maximum compression. Level 6 provides good balance between memory savings and performance.', ...
-              'Units', 'normalized', ...
-              'Position', [0.5, 0.15, 0.45, 0.1], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 9);
-end
-
-function handles = createOptimizationSection(parent, handles)
-    % Create optimization settings section
-    colors = handles.colors;
-    
-    % Section title
-    sectionPanel = uipanel('Parent', parent, ...
-                          'Units', 'normalized', ...
-                          'Position', [0.02, 0.31, 0.96, 0.22], ...
-                          'BackgroundColor', colors.panel, ...
-                          'BorderType', 'line', ...
-                          'BorderWidth', 1, ...
-                          'HighlightColor', colors.border, ...
-                          'Title', 'Optimization Settings', ...
-                          'FontWeight', 'bold', ...
-                          'FontSize', 11);
-    
-    % Left side - Controls
-    % Enable model caching checkbox
-    handles.enable_caching_checkbox = uicontrol('Parent', sectionPanel, ...
-                                               'Style', 'checkbox', ...
-                                               'String', 'Enable Model Caching', ...
-                                               'Units', 'normalized', ...
-                                               'Position', [0.05, 0.75, 0.4, 0.15], ...
-                                               'BackgroundColor', colors.panel, ...
-                                               'FontWeight', 'bold', ...
-                                               'Callback', @updateCachingSettings);
-    
-    % Enable memory pooling checkbox
-    handles.enable_memory_pooling_checkbox = uicontrol('Parent', sectionPanel, ...
-                                                       'Style', 'checkbox', ...
-                                                       'String', 'Enable Memory Pooling', ...
-                                                       'Units', 'normalized', ...
-                                                       'Position', [0.05, 0.55, 0.4, 0.15], ...
-                                                       'BackgroundColor', colors.panel, ...
-                                                       'FontWeight', 'bold', ...
-                                                       'Callback', @updateMemoryPoolingSettings);
-    
-    % Memory pool size
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Memory Pool Size (MB):', ...
-              'Units', 'normalized', ...
-              'Position', [0.05, 0.35, 0.3, 0.1], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontWeight', 'bold');
-    
-    handles.memory_pool_edit = uicontrol('Parent', sectionPanel, ...
-                                        'Style', 'edit', ...
-                                        'Units', 'normalized', ...
-                                        'Position', [0.25, 0.35, 0.2, 0.1], ...
-                                        'String', '100', ...
-                                        'BackgroundColor', 'white', ...
-                                        'Callback', @updateMemoryPoolSize);
-    
-    % Performance analysis button
-    handles.performance_analysis_button = uicontrol('Parent', sectionPanel, ...
-                                                   'Style', 'pushbutton', ...
-                                                   'String', 'Run Performance Analysis', ...
-                                                   'Units', 'normalized', ...
-                                                   'Position', [0.25, 0.15, 0.2, 0.1], ...
-                                                   'BackgroundColor', colors.lightGrey, ...
-                                                   'ForegroundColor', colors.text, ...
-                                                   'FontWeight', 'bold', ...
-                                                   'Callback', @runPerformanceAnalysis);
-    
-    % Right side - Descriptions
-    % Model caching description
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Model Caching stores compiled Simulink models in memory, eliminating the need to recompile models between simulation runs. This dramatically reduces startup time for repeated simulations.', ...
-              'Units', 'normalized', ...
-              'Position', [0.5, 0.75, 0.45, 0.15], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 9);
-    
-    % Memory pooling description
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Memory Pooling pre-allocates and reuses memory blocks for simulation data, reducing memory fragmentation and improving overall system performance during long simulation sessions.', ...
-              'Units', 'normalized', ...
-              'Position', [0.5, 0.55, 0.45, 0.15], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 9);
-    
-    % Memory pool size description
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Memory Pool Size: Total memory allocated for the memory pool in MB. Larger pools provide better performance but use more system memory. Recommended: 100-500 MB for typical workloads.', ...
-              'Units', 'normalized', ...
-              'Position', [0.5, 0.35, 0.45, 0.1], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 9);
-    
-    % Performance analysis description
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Performance Analysis: Runs comprehensive diagnostics to identify bottlenecks, analyze memory usage patterns, and provide optimization recommendations for your specific system configuration.', ...
-              'Units', 'normalized', ...
-              'Position', [0.5, 0.15, 0.45, 0.1], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 9);
-end
-
-function handles = createMonitoringSection(parent, handles)
-    % Create monitoring settings section
-    colors = handles.colors;
-    
-    % Section title
-    sectionPanel = uipanel('Parent', parent, ...
-                          'Units', 'normalized', ...
-                          'Position', [0.02, 0.08, 0.96, 0.22], ...
-                          'BackgroundColor', colors.panel, ...
-                          'BorderType', 'line', ...
-                          'BorderWidth', 1, ...
-                          'HighlightColor', colors.border, ...
-                          'Title', 'Performance Monitoring', ...
-                          'FontWeight', 'bold', ...
-                          'FontSize', 11);
-    
-    % Left side - Controls
-    % Enable performance monitoring checkbox
-    handles.enable_performance_monitoring_checkbox = uicontrol('Parent', sectionPanel, ...
-                                                              'Style', 'checkbox', ...
-                                                              'String', 'Enable Performance Monitoring', ...
-                                                              'Units', 'normalized', ...
-                                                              'Position', [0.05, 0.75, 0.4, 0.15], ...
-                                                              'BackgroundColor', colors.panel, ...
-                                                              'FontWeight', 'bold', ...
-                                                              'Callback', @updateMonitoringSettings);
-    
-    % Enable memory monitoring checkbox
-    handles.enable_memory_monitoring_checkbox = uicontrol('Parent', sectionPanel, ...
-                                                         'Style', 'checkbox', ...
-                                                         'String', 'Enable Memory Monitoring', ...
-                                                         'Units', 'normalized', ...
-                                                         'Position', [0.05, 0.55, 0.4, 0.15], ...
-                                                         'BackgroundColor', colors.panel, ...
-                                                         'FontWeight', 'bold', ...
-                                                         'Callback', @updateMemoryMonitoringSettings);
-    
-    % Current memory usage display
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Current Memory Usage:', ...
-              'Units', 'normalized', ...
-              'Position', [0.05, 0.35, 0.3, 0.1], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontWeight', 'bold');
-    
-    handles.memory_usage_text = uicontrol('Parent', sectionPanel, ...
-                                         'Style', 'text', ...
-                                         'String', 'Calculating...', ...
-                                         'Units', 'normalized', ...
-                                         'Position', [0.25, 0.35, 0.2, 0.1], ...
-                                         'BackgroundColor', colors.panel, ...
-                                         'HorizontalAlignment', 'left', ...
-                                         'FontWeight', 'bold');
-    
-    % Refresh memory button
-    handles.refresh_memory_button = uicontrol('Parent', sectionPanel, ...
-                                             'Style', 'pushbutton', ...
-                                             'String', 'Refresh Memory Info', ...
-                                             'Units', 'normalized', ...
-                                             'Position', [0.25, 0.15, 0.2, 0.1], ...
-                                             'BackgroundColor', colors.lightGrey, ...
-                                             'ForegroundColor', colors.text, ...
-                                             'FontWeight', 'bold', ...
-                                             'Callback', @refreshMemoryInfo);
-    
-    % Right side - Descriptions
-    % Performance monitoring description
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Performance Monitoring tracks simulation execution times, identifies bottlenecks, and provides real-time feedback on optimization effectiveness. Essential for tuning performance parameters.', ...
-              'Units', 'normalized', ...
-              'Position', [0.5, 0.75, 0.45, 0.15], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 9);
-    
-    % Memory monitoring description
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Memory Monitoring tracks system memory usage, helps identify memory leaks, and ensures optimal memory allocation for simulation workloads. Critical for long-running simulation sessions.', ...
-              'Units', 'normalized', ...
-              'Position', [0.5, 0.55, 0.45, 0.15], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 9);
-    
-    % Memory usage display description
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Current Memory Usage: Real-time display of system memory consumption. Shows both physical and virtual memory usage to help optimize memory allocation settings.', ...
-              'Units', 'normalized', ...
-              'Position', [0.5, 0.35, 0.45, 0.1], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 9);
-    
-    % Refresh memory description
-    uicontrol('Parent', sectionPanel, ...
-              'Style', 'text', ...
-              'String', 'Refresh Memory Info: Updates the memory usage display with current system information. Use this to monitor memory changes during simulation execution.', ...
-              'Units', 'normalized', ...
-              'Position', [0.5, 0.15, 0.45, 0.1], ...
-              'BackgroundColor', colors.panel, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 9);
-end
-
-function handles = createActionButtons(parent, handles)
-    % Create action buttons for performance settings
-    colors = handles.colors;
-    
-    % Button panel
-    buttonPanel = uipanel('Parent', parent, ...
-                         'Units', 'normalized', ...
-                         'Position', [0.02, 0.01, 0.96, 0.04], ...
-                         'BackgroundColor', colors.background, ...
-                         'BorderType', 'none');
-    
-    % Save settings button
-    handles.save_performance_button = uicontrol('Parent', buttonPanel, ...
-                                               'Style', 'pushbutton', ...
-                                               'String', 'Save Performance Settings', ...
-                                               'Units', 'normalized', ...
-                                               'Position', [0.25, 0.1, 0.2, 0.8], ...
-                                               'BackgroundColor', colors.lightGrey, ...
-                                               'ForegroundColor', colors.text, ...
-                                               'FontWeight', 'bold', ...
-                                               'Callback', @savePerformanceSettings);
-    
-    % Reset to defaults button
-    handles.reset_performance_button = uicontrol('Parent', buttonPanel, ...
-                                                'Style', 'pushbutton', ...
-                                                'String', 'Reset to Defaults', ...
-                                                'Units', 'normalized', ...
-                                                'Position', [0.5, 0.1, 0.2, 0.8], ...
-                                                'BackgroundColor', colors.lightGrey, ...
-                                                'ForegroundColor', colors.text, ...
-                                                'FontWeight', 'bold', ...
-                                               'Callback', @resetPerformanceSettings);
-    
-    % Apply settings button
-    handles.apply_performance_button = uicontrol('Parent', buttonPanel, ...
-                                                'Style', 'pushbutton', ...
-                                                'String', 'Apply Settings', ...
-                                                'Units', 'normalized', ...
-                                                'Position', [0.75, 0.1, 0.2, 0.8], ...
-                                               'BackgroundColor', colors.lightGrey, ...
-                                               'ForegroundColor', colors.text, ...
-                                               'FontWeight', 'bold', ...
-                                               'Callback', @applyPerformanceSettings);
-    
-    % Right side - Action button descriptions
-    % Save button description
-    uicontrol('Parent', buttonPanel, ...
-              'Style', 'text', ...
-              'String', 'Save: Stores current performance settings to user preferences file for future sessions. Settings persist between GUI launches.', ...
-              'Units', 'normalized', ...
-              'Position', [0.02, 0.1, 0.2, 0.8], ...
-              'BackgroundColor', colors.background, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 8);
-    
-    % Reset button description
-    uicontrol('Parent', buttonPanel, ...
-              'Style', 'text', ...
-              'String', 'Reset: Restores all performance settings to their default values. Use this if you encounter performance issues.', ...
-              'Units', 'normalized', ...
-              'Position', [0.98, 0.1, 0.2, 0.8], ...
-              'BackgroundColor', colors.background, ...
-              'HorizontalAlignment', 'right', ...
-              'FontSize', 8);
-end
-
-% ============================================================================
-% PERFORMANCE SETTINGS CALLBACK FUNCTIONS
-% ============================================================================
-
-function updateParallelSettings(~, ~)
-    % Update parallel processing settings
-    handles = guidata(gcbf);
-    enabled = get(handles.enable_parallel_checkbox, 'Value');
-    
-    % Enable/disable related controls
-    if enabled
-        enable_state = 'on';
-    else
-        enable_state = 'off';
-    end
-    
-    set(handles.workers_edit, 'Enable', enable_state);
-    set(handles.cluster_profile_popup, 'Enable', enable_state);
-    set(handles.use_local_cluster_checkbox, 'Enable', enable_state);
-    set(handles.test_cluster_button, 'Enable', enable_state);
-    
-    guidata(handles.fig, handles);
-end
-
-function updateWorkersInput(~, ~)
-    % Update workers setting when edit box changes
-    handles = guidata(gcbf);
-    try
-        value = str2double(get(handles.workers_edit, 'String'));
-        if ~isnan(value) && value >= 1 && value <= feature('numcores')
-            handles.preferences.max_parallel_workers = round(value);
-        else
-            % Reset to current preference if invalid
-            set(handles.workers_edit, 'String', num2str(handles.preferences.max_parallel_workers));
-        end
-    catch
-        % Reset to current preference if error
-        set(handles.workers_edit, 'String', num2str(handles.preferences.max_parallel_workers));
-    end
-    guidata(handles.fig, handles);
-end
-
-function updateClusterProfile(~, ~)
-    % Update cluster profile selection
-    handles = guidata(gcbf);
-    profiles = get(handles.cluster_profile_popup, 'String');
-    selected = get(handles.cluster_profile_popup, 'Value');
-    selected_profile = profiles{selected};
-    
-    % Update preferences
-    handles.preferences.cluster_profile = selected_profile;
-    guidata(handles.fig, handles);
-end
-
-function updateClusterSettings(~, ~)
-    % Update cluster settings
-    handles = guidata(gcbf);
-    use_local = get(handles.use_local_cluster_checkbox, 'Value');
-    handles.preferences.use_local_cluster = use_local;
-    guidata(handles.fig, handles);
-end
-
-function updatePreallocationSettings(~, ~)
-    % Update preallocation settings
-    handles = guidata(gcbf);
-    enabled = get(handles.enable_preallocation_checkbox, 'Value');
-    
-    if enabled
-        enable_state = 'on';
-    else
-        enable_state = 'off';
-    end
-    
-    set(handles.buffer_size_edit, 'Enable', enable_state);
-    guidata(handles.fig, handles);
-end
-
-function updateBufferSize(~, ~)
-    % Update buffer size setting
-    handles = guidata(gcbf);
-    try
-        value = str2double(get(handles.buffer_size_edit, 'String'));
-        if ~isnan(value) && value > 0
-            handles.preferences.preallocation_buffer_size = value;
-        else
-            set(handles.buffer_size_edit, 'String', num2str(handles.preferences.preallocation_buffer_size));
-        end
-    catch
-        set(handles.buffer_size_edit, 'String', num2str(handles.preferences.preallocation_buffer_size));
-    end
-    guidata(handles.fig, handles);
-end
-
-function updateCompressionSettings(~, ~)
-    % Update compression settings
-    handles = guidata(gcbf);
-    enabled = get(handles.enable_compression_checkbox, 'Value');
-    
-    if enabled
-        enable_state = 'on';
-    else
-        enable_state = 'off';
-    end
-    
-    set(handles.compression_edit, 'Enable', enable_state);
-    guidata(handles.fig, handles);
-end
-
-function updateCompressionInput(~, ~)
-    % Update compression level when edit box changes
-    handles = guidata(gcbf);
-    try
-        value = str2double(get(handles.compression_edit, 'String'));
-        if ~isnan(value) && value >= 1 && value <= 9
-            handles.preferences.compression_level = round(value);
-        else
-            % Reset to current preference if invalid
-            set(handles.compression_edit, 'String', num2str(handles.preferences.compression_level));
-        end
-    catch
-        % Reset to current preference if error
-        set(handles.compression_edit, 'String', num2str(handles.preferences.compression_level));
-    end
-    guidata(handles.fig, handles);
-end
-
-function updateCachingSettings(~, ~)
-    % Update caching settings
-    handles = guidata(gcbf);
-    enabled = get(handles.enable_caching_checkbox, 'Value');
-    handles.preferences.enable_model_caching = enabled;
-    guidata(handles.fig, handles);
-end
-
-function updateMemoryPoolingSettings(~, ~)
-    % Update memory pooling settings
-    handles = guidata(gcbf);
-    enabled = get(handles.enable_memory_pooling_checkbox, 'Value');
-    
-    if enabled
-        enable_state = 'on';
-    else
-        enable_state = 'off';
-    end
-    
-    set(handles.memory_pool_edit, 'Enable', enable_state);
-    guidata(handles.fig, handles);
-end
-
-function updateMemoryPoolSize(~, ~)
-    % Update memory pool size
-    handles = guidata(gcbf);
-    try
-        value = str2double(get(handles.memory_pool_edit, 'String'));
-        if ~isnan(value) && value > 0
-            handles.preferences.memory_pool_size = value;
-        else
-            set(handles.memory_pool_edit, 'String', num2str(handles.preferences.memory_pool_size));
-        end
-    catch
-        set(handles.memory_pool_edit, 'String', num2str(handles.preferences.memory_pool_size));
-    end
-    guidata(handles.fig, handles);
-end
-
-function updateMonitoringSettings(~, ~)
-    % Update performance monitoring settings
-    handles = guidata(gcbf);
-    enabled = get(handles.enable_performance_monitoring_checkbox, 'Value');
-    handles.preferences.enable_performance_monitoring = enabled;
-    guidata(handles.fig, handles);
-end
-
-function updateMemoryMonitoringSettings(~, ~)
-    % Update memory monitoring settings
-    handles = guidata(gcbf);
-    enabled = get(handles.enable_memory_monitoring_checkbox, 'Value');
-    handles.preferences.enable_memory_monitoring = enabled;
-    guidata(handles.fig, handles);
-end
-
-% ============================================================================
-% PERFORMANCE SETTINGS ACTION FUNCTIONS
-% ============================================================================
-
-function testClusterConnection(~, ~)
-    % Test cluster connection
-    handles = guidata(gcbf);
-    
-    try
-        % Get selected cluster profile
-        profiles = get(handles.cluster_profile_popup, 'String');
-        selected = get(handles.cluster_profile_popup, 'Value');
-        cluster_name = profiles{selected};
-        
-        % Check if initializeLocalCluster function exists
-        if ~exist('initializeLocalCluster', 'file')
-            error('initializeLocalCluster function not found. Please ensure initializeLocalCluster.m is in the MATLAB path.');
-        end
-        
-        % Test cluster
-        fprintf('Calling initializeLocalCluster...\n');
-        cluster_info = initializeLocalCluster(handles.preferences);
-        fprintf('Function call completed successfully\n');
-        
-        % Check if cluster_info is a valid struct with required fields
-        if ~isstruct(cluster_info)
-            error('Invalid cluster info returned: not a struct (got %s)', class(cluster_info));
-        end
-        
-        if ~isfield(cluster_info, 'status')
-            error('Invalid cluster info: missing status field');
-        end
-        
-        if strcmp(cluster_info.status, 'ready')
-            if isfield(cluster_info, 'num_workers')
-                msgbox(sprintf('✓ Cluster "%s" test successful!\nWorkers: %d', cluster_name, cluster_info.num_workers), ...
-                       'Cluster Test', 'modal');
-            else
-                msgbox(sprintf('✓ Cluster "%s" test successful!', cluster_name), ...
-                       'Cluster Test', 'modal');
-            end
-        else
-            if isfield(cluster_info, 'error_message')
-                msgbox(sprintf('✗ Cluster "%s" test failed:\n%s', cluster_name, cluster_info.error_message), ...
-                       'Cluster Test', 'modal');
-            else
-                msgbox(sprintf('✗ Cluster "%s" test failed:\nUnknown error', cluster_name), ...
-                       'Cluster Test', 'modal');
-            end
-        end
-        
-    catch ME
-        % Provide detailed error information
-        error_msg = sprintf('Error testing cluster: %s\n\nFunction: %s\nLine: %d', ...
-                           ME.message, ME.stack(1).name, ME.stack(1).line);
-        msgbox(error_msg, 'Cluster Test Error', 'modal');
-        fprintf('Cluster test error details: %s\n', ME.message);
-        fprintf('Function: %s, Line: %d\n', ME.stack(1).name, ME.stack(1).line);
-        
-        % Additional debugging info
-        fprintf('Current working directory: %s\n', pwd);
-        fprintf('MATLAB path contains current directory: %s\n', ...
-                mat2str(contains(path, pwd)));
-    end
-end
-
-function runPerformanceAnalysis(~, ~)
-    % Run performance analysis
-    handles = guidata(gcbf);
-    
-    try
-        % Run the performance analysis
-        performance_analysis();
-        
-        msgbox('Performance analysis completed. Check the command window for detailed results.', ...
-               'Performance Analysis', 'modal');
-        
-    catch ME
-        msgbox(sprintf('Error running performance analysis: %s', ME.message), 'Error', 'modal');
-    end
-end
-
-function refreshMemoryInfo(~, ~)
-    % Refresh memory usage information
-    handles = guidata(gcbf);
-    
-    try
-        % Get memory usage
-        memory_info = getMemoryUsage();
-        
-        if ~isnan(memory_info.usage_percent)
-            memory_text = sprintf('%.1f%% used (%.1f GB / %.1f GB)', ...
-                                 memory_info.usage_percent, ...
-                                 memory_info.used_gb, ...
-                                 memory_info.total_gb);
-        else
-            memory_text = 'Memory info unavailable';
-        end
-        
-        set(handles.memory_usage_text, 'String', memory_text);
-        
-    catch ME
-        set(handles.memory_usage_text, 'String', 'Error getting memory info');
-        fprintf('Error refreshing memory info: %s\n', ME.message);
-    end
-end
-
-function savePerformanceSettings(~, ~)
-    % Save performance settings to preferences
-    handles = guidata(gcbf);
-    
-    try
-        % Collect all settings from UI
-        handles.preferences.enable_parallel_processing = get(handles.enable_parallel_checkbox, 'Value');
-        handles.preferences.max_parallel_workers = round(str2double(get(handles.workers_edit, 'String')));
-        handles.preferences.enable_preallocation = get(handles.enable_preallocation_checkbox, 'Value');
-        handles.preferences.enable_data_compression = get(handles.enable_compression_checkbox, 'Value');
-        handles.preferences.enable_model_caching = get(handles.enable_caching_checkbox, 'Value');
-        handles.preferences.enable_memory_pooling = get(handles.enable_memory_pooling_checkbox, 'Value');
-        handles.preferences.enable_performance_monitoring = get(handles.enable_performance_monitoring_checkbox, 'Value');
-        handles.preferences.enable_memory_monitoring = get(handles.enable_memory_monitoring_checkbox, 'Value');
-        
-        % Save preferences
-        saveUserPreferences(handles);
-        
-        msgbox('Performance settings saved successfully!', 'Success', 'modal');
-        
-    catch ME
-        msgbox(sprintf('Error saving performance settings: %s', ME.message), 'Error', 'modal');
-    end
-end
-
-function resetPerformanceSettings(~, ~)
-    % Reset performance settings to defaults
-    handles = guidata(gcbf);
-    
-    try
-        % Reset to default values
-        handles.preferences.enable_parallel_processing = true;
-        handles.preferences.max_parallel_workers = feature('numcores');
-        handles.preferences.cluster_profile = 'Local_Cluster';
-        handles.preferences.use_local_cluster = true;
-        handles.preferences.enable_preallocation = true;
-        handles.preferences.preallocation_buffer_size = 1000;
-        handles.preferences.enable_data_compression = true;
-        handles.preferences.compression_level = 6;
-        handles.preferences.enable_model_caching = true;
-        handles.preferences.enable_memory_pooling = true;
-        handles.preferences.memory_pool_size = 100;
-        handles.preferences.enable_performance_monitoring = true;
-        handles.preferences.enable_memory_monitoring = true;
-        
-        % Update UI
-        handles = loadPerformancePreferencesToUI(handles);
-        
-        msgbox('Performance settings reset to defaults!', 'Success', 'modal');
-        
-    catch ME
-        msgbox(sprintf('Error resetting performance settings: %s', ME.message), 'Error', 'modal');
-    end
-end
-
-function applyPerformanceSettings(~, ~)
-    % Apply performance settings immediately
-    handles = guidata(gcbf);
-    
-    try
-        % Save settings first
-        savePerformanceSettings([], []);
-        
-        % Apply settings to current session
-        handles = applyUserPreferences(handles);
-        
-        msgbox('Performance settings applied successfully!', 'Success', 'modal');
-        
-    catch ME
-        msgbox(sprintf('Error applying performance settings: %s', ME.message), 'Error', 'modal');
-    end
-end
-
-% ============================================================================
-% UTILITY FUNCTIONS FOR PERFORMANCE SETTINGS
-% ============================================================================
-
-function profiles = getAvailableClusterProfiles()
-    % Get available cluster profiles
-    try
-        profiles = parallel.clusterProfiles();
-        if isempty(profiles)
-            profiles = {'local'};
-        end
-    catch
-        profiles = {'local'};
-    end
-end
-
-function handles = loadPerformancePreferencesToUI(handles)
-    % Load performance preferences into UI elements
-    try
-        % Check if UI elements exist
-        if ~isfield(handles, 'enable_parallel_checkbox') || ~ishandle(handles.enable_parallel_checkbox)
-            fprintf('Performance UI elements not ready yet, skipping preference loading\n');
-            return;
-        end
-        
-        % Set parallel processing settings
-        set(handles.enable_parallel_checkbox, 'Value', ...
-            getFieldOrDefault(handles.preferences, 'enable_parallel_processing', true));
-        
-        max_workers = getFieldOrDefault(handles.preferences, 'max_parallel_workers', feature('numcores'));
-        set(handles.workers_edit, 'String', num2str(max_workers));
-        
-        % Set cluster profile
-        cluster_profile = getFieldOrDefault(handles.preferences, 'cluster_profile', 'Local_Cluster');
-        profiles = getAvailableClusterProfiles();
-        profile_idx = find(strcmp(profiles, cluster_profile), 1);
-        if isempty(profile_idx)
-            profile_idx = 1;
-        end
-        set(handles.cluster_profile_popup, 'Value', profile_idx);
-        
-        set(handles.use_local_cluster_checkbox, 'Value', ...
-            getFieldOrDefault(handles.preferences, 'use_local_cluster', true));
-        
-        % Set preallocation settings
-        set(handles.enable_preallocation_checkbox, 'Value', ...
-            getFieldOrDefault(handles.preferences, 'enable_preallocation', true));
-        
-        buffer_size = getFieldOrDefault(handles.preferences, 'preallocation_buffer_size', 1000);
-        set(handles.buffer_size_edit, 'String', num2str(buffer_size));
-        
-        % Set compression settings
-        set(handles.enable_compression_checkbox, 'Value', ...
-            getFieldOrDefault(handles.preferences, 'enable_data_compression', true));
-        
-        compression_level = getFieldOrDefault(handles.preferences, 'compression_level', 6);
-        set(handles.compression_edit, 'String', num2str(compression_level));
-        
-        % Set caching settings
-        set(handles.enable_caching_checkbox, 'Value', ...
-            getFieldOrDefault(handles.preferences, 'enable_model_caching', true));
-        
-        % Set memory pooling settings
-        set(handles.enable_memory_pooling_checkbox, 'Value', ...
-            getFieldOrDefault(handles.preferences, 'enable_memory_pooling', true));
-        
-        memory_pool_size = getFieldOrDefault(handles.preferences, 'memory_pool_size', 100);
-        set(handles.memory_pool_edit, 'String', num2str(memory_pool_size));
-        
-        % Set monitoring settings
-        set(handles.enable_performance_monitoring_checkbox, 'Value', ...
-            getFieldOrDefault(handles.preferences, 'enable_performance_monitoring', true));
-        
-        set(handles.enable_memory_monitoring_checkbox, 'Value', ...
-            getFieldOrDefault(handles.preferences, 'enable_memory_monitoring', true));
-        
-        % Update control states
-        updateParallelSettings([], []);
-        updatePreallocationSettings([], []);
-        updateCompressionSettings([], []);
-        updateMemoryPoolingSettings([], []);
-        
-        % Refresh memory info
-        refreshMemoryInfo([], []);
-        
-    catch ME
-        fprintf('Error loading performance preferences to UI: %s\n', ME.message);
-    end
-end
-
-function value = getFieldOrDefault(struct_obj, field_name, default_value)
-    % Get field value with default fallback
-    if isfield(struct_obj, field_name)
-        value = struct_obj.(field_name);
-    else
-        value = default_value;
-    end
-end
-
-function loadPerformancePreferencesDelayed(fig_handle)
-    % LOADPERFORMANCEPREFERENCESDELAYED - Load performance preferences after GUI is ready
-    %
-    % This function is called by a timer to ensure the GUI is fully initialized
-    % before attempting to load performance preferences
-    
-    try
-        % Wait a bit more to ensure GUI is fully ready
-        pause(0.5);
-        
-        % Get the current handles
-        handles = guidata(fig_handle);
-        
-        % Check if UI elements exist and are valid handles
-        if isfield(handles, 'enable_parallel_checkbox') && ishandle(handles.enable_parallel_checkbox)
-            fprintf('Loading performance preferences to UI...\n');
-            handles = loadPerformancePreferencesToUI(handles);
-            guidata(fig_handle, handles);
-            fprintf('Performance preferences loaded successfully!\n');
-        else
-            fprintf('Performance UI elements not ready yet, retrying in 1 second...\n');
-            % Retry after another delay
-            timer_obj = timer('ExecutionMode', 'singleShot', 'StartDelay', 1.0);
-            timer_obj.TimerFcn = @(src, event) loadPerformancePreferencesDelayed(fig_handle);
-            start(timer_obj);
-        end
-        
-    catch ME
-        fprintf('Note: Could not load performance preferences: %s\n', ME.message);
-        fprintf('Error details: %s\n', ME.message);
     end
 end
