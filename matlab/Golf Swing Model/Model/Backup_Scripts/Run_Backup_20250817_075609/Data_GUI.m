@@ -1689,16 +1689,7 @@ function selectSimulinkModel(src, evt)
         if ok
             handles.model_name = possible_models{selection};
             handles.model_path = possible_paths{selection};
-            handles.model_was_loaded = false; % Model was found but not loaded
             set(handles.model_display, 'String', handles.model_name);
-            
-            % PERFORMANCE UPGRADES: Save last used model to preferences
-            if isfield(handles, 'preferences')
-                handles.preferences.last_model_name = handles.model_name;
-                handles.preferences.last_model_path = handles.model_path;
-                handles.preferences.last_model_was_loaded = false;
-            end
-            
             guidata(handles.fig, handles);
         end
 
@@ -1712,16 +1703,7 @@ function selectSimulinkModel(src, evt)
         if ok
             handles.model_name = open_models{selection};
             handles.model_path = which(handles.model_name);
-            handles.model_was_loaded = true; % Model is already loaded
             set(handles.model_display, 'String', handles.model_name);
-            
-            % PERFORMANCE UPGRADES: Save last used model to preferences
-            if isfield(handles, 'preferences')
-                handles.preferences.last_model_name = handles.model_name;
-                handles.preferences.last_model_path = handles.model_path;
-                handles.preferences.last_model_was_loaded = true;
-            end
-            
             guidata(handles.fig, handles);
         end
     end
@@ -3044,27 +3026,11 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
     result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
 
     try
-        % PERFORMANCE UPGRADES: Start performance monitoring
-        if isfield(config, 'enable_performance_monitoring') && config.enable_performance_monitoring
-            tic;
-            performance_monitor('recordPhase', sprintf('Trial_%d_Setup', trial_num));
-        end
-
-        % PERFORMANCE UPGRADES: Cache model configuration if enabled
-        if isfield(config, 'enable_model_caching') && config.enable_model_caching
-            model_config = cacheModelConfiguration(config.model_path, config);
-        end
-
         % Create simulation input
         simIn = Simulink.SimulationInput(config.model_path);
 
-        % PERFORMANCE UPGRADES: Optimize simulation parameters
-        if isfield(config, 'enable_performance_monitoring') && config.enable_performance_monitoring
-            optimized_config = optimizeSimulationParameters(config);
-            simIn = setModelParameters(simIn, optimized_config);
-        else
-            simIn = setModelParameters(simIn, config);
-        end
+        % Set model parameters
+        simIn = setModelParameters(simIn, config);
 
         % Set polynomial coefficients for this trial
         try
@@ -3081,11 +3047,6 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
         warning_state5 = warning('off', 'Simulink:Blocks:UnconnectedOutputPort');
         warning_state6 = warning('off', 'Simulink:Blocks:UnconnectedInputPort');
 
-        % PERFORMANCE UPGRADES: Record simulation start
-        if isfield(config, 'enable_performance_monitoring') && config.enable_performance_monitoring
-            performance_monitor('recordPhase', sprintf('Trial_%d_Simulation', trial_num));
-        end
-
         % Run simulation with progress indicator and visualization suppression
         fprintf('Running trial %d simulation...', trial_num);
 
@@ -3101,11 +3062,6 @@ function result = runSingleTrial(trial_num, config, trial_coefficients, capture_
         warning(warning_state4);
         warning(warning_state5);
         warning(warning_state6);
-
-        % PERFORMANCE UPGRADES: Record data processing start
-        if isfield(config, 'enable_performance_monitoring') && config.enable_performance_monitoring
-            performance_monitor('recordPhase', sprintf('Trial_%d_DataProcessing', trial_num));
-        end
 
         % Process simulation output
         result = processSimulationOutput(trial_num, config, simOut, capture_workspace);
@@ -3704,14 +3660,6 @@ function handles = loadUserPreferences(handles)
     handles.preferences.default_sample_rate = 100;
     handles.preferences.capture_workspace = true; % Default to capturing workspace data
 
-    % PERFORMANCE UPGRADES: Add last used model and input file preferences
-    handles.preferences.last_model_name = '';
-    handles.preferences.last_model_path = '';
-    handles.preferences.last_model_was_loaded = false;
-    handles.preferences.enable_model_caching = true;
-    handles.preferences.enable_preallocation = true;
-    handles.preferences.preallocation_buffer_size = 1000; % Default buffer size for preallocation
-
     % Batch settings defaults
     handles.preferences.default_batch_size = 50;
     handles.preferences.default_save_interval = 25;
@@ -3719,14 +3667,6 @@ function handles = loadUserPreferences(handles)
     handles.preferences.default_verbosity = 'Normal';
     handles.preferences.enable_memory_monitoring = true;
     handles.preferences.enable_master_dataset = true; % Default to creating master dataset
-
-    % PERFORMANCE UPGRADES: Add performance optimization settings
-    handles.preferences.enable_data_compression = true;
-    handles.preferences.compression_level = 6; % MATLAB's default compression level
-    handles.preferences.enable_parallel_processing = true;
-    handles.preferences.max_parallel_workers = 4; % Conservative default
-    handles.preferences.enable_memory_pooling = true;
-    handles.preferences.memory_pool_size = 100; % MB
 
     % Try to load saved preferences
     if exist(pref_file, 'file')
@@ -3763,14 +3703,6 @@ function applyUserPreferences(handles)
                 [~, filename, ext] = fileparts(prefs.last_input_file_path);
                 set(handles.input_file_edit, 'String', [filename ext]);
             end
-        end
-
-        % PERFORMANCE UPGRADES: Apply last used model
-        if isfield(handles, 'model_display') && ~isempty(prefs.last_model_name)
-            set(handles.model_display, 'String', prefs.last_model_name);
-            handles.model_name = prefs.last_model_name;
-            handles.model_path = prefs.last_model_path;
-            handles.model_was_loaded = prefs.last_model_was_loaded;
         end
 
         % Apply default values
@@ -3821,23 +3753,6 @@ function applyUserPreferences(handles)
             set(handles.enable_master_dataset, 'Value', prefs.enable_master_dataset);
         end
 
-        % PERFORMANCE UPGRADES: Apply performance optimization settings
-        if isfield(handles, 'enable_preallocation') && isfield(prefs, 'enable_preallocation')
-            set(handles.enable_preallocation, 'Value', prefs.enable_preallocation);
-        end
-
-        if isfield(handles, 'enable_model_caching') && isfield(prefs, 'enable_model_caching')
-            set(handles.enable_model_caching, 'Value', prefs.enable_model_caching);
-        end
-
-        if isfield(handles, 'enable_parallel_processing') && isfield(prefs, 'enable_parallel_processing')
-            set(handles.enable_parallel_processing, 'Value', prefs.enable_parallel_processing);
-        end
-
-        if isfield(handles, 'enable_data_compression') && isfield(prefs, 'enable_data_compression')
-            set(handles.enable_data_compression, 'Value', prefs.enable_data_compression);
-        end
-
     catch
         % Silently fail if preferences can't be applied
     end
@@ -3863,13 +3778,6 @@ function saveUserPreferences(handles)
             handles.preferences.last_input_file_path = handles.selected_input_file;
             [~, filename, ext] = fileparts(handles.selected_input_file);
             handles.preferences.last_input_file = [filename ext];
-        end
-
-        % PERFORMANCE UPGRADES: Save last used model
-        if isfield(handles, 'model_name') && ~isempty(handles.model_name)
-            handles.preferences.last_model_name = handles.model_name;
-            handles.preferences.last_model_path = handles.model_path;
-            handles.preferences.last_model_was_loaded = handles.model_was_loaded;
         end
 
         % Save workspace capture setting
@@ -3911,23 +3819,6 @@ function saveUserPreferences(handles)
         % Save master dataset setting
         if isfield(handles, 'enable_master_dataset')
             handles.preferences.enable_master_dataset = get(handles.enable_master_dataset, 'Value');
-        end
-
-        % PERFORMANCE UPGRADES: Save performance optimization settings
-        if isfield(handles, 'enable_preallocation')
-            handles.preferences.enable_preallocation = get(handles.enable_preallocation, 'Value');
-        end
-
-        if isfield(handles, 'enable_model_caching')
-            handles.preferences.enable_model_caching = get(handles.enable_model_caching, 'Value');
-        end
-
-        if isfield(handles, 'enable_parallel_processing')
-            handles.preferences.enable_parallel_processing = get(handles.enable_parallel_processing, 'Value');
-        end
-
-        if isfield(handles, 'enable_data_compression')
-            handles.preferences.enable_data_compression = get(handles.enable_data_compression, 'Value');
         end
 
         % Save to file
