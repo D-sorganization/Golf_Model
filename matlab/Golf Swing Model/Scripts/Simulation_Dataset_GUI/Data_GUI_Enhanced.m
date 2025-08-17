@@ -246,6 +246,11 @@ function handles = createMainLayout(fig, handles)
     handles = createGenerationTabContent(handles.generation_panel, handles);
     handles = createPostProcessingTabContent(handles.postprocessing_panel, handles);
     handles = createPerformanceTabContent(handles.performance_panel, handles);
+    
+    % Load performance preferences after UI is created
+    if isfield(handles, 'enable_parallel_checkbox')
+        handles = loadPerformancePreferencesToUI(handles);
+    end
 end
 
 function handles = createGenerationTabContent(parent, handles)
@@ -5926,8 +5931,7 @@ function handles = createPerformanceSettingsLayout(parent, handles)
     handles = createMonitoringSection(scrollPanel, handles);
     handles = createActionButtons(scrollPanel, handles);
     
-    % Load current preferences into UI
-    handles = loadPerformancePreferencesToUI(handles);
+    % Load current preferences into UI (will be done after UI creation)
 end
 
 function handles = createParallelProcessingSection(parent, handles)
@@ -6612,6 +6616,12 @@ end
 function handles = loadPerformancePreferencesToUI(handles)
     % Load performance preferences into UI elements
     try
+        % Check if UI elements exist
+        if ~isfield(handles, 'enable_parallel_checkbox') || ~ishandle(handles.enable_parallel_checkbox)
+            fprintf('Performance UI elements not ready yet, skipping preference loading\n');
+            return;
+        end
+        
         % Set parallel processing settings
         set(handles.enable_parallel_checkbox, 'Value', ...
             getFieldOrDefault(handles.preferences, 'enable_parallel_processing', true));
