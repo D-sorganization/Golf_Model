@@ -163,10 +163,17 @@ function memory_info = getMemoryUsage()
         memory_info = memory;
         
         % Add additional memory metrics
-        memory_info.available_gb = memory_info.PhysicalMemory.Available / (1024^3);
-        memory_info.used_gb = (memory_info.PhysicalMemory.Total - memory_info.PhysicalMemory.Available) / (1024^3);
-        memory_info.total_gb = memory_info.PhysicalMemory.Total / (1024^3);
-        memory_info.usage_percent = (memory_info.used_gb / memory_info.total_gb) * 100;
+        if isfield(memory_info, 'PhysicalMemory')
+            memory_info.available_gb = memory_info.PhysicalMemory.Available / (1024^3);
+            memory_info.used_gb = (memory_info.PhysicalMemory.Total - memory_info.PhysicalMemory.Available) / (1024^3);
+            memory_info.total_gb = memory_info.PhysicalMemory.Total / (1024^3);
+            memory_info.usage_percent = (memory_info.used_gb / memory_info.total_gb) * 100;
+        else
+            memory_info.available_gb = NaN;
+            memory_info.used_gb = NaN;
+            memory_info.total_gb = NaN;
+            memory_info.usage_percent = NaN;
+        end
         
         % Get workspace memory usage
         workspace_vars = whos;
