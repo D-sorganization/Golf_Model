@@ -1693,9 +1693,7 @@ function handles = loadUserPreferences(handles)
     handles.preferences.enable_data_compression = true;
     handles.preferences.compression_level = 6; % MATLAB's default compression level
     handles.preferences.enable_parallel_processing = true;
-    handles.preferences.max_parallel_workers = 14; % Default to 14 workers for Local_Cluster
-    handles.preferences.cluster_profile = 'Local_Cluster'; % Default to Local_Cluster profile
-    handles.preferences.use_local_cluster = true; % Default to using local cluster
+    handles.preferences.max_parallel_workers = 4; % Conservative default
     handles.preferences.enable_memory_pooling = true;
     handles.preferences.memory_pool_size = 100; % MB
 
@@ -6711,34 +6709,13 @@ function handles = createActionButtons(parent, handles)
                                                'FontWeight', 'bold', ...
                                                'Callback', @applyPerformanceSettings);
     
-    % Setup Local Cluster button
-    handles.setup_cluster_button = uicontrol('Parent', buttonPanel, ...
-                                            'Style', 'pushbutton', ...
-                                            'String', 'Setup Local Cluster', ...
-                                            'Units', 'normalized', ...
-                                            'Position', [0.02, 0.1, 0.2, 0.8], ...
-                                            'BackgroundColor', colors.lightGrey, ...
-                                            'ForegroundColor', colors.text, ...
-                                            'FontWeight', 'bold', ...
-                                            'Callback', @setupLocalCluster);
-    
     % Right side - Action button descriptions
-    % Setup Local Cluster button description
-    uicontrol('Parent', buttonPanel, ...
-              'Style', 'text', ...
-              'String', 'Setup: Creates Local_Cluster profile for parallel processing. Run this first if you get cluster errors.', ...
-              'Units', 'normalized', ...
-              'Position', [0.02, 0.1, 0.2, 0.8], ...
-              'BackgroundColor', colors.background, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 8);
-    
     % Save button description
     uicontrol('Parent', buttonPanel, ...
               'Style', 'text', ...
               'String', 'Save: Stores current performance settings to user preferences file for future sessions. Settings persist between GUI launches.', ...
               'Units', 'normalized', ...
-              'Position', [0.25, 0.1, 0.2, 0.8], ...
+              'Position', [0.02, 0.1, 0.2, 0.8], ...
               'BackgroundColor', colors.background, ...
               'HorizontalAlignment', 'left', ...
               'FontSize', 8);
@@ -6748,19 +6725,9 @@ function handles = createActionButtons(parent, handles)
               'Style', 'text', ...
               'String', 'Reset: Restores all performance settings to their default values. Use this if you encounter performance issues.', ...
               'Units', 'normalized', ...
-              'Position', [0.5, 0.1, 0.2, 0.8], ...
+              'Position', [0.98, 0.1, 0.2, 0.8], ...
               'BackgroundColor', colors.background, ...
-              'HorizontalAlignment', 'left', ...
-              'FontSize', 8);
-    
-    % Apply button description
-    uicontrol('Parent', buttonPanel, ...
-              'Style', 'text', ...
-              'String', 'Apply: Immediately applies current performance settings to the current session without saving.', ...
-              'Units', 'normalized', ...
-              'Position', [0.75, 0.1, 0.2, 0.8], ...
-              'BackgroundColor', colors.background, ...
-              'HorizontalAlignment', 'left', ...
+              'HorizontalAlignment', 'right', ...
               'FontSize', 8);
 end
 
@@ -7011,79 +6978,6 @@ function testClusterConnection(~, ~)
     end
 end
 
-function setupLocalCluster(~, ~)
-    % Setup Local_Cluster profile for parallel processing
-    try
-        fprintf('Setting up Local_Cluster profile...\n');
-        
-        % Check if Parallel Computing Toolbox is available
-        if ~license('test', 'Distrib_Computing_Toolbox')
-            error('Parallel Computing Toolbox not available. Please install it first.');
-        end
-        
-        % Get current cluster profiles
-        current_profiles = parallel.clusterProfiles();
-        fprintf('Current cluster profiles: %s\n', strjoin(current_profiles, ', '));
-        
-        % Check if Local_Cluster already exists
-        if ismember('Local_Cluster', current_profiles)
-            fprintf('Local_Cluster profile already exists.\n');
-            msgbox('Local_Cluster profile already exists and is ready to use.', 'Setup Complete', 'modal');
-            return;
-        end
-        
-        % Create Local_Cluster profile
-        fprintf('Creating Local_Cluster profile...\n');
-        
-        % Get number of available cores
-        num_cores = feature('numcores');
-        fprintf('Available cores: %d\n', num_cores);
-        
-        % Create cluster profile
-        cluster_profile = parallel.importProfile('local');
-        cluster_profile.Name = 'Local_Cluster';
-        cluster_profile.NumWorkers = num_cores;
-        
-        % Save the profile
-        parallel.saveProfile(cluster_profile);
-        
-        % Verify the profile was created
-        new_profiles = parallel.clusterProfiles();
-        if ismember('Local_Cluster', new_profiles)
-            fprintf('✓ Local_Cluster profile created successfully!\n');
-            fprintf('Profile configured with %d workers\n', num_cores);
-            
-            % Update the cluster profile popup in the GUI
-            handles = guidata(gcbf);
-            if isfield(handles, 'cluster_profile_popup')
-                profiles = getAvailableClusterProfiles();
-                set(handles.cluster_profile_popup, 'String', profiles);
-                
-                % Set Local_Cluster as selected
-                local_idx = find(strcmp(profiles, 'Local_Cluster'));
-                if ~isempty(local_idx)
-                    set(handles.cluster_profile_popup, 'Value', local_idx);
-                end
-                
-                % Update preferences
-                handles.preferences.cluster_profile = 'Local_Cluster';
-                guidata(handles.fig, handles);
-            end
-            
-            msgbox(sprintf('Local_Cluster profile created successfully!\n\nProfile: Local_Cluster\nWorkers: %d\n\nYou can now use this profile for parallel processing.', num_cores), ...
-                   'Setup Complete', 'modal');
-        else
-            error('Failed to create Local_Cluster profile');
-        end
-        
-    catch ME
-        error_msg = sprintf('Error setting up Local_Cluster profile:\n%s\n\nFunction: %s\nLine: %d', ...
-                           ME.message, ME.stack(1).name, ME.stack(1).line);
-        msgbox(error_msg, 'Setup Error', 'modal');
-        fprintf('Setup error details: %s\n', ME.message);
-    end
-end
-
 function runPerformanceAnalysis(~, ~)
     % Run performance analysis
     handles = guidata(gcbf);
@@ -7133,24 +7027,10 @@ function savePerformanceSettings(~, ~)
         % Collect all settings from UI
         handles.preferences.enable_parallel_processing = get(handles.enable_parallel_checkbox, 'Value');
         handles.preferences.max_parallel_workers = round(str2double(get(handles.workers_edit, 'String')));
-        
-        % Get cluster profile from popup
-        profiles = getAvailableClusterProfiles();
-        selected_idx = get(handles.cluster_profile_popup, 'Value');
-        if selected_idx <= length(profiles)
-            handles.preferences.cluster_profile = profiles{selected_idx};
-        else
-            handles.preferences.cluster_profile = 'Local_Cluster';
-        end
-        
-        handles.preferences.use_local_cluster = get(handles.use_local_cluster_checkbox, 'Value');
         handles.preferences.enable_preallocation = get(handles.enable_preallocation_checkbox, 'Value');
-        handles.preferences.preallocation_buffer_size = round(str2double(get(handles.buffer_size_edit, 'String')));
         handles.preferences.enable_data_compression = get(handles.enable_compression_checkbox, 'Value');
-        handles.preferences.compression_level = round(str2double(get(handles.compression_edit, 'String')));
         handles.preferences.enable_model_caching = get(handles.enable_caching_checkbox, 'Value');
         handles.preferences.enable_memory_pooling = get(handles.enable_memory_pooling_checkbox, 'Value');
-        handles.preferences.memory_pool_size = round(str2double(get(handles.memory_pool_edit, 'String')));
         handles.preferences.enable_performance_monitoring = get(handles.enable_performance_monitoring_checkbox, 'Value');
         handles.preferences.enable_memory_monitoring = get(handles.enable_memory_monitoring_checkbox, 'Value');
         
@@ -7223,16 +7103,8 @@ function profiles = getAvailableClusterProfiles()
         if isempty(profiles)
             profiles = {'local'};
         end
-        
-        % Ensure Local_Cluster is always available and first in the list
-        if ~ismember('Local_Cluster', profiles)
-            profiles = ['Local_Cluster', profiles];
-        else
-            % Move Local_Cluster to the front
-            profiles = ['Local_Cluster', profiles(~strcmp(profiles, 'Local_Cluster'))];
-        end
     catch
-        profiles = {'Local_Cluster', 'local'};
+        profiles = {'local'};
     end
 end
 
