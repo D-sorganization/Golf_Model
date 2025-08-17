@@ -53,6 +53,14 @@ function Data_GUI_Enhanced()
 
     % Apply loaded preferences to UI
     applyUserPreferences(handles);
+    
+    % Load performance preferences after a short delay to ensure UI is ready
+    if isfield(handles, 'enable_parallel_checkbox')
+        % Use a timer to load preferences after GUI is fully initialized
+        timer_obj = timer('ExecutionMode', 'singleShot', 'StartDelay', 0.5);
+        timer_obj.TimerFcn = @(src, event) loadPerformancePreferencesDelayed(handles.fig);
+        start(timer_obj);
+    end
 
     % Initialize preview
     updatePreview([], [], handles.fig);
@@ -248,8 +256,12 @@ function handles = createMainLayout(fig, handles)
     handles = createPerformanceTabContent(handles.performance_panel, handles);
     
     % Load performance preferences after UI is created
-    if isfield(handles, 'enable_parallel_checkbox')
-        handles = loadPerformancePreferencesToUI(handles);
+    try
+        if isfield(handles, 'enable_parallel_checkbox') && ishandle(handles.enable_parallel_checkbox)
+            handles = loadPerformancePreferencesToUI(handles);
+        end
+    catch ME
+        fprintf('Note: Performance preferences will be loaded when UI is ready\n');
     end
 end
 
@@ -6695,5 +6707,30 @@ function value = getFieldOrDefault(struct_obj, field_name, default_value)
         value = struct_obj.(field_name);
     else
         value = default_value;
+    end
+end
+
+function loadPerformancePreferencesDelayed(fig_handle)
+    % LOADPERFORMANCEPREFERENCESDELAYED - Load performance preferences after GUI is ready
+    %
+    % This function is called by a timer to ensure the GUI is fully initialized
+    % before attempting to load performance preferences
+    
+    try
+        % Get the current handles
+        handles = guidata(fig_handle);
+        
+        % Check if UI elements exist and are valid handles
+        if isfield(handles, 'enable_parallel_checkbox') && ishandle(handles.enable_parallel_checkbox)
+            fprintf('Loading performance preferences to UI...\n');
+            handles = loadPerformancePreferencesToUI(handles);
+            guidata(fig_handle, handles);
+            fprintf('Performance preferences loaded successfully!\n');
+        else
+            fprintf('Performance UI elements not ready yet\n');
+        end
+        
+    catch ME
+        fprintf('Note: Could not load performance preferences: %s\n', ME.message);
     end
 end
