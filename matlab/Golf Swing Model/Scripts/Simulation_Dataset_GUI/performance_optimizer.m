@@ -380,7 +380,19 @@ function optimized_config = optimizeSimulationParameters(config)
     
     % Optimize parallel processing
     if isfield(config, 'enable_parallel_processing') && config.enable_parallel_processing
-        optimized_config.max_parallel_workers = min(4, feature('numcores'));
+        % Use user's local cluster profile
+        optimized_config.cluster_profile = 'Local_Cluster';
+        
+        % Use user preference if set, otherwise use all available cores
+        if isfield(config, 'max_parallel_workers') && config.max_parallel_workers > 0
+            optimized_config.max_parallel_workers = min(config.max_parallel_workers, feature('numcores'));
+        else
+            optimized_config.max_parallel_workers = feature('numcores');
+        end
+        
+        % Set cluster-specific optimizations
+        optimized_config.use_local_cluster = true;
+        optimized_config.cluster_name = 'Local_Cluster';
     end
     
     fprintf('Simulation parameters optimized\n');
@@ -422,4 +434,125 @@ function signal_arrays = preallocateSignalArrays(signal_info, num_time_points)
     end
     
     fprintf('Preallocated %d signal arrays\n', length(fieldnames(signal_arrays)));
+end
+
+function cluster_info = initializeLocalCluster(config)
+    % INITIALIZELOCALCLUSTER - Initialize and configure local cluster for parallel processing
+    %
+    % Inputs:
+    %   config - Configuration structure with cluster settings
+    %
+    % Outputs:
+    %   cluster_info - Cluster information and status
+    
+    fprintf('Initializing Local_Cluster for parallel processing...\n');
+    
+    cluster_info = struct();
+    cluster_info.cluster_name = 'Local_Cluster';
+    cluster_info.status = 'initializing';
+    
+    try
+        % Check if Parallel Computing Toolbox is available
+        if ~license('test', 'Distrib_Computing_Toolbox')
+            error('Parallel Computing Toolbox not available');
+        end
+        
+        % Get cluster profile
+        cluster_profiles = parallel.clusterProfiles();
+        if ~ismember('Local_Cluster', cluster_profiles)
+            error('Local_Cluster profile not found. Available profiles: %s', strjoin(cluster_profiles, ', '));
+        end
+        
+        % Create cluster object
+        cluster_obj = parcluster('Local_Cluster');
+        cluster_info.cluster_object = cluster_obj;
+        
+        % Configure cluster settings
+        if isfield(config, 'max_parallel_workers') && config.max_parallel_workers > 0
+            cluster_obj.NumWorkers = min(config.max_parallel_workers, feature('numcores'));
+        else
+            cluster_obj.NumWorkers = feature('numcores');
+        end
+        
+        % Set additional cluster properties if available
+        if isprop(cluster_obj, 'NumThreads')
+            cluster_obj.NumThreads = 1; % Use 1 thread per worker for better performance
+        end
+        
+        % Test cluster connection
+        fprintf('Testing cluster connection with %d workers...\n', cluster_obj.NumWorkers);
+        
+        % Start a small test job
+        test_job = batch(cluster_obj, @() 1, 1, {}, 'Pool', 1);
+        wait(test_job);
+        
+        if strcmp(test_job.State, 'finished')
+            cluster_info.status = 'ready';
+            cluster_info.num_workers = cluster_obj.NumWorkers;
+            cluster_info.test_successful = true;
+            fprintf('✓ Local_Cluster initialized successfully with %d workers\n', cluster_obj.NumWorkers);
+        else
+            cluster_info.status = 'error';
+            cluster_info.error_message = sprintf('Cluster test failed: %s', test_job.State);
+            fprintf('✗ Cluster test failed: %s\n', test_job.State);
+        end
+        
+        % Clean up test job
+        delete(test_job);
+        
+    catch ME
+        cluster_info.status = 'error';
+        cluster_info.error_message = ME.message;
+        fprintf('✗ Failed to initialize Local_Cluster: %s\n', ME.message);
+    end
+end
+
+function pool = getOrCreateParallelPool(config)
+    % GETORCREATEPARALLELPOOL - Get existing pool or create new one using Local_Cluster
+    %
+    % Inputs:
+    %   config - Configuration structure with pool settings
+    %
+    % Outputs:
+    %   pool - Parallel pool object
+    
+    fprintf('Setting up parallel pool using Local_Cluster...\n');
+    
+    % Check for existing pool
+    pool = gcp('nocreate');
+    
+    if isempty(pool)
+        % Create new pool using Local_Cluster
+        try
+            % Get cluster object
+            cluster_obj = parcluster('Local_Cluster');
+            
+            % Configure cluster
+            if isfield(config, 'max_parallel_workers') && config.max_parallel_workers > 0
+                num_workers = min(config.max_parallel_workers, feature('numcores'));
+            else
+                num_workers = feature('numcores');
+            end
+            
+            % Create pool
+            pool = parpool(cluster_obj, num_workers);
+            fprintf('✓ Created parallel pool with %d workers using Local_Cluster\n', num_workers);
+            
+        catch ME
+            fprintf('✗ Failed to create parallel pool: %s\n', ME.message);
+            fprintf('Falling back to default parallel pool...\n');
+            
+            % Fallback to default pool
+            if isfield(config, 'max_parallel_workers') && config.max_parallel_workers > 0
+                num_workers = min(config.max_parallel_workers, feature('numcores'));
+            else
+                num_workers = feature('numcores');
+            end
+            
+            pool = parpool('local', num_workers);
+            fprintf('✓ Created fallback parallel pool with %d workers\n', num_workers);
+        end
+    else
+        fprintf('✓ Using existing parallel pool with %d workers\n', pool.NumWorkers);
+    end
 end
