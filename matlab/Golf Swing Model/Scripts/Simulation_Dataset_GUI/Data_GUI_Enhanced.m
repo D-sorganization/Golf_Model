@@ -6296,11 +6296,17 @@ function updateParallelSettings(~, ~)
     enabled = get(handles.enable_parallel_checkbox, 'Value');
     
     % Enable/disable related controls
-    set(handles.workers_slider, 'Enable', enabled ? 'on' : 'off');
-    set(handles.workers_text, 'Enable', enabled ? 'on' : 'off');
-    set(handles.cluster_profile_popup, 'Enable', enabled ? 'on' : 'off');
-    set(handles.use_local_cluster_checkbox, 'Enable', enabled ? 'on' : 'off');
-    set(handles.test_cluster_button, 'Enable', enabled ? 'on' : 'off');
+    if enabled
+        enable_state = 'on';
+    else
+        enable_state = 'off';
+    end
+    
+    set(handles.workers_slider, 'Enable', enable_state);
+    set(handles.workers_text, 'Enable', enable_state);
+    set(handles.cluster_profile_popup, 'Enable', enable_state);
+    set(handles.use_local_cluster_checkbox, 'Enable', enable_state);
+    set(handles.test_cluster_button, 'Enable', enable_state);
     
     guidata(handles.fig, handles);
 end
@@ -6337,7 +6343,14 @@ function updatePreallocationSettings(~, ~)
     % Update preallocation settings
     handles = guidata(gcbf);
     enabled = get(handles.enable_preallocation_checkbox, 'Value');
-    set(handles.buffer_size_edit, 'Enable', enabled ? 'on' : 'off');
+    
+    if enabled
+        enable_state = 'on';
+    else
+        enable_state = 'off';
+    end
+    
+    set(handles.buffer_size_edit, 'Enable', enable_state);
     guidata(handles.fig, handles);
 end
 
@@ -6361,8 +6374,15 @@ function updateCompressionSettings(~, ~)
     % Update compression settings
     handles = guidata(gcbf);
     enabled = get(handles.enable_compression_checkbox, 'Value');
-    set(handles.compression_slider, 'Enable', enabled ? 'on' : 'off');
-    set(handles.compression_text, 'Enable', enabled ? 'on' : 'off');
+    
+    if enabled
+        enable_state = 'on';
+    else
+        enable_state = 'off';
+    end
+    
+    set(handles.compression_slider, 'Enable', enable_state);
+    set(handles.compression_text, 'Enable', enable_state);
     guidata(handles.fig, handles);
 end
 
@@ -6386,7 +6406,14 @@ function updateMemoryPoolingSettings(~, ~)
     % Update memory pooling settings
     handles = guidata(gcbf);
     enabled = get(handles.enable_memory_pooling_checkbox, 'Value');
-    set(handles.memory_pool_edit, 'Enable', enabled ? 'on' : 'off');
+    
+    if enabled
+        enable_state = 'on';
+    else
+        enable_state = 'off';
+    end
+    
+    set(handles.memory_pool_edit, 'Enable', enable_state);
     guidata(handles.fig, handles);
 end
 
