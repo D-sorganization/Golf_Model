@@ -5972,7 +5972,7 @@ function handles = createParallelProcessingSection(parent, handles)
                                                'FontWeight', 'bold', ...
                                                'Callback', @updateParallelSettings);
     
-    % Number of workers slider
+    % Number of workers input
     uicontrol('Parent', sectionPanel, ...
               'Style', 'text', ...
               'String', 'Max Parallel Workers:', ...
@@ -5982,24 +5982,13 @@ function handles = createParallelProcessingSection(parent, handles)
               'HorizontalAlignment', 'left', ...
               'FontWeight', 'bold');
     
-    handles.workers_slider = uicontrol('Parent', sectionPanel, ...
-                                      'Style', 'slider', ...
-                                      'Units', 'normalized', ...
-                                      'Position', [0.35, 0.55, 0.3, 0.1], ...
-                                      'Min', 1, ...
-                                      'Max', feature('numcores'), ...
-                                      'Value', 1, ...
-                                      'SliderStep', [1, 1], ...
-                                      'Callback', @updateWorkersDisplay);
-    
-    handles.workers_text = uicontrol('Parent', sectionPanel, ...
-                                    'Style', 'text', ...
-                                    'String', '1', ...
+    handles.workers_edit = uicontrol('Parent', sectionPanel, ...
+                                    'Style', 'edit', ...
                                     'Units', 'normalized', ...
-                                    'Position', [0.67, 0.55, 0.1, 0.1], ...
-                                    'BackgroundColor', colors.panel, ...
-                                    'HorizontalAlignment', 'center', ...
-                                    'FontWeight', 'bold');
+                                    'Position', [0.35, 0.55, 0.15, 0.1], ...
+                                    'String', '1', ...
+                                    'BackgroundColor', 'white', ...
+                                    'Callback', @updateWorkersInput);
     
     % Cluster profile selection
     uicontrol('Parent', sectionPanel, ...
@@ -6094,7 +6083,7 @@ function handles = createMemoryManagementSection(parent, handles)
                                                    'FontWeight', 'bold', ...
                                                    'Callback', @updateCompressionSettings);
     
-    % Compression level slider
+    % Compression level input
     uicontrol('Parent', sectionPanel, ...
               'Style', 'text', ...
               'String', 'Compression Level (1-9):', ...
@@ -6104,24 +6093,13 @@ function handles = createMemoryManagementSection(parent, handles)
               'HorizontalAlignment', 'left', ...
               'FontWeight', 'bold');
     
-    handles.compression_slider = uicontrol('Parent', sectionPanel, ...
-                                          'Style', 'slider', ...
-                                          'Units', 'normalized', ...
-                                          'Position', [0.35, 0.15, 0.3, 0.1], ...
-                                          'Min', 1, ...
-                                          'Max', 9, ...
-                                          'Value', 6, ...
-                                          'SliderStep', [1, 1], ...
-                                          'Callback', @updateCompressionDisplay);
-    
-    handles.compression_text = uicontrol('Parent', sectionPanel, ...
-                                        'Style', 'text', ...
-                                        'String', '6', ...
+    handles.compression_edit = uicontrol('Parent', sectionPanel, ...
+                                        'Style', 'edit', ...
                                         'Units', 'normalized', ...
-                                        'Position', [0.67, 0.15, 0.1, 0.1], ...
-                                        'BackgroundColor', colors.panel, ...
-                                        'HorizontalAlignment', 'center', ...
-                                        'FontWeight', 'bold');
+                                        'Position', [0.35, 0.15, 0.15, 0.1], ...
+                                        'String', '6', ...
+                                        'BackgroundColor', 'white', ...
+                                        'Callback', @updateCompressionInput);
 end
 
 function handles = createOptimizationSection(parent, handles)
@@ -6318,8 +6296,7 @@ function updateParallelSettings(~, ~)
         enable_state = 'off';
     end
     
-    set(handles.workers_slider, 'Enable', enable_state);
-    set(handles.workers_text, 'Enable', enable_state);
+    set(handles.workers_edit, 'Enable', enable_state);
     set(handles.cluster_profile_popup, 'Enable', enable_state);
     set(handles.use_local_cluster_checkbox, 'Enable', enable_state);
     set(handles.test_cluster_button, 'Enable', enable_state);
@@ -6327,11 +6304,21 @@ function updateParallelSettings(~, ~)
     guidata(handles.fig, handles);
 end
 
-function updateWorkersDisplay(~, ~)
-    % Update workers display when slider changes
+function updateWorkersInput(~, ~)
+    % Update workers setting when edit box changes
     handles = guidata(gcbf);
-    value = round(get(handles.workers_slider, 'Value'));
-    set(handles.workers_text, 'String', num2str(value));
+    try
+        value = str2double(get(handles.workers_edit, 'String'));
+        if ~isnan(value) && value >= 1 && value <= feature('numcores')
+            handles.preferences.max_parallel_workers = round(value);
+        else
+            % Reset to current preference if invalid
+            set(handles.workers_edit, 'String', num2str(handles.preferences.max_parallel_workers));
+        end
+    catch
+        % Reset to current preference if error
+        set(handles.workers_edit, 'String', num2str(handles.preferences.max_parallel_workers));
+    end
     guidata(handles.fig, handles);
 end
 
@@ -6397,16 +6384,25 @@ function updateCompressionSettings(~, ~)
         enable_state = 'off';
     end
     
-    set(handles.compression_slider, 'Enable', enable_state);
-    set(handles.compression_text, 'Enable', enable_state);
+    set(handles.compression_edit, 'Enable', enable_state);
     guidata(handles.fig, handles);
 end
 
-function updateCompressionDisplay(~, ~)
-    % Update compression level display
+function updateCompressionInput(~, ~)
+    % Update compression level when edit box changes
     handles = guidata(gcbf);
-    value = round(get(handles.compression_slider, 'Value'));
-    set(handles.compression_text, 'String', num2str(value));
+    try
+        value = str2double(get(handles.compression_edit, 'String'));
+        if ~isnan(value) && value >= 1 && value <= 9
+            handles.preferences.compression_level = round(value);
+        else
+            % Reset to current preference if invalid
+            set(handles.compression_edit, 'String', num2str(handles.preferences.compression_level));
+        end
+    catch
+        % Reset to current preference if error
+        set(handles.compression_edit, 'String', num2str(handles.preferences.compression_level));
+    end
     guidata(handles.fig, handles);
 end
 
@@ -6543,7 +6539,7 @@ function savePerformanceSettings(~, ~)
     try
         % Collect all settings from UI
         handles.preferences.enable_parallel_processing = get(handles.enable_parallel_checkbox, 'Value');
-        handles.preferences.max_parallel_workers = round(get(handles.workers_slider, 'Value'));
+        handles.preferences.max_parallel_workers = round(str2double(get(handles.workers_edit, 'String')));
         handles.preferences.enable_preallocation = get(handles.enable_preallocation_checkbox, 'Value');
         handles.preferences.enable_data_compression = get(handles.enable_compression_checkbox, 'Value');
         handles.preferences.enable_model_caching = get(handles.enable_caching_checkbox, 'Value');
@@ -6639,8 +6635,7 @@ function handles = loadPerformancePreferencesToUI(handles)
             getFieldOrDefault(handles.preferences, 'enable_parallel_processing', true));
         
         max_workers = getFieldOrDefault(handles.preferences, 'max_parallel_workers', feature('numcores'));
-        set(handles.workers_slider, 'Value', max_workers);
-        set(handles.workers_text, 'String', num2str(max_workers));
+        set(handles.workers_edit, 'String', num2str(max_workers));
         
         % Set cluster profile
         cluster_profile = getFieldOrDefault(handles.preferences, 'cluster_profile', 'Local_Cluster');
@@ -6666,8 +6661,7 @@ function handles = loadPerformancePreferencesToUI(handles)
             getFieldOrDefault(handles.preferences, 'enable_data_compression', true));
         
         compression_level = getFieldOrDefault(handles.preferences, 'compression_level', 6);
-        set(handles.compression_slider, 'Value', compression_level);
-        set(handles.compression_text, 'String', num2str(compression_level));
+        set(handles.compression_edit, 'String', num2str(compression_level));
         
         % Set caching settings
         set(handles.enable_caching_checkbox, 'Value', ...
