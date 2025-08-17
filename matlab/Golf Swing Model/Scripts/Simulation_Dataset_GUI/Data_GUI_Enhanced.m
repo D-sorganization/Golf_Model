@@ -1767,7 +1767,7 @@ function applyUserPreferences(handles)
                 if isfield(prefs, 'default_sample_rate')
                     set(handles.sample_rate_edit, 'String', num2str(prefs.default_sample_rate));
                 else
-                    set(handles.sim_time_edit, 'String', '100'); % Default to 100
+                    set(handles.sample_rate_edit, 'String', '100'); % Default to 100
                 end
             end
 
@@ -2928,21 +2928,7 @@ function updateCoefficientsPreview(~, ~, fig)
         fig = gcbf;
     end
     handles = guidata(fig);
-end
-
-function updateCoefficientsPreviewAndSave(~, ~, fig)
-    if nargin < 3 || isempty(fig)
-        fig = gcbf;
-    end
-    handles = guidata(fig);
     
-    % Update coefficients preview
-    updateCoefficientsPreview([], [], fig);
-    
-    % Save preferences after updating
-    saveUserPreferences(handles);
-end
-
     try
         % Get current settings
         num_trials = str2double(get(handles.num_trials_edit, 'String'));
@@ -3014,6 +3000,19 @@ end
     catch ME
         fprintf('Error in updateCoefficientsPreview: %s\n', ME.message);
     end
+end
+
+function updateCoefficientsPreviewAndSave(~, ~, fig)
+    if nargin < 3 || isempty(fig)
+        fig = gcbf;
+    end
+    handles = guidata(fig);
+    
+    % Update coefficients preview
+    updateCoefficientsPreview([], [], fig);
+    
+    % Save preferences after updating
+    saveUserPreferences(handles);
 end
 
 % Joint Editor callbacks
@@ -3531,6 +3530,7 @@ function saveUserPreferences(handles)
         % Save to file
         script_dir = fileparts(mfilename('fullpath'));
         pref_file = fullfile(script_dir, 'user_preferences.mat');
+        preferences = handles.preferences;  % Create local variable for saving
         save(pref_file, 'preferences');
 
     catch ME
