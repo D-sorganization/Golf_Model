@@ -14,6 +14,7 @@ try
     fprintf('Enhanced Golf Swing Data Generator launched successfully!\n');
     fprintf('Features available:\n');
     fprintf('  - Tabbed interface (Data Generation / Post-Processing)\n');
+    fprintf('  - Performance settings tab with optimization controls\n');
     fprintf('  - Pause/Resume functionality with checkpoints\n');
     fprintf('  - Multiple export formats (CSV, Parquet, MAT, JSON)\n');
     fprintf('  - Batch processing with configurable batch sizes\n');
@@ -21,10 +22,5 @@ try
     fprintf('  - Memory-efficient processing\n');
 catch ME
     fprintf('Error launching enhanced GUI: %s\n', ME.message);
-    fprintf('Falling back to original GUI...\n');
-    try
-        Data_GUI();
-    catch ME2
-        fprintf('Error launching original GUI: %s\n', ME2.message);
-    end
+    fprintf('Please check that Data_GUI_Enhanced.m is available and has no syntax errors.\n');
 end

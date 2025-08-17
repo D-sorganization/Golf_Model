@@ -11,5 +11,5 @@ end
 % 3. Start fresh parallel pool
 parpool('local', 4);  % or however many workers you want
 
-% 4. Now run your GUI
-Data_GUI
+% 4. Now run your enhanced GUI
+Data_GUI_Enhanced

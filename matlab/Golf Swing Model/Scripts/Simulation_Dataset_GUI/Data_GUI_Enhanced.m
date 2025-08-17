@@ -70,11 +70,9 @@ function Data_GUI_Enhanced()
     % Apply loaded preferences to UI
     applyUserPreferences(handles);
     
-    % Load performance preferences after a short delay to ensure UI is ready
-    % Use a timer to load preferences after GUI is fully initialized
-    timer_obj = timer('ExecutionMode', 'singleShot', 'StartDelay', 1.0);
-    timer_obj.TimerFcn = @(src, event) loadPerformancePreferencesDelayed(handles.fig);
-    start(timer_obj);
+    % Load performance preferences after ensuring UI is fully ready
+    handles = loadPerformancePreferencesWhenReady(handles);
+    guidata(fig, handles);
 
     % Initialize preview
     updatePreview([], [], handles.fig);
@@ -7110,13 +7108,81 @@ function profiles = getAvailableClusterProfiles()
     end
 end
 
+function handles = loadPerformancePreferencesWhenReady(handles)
+    % LOADPERFORMANCEPREFERENCESWHENREADY - Load performance preferences when UI is fully ready
+    %
+    % This function ensures all performance UI elements are created and ready
+    % before attempting to load preferences. It's called after the main layout
+    % is created to avoid timing issues.
+    
+    try
+        % Wait a moment for UI elements to be fully rendered
+        pause(0.1);
+        
+        % Check if all critical performance UI elements exist and are valid
+        required_elements = {
+            'enable_parallel_checkbox'
+            'workers_edit'
+            'cluster_profile_popup'
+            'use_local_cluster_checkbox'
+            'enable_preallocation_checkbox'
+            'buffer_size_edit'
+            'enable_compression_checkbox'
+            'compression_edit'
+            'enable_caching_checkbox'
+            'enable_memory_pooling_checkbox'
+            'memory_pool_edit'
+            'enable_performance_monitoring_checkbox'
+            'enable_memory_monitoring_checkbox'
+        };
+        
+        % Verify all elements exist and are valid handles
+        all_elements_ready = true;
+        for i = 1:length(required_elements)
+            element_name = required_elements{i};
+            if ~isfield(handles, element_name) || ~ishandle(handles.(element_name))
+                all_elements_ready = false;
+                break;
+            end
+        end
+        
+        if all_elements_ready
+            fprintf('All performance UI elements ready, loading preferences...\n');
+            handles = loadPerformancePreferencesToUI(handles);
+            fprintf('Performance preferences loaded successfully!\n');
+        else
+            fprintf('Performance UI elements not ready yet, will load preferences later\n');
+            % Schedule a retry with a timer as fallback
+            timer_obj = timer('ExecutionMode', 'singleShot', 'StartDelay', 0.5);
+            timer_obj.TimerFcn = @(src, event) loadPerformancePreferencesDelayed(handles.fig);
+            start(timer_obj);
+        end
+        
+    catch ME
+        fprintf('Error in loadPerformancePreferencesWhenReady: %s\n', ME.message);
+        % Fallback to timer-based approach
+        timer_obj = timer('ExecutionMode', 'singleShot', 'StartDelay', 0.5);
+        timer_obj.TimerFcn = @(src, event) loadPerformancePreferencesDelayed(handles.fig);
+        start(timer_obj);
+    end
+end
+
 function handles = loadPerformancePreferencesToUI(handles)
     % Load performance preferences into UI elements
     try
-        % Check if UI elements exist
+        % Enhanced validation - check if UI elements exist and are valid
         if ~isfield(handles, 'enable_parallel_checkbox') || ~ishandle(handles.enable_parallel_checkbox)
             fprintf('Performance UI elements not ready yet, skipping preference loading\n');
             return;
+        end
+        
+        % Additional validation - ensure all critical elements are ready
+        critical_elements = {'workers_edit', 'cluster_profile_popup', 'enable_preallocation_checkbox'};
+        for i = 1:length(critical_elements)
+            if ~isfield(handles, critical_elements{i}) || ~ishandle(handles.(critical_elements{i}))
+                fprintf('Critical performance UI element %s not ready, skipping preference loading\n', critical_elements{i});
+                return;
+            end
         end
         
         % Set parallel processing settings
@@ -7170,17 +7236,82 @@ function handles = loadPerformancePreferencesToUI(handles)
         set(handles.enable_memory_monitoring_checkbox, 'Value', ...
             getFieldOrDefault(handles.preferences, 'enable_memory_monitoring', true));
         
-        % Update control states
-        updateParallelSettings([], []);
-        updatePreallocationSettings([], []);
-        updateCompressionSettings([], []);
-        updateMemoryPoolingSettings([], []);
+        % Update control states - wrap each in try-catch for better error isolation
+        try
+            % Update parallel settings inline to avoid callback context issues
+            if isfield(handles, 'enable_parallel_checkbox') && ishandle(handles.enable_parallel_checkbox)
+                enabled = get(handles.enable_parallel_checkbox, 'Value');
+                enable_state = enabled ? 'on' : 'off';
+                
+                if isfield(handles, 'workers_edit') && ishandle(handles.workers_edit)
+                    set(handles.workers_edit, 'Enable', enable_state);
+                end
+                if isfield(handles, 'cluster_profile_popup') && ishandle(handles.cluster_profile_popup)
+                    set(handles.cluster_profile_popup, 'Enable', enable_state);
+                end
+                if isfield(handles, 'use_local_cluster_checkbox') && ishandle(handles.use_local_cluster_checkbox)
+                    set(handles.use_local_cluster_checkbox, 'Enable', enable_state);
+                end
+                if isfield(handles, 'test_cluster_button') && ishandle(handles.test_cluster_button)
+                    set(handles.test_cluster_button, 'Enable', enable_state);
+                end
+            end
+        catch ME
+            fprintf('Warning: Could not update parallel settings: %s\n', ME.message);
+        end
+        
+        try
+            % Update preallocation settings inline to avoid callback context issues
+            if isfield(handles, 'enable_preallocation_checkbox') && ishandle(handles.enable_preallocation_checkbox)
+                enabled = get(handles.enable_preallocation_checkbox, 'Value');
+                enable_state = enabled ? 'on' : 'off';
+                
+                if isfield(handles, 'buffer_size_edit') && ishandle(handles.buffer_size_edit)
+                    set(handles.buffer_size_edit, 'Enable', enable_state);
+                end
+            end
+        catch ME
+            fprintf('Warning: Could not update preallocation settings: %s\n', ME.message);
+        end
+        
+        try
+            % Update compression settings inline to avoid callback context issues
+            if isfield(handles, 'enable_compression_checkbox') && ishandle(handles.enable_compression_checkbox)
+                enabled = get(handles.enable_compression_checkbox, 'Value');
+                enable_state = enabled ? 'on' : 'off';
+                
+                if isfield(handles, 'compression_edit') && ishandle(handles.compression_edit)
+                    set(handles.compression_edit, 'Enable', enable_state);
+                end
+            end
+        catch ME
+            fprintf('Warning: Could not update compression settings: %s\n', ME.message);
+        end
+        
+        try
+            % Update memory pooling settings inline to avoid callback context issues
+            if isfield(handles, 'enable_memory_pooling_checkbox') && ishandle(handles.enable_memory_pooling_checkbox)
+                enabled = get(handles.enable_memory_pooling_checkbox, 'Value');
+                enable_state = enabled ? 'on' : 'off';
+                
+                if isfield(handles, 'memory_pool_edit') && ishandle(handles.memory_pool_edit)
+                    set(handles.memory_pool_edit, 'Enable', enable_state);
+                end
+            end
+        catch ME
+            fprintf('Warning: Could not update memory pooling settings: %s\n', ME.message);
+        end
         
         % Refresh memory info
-        refreshMemoryInfo([], []);
+        try
+            refreshMemoryInfo([], []);
+        catch ME
+            fprintf('Warning: Could not refresh memory info: %s\n', ME.message);
+        end
         
     catch ME
         fprintf('Error loading performance preferences to UI: %s\n', ME.message);
+        fprintf('Function: %s, Line: %d\n', ME.stack(1).name, ME.stack(1).line);
     end
 end
 
@@ -7196,7 +7327,7 @@ end
 function loadPerformancePreferencesDelayed(fig_handle)
     % LOADPERFORMANCEPREFERENCESDELAYED - Load performance preferences after GUI is ready
     %
-    % This function is called by a timer to ensure the GUI is fully initialized
+    % This function is called by a timer as a fallback to ensure the GUI is fully initialized
     % before attempting to load performance preferences
     
     try
@@ -7206,22 +7337,43 @@ function loadPerformancePreferencesDelayed(fig_handle)
         % Get the current handles
         handles = guidata(fig_handle);
         
-        % Check if UI elements exist and are valid handles
-        if isfield(handles, 'enable_parallel_checkbox') && ishandle(handles.enable_parallel_checkbox)
-            fprintf('Loading performance preferences to UI...\n');
+        % Enhanced validation - check multiple critical elements
+        critical_elements = {'enable_parallel_checkbox', 'workers_edit', 'cluster_profile_popup'};
+        all_elements_ready = true;
+        
+        for i = 1:length(critical_elements)
+            if ~isfield(handles, critical_elements{i}) || ~ishandle(handles.(critical_elements{i}))
+                all_elements_ready = false;
+                break;
+            end
+        end
+        
+        if all_elements_ready
+            fprintf('Loading performance preferences to UI (delayed)...\n');
             handles = loadPerformancePreferencesToUI(handles);
             guidata(fig_handle, handles);
             fprintf('Performance preferences loaded successfully!\n');
         else
-            fprintf('Performance UI elements not ready yet, retrying in 1 second...\n');
-            % Retry after another delay
-            timer_obj = timer('ExecutionMode', 'singleShot', 'StartDelay', 1.0);
-            timer_obj.TimerFcn = @(src, event) loadPerformancePreferencesDelayed(fig_handle);
-            start(timer_obj);
+            fprintf('Performance UI elements still not ready, retrying in 1 second...\n');
+            % Retry after another delay, but limit retries to avoid infinite loops
+            if ~isfield(handles, 'performance_load_retry_count')
+                handles.performance_load_retry_count = 1;
+            else
+                handles.performance_load_retry_count = handles.performance_load_retry_count + 1;
+            end
+            
+            if handles.performance_load_retry_count <= 3  % Max 3 retries
+                timer_obj = timer('ExecutionMode', 'singleShot', 'StartDelay', 1.0);
+                timer_obj.TimerFcn = @(src, event) loadPerformancePreferencesDelayed(fig_handle);
+                start(timer_obj);
+                guidata(fig_handle, handles);
+            else
+                fprintf('Maximum retries reached. Performance preferences will be loaded when manually accessed.\n');
+            end
         end
         
     catch ME
-        fprintf('Note: Could not load performance preferences: %s\n', ME.message);
-        fprintf('Error details: %s\n', ME.message);
+        fprintf('Error in loadPerformancePreferencesDelayed: %s\n', ME.message);
+        fprintf('Function: %s, Line: %d\n', ME.stack(1).name, ME.stack(1).line);
     end
 end
