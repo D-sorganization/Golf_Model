@@ -1,6 +1,6 @@
 # MATLAB Best Practices Rules for Cursor
 
-This document consolidates style, correctness, and performance optimization guidelines for MATLAB programming. 
+This document consolidates style, correctness, performance optimization, and project organization guidelines for MATLAB programming. 
 It acts like Ruff (lint checks) and Black (formatter) combined—Cursor should apply these rules automatically where possible.
 
 ---
@@ -8,6 +8,7 @@ It acts like Ruff (lint checks) and Black (formatter) combined—Cursor should a
 ## 🎯 Core Principles
 - **MUST** write clear, maintainable code before optimizing.
 - **MUST** profile before optimizing performance.
+- **MUST** organize projects with proper folder structure.
 - **SHOULD** use vectorization, preallocation, and built-ins when possible.
 - **AVOID** unsafe constructs (`inv`, `eval`, `global`).
 - **Clarity First**: Write simple, readable, maintainable code.
@@ -15,6 +16,67 @@ It acts like Ruff (lint checks) and Black (formatter) combined—Cursor should a
 - **Column-Major Awareness**: MATLAB stores arrays in column-major order; loop accordingly.
 - **Correctness**: Avoid unsafe constructs (`inv`, `eval`, `global`). Validate all inputs and outputs.
 - **Profiling**: Optimize only after profiling with `profile`, `timeit`, or `gputimeit`.
+
+---
+
+## 📁 Project Organization & Folder Structure
+
+### **MUST** Follow Proper Project Organization
+- **Main Directory**: Keep clean with only essential files
+  - Main application file (e.g., `Data_GUI_Enhanced.m`)
+  - Project README.md
+  - Configuration files (e.g., `user_preferences.mat`)
+  - Essential data files
+- **Functions Directory**: `functions/` folder for all extracted modules
+  - Group functions by responsibility (simulation, GUI, data processing, etc.)
+  - One function per file (filename == function name)
+  - Organize related functions in logical subdirectories if needed
+- **Documentation Directory**: `docs/` folder for all documentation
+  - README files, guides, and analysis documents
+  - Refactoring documentation and progress tracking
+  - Performance analysis and optimization guides
+  - User documentation and tutorials
+- **Test Directory**: `tests/` folder for unit tests and validation scripts
+  - Unit tests for individual functions
+  - Integration tests for modules
+  - Performance benchmarks
+- **Data Directory**: `data/` folder for input/output data files
+  - Input datasets and configuration files
+  - Output results and generated data
+  - Temporary files and caches
+
+### **Project Structure Template**
+```
+ProjectName/
+├── MainApplication.m           # Main application entry point
+├── README.md                  # Project overview and navigation
+├── functions/                 # All function modules
+│   ├── core/                  # Core functionality modules
+│   ├── gui/                   # GUI-related functions
+│   ├── data/                  # Data processing functions
+│   ├── utils/                 # Utility functions
+│   └── tests/                 # Test functions
+├── docs/                      # Documentation
+│   ├── user_guides/           # User documentation
+│   ├── technical/             # Technical documentation
+│   ├── refactoring/           # Refactoring progress
+│   └── performance/           # Performance analysis
+├── tests/                     # Unit and integration tests
+├── data/                      # Data files
+│   ├── input/                 # Input data
+│   ├── output/                # Output results
+│   └── temp/                  # Temporary files
+├── config/                    # Configuration files
+└── archive/                   # Backup and archive files
+```
+
+### **Folder Organization Rules**
+- **MUST** separate functions from documentation
+- **MUST** keep main directory clean and focused
+- **SHOULD** group related functions in subdirectories
+- **SHOULD** use descriptive folder names
+- **AVOID** mixing code, docs, and data in same directory
+- **AVOID** having more than 10 files in main directory
 
 ---
 
@@ -43,6 +105,31 @@ It acts like Ruff (lint checks) and Black (formatter) combined—Cursor should a
 - **Hygiene**:
   - No `clear all`, `clc`, `close all`, or `addpath` in library code.
   - Avoid shadowing built-ins (`sum`, `table`, `length`).
+
+---
+
+## 🔧 Refactoring & Modularization Guidelines
+
+### **When to Extract Functions**
+- **MUST** extract functions when main file exceeds 500 lines
+- **MUST** extract functions when single file contains 10+ functions
+- **SHOULD** extract functions for single responsibility principle
+- **SHOULD** extract functions for reusability across projects
+- **SHOULD** extract functions for easier testing and debugging
+
+### **Function Extraction Strategy**
+- **Group by Responsibility**: Extract related functions together
+- **Maintain Interface**: Preserve function signatures and behavior
+- **Update Dependencies**: Ensure all function calls are updated
+- **Preserve Parallel Computing**: Maintain `AttachedFiles` and worker compatibility
+- **Document Changes**: Update documentation and README files
+
+### **Module Organization**
+- **Core Modules**: Essential functionality (simulation, data processing)
+- **GUI Modules**: User interface and interaction functions
+- **Utility Modules**: Helper functions and tools
+- **Configuration Modules**: Settings and preferences management
+- **Test Modules**: Validation and testing functions
 
 ---
 
@@ -113,6 +200,7 @@ It acts like Ruff (lint checks) and Black (formatter) combined—Cursor should a
 - Use `parfeval` for asynchronous tasks.
 - For GPU: transfer once (`gpuArray`), compute, then `gather` once.
 - Benchmark GPU code with `gputimeit`.
+- **Preserve Parallel Computing**: When refactoring, maintain `AttachedFiles` list and worker function compatibility.
 
 ### 7. File I/O & Tables
 - Use `readmatrix`/`readtable`, not `xlsread`.
@@ -145,6 +233,34 @@ It acts like Ruff (lint checks) and Black (formatter) combined—Cursor should a
 
 ---
 
+## 📋 Workflow Improvements
+
+### **Development Workflow**
+1. **Start with Clean Structure**: Set up proper folder organization from the beginning
+2. **Extract Early**: Don't wait until files become monolithic
+3. **Document as You Go**: Keep documentation updated with code changes
+4. **Test Incrementally**: Write tests for each extracted function
+5. **Profile Regularly**: Monitor performance during development
+6. **Review Structure**: Periodically review and reorganize as needed
+
+### **Refactoring Workflow**
+1. **Analyze Current State**: Identify functions to extract and their dependencies
+2. **Plan Extraction**: Group related functions and plan module organization
+3. **Extract Incrementally**: Extract one module at a time, test thoroughly
+4. **Update Dependencies**: Ensure all function calls and imports are updated
+5. **Preserve Functionality**: Maintain all existing features and performance
+6. **Update Documentation**: Keep all documentation current
+7. **Reorganize Structure**: Move files to appropriate folders
+
+### **Collaboration Workflow**
+1. **Clear Structure**: Use consistent folder organization across team
+2. **Documentation**: Keep README files updated with current structure
+3. **Code Reviews**: Include folder organization in review process
+4. **Version Control**: Use meaningful commit messages for structural changes
+5. **Onboarding**: Provide clear navigation guides for new team members
+
+---
+
 ## 🛑 Common Anti-Patterns
 - **AVOID** growing arrays dynamically.
 - **AVOID** using `eval` for variable names.
@@ -152,6 +268,9 @@ It acts like Ruff (lint checks) and Black (formatter) combined—Cursor should a
 - **AVOID** row-major loop order (slow).
 - **AVOID** repeated plotting in compute loops.
 - **AVOID** using `find` when logical indexing suffices.
+- **AVOID** monolithic files with 100+ functions.
+- **AVOID** mixing code, docs, and data in same directory.
+- **AVOID** cluttered main directories with 50+ files.
 - Growing arrays dynamically.
 - Using `eval` for variable names.
 - Using `global` unnecessarily.
@@ -172,6 +291,11 @@ It acts like Ruff (lint checks) and Black (formatter) combined—Cursor should a
 - [ ] Unit tests written
 - [ ] Plots efficient (no redraw in compute loops)
 - [ ] Profiling evidence for performance claims
+- [ ] Proper folder organization maintained
+- [ ] Functions extracted when files exceed 500 lines
+- [ ] Documentation updated with structural changes
+- [ ] Parallel computing compatibility preserved
+- [ ] Main directory clean and focused
 
 ---
 
@@ -180,10 +304,13 @@ It acts like Ruff (lint checks) and Black (formatter) combined—Cursor should a
 - [Vectorization](https://www.mathworks.com/help/matlab/matlab_prog/vectorization.html)
 - [Memory Management](https://www.mathworks.com/help/matlab/matlab_prog/resolving-out-of-memory-errors.html)
 - [Profiling](https://www.mathworks.com/help/matlab/ref/profile.html)
+- [Parallel Computing](https://www.mathworks.com/help/parallel-computing/)
+- [Project Organization Best Practices](https://www.mathworks.com/help/matlab/matlab_prog/developing-and-maintaining-large-projects.html)
 
 ---
 
 ## 🔑 Attitude Check
 - If it's slow, **prove it** with the profiler before changing code.
 - If it's clever, make it clearer—or make it simpler.
+- If it's disorganized, **reorganize it** following proper structure.
 - And remember: **never use `inv`**.
