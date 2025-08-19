@@ -13,6 +13,9 @@ function golf_swing_analysis_gui()
     % Load configuration
     config = model_config();
 
+    % Initialize performance tracker
+    tracker = performance_tracker();
+    
     % Create main figure
     main_fig = figure('Name', config.gui_title, ...
                       'NumberTitle', 'off', ...
@@ -27,7 +30,7 @@ function golf_swing_analysis_gui()
     main_tab_group = uitabgroup('Parent', main_fig, ...
                                'Position', [0.02, 0.02, 0.96, 0.96]);
 
-    % Create the 4 main tabs
+    % Create the 5 main tabs (including performance monitoring)
     simulation_tab = uitab('Parent', main_tab_group, ...
                           'Title', '🎮 Simulation');
 
@@ -40,17 +43,23 @@ function golf_swing_analysis_gui()
     skeleton_tab = uitab('Parent', main_tab_group, ...
                         'Title', '🦴 Skeleton Plotter');
 
+    performance_tab = uitab('Parent', main_tab_group, ...
+                           'Title', '🔍 Performance Monitor');
+
     % Create content for each tab
     create_simulation_tab(simulation_tab, config);
     create_analysis_tab(analysis_tab, config);
     create_plots_tab(plots_tab, config);
     create_skeleton_tab(skeleton_tab, config);
+    create_performance_tab(performance_tab, config);
 
     % Store data in figure
     setappdata(main_fig, 'config', config);
     setappdata(main_fig, 'main_tab_group', main_tab_group);
+    setappdata(main_fig, 'performance_tracker', tracker);
 
-    fprintf('✅ Enhanced 4-Tab Golf Swing Analysis GUI created successfully\n');
+    fprintf('✅ Enhanced 5-Tab Golf Swing Analysis GUI created successfully\n');
+    fprintf('🔍 Performance monitoring enabled\n');
 
 end
 
@@ -881,6 +890,12 @@ function run_simulation(src, ~)
             main_fig = main_fig(1);
         end
         config = getappdata(main_fig, 'config');
+        
+        % Get performance tracker
+        tracker = getappdata(main_fig, 'performance_tracker');
+        if ~isempty(tracker)
+            tracker.start_timer('Complete_Simulation');
+        end
 
         % Get progress text
         progress_text = findobj(main_fig, 'Tag', 'progress_text');
@@ -891,7 +906,13 @@ function run_simulation(src, ~)
 
         % Initialize model
         fprintf('   Initializing model workspace...\n');
+        if ~isempty(tracker)
+            tracker.start_timer('Model_Initialization');
+        end
         mdlWks = initialize_model(config);
+        if ~isempty(tracker)
+            tracker.stop_timer('Model_Initialization');
+        end
 
         if ~isempty(progress_text)
             progress_text.String = 'Running base simulation...';
@@ -900,7 +921,13 @@ function run_simulation(src, ~)
 
         % Generate base data
         fprintf('   Generating base data...\n');
+        if ~isempty(tracker)
+            tracker.start_timer('Base_Data_Generation');
+        end
         BaseData = generate_base_data(config, mdlWks);
+        if ~isempty(tracker)
+            tracker.stop_timer('Base_Data_Generation');
+        end
 
         if ~isempty(progress_text)
             progress_text.String = 'Generating ZTCF data...';
@@ -909,7 +936,13 @@ function run_simulation(src, ~)
 
         % Generate ZTCF data
         fprintf('   Generating ZTCF data...\n');
+        if ~isempty(tracker)
+            tracker.start_timer('ZTCF_Data_Generation');
+        end
         ZTCF = generate_ztcf_data(config, mdlWks, BaseData);
+        if ~isempty(tracker)
+            tracker.stop_timer('ZTCF_Data_Generation');
+        end
 
         if ~isempty(progress_text)
             progress_text.String = 'Processing data tables...';
@@ -918,7 +951,13 @@ function run_simulation(src, ~)
 
         % Process data tables
         fprintf('   Processing data tables...\n');
+        if ~isempty(tracker)
+            tracker.start_timer('Data_Table_Processing');
+        end
         [BASEQ, ZTCFQ, DELTAQ] = process_data_tables(config, BaseData, ZTCF);
+        if ~isempty(tracker)
+            tracker.stop_timer('Data_Table_Processing');
+        end
 
         % Save data
         fprintf('   Saving data tables...\n');
@@ -939,6 +978,11 @@ function run_simulation(src, ~)
         fprintf('   BASEQ: %d frames\n', height(BASEQ));
         fprintf('   ZTCFQ: %d frames\n', height(ZTCFQ));
         fprintf('   DELTAQ: %d frames\n', height(DELTAQ));
+        
+        % Stop complete simulation timer
+        if ~isempty(tracker)
+            tracker.stop_timer('Complete_Simulation');
+        end
 
     catch ME
         fprintf('❌ Simulation failed: %s\n', ME.message);
@@ -4015,4 +4059,16 @@ function export_analysis_results(src, ~)
     catch ME
         errordlg(sprintf('Error exporting results: %s', ME.message), 'Error');
     end
+end
+
+function create_performance_tab(parent, config)
+    % CREATE_PERFORMANCE_TAB - Create performance monitoring tab
+    %
+    % This function creates a comprehensive performance monitoring interface
+    % that displays real-time metrics, historical data, and performance insights
+    
+    % Import the performance monitor creation function
+    create_performance_monitor(parent, config);
+    
+    fprintf('🔍 Performance monitoring tab created\n');
 end
