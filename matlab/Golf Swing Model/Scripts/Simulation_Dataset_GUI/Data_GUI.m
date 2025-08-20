@@ -2745,6 +2745,7 @@ handles.selected_input_file = '';
 
 % Try to find default model in multiple locations
 possible_paths = {
+    '../../Model/GolfSwing3D_Kinetic.slx',
     'Model/GolfSwing3D_Kinetic.slx',
     'GolfSwing3D_Kinetic.slx',
     fullfile(pwd, 'Model', 'GolfSwing3D_Kinetic.slx'),
