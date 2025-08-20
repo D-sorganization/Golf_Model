@@ -4466,7 +4466,14 @@ try
     % Get system memory info if available
     if ispc
         try
-            [~, result] = system('wmic OS get TotalVisibleMemorySize,FreePhysicalMemory /Value');
+                            try
+                    [status, result] = system('wmic OS get TotalVisibleMemorySize,FreePhysicalMemory /Value');
+                    if status ~= 0
+                        result = '';
+                    end
+                catch
+                    result = '';
+                end
             lines = strsplit(result, '\n');
             total_mem = 0;
             free_mem = 0;
@@ -6448,7 +6455,14 @@ try
     fprintf(fid_out, '%% MATLAB version: %s\n', version);
     fprintf(fid_out, '%% Computer: %s\n', computer);
     try
-        [~, hostname] = system('hostname');
+        try
+            [status, hostname] = system('hostname');
+            if status ~= 0
+                hostname = 'Unknown';
+            end
+        catch
+            hostname = 'Unknown';
+        end
         fprintf(fid_out, '%% Hostname: %s', hostname); % hostname already includes newline
     catch
         fprintf(fid_out, '%% Hostname: Unknown\n');

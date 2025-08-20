@@ -80,37 +80,43 @@ catch ME
     try
         % Method 1: Try using system commands (Windows)
         if ispc
-            [~, result] = system('wmic computersystem get TotalPhysicalMemory /value');
-            if ~isempty(strfind(result, 'TotalPhysicalMemory='))
-                % Use strfind and strtok for compatibility with older MATLAB versions
-                start_idx = strfind(result, 'TotalPhysicalMemory=');
-                if ~isempty(start_idx)
-                    start_idx = start_idx(1) + length('TotalPhysicalMemory=');
-                    remaining = result(start_idx:end);
-                    % Find the end of the value (newline or space)
-                    end_idx = strfind(remaining, sprintf('\n'));
-                    if isempty(end_idx)
-                        end_idx = strfind(remaining, ' ');
+            try
+                [status, result] = system('wmic computersystem get TotalPhysicalMemory /value');
+                if status == 0 && ~isempty(strfind(result, 'TotalPhysicalMemory='))
+                    % Use strfind and strtok for compatibility with older MATLAB versions
+                    start_idx = strfind(result, 'TotalPhysicalMemory=');
+                    if ~isempty(start_idx)
+                        start_idx = start_idx(1) + length('TotalPhysicalMemory=');
+                        remaining = result(start_idx:end);
+                        % Find the end of the value (newline or space)
+                        end_idx = strfind(remaining, sprintf('\n'));
+                        if isempty(end_idx)
+                            end_idx = strfind(remaining, ' ');
+                        end
+                        if ~isempty(end_idx)
+                            total_memory_str = strtrim(remaining(1:end_idx(1)-1));
+                        else
+                            total_memory_str = strtrim(remaining);
+                        end
+                        total_memory_bytes = str2double(total_memory_str);
+                        if ~isnan(total_memory_bytes)
+                            memory_info.total_gb = total_memory_bytes / (1024^3);
+                            memory_info.available_gb = NaN; % Can't easily get available memory via wmic
+                            memory_info.used_gb = NaN;
+                            memory_info.usage_percent = NaN;
+                            memory_info.virtual_total_gb = NaN;
+                            memory_info.virtual_available_gb = NaN;
+                            memory_info.matlab_used_gb = NaN;
+                            memory_info.matlab_peak_gb = NaN;
+                            fprintf('✓ Fallback memory detection successful (Windows)\n');
+                            return;
+                        end
                     end
-                    if ~isempty(end_idx)
-                        total_memory_str = strtrim(remaining(1:end_idx(1)-1));
-                    else
-                        total_memory_str = strtrim(remaining);
-                    end
-                    total_memory_bytes = str2double(total_memory_str);
-                    if ~isnan(total_memory_bytes)
-                        memory_info.total_gb = total_memory_bytes / (1024^3);
-                        memory_info.available_gb = NaN; % Can't easily get available memory via wmic
-                        memory_info.used_gb = NaN;
-                        memory_info.usage_percent = NaN;
-                        memory_info.virtual_total_gb = NaN;
-                        memory_info.virtual_available_gb = NaN;
-                        memory_info.matlab_used_gb = NaN;
-                        memory_info.matlab_peak_gb = NaN;
-                        fprintf('✓ Fallback memory detection successful (Windows)\n');
-                        return;
-                    end
+                else
+                    fprintf('wmic command failed or returned unexpected output\n');
                 end
+            catch ME
+                fprintf('wmic command error: %s\n', ME.message);
             end
         end
 
