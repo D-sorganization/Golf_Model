@@ -827,8 +827,16 @@ function exportToPyTorch(batch_data, output_file, options)
                     matlab2json(pytorch_data), output_file);
 
                 % Execute Python script
-                system(sprintf('python -c "%s"', python_script));
-                fprintf('PyTorch data saved to: %s\n', output_file);
+                try
+                    [status, ~] = system(sprintf('python -c "%s"', python_script));
+                    if status == 0
+                        fprintf('PyTorch data saved to: %s\n', output_file);
+                    else
+                        error('Python command failed with status %d', status);
+                    end
+                catch ME
+                    error('Python execution failed: %s', ME.message);
+                end
             catch ME
                 warning('PyTorch export failed: %s. Falling back to MAT format.', ME.message);
                 save(strrep(output_file, '.pt', '.mat'), '-struct', 'batch_data');
@@ -863,8 +871,16 @@ function exportToTensorFlow(batch_data, output_file, options)
                     matlab2json(tf_data), output_file);
 
                 % Execute Python script
-                system(sprintf('python -c "%s"', python_script));
-                fprintf('TensorFlow data saved to: %s\n', output_file);
+                try
+                    [status, ~] = system(sprintf('python -c "%s"', python_script));
+                    if status == 0
+                        fprintf('TensorFlow data saved to: %s\n', output_file);
+                    else
+                        error('Python command failed with status %d', status);
+                    end
+                catch ME
+                    error('Python execution failed: %s', ME.message);
+                end
             catch ME
                 warning('TensorFlow export failed: %s. Falling back to MAT format.', ME.message);
                 save(strrep(output_file, '.h5', '.mat'), '-struct', 'batch_data');
@@ -896,8 +912,16 @@ function exportToNumPy(batch_data, output_file, options)
                     matlab2json(numpy_data), output_file);
 
                 % Execute Python script
-                system(sprintf('python -c "%s"', python_script));
-                fprintf('NumPy data saved to: %s\n', output_file);
+                try
+                    [status, ~] = system(sprintf('python -c "%s"', python_script));
+                    if status == 0
+                        fprintf('NumPy data saved to: %s\n', output_file);
+                    else
+                        error('Python command failed with status %d', status);
+                    end
+                catch ME
+                    error('Python execution failed: %s', ME.message);
+                end
             catch ME
                 warning('NumPy export failed: %s. Falling back to MAT format.', ME.message);
                 save(strrep(output_file, '.npz', '.mat'), '-struct', 'batch_data');
@@ -931,8 +955,16 @@ function exportToPickle(batch_data, output_file, options)
                     matlab2json(pickle_data), output_file);
 
                 % Execute Python script
-                system(sprintf('python -c "%s"', python_script));
-                fprintf('Pickle data saved to: %s\n', output_file);
+                try
+                    [status, ~] = system(sprintf('python -c "%s"', python_script));
+                    if status == 0
+                        fprintf('Pickle data saved to: %s\n', output_file);
+                    else
+                        error('Python command failed with status %d', status);
+                    end
+                catch ME
+                    error('Python execution failed: %s', ME.message);
+                end
             catch ME
                 warning('Pickle export failed: %s. Falling back to MAT format.', ME.message);
                 save(strrep(output_file, '.pkl', '.mat'), '-struct', 'batch_data');

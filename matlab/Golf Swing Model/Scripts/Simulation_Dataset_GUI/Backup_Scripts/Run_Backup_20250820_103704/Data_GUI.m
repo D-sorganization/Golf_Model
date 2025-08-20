@@ -2745,7 +2745,6 @@ handles.selected_input_file = '';
 
 % Try to find default model in multiple locations
 possible_paths = {
-    '../../Model/GolfSwing3D_Kinetic.slx',
     'Model/GolfSwing3D_Kinetic.slx',
     'GolfSwing3D_Kinetic.slx',
     fullfile(pwd, 'Model', 'GolfSwing3D_Kinetic.slx'),
@@ -4466,14 +4465,7 @@ try
     % Get system memory info if available
     if ispc
         try
-            try
-                [status, result] = system('wmic OS get TotalVisibleMemorySize,FreePhysicalMemory /Value');
-                if status ~= 0
-                    result = '';
-                end
-            catch
-                result = '';
-            end
+            [~, result] = system('wmic OS get TotalVisibleMemorySize,FreePhysicalMemory /Value');
             lines = strsplit(result, '\n');
             total_mem = 0;
             free_mem = 0;
@@ -6455,14 +6447,7 @@ try
     fprintf(fid_out, '%% MATLAB version: %s\n', version);
     fprintf(fid_out, '%% Computer: %s\n', computer);
     try
-        try
-            [status, hostname] = system('hostname');
-            if status ~= 0
-                hostname = 'Unknown';
-            end
-        catch
-            hostname = 'Unknown';
-        end
+        [~, hostname] = system('hostname');
         fprintf(fid_out, '%% Hostname: %s', hostname); % hostname already includes newline
     catch
         fprintf(fid_out, '%% Hostname: Unknown\n');
