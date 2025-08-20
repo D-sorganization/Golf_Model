@@ -2129,7 +2129,7 @@ try
         handles.performance_tracker.start_timer('Data_Generation');
         fprintf('⏱️ Started timing: Data Generation\n');
     end
-    
+
     % Set running state immediately
     handles.is_running = true;
     guidata(fig, handles);
@@ -3979,7 +3979,7 @@ try
         handles.performance_tracker.stop_timer('Data_Generation');
         fprintf('⏱️ Completed: Data Generation\n');
     end
-    
+
     handles.is_running = false;
     set(handles.play_pause_button, 'Enable', 'on', 'String', 'Start');
     set(handles.stop_button, 'Enable', 'off');
@@ -7973,12 +7973,12 @@ if isfield(handles, 'performance_tracker')
     handles.performance_tracker.enable_tracking();
     set(handles.monitoring_status_text, 'String', 'Status: Monitoring Active', ...
         'ForegroundColor', handles.colors.success);
-    
+
     % Start auto-refresh timer if enabled
     if get(handles.auto_refresh_checkbox, 'Value')
         startPerformanceRefreshTimer(handles);
     end
-    
+
     fprintf('🔍 Performance monitoring started\n');
 else
     fprintf('Error: Performance tracker not initialized\n');
@@ -7993,10 +7993,10 @@ if isfield(handles, 'performance_tracker')
     handles.performance_tracker.disable_tracking();
     set(handles.monitoring_status_text, 'String', 'Status: Monitoring Stopped', ...
         'ForegroundColor', handles.colors.danger);
-    
+
     % Stop auto-refresh timer
     stopPerformanceRefreshTimer(handles);
-    
+
     fprintf('🔍 Performance monitoring stopped\n');
 else
     fprintf('Error: Performance tracker not initialized\n');
@@ -8011,19 +8011,19 @@ if isfield(handles, 'performance_tracker')
     try
         % Generate report
         handles.performance_tracker.display_performance_report();
-        
+
         % Save report to file
         timestamp = datestr(now, 'yyyy-mm-dd_HH-MM-SS');
         filename = sprintf('performance_report_%s.mat', timestamp);
         handles.performance_tracker.save_performance_report(filename);
-        
+
         % Export CSV
         csv_filename = sprintf('performance_data_%s.csv', timestamp);
         handles.performance_tracker.export_performance_csv(csv_filename);
-        
+
         msgbox(sprintf('Performance report generated and saved:\n%s\n%s', filename, csv_filename), ...
             'Performance Report', 'modal');
-        
+
     catch ME
         msgbox(sprintf('Error generating performance report: %s', ME.message), ...
             'Error', 'modal');
@@ -8039,29 +8039,29 @@ function clearPerformanceHistory(~, ~)
 handles = guidata(gcbo);
 if isfield(handles, 'performance_tracker')
     handles.performance_tracker.clear_history();
-    
+
     % Clear UI displays
     set(handles.session_duration_text, 'String', '00:00:00');
     set(handles.active_operations_text, 'String', '0');
     set(handles.current_memory_text, 'String', '0 MB');
     set(handles.memory_change_text, 'String', '0 MB');
     set(handles.recent_operations_list, 'String', {'No operations recorded yet'});
-    
+
     % Clear chart
     cla(handles.performance_axes);
     xlabel(handles.performance_axes, 'Time (s)');
     ylabel(handles.performance_axes, 'Memory (MB)');
     title(handles.performance_axes, 'Memory Usage Over Time');
     grid(handles.performance_axes, 'on');
-    
+
     % Reset chart data
     handles.performance_chart_data.times = [];
     handles.performance_chart_data.memory = [];
     handles.performance_chart_data.operations = {};
-    
+
     set(handles.monitoring_status_text, 'String', 'Status: History Cleared', ...
         'ForegroundColor', handles.colors.warning);
-    
+
     fprintf('🗑️ Performance history cleared\n');
 else
     fprintf('Error: Performance tracker not initialized\n');
@@ -8089,7 +8089,7 @@ try
         set(handles.refresh_interval_edit, 'String', '2');
         interval = 2;
     end
-    
+
     % Restart timer with new interval if active
     if get(handles.auto_refresh_checkbox, 'Value')
         stopPerformanceRefreshTimer(handles);
@@ -8107,18 +8107,18 @@ function startPerformanceRefreshTimer(handles)
 try
     % Stop existing timer if any
     stopPerformanceRefreshTimer(handles);
-    
+
     % Get refresh interval
     interval = str2double(get(handles.refresh_interval_edit, 'String'));
     if isnan(interval) || interval < 0.5
         interval = 2;
     end
-    
+
     % Create and start timer
     handles.performance_refresh_timer = timer('ExecutionMode', 'fixedRate', ...
         'Period', interval, ...
         'TimerFcn', @(src, event) updatePerformanceMetrics(handles.fig));
-    
+
     start(handles.performance_refresh_timer);
     fprintf('⏱️ Performance refresh timer started (%.1f sec interval)\n', interval);
 catch ME
@@ -8147,7 +8147,7 @@ try
     if ~isfield(handles, 'performance_tracker')
         return;
     end
-    
+
     % Update session duration
     session_duration = toc(handles.performance_tracker.session_start_time);
     duration_str = sprintf('%02d:%02d:%02d', ...
@@ -8155,13 +8155,13 @@ try
         floor(mod(session_duration, 3600)/60), ...
         floor(mod(session_duration, 60)));
     set(handles.session_duration_text, 'String', duration_str);
-    
+
     % Update memory usage
     try
         memory_usage = getMemoryUsage();
         memory_mb = memory_usage / (1024 * 1024);
         set(handles.current_memory_text, 'String', sprintf('%.1f MB', memory_mb));
-        
+
         % Update memory change
         if isfield(handles, 'initial_memory')
             memory_change = memory_usage - handles.initial_memory;
@@ -8174,19 +8174,19 @@ try
         set(handles.current_memory_text, 'String', 'N/A');
         set(handles.memory_change_text, 'String', 'N/A');
     end
-    
+
     % Update active operations count
     if isfield(handles.performance_tracker, 'start_times')
         active_count = length(handles.performance_tracker.start_times);
         set(handles.active_operations_text, 'String', num2str(active_count));
     end
-    
+
     % Update recent operations list
     updateRecentOperationsList(handles);
-    
+
     % Update performance chart
     updatePerformanceChart(handles);
-    
+
     guidata(fig, handles);
 catch ME
     fprintf('Error updating performance metrics: %s\n', ME.message);
@@ -8199,13 +8199,13 @@ try
     if ~isfield(handles.performance_tracker, 'timers') || isempty(handles.performance_tracker.timers)
         return;
     end
-    
+
     % Get recent operations (last 10)
     operation_names = handles.performance_tracker.timers.keys();
     if isempty(operation_names)
         return;
     end
-    
+
     % Create operation strings
     operation_strings = {};
     for i = 1:min(length(operation_names), 10)
@@ -8217,11 +8217,11 @@ try
             operation_strings{end+1} = sprintf('%-20s | %8s | %8s', op_name, time_str, memory_str);
         end
     end
-    
+
     if isempty(operation_strings)
         operation_strings = {'No operations recorded yet'};
     end
-    
+
     set(handles.recent_operations_list, 'String', operation_strings);
 catch ME
     fprintf('Error updating recent operations list: %s\n', ME.message);
@@ -8234,7 +8234,7 @@ try
     if ~isfield(handles, 'performance_axes') || ~ishandle(handles.performance_axes)
         return;
     end
-    
+
     % Get current time and memory
     current_time = toc(handles.performance_tracker.session_start_time);
     try
@@ -8242,17 +8242,17 @@ try
     catch
         current_memory = 0;
     end
-    
+
     % Add to chart data
     handles.performance_chart_data.times(end+1) = current_time;
     handles.performance_chart_data.memory(end+1) = current_memory;
-    
+
     % Keep only last 100 points
     if length(handles.performance_chart_data.times) > 100
         handles.performance_chart_data.times = handles.performance_chart_data.times(end-99:end);
         handles.performance_chart_data.memory = handles.performance_chart_data.memory(end-99:end);
     end
-    
+
     % Update chart
     plot(handles.performance_axes, handles.performance_chart_data.times, ...
         handles.performance_chart_data.memory, 'b-', 'LineWidth', 1.5);
@@ -8260,7 +8260,7 @@ try
     ylabel(handles.performance_axes, 'Memory (MB)');
     title(handles.performance_axes, 'Memory Usage Over Time');
     grid(handles.performance_axes, 'on');
-    
+
     % Auto-scale axes
     if length(handles.performance_chart_data.times) > 1
         xlim(handles.performance_axes, [min(handles.performance_chart_data.times), ...

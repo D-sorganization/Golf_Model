@@ -15,13 +15,13 @@ try
     % Create a performance tracker
     tracker = performance_tracker();
     fprintf('✅ Performance tracker created successfully\n');
-    
+
     % Test timing functionality
     tracker.start_timer('Test_Operation');
     pause(0.1); % Simulate some work
     tracker.stop_timer('Test_Operation');
     fprintf('✅ Basic timing functionality works\n');
-    
+
     % Test performance report
     report = tracker.get_performance_report();
     if isfield(report, 'operations') && isfield(report.operations, 'Test_Operation')
@@ -29,11 +29,11 @@ try
     else
         fprintf('❌ Performance report generation failed\n');
     end
-    
+
     % Test display functionality
     fprintf('\nPerformance Report:\n');
     tracker.display_performance_report();
-    
+
 catch ME
     fprintf('❌ Basic performance tracker test failed: %s\n', ME.message);
 end
@@ -97,7 +97,7 @@ try
     % Create a mock handles structure
     mock_handles = struct();
     mock_handles.performance_tracker = performance_tracker();
-    
+
     % Test that the tracker is accessible
     if isfield(mock_handles, 'performance_tracker')
         mock_handles.performance_tracker.start_timer('GUI_Test');
@@ -123,7 +123,7 @@ try
     export_tracker.start_timer('Export_Test');
     pause(0.1);
     export_tracker.stop_timer('Export_Test');
-    
+
     % Test MAT file export
     test_filename = 'test_performance_report.mat';
     export_tracker.save_performance_report(test_filename);
@@ -133,7 +133,7 @@ try
     else
         fprintf('❌ MAT file export failed\n');
     end
-    
+
     % Test CSV export
     test_csv_filename = 'test_performance_data.csv';
     export_tracker.export_performance_csv(test_csv_filename);
@@ -143,7 +143,7 @@ try
     else
         fprintf('❌ CSV file export failed\n');
     end
-    
+
 catch ME
     fprintf('❌ File export test failed: %s\n', ME.message);
 end
