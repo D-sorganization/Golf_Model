@@ -323,6 +323,285 @@ handles = createPerformanceSettingsLayout(parent, handles);
 handles = createRealTimePerformanceSection(parent, handles);
 end
 
+function handles = createRealTimePerformanceSection(parent, handles)
+% Create real-time performance monitoring section
+colors = handles.colors;
+
+% Create a panel for real-time performance monitoring
+monitorPanel = uipanel('Parent', parent, ...
+    'Units', 'normalized', ...
+    'Position', [0.02, 0.02, 0.96, 0.3], ...
+    'BackgroundColor', colors.panel, ...
+    'BorderType', 'line', ...
+    'BorderWidth', 1, ...
+    'HighlightColor', colors.border, ...
+    'Title', '🔍 Real-Time Performance Monitor');
+
+% Initialize performance tracker
+if ~isfield(handles, 'performance_tracker')
+    handles.performance_tracker = performance_tracker();
+end
+
+% Create real-time metrics display
+handles = createRealTimeMetricsDisplay(monitorPanel, handles);
+
+% Create performance control buttons
+handles = createPerformanceControls(monitorPanel, handles);
+
+% Create performance history chart
+handles = createPerformanceHistoryChart(monitorPanel, handles);
+end
+
+function handles = createRealTimeMetricsDisplay(parent, handles)
+% Create real-time performance metrics display
+colors = handles.colors;
+
+% Session info section
+sessionPanel = uipanel('Parent', parent, ...
+    'Units', 'normalized', ...
+    'Position', [0.02, 0.7, 0.48, 0.28], ...
+    'BackgroundColor', colors.panel, ...
+    'BorderType', 'line', ...
+    'BorderWidth', 0.5, ...
+    'Title', 'Session Info');
+
+% Session duration
+uicontrol('Parent', sessionPanel, ...
+    'Style', 'text', ...
+    'String', 'Session Duration:', ...
+    'Units', 'normalized', ...
+    'Position', [0.05, 0.8, 0.4, 0.15], ...
+    'FontWeight', 'bold', ...
+    'HorizontalAlignment', 'left', ...
+    'BackgroundColor', colors.panel);
+
+handles.session_duration_text = uicontrol('Parent', sessionPanel, ...
+    'Style', 'text', ...
+    'String', '00:00:00', ...
+    'Units', 'normalized', ...
+    'Position', [0.45, 0.8, 0.5, 0.15], ...
+    'FontWeight', 'bold', ...
+    'HorizontalAlignment', 'left', ...
+    'BackgroundColor', colors.panel, ...
+    'ForegroundColor', colors.primary);
+
+% Active operations
+uicontrol('Parent', sessionPanel, ...
+    'Style', 'text', ...
+    'String', 'Active Operations:', ...
+    'Units', 'normalized', ...
+    'Position', [0.05, 0.6, 0.4, 0.15], ...
+    'FontWeight', 'bold', ...
+    'HorizontalAlignment', 'left', ...
+    'BackgroundColor', colors.panel);
+
+handles.active_operations_text = uicontrol('Parent', sessionPanel, ...
+    'Style', 'text', ...
+    'String', '0', ...
+    'Units', 'normalized', ...
+    'Position', [0.45, 0.6, 0.5, 0.15], ...
+    'HorizontalAlignment', 'left', ...
+    'BackgroundColor', colors.panel, ...
+    'ForegroundColor', colors.success);
+
+% Memory usage section
+memoryPanel = uipanel('Parent', parent, ...
+    'Units', 'normalized', ...
+    'Position', [0.52, 0.7, 0.46, 0.28], ...
+    'BackgroundColor', colors.panel, ...
+    'BorderType', 'line', ...
+    'BorderWidth', 0.5, ...
+    'Title', 'Memory Usage');
+
+% Current memory
+uicontrol('Parent', memoryPanel, ...
+    'Style', 'text', ...
+    'String', 'Current Memory:', ...
+    'Units', 'normalized', ...
+    'Position', [0.05, 0.8, 0.4, 0.15], ...
+    'FontWeight', 'bold', ...
+    'HorizontalAlignment', 'left', ...
+    'BackgroundColor', colors.panel);
+
+handles.current_memory_text = uicontrol('Parent', memoryPanel, ...
+    'Style', 'text', ...
+    'String', '0 MB', ...
+    'Units', 'normalized', ...
+    'Position', [0.45, 0.8, 0.5, 0.15], ...
+    'HorizontalAlignment', 'left', ...
+    'BackgroundColor', colors.panel, ...
+    'ForegroundColor', colors.primary);
+
+% Memory change
+uicontrol('Parent', memoryPanel, ...
+    'Style', 'text', ...
+    'String', 'Memory Change:', ...
+    'Units', 'normalized', ...
+    'Position', [0.05, 0.6, 0.4, 0.15], ...
+    'FontWeight', 'bold', ...
+    'HorizontalAlignment', 'left', ...
+    'BackgroundColor', colors.panel);
+
+handles.memory_change_text = uicontrol('Parent', memoryPanel, ...
+    'Style', 'text', ...
+    'String', '0 MB', ...
+    'Units', 'normalized', ...
+    'Position', [0.45, 0.6, 0.5, 0.15], ...
+    'HorizontalAlignment', 'left', ...
+    'BackgroundColor', colors.panel, ...
+    'ForegroundColor', colors.textLight);
+
+% Recent operations section
+operationsPanel = uipanel('Parent', parent, ...
+    'Units', 'normalized', ...
+    'Position', [0.02, 0.4, 0.96, 0.28], ...
+    'BackgroundColor', colors.panel, ...
+    'BorderType', 'line', ...
+    'BorderWidth', 0.5, ...
+    'Title', 'Recent Operations');
+
+% Create listbox for recent operations
+handles.recent_operations_list = uicontrol('Parent', operationsPanel, ...
+    'Style', 'listbox', ...
+    'String', {'No operations recorded yet'}, ...
+    'Units', 'normalized', ...
+    'Position', [0.02, 0.1, 0.96, 0.8], ...
+    'BackgroundColor', [1, 1, 1], ...
+    'FontName', 'Courier New', ...
+    'FontSize', 9, ...
+    'Max', 10);
+end
+
+function handles = createPerformanceControls(parent, handles)
+% Create performance monitoring control buttons
+colors = handles.colors;
+
+% Control panel
+controlPanel = uipanel('Parent', parent, ...
+    'Units', 'normalized', ...
+    'Position', [0.02, 0.02, 0.96, 0.36], ...
+    'BackgroundColor', colors.panel, ...
+    'BorderType', 'line', ...
+    'BorderWidth', 0.5, ...
+    'Title', 'Performance Controls');
+
+% Start monitoring button
+handles.start_monitoring_button = uicontrol('Parent', controlPanel, ...
+    'Style', 'pushbutton', ...
+    'String', '▶ Start Monitoring', ...
+    'Units', 'normalized', ...
+    'Position', [0.02, 0.6, 0.23, 0.3], ...
+    'BackgroundColor', colors.success, ...
+    'ForegroundColor', [1, 1, 1], ...
+    'FontWeight', 'bold', ...
+    'Callback', @startPerformanceMonitoring);
+
+% Stop monitoring button
+handles.stop_monitoring_button = uicontrol('Parent', controlPanel, ...
+    'Style', 'pushbutton', ...
+    'String', '⏹ Stop Monitoring', ...
+    'Units', 'normalized', ...
+    'Position', [0.27, 0.6, 0.23, 0.3], ...
+    'BackgroundColor', colors.danger, ...
+    'ForegroundColor', [1, 1, 1], ...
+    'FontWeight', 'bold', ...
+    'Callback', @stopPerformanceMonitoring);
+
+% Generate report button
+handles.generate_report_button = uicontrol('Parent', controlPanel, ...
+    'Style', 'pushbutton', ...
+    'String', '📊 Generate Report', ...
+    'Units', 'normalized', ...
+    'Position', [0.52, 0.6, 0.23, 0.3], ...
+    'BackgroundColor', colors.primary, ...
+    'ForegroundColor', [1, 1, 1], ...
+    'FontWeight', 'bold', ...
+    'Callback', @generatePerformanceReport);
+
+% Clear history button
+handles.clear_history_button = uicontrol('Parent', controlPanel, ...
+    'Style', 'pushbutton', ...
+    'String', '🗑 Clear History', ...
+    'Units', 'normalized', ...
+    'Position', [0.77, 0.6, 0.21, 0.3], ...
+    'BackgroundColor', colors.warning, ...
+    'ForegroundColor', [1, 1, 1], ...
+    'FontWeight', 'bold', ...
+    'Callback', @clearPerformanceHistory);
+
+% Auto-refresh checkbox
+handles.auto_refresh_checkbox = uicontrol('Parent', controlPanel, ...
+    'Style', 'checkbox', ...
+    'String', 'Auto-refresh metrics', ...
+    'Units', 'normalized', ...
+    'Position', [0.02, 0.3, 0.3, 0.2], ...
+    'Value', 1, ...
+    'BackgroundColor', colors.panel, ...
+    'Callback', @toggleAutoRefresh);
+
+% Refresh interval
+uicontrol('Parent', controlPanel, ...
+    'Style', 'text', ...
+    'String', 'Refresh (sec):', ...
+    'Units', 'normalized', ...
+    'Position', [0.35, 0.3, 0.15, 0.2], ...
+    'HorizontalAlignment', 'left', ...
+    'BackgroundColor', colors.panel);
+
+handles.refresh_interval_edit = uicontrol('Parent', controlPanel, ...
+    'Style', 'edit', ...
+    'String', '2', ...
+    'Units', 'normalized', ...
+    'Position', [0.5, 0.3, 0.1, 0.2], ...
+    'BackgroundColor', [1, 1, 1], ...
+    'Callback', @updateRefreshInterval);
+
+% Status indicator
+handles.monitoring_status_text = uicontrol('Parent', controlPanel, ...
+    'Style', 'text', ...
+    'String', 'Status: Ready', ...
+    'Units', 'normalized', ...
+    'Position', [0.65, 0.3, 0.33, 0.2], ...
+    'HorizontalAlignment', 'left', ...
+    'BackgroundColor', colors.panel, ...
+    'ForegroundColor', colors.textLight);
+end
+
+function handles = createPerformanceHistoryChart(parent, handles)
+% Create performance history chart
+colors = handles.colors;
+
+% Chart panel
+chartPanel = uipanel('Parent', parent, ...
+    'Units', 'normalized', ...
+    'Position', [0.02, 0.4, 0.96, 0.28], ...
+    'BackgroundColor', colors.panel, ...
+    'BorderType', 'line', ...
+    'BorderWidth', 0.5, ...
+    'Title', 'Performance History');
+
+% Create axes for performance chart
+handles.performance_axes = axes('Parent', chartPanel, ...
+    'Units', 'normalized', ...
+    'Position', [0.05, 0.1, 0.9, 0.8], ...
+    'BackgroundColor', [1, 1, 1], ...
+    'Box', 'on', ...
+    'GridLineStyle', ':', ...
+    'GridAlpha', 0.3);
+
+% Initialize empty chart
+xlabel(handles.performance_axes, 'Time (s)');
+ylabel(handles.performance_axes, 'Memory (MB)');
+title(handles.performance_axes, 'Memory Usage Over Time');
+grid(handles.performance_axes, 'on');
+
+% Store chart data
+handles.performance_chart_data = struct();
+handles.performance_chart_data.times = [];
+handles.performance_chart_data.memory = [];
+handles.performance_chart_data.operations = {};
+end
+
 function handles = createPostProcessingTabContent(parent, handles)
 % Create content for the Post-Processing tab
 colors = handles.colors;
@@ -1845,6 +2124,12 @@ if isfield(handles, 'is_running') && handles.is_running
 end
 
 try
+    % Start performance tracking for generation
+    if isfield(handles, 'performance_tracker')
+        handles.performance_tracker.start_timer('Data_Generation');
+        fprintf('⏱️ Started timing: Data Generation\n');
+    end
+    
     % Set running state immediately
     handles.is_running = true;
     guidata(fig, handles);
@@ -3689,6 +3974,12 @@ end
 
 % Always cleanup state and UI (replaces finally block)
 try
+    % Stop performance tracking for generation
+    if isfield(handles, 'performance_tracker')
+        handles.performance_tracker.stop_timer('Data_Generation');
+        fprintf('⏱️ Completed: Data Generation\n');
+    end
+    
     handles.is_running = false;
     set(handles.play_pause_button, 'Enable', 'on', 'String', 'Start');
     set(handles.stop_button, 'Enable', 'off');
@@ -3700,6 +3991,13 @@ end
 
 function successful_trials = runParallelSimulations(handles, config)
 % Initialize parallel pool with better error handling
+
+% Start performance tracking for parallel simulations
+if isfield(handles, 'performance_tracker')
+    handles.performance_tracker.start_timer('Parallel_Simulations');
+    fprintf('⏱️ Started timing: Parallel Simulations\n');
+end
+
 try
     % First, check if there's an existing pool and clean it up if needed
     existing_pool = gcp('nocreate');
@@ -4110,6 +4408,12 @@ if successful_trials == total_trials && exist(checkpoint_file, 'file')
         fprintf('Warning: Could not clean up checkpoint file: %s\n', ME.message);
     end
 end
+
+% Stop performance tracking for parallel simulations
+if isfield(handles, 'performance_tracker')
+    handles.performance_tracker.stop_timer('Parallel_Simulations');
+    fprintf('⏱️ Completed: Parallel Simulations\n');
+end
 end
 
 % Helper function to check for stop requests and update progress
@@ -4246,6 +4550,12 @@ function successful_trials = runSequentialSimulations(handles, config)
 batch_size = config.batch_size;
 save_interval = config.save_interval;
 total_trials = config.num_simulations;
+
+% Start performance tracking for sequential simulations
+if isfield(handles, 'performance_tracker')
+    handles.performance_tracker.start_timer('Sequential_Simulations');
+    fprintf('⏱️ Started timing: Sequential Simulations\n');
+end
 
 % Debug print to confirm settings
 fprintf('[RUNTIME] Using batch size: %d, save interval: %d, verbosity: %s\n', config.batch_size, config.save_interval, config.verbosity);
@@ -4399,6 +4709,12 @@ if successful_trials == total_trials && exist(checkpoint_file, 'file')
     catch ME
         fprintf('Warning: Could not clean up checkpoint file: %s\n', ME.message);
     end
+end
+
+% Stop performance tracking for sequential simulations
+if isfield(handles, 'performance_tracker')
+    handles.performance_tracker.stop_timer('Sequential_Simulations');
+    fprintf('⏱️ Completed: Sequential Simulations\n');
 end
 end
 
@@ -7643,5 +7959,316 @@ try
 catch ME
     fprintf('Error in loadPerformancePreferencesDelayed: %s\n', ME.message);
     fprintf('Function: %s, Line: %d\n', ME.stack(1).name, ME.stack(1).line);
+end
+end
+
+% ============================================================================
+% PERFORMANCE MONITORING CALLBACK FUNCTIONS
+% ============================================================================
+
+function startPerformanceMonitoring(~, ~)
+% Start performance monitoring
+handles = guidata(gcbo);
+if isfield(handles, 'performance_tracker')
+    handles.performance_tracker.enable_tracking();
+    set(handles.monitoring_status_text, 'String', 'Status: Monitoring Active', ...
+        'ForegroundColor', handles.colors.success);
+    
+    % Start auto-refresh timer if enabled
+    if get(handles.auto_refresh_checkbox, 'Value')
+        startPerformanceRefreshTimer(handles);
+    end
+    
+    fprintf('🔍 Performance monitoring started\n');
+else
+    fprintf('Error: Performance tracker not initialized\n');
+end
+guidata(handles.fig, handles);
+end
+
+function stopPerformanceMonitoring(~, ~)
+% Stop performance monitoring
+handles = guidata(gcbo);
+if isfield(handles, 'performance_tracker')
+    handles.performance_tracker.disable_tracking();
+    set(handles.monitoring_status_text, 'String', 'Status: Monitoring Stopped', ...
+        'ForegroundColor', handles.colors.danger);
+    
+    % Stop auto-refresh timer
+    stopPerformanceRefreshTimer(handles);
+    
+    fprintf('🔍 Performance monitoring stopped\n');
+else
+    fprintf('Error: Performance tracker not initialized\n');
+end
+guidata(handles.fig, handles);
+end
+
+function generatePerformanceReport(~, ~)
+% Generate and display performance report
+handles = guidata(gcbo);
+if isfield(handles, 'performance_tracker')
+    try
+        % Generate report
+        handles.performance_tracker.display_performance_report();
+        
+        % Save report to file
+        timestamp = datestr(now, 'yyyy-mm-dd_HH-MM-SS');
+        filename = sprintf('performance_report_%s.mat', timestamp);
+        handles.performance_tracker.save_performance_report(filename);
+        
+        % Export CSV
+        csv_filename = sprintf('performance_data_%s.csv', timestamp);
+        handles.performance_tracker.export_performance_csv(csv_filename);
+        
+        msgbox(sprintf('Performance report generated and saved:\n%s\n%s', filename, csv_filename), ...
+            'Performance Report', 'modal');
+        
+    catch ME
+        msgbox(sprintf('Error generating performance report: %s', ME.message), ...
+            'Error', 'modal');
+    end
+else
+    msgbox('Performance tracker not initialized', 'Error', 'modal');
+end
+guidata(handles.fig, handles);
+end
+
+function clearPerformanceHistory(~, ~)
+% Clear performance history
+handles = guidata(gcbo);
+if isfield(handles, 'performance_tracker')
+    handles.performance_tracker.clear_history();
+    
+    % Clear UI displays
+    set(handles.session_duration_text, 'String', '00:00:00');
+    set(handles.active_operations_text, 'String', '0');
+    set(handles.current_memory_text, 'String', '0 MB');
+    set(handles.memory_change_text, 'String', '0 MB');
+    set(handles.recent_operations_list, 'String', {'No operations recorded yet'});
+    
+    % Clear chart
+    cla(handles.performance_axes);
+    xlabel(handles.performance_axes, 'Time (s)');
+    ylabel(handles.performance_axes, 'Memory (MB)');
+    title(handles.performance_axes, 'Memory Usage Over Time');
+    grid(handles.performance_axes, 'on');
+    
+    % Reset chart data
+    handles.performance_chart_data.times = [];
+    handles.performance_chart_data.memory = [];
+    handles.performance_chart_data.operations = {};
+    
+    set(handles.monitoring_status_text, 'String', 'Status: History Cleared', ...
+        'ForegroundColor', handles.colors.warning);
+    
+    fprintf('🗑️ Performance history cleared\n');
+else
+    fprintf('Error: Performance tracker not initialized\n');
+end
+guidata(handles.fig, handles);
+end
+
+function toggleAutoRefresh(~, ~)
+% Toggle auto-refresh functionality
+handles = guidata(gcbo);
+if get(handles.auto_refresh_checkbox, 'Value')
+    startPerformanceRefreshTimer(handles);
+else
+    stopPerformanceRefreshTimer(handles);
+end
+guidata(handles.fig, handles);
+end
+
+function updateRefreshInterval(~, ~)
+% Update refresh interval
+handles = guidata(gcbo);
+try
+    interval = str2double(get(handles.refresh_interval_edit, 'String'));
+    if isnan(interval) || interval < 0.5
+        set(handles.refresh_interval_edit, 'String', '2');
+        interval = 2;
+    end
+    
+    % Restart timer with new interval if active
+    if get(handles.auto_refresh_checkbox, 'Value')
+        stopPerformanceRefreshTimer(handles);
+        startPerformanceRefreshTimer(handles);
+    end
+catch ME
+    fprintf('Error updating refresh interval: %s\n', ME.message);
+    set(handles.refresh_interval_edit, 'String', '2');
+end
+guidata(handles.fig, handles);
+end
+
+function startPerformanceRefreshTimer(handles)
+% Start the performance refresh timer
+try
+    % Stop existing timer if any
+    stopPerformanceRefreshTimer(handles);
+    
+    % Get refresh interval
+    interval = str2double(get(handles.refresh_interval_edit, 'String'));
+    if isnan(interval) || interval < 0.5
+        interval = 2;
+    end
+    
+    % Create and start timer
+    handles.performance_refresh_timer = timer('ExecutionMode', 'fixedRate', ...
+        'Period', interval, ...
+        'TimerFcn', @(src, event) updatePerformanceMetrics(handles.fig));
+    
+    start(handles.performance_refresh_timer);
+    fprintf('⏱️ Performance refresh timer started (%.1f sec interval)\n', interval);
+catch ME
+    fprintf('Error starting performance refresh timer: %s\n', ME.message);
+end
+end
+
+function stopPerformanceRefreshTimer(handles)
+% Stop the performance refresh timer
+try
+    if isfield(handles, 'performance_refresh_timer') && isvalid(handles.performance_refresh_timer)
+        stop(handles.performance_refresh_timer);
+        delete(handles.performance_refresh_timer);
+        handles = rmfield(handles, 'performance_refresh_timer');
+        fprintf('⏱️ Performance refresh timer stopped\n');
+    end
+catch ME
+    fprintf('Error stopping performance refresh timer: %s\n', ME.message);
+end
+end
+
+function updatePerformanceMetrics(fig)
+% Update performance metrics display
+try
+    handles = guidata(fig);
+    if ~isfield(handles, 'performance_tracker')
+        return;
+    end
+    
+    % Update session duration
+    session_duration = toc(handles.performance_tracker.session_start_time);
+    duration_str = sprintf('%02d:%02d:%02d', ...
+        floor(session_duration/3600), ...
+        floor(mod(session_duration, 3600)/60), ...
+        floor(mod(session_duration, 60)));
+    set(handles.session_duration_text, 'String', duration_str);
+    
+    % Update memory usage
+    try
+        memory_usage = getMemoryUsage();
+        memory_mb = memory_usage / (1024 * 1024);
+        set(handles.current_memory_text, 'String', sprintf('%.1f MB', memory_mb));
+        
+        % Update memory change
+        if isfield(handles, 'initial_memory')
+            memory_change = memory_usage - handles.initial_memory;
+            change_mb = memory_change / (1024 * 1024);
+            set(handles.memory_change_text, 'String', sprintf('%.1f MB', change_mb));
+        else
+            handles.initial_memory = memory_usage;
+        end
+    catch
+        set(handles.current_memory_text, 'String', 'N/A');
+        set(handles.memory_change_text, 'String', 'N/A');
+    end
+    
+    % Update active operations count
+    if isfield(handles.performance_tracker, 'start_times')
+        active_count = length(handles.performance_tracker.start_times);
+        set(handles.active_operations_text, 'String', num2str(active_count));
+    end
+    
+    % Update recent operations list
+    updateRecentOperationsList(handles);
+    
+    % Update performance chart
+    updatePerformanceChart(handles);
+    
+    guidata(fig, handles);
+catch ME
+    fprintf('Error updating performance metrics: %s\n', ME.message);
+end
+end
+
+function updateRecentOperationsList(handles)
+% Update the recent operations list
+try
+    if ~isfield(handles.performance_tracker, 'timers') || isempty(handles.performance_tracker.timers)
+        return;
+    end
+    
+    % Get recent operations (last 10)
+    operation_names = handles.performance_tracker.timers.keys();
+    if isempty(operation_names)
+        return;
+    end
+    
+    % Create operation strings
+    operation_strings = {};
+    for i = 1:min(length(operation_names), 10)
+        op_name = operation_names{i};
+        if handles.performance_tracker.timers.isKey(op_name)
+            timer_data = handles.performance_tracker.timers(op_name);
+            time_str = sprintf('%.3fs', timer_data.elapsed_time);
+            memory_str = sprintf('%.1fMB', timer_data.memory_delta / (1024 * 1024));
+            operation_strings{end+1} = sprintf('%-20s | %8s | %8s', op_name, time_str, memory_str);
+        end
+    end
+    
+    if isempty(operation_strings)
+        operation_strings = {'No operations recorded yet'};
+    end
+    
+    set(handles.recent_operations_list, 'String', operation_strings);
+catch ME
+    fprintf('Error updating recent operations list: %s\n', ME.message);
+end
+end
+
+function updatePerformanceChart(handles)
+% Update the performance history chart
+try
+    if ~isfield(handles, 'performance_axes') || ~ishandle(handles.performance_axes)
+        return;
+    end
+    
+    % Get current time and memory
+    current_time = toc(handles.performance_tracker.session_start_time);
+    try
+        current_memory = getMemoryUsage() / (1024 * 1024); % Convert to MB
+    catch
+        current_memory = 0;
+    end
+    
+    % Add to chart data
+    handles.performance_chart_data.times(end+1) = current_time;
+    handles.performance_chart_data.memory(end+1) = current_memory;
+    
+    % Keep only last 100 points
+    if length(handles.performance_chart_data.times) > 100
+        handles.performance_chart_data.times = handles.performance_chart_data.times(end-99:end);
+        handles.performance_chart_data.memory = handles.performance_chart_data.memory(end-99:end);
+    end
+    
+    % Update chart
+    plot(handles.performance_axes, handles.performance_chart_data.times, ...
+        handles.performance_chart_data.memory, 'b-', 'LineWidth', 1.5);
+    xlabel(handles.performance_axes, 'Time (s)');
+    ylabel(handles.performance_axes, 'Memory (MB)');
+    title(handles.performance_axes, 'Memory Usage Over Time');
+    grid(handles.performance_axes, 'on');
+    
+    % Auto-scale axes
+    if length(handles.performance_chart_data.times) > 1
+        xlim(handles.performance_axes, [min(handles.performance_chart_data.times), ...
+            max(handles.performance_chart_data.times)]);
+        ylim(handles.performance_axes, [min(handles.performance_chart_data.memory), ...
+            max(handles.performance_chart_data.memory)]);
+    end
+catch ME
+    fprintf('Error updating performance chart: %s\n', ME.message);
 end
 end
