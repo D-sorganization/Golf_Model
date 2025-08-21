@@ -2117,9 +2117,6 @@ function startGeneration(~, ~, fig)
 % Start generation
 handles = guidata(fig);
 
-fprintf('[DEBUG] === STARTING GENERATION ===\n');
-fprintf('[DEBUG] Current working directory: %s\n', pwd);
-
 % Check if already running
 if isfield(handles, 'is_running') && handles.is_running
     msgbox('Generation is already running. Please wait for it to complete or use the Stop button.', 'Already Running', 'warn');
@@ -2127,7 +2124,6 @@ if isfield(handles, 'is_running') && handles.is_running
 end
 
 try
-    fprintf('[DEBUG] Starting performance tracking...\n');
     % Start performance tracking for generation
     if isfield(handles, 'performance_tracker')
         handles.performance_tracker.start_timer('Data_Generation');
@@ -2145,11 +2141,9 @@ try
     set(handles.progress_text, 'String', 'Initializing...');
     drawnow; % Force immediate UI update
 
-    fprintf('[DEBUG] Validating inputs...\n');
     % Validate inputs
     config = validateInputs(handles);
     if isempty(config)
-        fprintf('[DEBUG] Input validation failed!\n');
         % Reset state on validation failure
         handles.is_running = false;
         set(handles.play_pause_button, 'Enable', 'on', 'String', 'Start');
@@ -2158,21 +2152,14 @@ try
         return;
     end
 
-    fprintf('[DEBUG] Input validation successful\n');
-    fprintf('[DEBUG] Model path: %s\n', config.model_path);
-    fprintf('[DEBUG] Number of simulations: %d\n', config.num_simulations);
-    fprintf('[DEBUG] Output folder: %s\n', config.output_folder);
-
     % Store config
     handles.config = config;
     handles.should_stop = false;
     guidata(fig, handles);
 
-    fprintf('[DEBUG] Creating script backup...\n');
     % Create script backup before starting generation
     backupScripts(handles);
 
-    fprintf('[DEBUG] Starting runGeneration...\n');
     % Start generation
     runGeneration(handles);
 
@@ -3905,40 +3892,28 @@ end
 % Run Generation Process
 function runGeneration(handles)
 try
-    fprintf('[DEBUG] === RUN GENERATION STARTED ===\n');
     config = handles.config;
 
-    fprintf('[DEBUG] Extracting coefficients from table...\n');
     % Extract coefficients from table
     config.coefficient_values = extractCoefficientsFromTable(handles);
     if isempty(config.coefficient_values)
-        fprintf('[DEBUG] ERROR: No coefficient values available!\n');
         error('No coefficient values available');
     end
-    fprintf('[DEBUG] Extracted %d coefficient sets\n', size(config.coefficient_values, 1));
 
-    fprintf('[DEBUG] Creating output directory: %s\n', config.output_folder);
     % Create output directory
     if ~exist(config.output_folder, 'dir')
         mkdir(config.output_folder);
-        fprintf('[DEBUG] Created output directory\n');
-    else
-        fprintf('[DEBUG] Output directory already exists\n');
     end
 
     set(handles.status_text, 'String', 'Status: Running trials...');
 
-    fprintf('[DEBUG] Checking execution mode...\n');
     % Execute dataset generation
     execution_mode = get(handles.execution_mode_popup, 'Value');
-    fprintf('[DEBUG] Execution mode: %d (1=Sequential, 2=Parallel)\n', execution_mode);
 
     if execution_mode == 2 && license('test', 'Distrib_Computing_Toolbox')
-        fprintf('[DEBUG] Using parallel execution\n');
         % Parallel execution
         successful_trials = runParallelSimulations(handles, config);
     else
-        fprintf('[DEBUG] Using sequential execution\n');
         % Sequential execution
         successful_trials = runSequentialSimulations(handles, config);
     end
@@ -4579,14 +4554,10 @@ end
 end
 
 function successful_trials = runSequentialSimulations(handles, config)
-fprintf('[DEBUG] === RUN SEQUENTIAL SIMULATIONS STARTED ===\n');
-
 % Get batch processing parameters
 batch_size = config.batch_size;
 save_interval = config.save_interval;
 total_trials = config.num_simulations;
-
-fprintf('[DEBUG] Batch size: %d, Save interval: %d, Total trials: %d\n', batch_size, save_interval, total_trials);
 
 % Start performance tracking for sequential simulations
 if isfield(handles, 'performance_tracker')
@@ -5274,34 +5245,22 @@ end
 
 % Real Simulation Function - Replaces Mock
 function result = runSingleTrial(trial_num, config, trial_coefficients, capture_workspace)
-fprintf('[DEBUG] === RUN SINGLE TRIAL %d STARTED ===\n', trial_num);
-fprintf('[DEBUG] Model path: %s\n', config.model_path);
-fprintf('[DEBUG] Trial coefficients: [%s]\n', num2str(trial_coefficients));
-
 result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
 
 try
-    fprintf('[DEBUG] Creating Simulink.SimulationInput...\n');
     % Create simulation input
     simIn = Simulink.SimulationInput(config.model_path);
-    fprintf('[DEBUG] SimulationInput created successfully\n');
 
-    fprintf('[DEBUG] Setting model parameters...\n');
     % Set model parameters
     simIn = setModelParameters(simIn, config);
-    fprintf('[DEBUG] Model parameters set successfully\n');
 
-    fprintf('[DEBUG] Setting polynomial coefficients...\n');
     % Set polynomial coefficients for this trial
     try
         simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
-        fprintf('[DEBUG] Polynomial coefficients set successfully\n');
     catch ME
         fprintf('Warning: Could not set polynomial coefficients: %s\n', ME.message);
-        fprintf('[DEBUG] Polynomial coefficients failed: %s\n', ME.message);
     end
 
-    fprintf('[DEBUG] Suppressing warnings...\n');
     % Suppress specific warnings that are not critical
     warning_state = warning('off', 'Simulink:Bus:EditTimeBusPropNotAllowed');
     warning_state2 = warning('off', 'Simulink:Engine:BlockOutputNotUpdated');
@@ -5311,12 +5270,10 @@ try
     warning_state6 = warning('off', 'Simulink:Blocks:UnconnectedInputPort');
 
     % Run simulation with progress indicator and visualization suppression
-    fprintf('[DEBUG] Starting Simulink simulation...\n');
     fprintf('Running trial %d simulation...', trial_num);
 
     simOut = sim(simIn);
     fprintf(' Done.\n');
-    fprintf('[DEBUG] Simulink simulation completed successfully\n');
 
     % Restore warning state
     warning(warning_state);
@@ -5326,14 +5283,10 @@ try
     warning(warning_state5);
     warning(warning_state6);
 
-    fprintf('[DEBUG] Processing simulation output...\n');
     % Process simulation output
     result = processSimulationOutput(trial_num, config, simOut, capture_workspace);
-    fprintf('[DEBUG] Simulation output processed successfully\n');
 
 catch ME
-    fprintf('[DEBUG] ERROR in runSingleTrial: %s\n', ME.message);
-
     % Restore warning state in case of error
     if exist('warning_state', 'var')
         warning(warning_state);
@@ -5365,9 +5318,6 @@ catch ME
         fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
     end
 end
-
-fprintf('[DEBUG] === RUN SINGLE TRIAL %d COMPLETED ===\n', trial_num);
-fprintf('[DEBUG] Result success: %s\n', mat2str(result.success));
 end
 
 function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
@@ -5699,118 +5649,117 @@ try
     if get(handles.use_simscape, 'Value')
         % Check Simscape license
         if ~license('test', 'Simscape')
-            warning('Simscape license not available. Disabling Simscape data extraction.');
-            set(handles.use_simscape, 'Value', 0);
-        else
-            % Check if model has Simscape blocks
+            error('Simscape license not available. Please disable Simscape data extraction or obtain a Simscape license.');
+        end
+
+        % Check if model has Simscape blocks
+        try
+            if ~bdIsLoaded(model_name)
+                load_system(model_path);
+                model_was_loaded = true;
+            else
+                model_was_loaded = false;
+            end
+
+            % Look for Simscape blocks including those in referenced subsystems
+            simscape_blocks = [];
+
+            % Method 1: Direct Simscape blocks in main model
             try
-                if ~bdIsLoaded(model_name)
-                    load_system(model_path);
-                    model_was_loaded = true;
-                else
-                    model_was_loaded = false;
-                end
+                simscape_blocks = find_system(model_name, 'SimulinkSubDomain', 'Simscape');
+            catch
+                % SimulinkSubDomain might not work in all MATLAB versions
+            end
 
-                % Look for Simscape blocks including those in referenced subsystems
-                simscape_blocks = [];
-
-                % Method 1: Direct Simscape blocks in main model
+            % Method 2: Look for Simscape Multibody specific blocks
+            if isempty(simscape_blocks)
                 try
-                    simscape_blocks = find_system(model_name, 'SimulinkSubDomain', 'Simscape');
+                    % Look for common Simscape Multibody blocks
+                    multibody_blocks = [
+                        find_system(model_name, 'BlockType', 'SubSystem', 'ReferenceBlock', 'sm_lib/Bodies/Solid');
+                        find_system(model_name, 'BlockType', 'SubSystem', 'ReferenceBlock', 'sm_lib/Joints/Revolute Joint');
+                        find_system(model_name, 'BlockType', 'SubSystem', 'ReferenceBlock', 'sm_lib/Joints/Prismatic Joint');
+                        find_system(model_name, 'BlockType', 'SubSystem', 'ReferenceBlock', 'sm_lib/Joints/Spherical Joint');
+                        find_system(model_name, 'MaskType', 'Solid');
+                        find_system(model_name, 'MaskType', 'Revolute Joint');
+                        find_system(model_name, 'MaskType', 'Prismatic Joint')
+                        ];
+                    simscape_blocks = [simscape_blocks; multibody_blocks];
                 catch
-                    % SimulinkSubDomain might not work in all MATLAB versions
+                    % Ignore errors in Multibody block search
                 end
+            end
 
-                % Method 2: Look for Simscape Multibody specific blocks
-                if isempty(simscape_blocks)
-                    try
-                        % Look for common Simscape Multibody blocks
-                        multibody_blocks = [
-                            find_system(model_name, 'BlockType', 'SubSystem', 'ReferenceBlock', 'sm_lib/Bodies/Solid');
-                            find_system(model_name, 'BlockType', 'SubSystem', 'ReferenceBlock', 'sm_lib/Joints/Revolute Joint');
-                            find_system(model_name, 'BlockType', 'SubSystem', 'ReferenceBlock', 'sm_lib/Joints/Prismatic Joint');
-                            find_system(model_name, 'BlockType', 'SubSystem', 'ReferenceBlock', 'sm_lib/Joints/Spherical Joint');
-                            find_system(model_name, 'MaskType', 'Solid');
-                            find_system(model_name, 'MaskType', 'Revolute Joint');
-                            find_system(model_name, 'MaskType', 'Prismatic Joint')
-                            ];
-                        simscape_blocks = [simscape_blocks; multibody_blocks];
-                    catch
-                        % Ignore errors in Multibody block search
-                    end
+            % Method 3: Look for Subsystem Reference blocks (your case!)
+            subsystem_refs = [];
+            try
+                subsystem_refs = find_system(model_name, 'BlockType', 'SubsystemReference');
+                if ~isempty(subsystem_refs)
+                    fprintf('Debug: Found %d Subsystem Reference blocks (may contain Simscape components)\n', length(subsystem_refs));
+                    simscape_blocks = [simscape_blocks; subsystem_refs];
                 end
+            catch
+                % Ignore subsystem reference search errors
+            end
 
-                % Method 3: Look for Subsystem Reference blocks (your case!)
-                subsystem_refs = [];
+            % Method 4: Look for any blocks that suggest Simscape presence
+            if isempty(simscape_blocks)
                 try
-                    subsystem_refs = find_system(model_name, 'BlockType', 'SubsystemReference');
-                    if ~isempty(subsystem_refs)
-                        fprintf('Debug: Found %d Subsystem Reference blocks (may contain Simscape components)\n', length(subsystem_refs));
-                        simscape_blocks = [simscape_blocks; subsystem_refs];
-                    end
+                    % Look for Simscape solver configuration blocks
+                    solver_blocks = find_system(model_name, 'BlockType', 'SimscapeSolver');
+                    simscape_blocks = [simscape_blocks; solver_blocks];
                 catch
-                    % Ignore subsystem reference search errors
+                    % Ignore solver block search errors
                 end
+            end
 
-                % Method 4: Look for any blocks that suggest Simscape presence
-                if isempty(simscape_blocks)
-                    try
-                        % Look for Simscape solver configuration blocks
-                        solver_blocks = find_system(model_name, 'BlockType', 'SimscapeSolver');
-                        simscape_blocks = [simscape_blocks; solver_blocks];
-                    catch
-                        % Ignore solver block search errors
-                    end
+            % Method 5: Check model configuration for Simscape settings
+            has_simscape_config = false;
+            try
+                solver_type = get_param(model_name, 'SolverType');
+                if contains(lower(solver_type), 'variable') || contains(lower(solver_type), 'fixed')
+                    has_simscape_config = true;
+
                 end
+            catch
+                % Ignore configuration check errors
+            end
 
-                % Method 5: Check model configuration for Simscape settings
-                has_simscape_config = false;
-                try
-                    solver_type = get_param(model_name, 'SolverType');
-                    if contains(lower(solver_type), 'variable') || contains(lower(solver_type), 'fixed')
-                        has_simscape_config = true;
+            % Final validation
+            total_indicators = length(simscape_blocks);
+            if has_simscape_config
+                total_indicators = total_indicators + 1;
+            end
 
-                    end
-                catch
-                    % Ignore configuration check errors
-                end
-
-                % Final validation
-                total_indicators = length(simscape_blocks);
-                if has_simscape_config
-                    total_indicators = total_indicators + 1;
-                end
-
-                if total_indicators == 0
-                    if model_was_loaded
-                        close_system(model_name, 0);
-                    end
-                    warning('Simscape data extraction is enabled, but no clear Simscape indicators found in model "%s". Simscape logging may still work if components are in referenced subsystems.', model_name);
-                else
-                    if shouldShowDebug(handles)
-                        fprintf('Debug: Found %d Simscape indicators in model (blocks + references + config)\n', total_indicators);
-                    end
-                    if ~isempty(subsystem_refs)
-                        if shouldShowDebug(handles)
-                            fprintf('Debug: Model uses referenced subsystems - Simscape components may be inside references\n');
-                        end
-                    end
-                end
-
+            if total_indicators == 0
                 if model_was_loaded
                     close_system(model_name, 0);
                 end
-
-            catch ME
-                if exist('model_was_loaded', 'var') && model_was_loaded
-                    try
-                        close_system(model_name, 0);
-                    catch
-                        % Ignore close errors
+                warning('Simscape data extraction is enabled, but no clear Simscape indicators found in model "%s". Simscape logging may still work if components are in referenced subsystems.', model_name);
+            else
+                if shouldShowDebug(handles)
+                    fprintf('Debug: Found %d Simscape indicators in model (blocks + references + config)\n', total_indicators);
+                end
+                if ~isempty(subsystem_refs)
+                    if shouldShowDebug(handles)
+                        fprintf('Debug: Model uses referenced subsystems - Simscape components may be inside references\n');
                     end
                 end
-                warning(ME.identifier, '%s', sprintf('Simscape validation failed: %s. Continuing without Simscape validation.', ME.message));
             end
+
+            if model_was_loaded
+                close_system(model_name, 0);
+            end
+
+        catch ME
+            if exist('model_was_loaded', 'var') && model_was_loaded
+                try
+                    close_system(model_name, 0);
+                catch
+                    % Ignore close errors
+                end
+            end
+            rethrow(ME);
         end
     end
 
