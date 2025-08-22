@@ -1745,7 +1745,7 @@ if filename ~= 0
         if isfield(config, 'config')
             config = config.config; % Extract from loaded structure
         end
-        
+
         % Check if this is a legacy config file with handles structure
         if isfield(config, 'handles')
             warning('Legacy configuration file detected. This file contains the old format and may not load correctly. Please save a new configuration file.');
