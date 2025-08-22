@@ -1716,7 +1716,17 @@ function saveConfiguration(~, ~)
     if filename ~= 0
         config = struct();
         config.timestamp = datestr(now);
-        config.handles = handles;
+        
+        % Save only essential configuration data, not the entire handles structure
+        config.input_file = get(handles.input_file_edit, 'String');
+        config.output_folder = get(handles.output_folder_edit, 'String');
+        config.folder_name = get(handles.folder_name_edit, 'String');
+        config.num_trials = get(handles.num_trials_edit, 'String');
+        config.sim_time = get(handles.sim_time_edit, 'String');
+        config.sample_rate = get(handles.sample_rate_edit, 'String');
+        config.use_logsout = get(handles.use_logsout, 'Value');
+        config.model_path = handles.model_path;
+        
         save(fullfile(pathname, filename), 'config');
         fprintf('Configuration saved to %s\n', fullfile(pathname, filename));
     end
@@ -1730,6 +1740,40 @@ function loadConfiguration(~, ~)
     if filename ~= 0
         try
             config = load(fullfile(pathname, filename));
+            
+            % Restore configuration values to the GUI
+            if isfield(config, 'config')
+                config = config.config; % Extract from loaded structure
+            end
+            
+            if isfield(config, 'input_file')
+                set(handles.input_file_edit, 'String', config.input_file);
+            end
+            if isfield(config, 'output_folder')
+                set(handles.output_folder_edit, 'String', config.output_folder);
+            end
+            if isfield(config, 'folder_name')
+                set(handles.folder_name_edit, 'String', config.folder_name);
+            end
+            if isfield(config, 'num_trials')
+                set(handles.num_trials_edit, 'String', config.num_trials);
+            end
+            if isfield(config, 'sim_time')
+                set(handles.sim_time_edit, 'String', config.sim_time);
+            end
+            if isfield(config, 'sample_rate')
+                set(handles.sample_rate_edit, 'String', config.sample_rate);
+            end
+            if isfield(config, 'use_logsout')
+                set(handles.use_logsout, 'Value', config.use_logsout);
+            end
+            if isfield(config, 'model_path')
+                handles.model_path = config.model_path;
+            end
+            
+            % Update the handles structure
+            guidata(gcbf, handles);
+            
             fprintf('Configuration loaded from %s\n', fullfile(pathname, filename));
         catch ME
             errordlg(sprintf('Error loading configuration: %s', ME.message), 'Load Error');
