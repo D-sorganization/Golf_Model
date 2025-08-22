@@ -541,7 +541,7 @@ handles.auto_refresh_checkbox = uicontrol('Parent', controlPanel, ...
     'String', 'Auto-refresh metrics', ...
     'Units', 'normalized', ...
     'Position', [0.02, 0.3, 0.3, 0.2], ...
-    'Value', 0, ...  % Changed from 1 to 0 to disable by default
+    'Value', 1, ...
     'BackgroundColor', colors.panel, ...
     'Callback', @toggleAutoRefresh);
 
@@ -7675,9 +7675,6 @@ try
             memory_info.usage_percent, ...
             memory_info.used_gb, ...
             memory_info.total_gb);
-    elseif isfield(memory_info, 'matlab_used_gb') && ~isnan(memory_info.matlab_used_gb)
-        % Fallback: show just MATLAB memory usage if available
-        memory_text = sprintf('MATLAB: %.1f GB', memory_info.matlab_used_gb);
     else
         memory_text = 'Memory info unavailable';
     end
@@ -7685,11 +7682,8 @@ try
     set(handles.memory_usage_text, 'String', memory_text);
 
 catch ME
-    set(handles.memory_usage_text, 'String', 'Memory info unavailable');
-    % Only log the warning if it's not a "Dot indexing" error to reduce noise
-    if ~contains(ME.message, 'Dot indexing is not supported')
-        fprintf('Warning: Could not refresh memory info: %s\n', ME.message);
-    end
+    set(handles.memory_usage_text, 'String', 'Error getting memory info');
+    fprintf('Warning: Could not refresh memory info: %s\n', ME.message);
 end
 end
 
@@ -7749,8 +7743,8 @@ try
     handles.preferences.enable_model_caching = true;
     handles.preferences.enable_memory_pooling = true;
     handles.preferences.memory_pool_size = 100;
-    handles.preferences.enable_performance_monitoring = false;  % Changed from true to false
-    handles.preferences.enable_memory_monitoring = false;  % Changed from true to false
+    handles.preferences.enable_performance_monitoring = true;
+    handles.preferences.enable_memory_monitoring = true;
 
     % Update UI
     handles = loadPerformancePreferencesToUI(handles);
@@ -7927,10 +7921,10 @@ try
 
     % Set monitoring settings
     set(handles.enable_performance_monitoring_checkbox, 'Value', ...
-        getFieldOrDefault(handles.preferences, 'enable_performance_monitoring', false));  % Changed from true to false
+        getFieldOrDefault(handles.preferences, 'enable_performance_monitoring', true));
 
     set(handles.enable_memory_monitoring_checkbox, 'Value', ...
-        getFieldOrDefault(handles.preferences, 'enable_memory_monitoring', false));  % Changed from true to false
+        getFieldOrDefault(handles.preferences, 'enable_memory_monitoring', true));
 
     % Update control states - wrap each in try-catch for better error isolation
     try
@@ -8316,33 +8310,21 @@ try
 
     % Update memory usage
     try
-        memory_info = getMemoryUsage();
+        memory_usage = getMemoryUsage();
+        memory_mb = memory_usage / (1024 * 1024);
+        set(handles.current_memory_text, 'String', sprintf('%.1f MB', memory_mb));
 
-        % Try to get memory usage from the structure
-        if isfield(memory_info, 'matlab_used_gb') && ~isnan(memory_info.matlab_used_gb)
-            memory_mb = memory_info.matlab_used_gb * 1024; % Convert GB to MB
-            set(handles.current_memory_text, 'String', sprintf('%.1f MB', memory_mb));
-
-            % Update memory change
-            if isfield(handles, 'initial_memory')
-                memory_change = memory_mb - handles.initial_memory;
-                change_mb = memory_change;
-                set(handles.memory_change_text, 'String', sprintf('%.1f MB', change_mb));
-            else
-                handles.initial_memory = memory_mb;
-                set(handles.memory_change_text, 'String', '0.0 MB');
-            end
+        % Update memory change
+        if isfield(handles, 'initial_memory')
+            memory_change = memory_usage - handles.initial_memory;
+            change_mb = memory_change / (1024 * 1024);
+            set(handles.memory_change_text, 'String', sprintf('%.1f MB', change_mb));
         else
-            set(handles.current_memory_text, 'String', 'N/A');
-            set(handles.memory_change_text, 'String', 'N/A');
+            handles.initial_memory = memory_usage;
         end
-    catch ME
+    catch
         set(handles.current_memory_text, 'String', 'N/A');
         set(handles.memory_change_text, 'String', 'N/A');
-        % Only log the warning if it's not a "Dot indexing" error to reduce noise
-        if ~contains(ME.message, 'Dot indexing is not supported')
-            fprintf('Warning: Could not update memory metrics: %s\n', ME.message);
-        end
     end
 
     % Update active operations count
@@ -8408,12 +8390,7 @@ try
     % Get current time and memory
     current_time = toc(handles.performance_tracker.session_start_time);
     try
-        memory_info = getMemoryUsage();
-        if isfield(memory_info, 'matlab_used_gb') && ~isnan(memory_info.matlab_used_gb)
-            current_memory = memory_info.matlab_used_gb * 1024; % Convert GB to MB
-        else
-            current_memory = 0;
-        end
+        current_memory = getMemoryUsage() / (1024 * 1024); % Convert to MB
     catch
         current_memory = 0;
     end

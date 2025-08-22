@@ -12,7 +12,16 @@ try
 
     % Check if mem_info is a valid structure
     if ~isstruct(mem_info) || isempty(mem_info)
-        error('Memory function returned invalid structure');
+        % Fallback to basic memory info
+        memory_info.total_gb = NaN;
+        memory_info.available_gb = NaN;
+        memory_info.used_gb = NaN;
+        memory_info.usage_percent = NaN;
+        memory_info.matlab_used_gb = NaN;
+        memory_info.virtual_total_gb = NaN;
+        memory_info.virtual_available_gb = NaN;
+        memory_info.matlab_peak_gb = NaN;
+        return;
     end
 
     % Extract memory values with safety checks
@@ -27,7 +36,11 @@ try
             % Calculate total as used + available
             memory_info.total_gb = memory_info.matlab_used_gb + memory_info.available_gb;
             memory_info.used_gb = memory_info.matlab_used_gb;
-            memory_info.usage_percent = (memory_info.used_gb / memory_info.total_gb) * 100;
+            if memory_info.total_gb > 0
+                memory_info.usage_percent = (memory_info.used_gb / memory_info.total_gb) * 100;
+            else
+                memory_info.usage_percent = NaN;
+            end
         else
             % Fallback: use MemUsedMATLAB as used memory, estimate total
             memory_info.used_gb = memory_info.matlab_used_gb;
@@ -44,7 +57,11 @@ try
             if isfield(mem_info.PhysicalMemory, 'Available') && isnumeric(mem_info.PhysicalMemory.Available)
                 memory_info.available_gb = mem_info.PhysicalMemory.Available / (1024^3);
                 memory_info.used_gb = memory_info.total_gb - memory_info.available_gb;
-                memory_info.usage_percent = (memory_info.used_gb / memory_info.total_gb) * 100;
+                if memory_info.total_gb > 0
+                    memory_info.usage_percent = (memory_info.used_gb / memory_info.total_gb) * 100;
+                else
+                    memory_info.usage_percent = NaN;
+                end
             else
                 % Available field doesn't exist, use fallback calculation
                 memory_info.available_gb = NaN;
@@ -52,7 +69,11 @@ try
                 memory_info.usage_percent = NaN;
             end
         else
-            error('PhysicalMemory fields are not numeric');
+            % PhysicalMemory fields are not numeric, use fallback
+            memory_info.total_gb = NaN;
+            memory_info.available_gb = NaN;
+            memory_info.used_gb = NaN;
+            memory_info.usage_percent = NaN;
         end
     else
         % Fallback if neither approach works
@@ -66,7 +87,11 @@ try
     if isfield(mem_info, 'VirtualAddressSpace') && isstruct(mem_info.VirtualAddressSpace)
         if isfield(mem_info.VirtualAddressSpace, 'Total') && isnumeric(mem_info.VirtualAddressSpace.Total)
             memory_info.virtual_total_gb = mem_info.VirtualAddressSpace.Total / (1024^3);
-            memory_info.virtual_available_gb = mem_info.VirtualAddressSpace.Available / (1024^3);
+            if isfield(mem_info.VirtualAddressSpace, 'Available') && isnumeric(mem_info.VirtualAddressSpace.Available)
+                memory_info.virtual_available_gb = mem_info.VirtualAddressSpace.Available / (1024^3);
+            else
+                memory_info.virtual_available_gb = NaN;
+            end
         else
             memory_info.virtual_total_gb = NaN;
             memory_info.virtual_available_gb = NaN;
