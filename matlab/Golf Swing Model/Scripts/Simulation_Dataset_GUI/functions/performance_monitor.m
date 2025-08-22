@@ -183,31 +183,6 @@ end
 performance_data.checkpoint_times(end+1) = time;
 end
 
-function memory_usage = getMemoryUsage()
-% Get current memory usage in MB
-try
-    [~, systemview] = memory;
-
-    % Check for newer MATLAB memory structure first
-    if isfield(systemview, 'MemUsedMATLAB') && isnumeric(systemview.MemUsedMATLAB)
-        if isfield(systemview, 'MemAvailableAllArrays') && isnumeric(systemview.MemAvailableAllArrays)
-            % Use the newer format
-            memory_usage = systemview.MemAvailableAllArrays / 1024^2;
-        else
-            memory_usage = 0;
-        end
-    elseif isfield(systemview, 'PhysicalMemory') && isstruct(systemview.PhysicalMemory) && ...
-            isfield(systemview.PhysicalMemory, 'Available') && isnumeric(systemview.PhysicalMemory.Available)
-        % Fallback to original PhysicalMemory approach if it exists
-        memory_usage = systemview.PhysicalMemory.Available / 1024^2;
-    else
-        memory_usage = 0;
-    end
-catch
-    memory_usage = 0;
-end
-end
-
 function displayPerformanceStatus()
 % Display current performance status
 global performance_data;

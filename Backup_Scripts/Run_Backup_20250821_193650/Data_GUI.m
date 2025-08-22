@@ -4518,13 +4518,9 @@ try
     if ispc
         try
             try
-                [status, result] = system('wmic OS get TotalVisibleMemorySize,FreePhysicalMemory /Value 2>nul');
-                if status ~= 0 || isempty(result)
-                    % Fallback: try alternative command
-                    [status, result] = system('wmic computersystem get TotalPhysicalMemory /Value 2>nul');
-                    if status ~= 0 || isempty(result)
-                        result = '';
-                    end
+                [status, result] = system('wmic OS get TotalVisibleMemorySize,FreePhysicalMemory /Value');
+                if status ~= 0
+                    result = '';
                 end
             catch
                 result = '';
@@ -6547,8 +6543,8 @@ try
     fprintf(fid_out, '%% Computer: %s\n', computer);
     try
         try
-            [status, hostname] = system('hostname 2>nul');
-            if status ~= 0 || isempty(hostname)
+            [status, hostname] = system('hostname');
+            if status ~= 0
                 hostname = 'Unknown';
             end
         catch
