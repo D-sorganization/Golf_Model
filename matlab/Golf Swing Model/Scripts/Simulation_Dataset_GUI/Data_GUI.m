@@ -339,7 +339,13 @@ monitorPanel = uipanel('Parent', parent, ...
 
 % Initialize performance tracker
 if ~isfield(handles, 'performance_tracker')
-    handles.performance_tracker = performance_tracker();
+    try
+        handles.performance_tracker = performance_tracker();
+        fprintf('🔍 Performance tracker initialized (Session: %s)\n', datestr(now, 'yyyy-mm-dd_HH-MM-SS'));
+    catch ME
+        fprintf('Warning: Could not initialize performance tracker: %s\n', ME.message);
+        handles.performance_tracker = [];
+    end
 end
 
 % Create real-time metrics display
@@ -2129,9 +2135,14 @@ end
 try
     fprintf('[DEBUG] Starting performance tracking...\n');
     % Start performance tracking for generation
-    if isfield(handles, 'performance_tracker')
-        handles.performance_tracker.start_timer('Data_Generation');
-        fprintf('⏱️ Started timing: Data Generation\n');
+    if isfield(handles, 'performance_tracker') && ~isempty(handles.performance_tracker) && ...
+            ismethod(handles.performance_tracker, 'start_timer')
+        try
+            handles.performance_tracker.start_timer('Data_Generation');
+            fprintf('⏱️ Started timing: Data Generation\n');
+        catch ME
+            fprintf('Warning: Could not start performance timer: %s\n', ME.message);
+        end
     end
 
     % Set running state immediately
@@ -4001,9 +4012,14 @@ end
 % Always cleanup state and UI (replaces finally block)
 try
     % Stop performance tracking for generation
-    if isfield(handles, 'performance_tracker')
-        handles.performance_tracker.stop_timer('Data_Generation');
-        fprintf('⏱️ Completed: Data Generation\n');
+    if isfield(handles, 'performance_tracker') && ~isempty(handles.performance_tracker) && ...
+            ismethod(handles.performance_tracker, 'stop_timer')
+        try
+            handles.performance_tracker.stop_timer('Data_Generation');
+            fprintf('⏱️ Completed: Data Generation\n');
+        catch ME
+            fprintf('Warning: Could not stop performance timer: %s\n', ME.message);
+        end
     end
 
     handles.is_running = false;
@@ -4019,9 +4035,14 @@ function successful_trials = runParallelSimulations(handles, config)
 % Initialize parallel pool with better error handling
 
 % Start performance tracking for parallel simulations
-if isfield(handles, 'performance_tracker')
-    handles.performance_tracker.start_timer('Parallel_Simulations');
-    fprintf('⏱️ Started timing: Parallel Simulations\n');
+if isfield(handles, 'performance_tracker') && ~isempty(handles.performance_tracker) && ...
+        ismethod(handles.performance_tracker, 'start_timer')
+    try
+        handles.performance_tracker.start_timer('Parallel_Simulations');
+        fprintf('⏱️ Started timing: Parallel Simulations\n');
+    catch ME
+        fprintf('Warning: Could not start parallel performance timer: %s\n', ME.message);
+    end
 end
 
 try
@@ -4436,9 +4457,14 @@ if successful_trials == total_trials && exist(checkpoint_file, 'file')
 end
 
 % Stop performance tracking for parallel simulations
-if isfield(handles, 'performance_tracker')
-    handles.performance_tracker.stop_timer('Parallel_Simulations');
-    fprintf('⏱️ Completed: Parallel Simulations\n');
+if isfield(handles, 'performance_tracker') && ~isempty(handles.performance_tracker) && ...
+        ismethod(handles.performance_tracker, 'stop_timer')
+    try
+        handles.performance_tracker.stop_timer('Parallel_Simulations');
+        fprintf('⏱️ Completed: Parallel Simulations\n');
+    catch ME
+        fprintf('Warning: Could not stop parallel performance timer: %s\n', ME.message);
+    end
 end
 end
 
@@ -4589,9 +4615,14 @@ total_trials = config.num_simulations;
 fprintf('[DEBUG] Batch size: %d, Save interval: %d, Total trials: %d\n', batch_size, save_interval, total_trials);
 
 % Start performance tracking for sequential simulations
-if isfield(handles, 'performance_tracker')
-    handles.performance_tracker.start_timer('Sequential_Simulations');
-    fprintf('⏱️ Started timing: Sequential Simulations\n');
+if isfield(handles, 'performance_tracker') && ~isempty(handles.performance_tracker) && ...
+        ismethod(handles.performance_tracker, 'start_timer')
+    try
+        handles.performance_tracker.start_timer('Sequential_Simulations');
+        fprintf('⏱️ Started timing: Sequential Simulations\n');
+    catch ME
+        fprintf('Warning: Could not start sequential performance timer: %s\n', ME.message);
+    end
 end
 
 % Debug print to confirm settings
@@ -4749,9 +4780,14 @@ if successful_trials == total_trials && exist(checkpoint_file, 'file')
 end
 
 % Stop performance tracking for sequential simulations
-if isfield(handles, 'performance_tracker')
-    handles.performance_tracker.stop_timer('Sequential_Simulations');
-    fprintf('⏱️ Completed: Sequential Simulations\n');
+if isfield(handles, 'performance_tracker') && ~isempty(handles.performance_tracker) && ...
+        ismethod(handles.performance_tracker, 'stop_timer')
+    try
+        handles.performance_tracker.stop_timer('Sequential_Simulations');
+        fprintf('⏱️ Completed: Sequential Simulations\n');
+    catch ME
+        fprintf('Warning: Could not stop sequential performance timer: %s\n', ME.message);
+    end
 end
 end
 
@@ -7601,7 +7637,10 @@ try
     % Get memory usage
     memory_info = getMemoryUsage();
 
-    if ~isnan(memory_info.usage_percent)
+    % Check if required fields exist and are valid
+    if isfield(memory_info, 'usage_percent') && isfield(memory_info, 'used_gb') && ...
+            isfield(memory_info, 'total_gb') && ~isnan(memory_info.usage_percent) && ...
+            ~isnan(memory_info.used_gb) && ~isnan(memory_info.total_gb)
         memory_text = sprintf('%.1f%% used (%.1f GB / %.1f GB)', ...
             memory_info.usage_percent, ...
             memory_info.used_gb, ...
@@ -7614,7 +7653,7 @@ try
 
 catch ME
     set(handles.memory_usage_text, 'String', 'Error getting memory info');
-    fprintf('Error refreshing memory info: %s\n', ME.message);
+    fprintf('Warning: Could not refresh memory info: %s\n', ME.message);
 end
 end
 
@@ -8035,18 +8074,27 @@ end
 function startPerformanceMonitoring(~, ~)
 % Start performance monitoring
 handles = guidata(gcbo);
-if isfield(handles, 'performance_tracker')
-    handles.performance_tracker.enable_tracking();
-    set(handles.monitoring_status_text, 'String', 'Status: Monitoring Active', ...
-        'ForegroundColor', handles.colors.success);
+if isfield(handles, 'performance_tracker') && ~isempty(handles.performance_tracker) && ...
+        ismethod(handles.performance_tracker, 'enable_tracking')
+    try
+        handles.performance_tracker.enable_tracking();
+        set(handles.monitoring_status_text, 'String', 'Status: Monitoring Active', ...
+            'ForegroundColor', handles.colors.success);
 
-    % Start auto-refresh timer if enabled
-    if get(handles.auto_refresh_checkbox, 'Value')
-        startPerformanceRefreshTimer(handles);
+        % Start auto-refresh timer if enabled
+        if get(handles.auto_refresh_checkbox, 'Value')
+            startPerformanceRefreshTimer(handles);
+        end
+
+        fprintf('🔍 Performance monitoring started\n');
+    catch ME
+        fprintf('Warning: Could not enable performance tracking: %s\n', ME.message);
+        set(handles.monitoring_status_text, 'String', 'Status: Monitoring Failed', ...
+            'ForegroundColor', handles.colors.danger);
     end
-
-    fprintf('🔍 Performance monitoring started\n');
 else
+    set(handles.monitoring_status_text, 'String', 'Status: Performance Tracker Unavailable', ...
+        'ForegroundColor', handles.colors.warning);
     fprintf('Error: Performance tracker not initialized\n');
 end
 guidata(handles.fig, handles);
@@ -8055,18 +8103,26 @@ end
 function stopPerformanceMonitoring(~, ~)
 % Stop performance monitoring
 handles = guidata(gcbo);
-if isfield(handles, 'performance_tracker')
-    handles.performance_tracker.disable_tracking();
-    set(handles.monitoring_status_text, 'String', 'Status: Monitoring Stopped', ...
-        'ForegroundColor', handles.colors.danger);
-
-    % Stop auto-refresh timer
-    stopPerformanceRefreshTimer(handles);
-
-    fprintf('🔍 Performance monitoring stopped\n');
+if isfield(handles, 'performance_tracker') && ~isempty(handles.performance_tracker) && ...
+        ismethod(handles.performance_tracker, 'disable_tracking')
+    try
+        handles.performance_tracker.disable_tracking();
+        set(handles.monitoring_status_text, 'String', 'Status: Monitoring Stopped', ...
+            'ForegroundColor', handles.colors.danger);
+    catch ME
+        fprintf('Warning: Could not disable performance tracking: %s\n', ME.message);
+        set(handles.monitoring_status_text, 'String', 'Status: Disable Failed', ...
+            'ForegroundColor', handles.colors.danger);
+    end
 else
-    fprintf('Error: Performance tracker not initialized\n');
+    set(handles.monitoring_status_text, 'String', 'Status: Performance Tracker Unavailable', ...
+        'ForegroundColor', handles.colors.warning);
 end
+
+% Stop auto-refresh timer
+stopPerformanceRefreshTimer(handles);
+
+fprintf('🔍 Performance monitoring stopped\n');
 guidata(handles.fig, handles);
 end
 

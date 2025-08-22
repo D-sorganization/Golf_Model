@@ -3,8 +3,30 @@ try
     % Get MATLAB memory info
     memoryInfo = memory;
 
-    % Calculate memory usage percentage
-    memoryInfo.usage_percent = (memoryInfo.MemUsedMATLAB / memoryInfo.PhysicalMemory.Total) * 100;
+    % Calculate memory usage percentage with safety checks
+    % Check for the actual fields returned by this MATLAB version
+    if isfield(memoryInfo, 'MemUsedMATLAB') && isnumeric(memoryInfo.MemUsedMATLAB)
+        % This MATLAB version uses MemUsedMATLAB
+        if isfield(memoryInfo, 'MemAvailableAllArrays') && isnumeric(memoryInfo.MemAvailableAllArrays)
+            % Calculate total as used + available
+            total_memory = memoryInfo.MemUsedMATLAB + memoryInfo.MemAvailableAllArrays;
+            if total_memory > 0
+                memoryInfo.usage_percent = (memoryInfo.MemUsedMATLAB / total_memory) * 100;
+            else
+                memoryInfo.usage_percent = 0;
+            end
+        else
+            % Fallback: can't calculate percentage without available memory
+            memoryInfo.usage_percent = 0;
+        end
+    elseif isfield(memoryInfo, 'PhysicalMemory') && isstruct(memoryInfo.PhysicalMemory) && ...
+            isfield(memoryInfo.PhysicalMemory, 'Total') && isnumeric(memoryInfo.PhysicalMemory.Total) && ...
+            isnumeric(memoryInfo.MemUsedMATLAB) && memoryInfo.PhysicalMemory.Total > 0
+        % Fallback to original PhysicalMemory approach if it exists
+        memoryInfo.usage_percent = (memoryInfo.MemUsedMATLAB / memoryInfo.PhysicalMemory.Total) * 100;
+    else
+        memoryInfo.usage_percent = 0;
+    end
 
     % Get system memory info if available
     if ispc

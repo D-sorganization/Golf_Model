@@ -16,18 +16,46 @@ try
     end
 
     % Extract memory values with safety checks
-    if isfield(mem_info, 'PhysicalMemory') && isstruct(mem_info.PhysicalMemory)
-        % Check if PhysicalMemory fields exist and are numeric
+    % Check for the actual fields returned by this MATLAB version
+    if isfield(mem_info, 'MemUsedMATLAB') && isnumeric(mem_info.MemUsedMATLAB)
+        % This MATLAB version uses MemUsedMATLAB instead of PhysicalMemory
+        memory_info.matlab_used_gb = mem_info.MemUsedMATLAB / (1024^3);
+
+        % Try to get available memory
+        if isfield(mem_info, 'MemAvailableAllArrays') && isnumeric(mem_info.MemAvailableAllArrays)
+            memory_info.available_gb = mem_info.MemAvailableAllArrays / (1024^3);
+            % Calculate total as used + available
+            memory_info.total_gb = memory_info.matlab_used_gb + memory_info.available_gb;
+            memory_info.used_gb = memory_info.matlab_used_gb;
+            memory_info.usage_percent = (memory_info.used_gb / memory_info.total_gb) * 100;
+        else
+            % Fallback: use MemUsedMATLAB as used memory, estimate total
+            memory_info.used_gb = memory_info.matlab_used_gb;
+            memory_info.available_gb = NaN;
+            memory_info.total_gb = NaN;
+            memory_info.usage_percent = NaN;
+        end
+    elseif isfield(mem_info, 'PhysicalMemory') && isstruct(mem_info.PhysicalMemory)
+        % Fallback to original PhysicalMemory approach if it exists
         if isfield(mem_info.PhysicalMemory, 'Total') && isnumeric(mem_info.PhysicalMemory.Total)
             memory_info.total_gb = mem_info.PhysicalMemory.Total / (1024^3);
-            memory_info.available_gb = mem_info.PhysicalMemory.Available / (1024^3);
-            memory_info.used_gb = memory_info.total_gb - memory_info.available_gb;
-            memory_info.usage_percent = (memory_info.used_gb / memory_info.total_gb) * 100;
+
+            % Check if Available field exists before accessing it
+            if isfield(mem_info.PhysicalMemory, 'Available') && isnumeric(mem_info.PhysicalMemory.Available)
+                memory_info.available_gb = mem_info.PhysicalMemory.Available / (1024^3);
+                memory_info.used_gb = memory_info.total_gb - memory_info.available_gb;
+                memory_info.usage_percent = (memory_info.used_gb / memory_info.total_gb) * 100;
+            else
+                % Available field doesn't exist, use fallback calculation
+                memory_info.available_gb = NaN;
+                memory_info.used_gb = NaN;
+                memory_info.usage_percent = NaN;
+            end
         else
             error('PhysicalMemory fields are not numeric');
         end
     else
-        % Fallback if PhysicalMemory is not available
+        % Fallback if neither approach works
         memory_info.total_gb = NaN;
         memory_info.available_gb = NaN;
         memory_info.used_gb = NaN;
