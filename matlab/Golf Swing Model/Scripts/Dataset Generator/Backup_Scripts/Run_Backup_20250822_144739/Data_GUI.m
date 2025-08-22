@@ -4078,13 +4078,6 @@ try
         cluster_profile = getFieldOrDefault(handles.preferences, 'cluster_profile', 'Local_Cluster');
         max_workers = getFieldOrDefault(handles.preferences, 'max_parallel_workers', 14);
 
-        % TEMPORARY FIX: Reduce workers for faster startup
-        % The 14 workers were causing extremely slow parallel pool initialization
-        if max_workers > 8
-            fprintf('⚠️  Reducing workers from %d to 8 for faster startup (temporary fix)\n', max_workers);
-            max_workers = 8;
-        end
-
         % Ensure cluster profile exists
         available_profiles = parallel.clusterProfiles();
         if ~ismember(cluster_profile, available_profiles)
@@ -4123,28 +4116,8 @@ try
             fprintf('Starting parallel pool with %d workers using %s profile...\n', num_workers, cluster_profile);
 
             % Start parallel pool with specified cluster profile
-            % Add timeout for slow cluster profiles
-            fprintf('Starting parallel pool (this may take a moment)...\n');
-
-            % Try with timeout - if it takes too long, fall back to local
-            try
-                % Use a timer to detect slow startup
-                pool_start_time = tic;
-                parpool(cluster_obj, num_workers);
-                pool_startup_time = toc(pool_start_time);
-
-                if pool_startup_time > 60  % If it takes more than 1 minute
-                    fprintf('⚠️  Cluster profile %s is slow (%.1f seconds). Consider using "local" profile instead.\n', ...
-                        cluster_profile, pool_startup_time);
-                end
-
-                fprintf('Successfully started parallel pool with %s profile (%d workers) in %.1f seconds\n', ...
-                    cluster_profile, num_workers, pool_startup_time);
-            catch ME
-                fprintf('Failed to start pool with %s profile: %s\n', cluster_profile, ME.message);
-                fprintf('Falling back to local profile...\n');
-                rethrow(ME);
-            end
+            parpool(cluster_obj, num_workers);
+            fprintf('Successfully started parallel pool with %s profile (%d workers)\n', cluster_profile, num_workers);
 
         catch ME
             fprintf('Failed to use cluster profile %s: %s\n', cluster_profile, ME.message);
@@ -4286,6 +4259,8 @@ for batch_idx = start_batch:num_batches
             'generateRandomCoefficients.m', ...
             'prepareSimulationInputsForBatch.m', ...
             'restoreWorkspace.m', ...
+            'getMemoryInfo.m', ...
+            'checkHighMemoryUsage.m', ...
             'loadInputFile.m', ...
             'checkStopRequest.m', ...
             'extractCoefficientsFromTable.m', ...
