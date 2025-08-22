@@ -5714,6 +5714,32 @@ try
         error('Please specify output folder and dataset name');
     end
 
+    % Validate output folder is accessible and writable
+    full_output_path = fullfile(output_folder, folder_name);
+
+    % Check if output folder exists and is accessible
+    if ~exist(output_folder, 'dir')
+        error('Output folder "%s" does not exist or is not accessible. Please select a valid folder.', output_folder);
+    end
+
+    % Check if we can write to the output folder by attempting to create a test file
+    try
+        test_file = fullfile(output_folder, '.test_write_access');
+        fid = fopen(test_file, 'w');
+        if fid == -1
+            error('Cannot write to output folder "%s". The folder may be read-only or on a disconnected drive.', output_folder);
+        end
+        fclose(fid);
+        delete(test_file); % Clean up test file
+    catch ME
+        error('Output folder validation failed: %s. Please ensure the folder is writable and not on a disconnected drive.', ME.message);
+    end
+
+    % Check if the full output path already exists and warn user
+    if exist(full_output_path, 'dir')
+        warning('Output folder "%s" already exists. Files may be overwritten.', full_output_path);
+    end
+
     % Validate model exists
     model_name = handles.model_name;
     model_path = handles.model_path;
