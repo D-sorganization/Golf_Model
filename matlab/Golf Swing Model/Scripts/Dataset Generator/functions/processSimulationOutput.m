@@ -3,8 +3,14 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
 
     try
         fprintf('Processing simulation output for trial %d...\n', trial_num);
+        
+        % Start timing for this trial
+        trial_start_time = tic;
 
         % Extract data using the enhanced signal extraction system
+        fprintf('  ⏱️  Starting signal extraction...\n');
+        signal_extraction_start = tic;
+        
         options = struct();
         options.extract_combined_bus = config.use_signal_bus;
         options.extract_logsout = config.use_logsout;
@@ -12,6 +18,9 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
         options.verbose = false; % Set to true for debugging
 
         [data_table, signal_info] = extractSignalsFromSimOut(simOut, options);
+        
+        signal_extraction_time = toc(signal_extraction_start);
+        fprintf('  ⏱️  Signal extraction completed in %.3f seconds\n', signal_extraction_time);
 
         if isempty(data_table)
             result.error = 'No data extracted from simulation';
@@ -23,7 +32,13 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
 
         % Resample data to desired frequency if specified
         if isfield(config, 'sample_rate') && ~isempty(config.sample_rate) && config.sample_rate > 0
+            fprintf('  ⏱️  Starting data resampling...\n');
+            resampling_start = tic;
+            
             data_table = resampleDataToFrequency(data_table, config.sample_rate, config.simulation_time);
+            
+            resampling_time = toc(resampling_start);
+            fprintf('  ⏱️  Data resampling completed in %.3f seconds\n', resampling_time);
             fprintf('Resampled to %d rows at %g Hz\n', height(data_table), config.sample_rate);
         end
 
@@ -53,12 +68,21 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
         end
 
         if capture_workspace
+            fprintf('  ⏱️  Starting model workspace data addition...\n');
+            workspace_start = tic;
+            
             data_table = addModelWorkspaceData(data_table, simOut, num_rows);
+            
+            workspace_time = toc(workspace_start);
+            fprintf('  ⏱️  Model workspace data addition completed in %.3f seconds\n', workspace_time);
         else
             fprintf('Debug: Model workspace capture disabled by user setting\n');
         end
 
         % Save to file in selected format(s)
+        fprintf('  ⏱️  Starting file saving...\n');
+        file_saving_start = tic;
+        
         timestamp = datestr(now, 'yyyymmdd_HHMMSS');
         saved_files = {};
 
@@ -100,13 +124,19 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
 
         % Update result with primary filename
         filename = saved_files{1};
+        
+        file_saving_time = toc(file_saving_start);
+        fprintf('  ⏱️  File saving completed in %.3f seconds\n', file_saving_time);
 
         result.success = true;
         result.filename = filename;
         result.data_points = num_rows;
         result.columns = width(data_table);
 
-        fprintf('Trial %d completed: %d data points, %d columns\n', trial_num, num_rows, width(data_table));
+        % Calculate total trial time
+        total_trial_time = toc(trial_start_time);
+        fprintf('⏱️  Trial %d completed in %.3f seconds: %d data points, %d columns\n', ...
+            trial_num, total_trial_time, num_rows, width(data_table));
 
     catch ME
         result.success = false;

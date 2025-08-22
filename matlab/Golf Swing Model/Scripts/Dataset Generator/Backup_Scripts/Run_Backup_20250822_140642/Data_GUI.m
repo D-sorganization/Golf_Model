@@ -337,14 +337,14 @@ monitorPanel = uipanel('Parent', parent, ...
     'HighlightColor', colors.border, ...
     'Title', '🔍 Real-Time Performance Monitor');
 
-% Initialize lightweight timer (no memory monitoring overhead)
-if ~isfield(handles, 'lightweight_timer')
+% Initialize performance tracker
+if ~isfield(handles, 'performance_tracker')
     try
-        handles.lightweight_timer = lightweight_timer();
-        fprintf('⏱️  Lightweight timer initialized (Session: %s)\n', datestr(now, 'yyyy-mm-dd_HH-MM-SS'));
+        handles.performance_tracker = performance_tracker();
+        fprintf('🔍 Performance tracker initialized (Session: %s)\n', datestr(now, 'yyyy-mm-dd_HH-MM-SS'));
     catch ME
-        fprintf('Warning: Could not initialize lightweight timer: %s\n', ME.message);
-        handles.lightweight_timer = [];
+        fprintf('Warning: Could not initialize performance tracker: %s\n', ME.message);
+        handles.performance_tracker = [];
     end
 end
 
@@ -2133,15 +2133,15 @@ if isfield(handles, 'is_running') && handles.is_running
 end
 
 try
-    fprintf('[DEBUG] Starting lightweight timing...\n');
-    % Start lightweight timing for generation
-    if isfield(handles, 'lightweight_timer') && ~isempty(handles.lightweight_timer) && ...
-            ismethod(handles.lightweight_timer, 'start')
+    fprintf('[DEBUG] Starting performance tracking...\n');
+    % Start performance tracking for generation
+    if isfield(handles, 'performance_tracker') && ~isempty(handles.performance_tracker) && ...
+            ismethod(handles.performance_tracker, 'start_timer')
         try
-            handles.lightweight_timer.start('Data_Generation');
+            handles.performance_tracker.start_timer('Data_Generation');
             fprintf('⏱️ Started timing: Data Generation\n');
         catch ME
-            fprintf('Warning: Could not start lightweight timer: %s\n', ME.message);
+            fprintf('Warning: Could not start performance timer: %s\n', ME.message);
         end
     end
 
@@ -4011,14 +4011,14 @@ end
 
 % Always cleanup state and UI (replaces finally block)
 try
-    % Stop lightweight timing for generation
-    if isfield(handles, 'lightweight_timer') && ~isempty(handles.lightweight_timer) && ...
-            ismethod(handles.lightweight_timer, 'stop')
+    % Stop performance tracking for generation
+    if isfield(handles, 'performance_tracker') && ~isempty(handles.performance_tracker) && ...
+            ismethod(handles.performance_tracker, 'stop_timer')
         try
-            handles.lightweight_timer.stop('Data_Generation');
+            handles.performance_tracker.stop_timer('Data_Generation');
             fprintf('⏱️ Completed: Data Generation\n');
         catch ME
-            fprintf('Warning: Could not stop lightweight timer: %s\n', ME.message);
+            fprintf('Warning: Could not stop performance timer: %s\n', ME.message);
         end
     end
 
@@ -4034,14 +4034,14 @@ end
 function successful_trials = runParallelSimulations(handles, config)
 % Initialize parallel pool with better error handling
 
-% Start lightweight timing for parallel simulations
-if isfield(handles, 'lightweight_timer') && ~isempty(handles.lightweight_timer) && ...
-        ismethod(handles.lightweight_timer, 'start')
+% Start performance tracking for parallel simulations
+if isfield(handles, 'performance_tracker') && ~isempty(handles.performance_tracker) && ...
+        ismethod(handles.performance_tracker, 'start_timer')
     try
-        handles.lightweight_timer.start('Parallel_Simulations');
+        handles.performance_tracker.start_timer('Parallel_Simulations');
         fprintf('⏱️ Started timing: Parallel Simulations\n');
     catch ME
-        fprintf('Warning: Could not start parallel lightweight timer: %s\n', ME.message);
+        fprintf('Warning: Could not start parallel performance timer: %s\n', ME.message);
     end
 end
 
@@ -4456,14 +4456,14 @@ if successful_trials == total_trials && exist(checkpoint_file, 'file')
     end
 end
 
-% Stop lightweight timing for parallel simulations
-if isfield(handles, 'lightweight_timer') && ~isempty(handles.lightweight_timer) && ...
-        ismethod(handles.lightweight_timer, 'stop')
+% Stop performance tracking for parallel simulations
+if isfield(handles, 'performance_tracker') && ~isempty(handles.performance_tracker) && ...
+        ismethod(handles.performance_tracker, 'stop_timer')
     try
-        handles.lightweight_timer.stop('Parallel_Simulations');
+        handles.performance_tracker.stop_timer('Parallel_Simulations');
         fprintf('⏱️ Completed: Parallel Simulations\n');
     catch ME
-        fprintf('Warning: Could not stop parallel lightweight timer: %s\n', ME.message);
+        fprintf('Warning: Could not stop parallel performance timer: %s\n', ME.message);
     end
 end
 end

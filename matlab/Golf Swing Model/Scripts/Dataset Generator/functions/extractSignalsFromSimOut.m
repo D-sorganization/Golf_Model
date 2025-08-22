@@ -32,6 +32,9 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
             end
 
             try
+                fprintf('  ⏱️  Starting CombinedSignalBus extraction...\n');
+                combined_bus_start = tic;
+                
                 combinedBus = simOut.CombinedSignalBus;
                 if ~isempty(combinedBus)
                     signal_bus_data = extractFromCombinedSignalBus(combinedBus);
@@ -43,6 +46,10 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                         end
                     end
                 end
+                
+                combined_bus_time = toc(combined_bus_start);
+                fprintf('  ⏱️  CombinedSignalBus extraction completed in %.3f seconds\n', combined_bus_time);
+                
             catch ME
                 if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
                     if options.verbose
@@ -63,6 +70,9 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
             end
 
             try
+                fprintf('  ⏱️  Starting logsout extraction...\n');
+                logsout_start = tic;
+                
                 logsout_data = extractLogsoutDataFixed(simOut.logsout);
                 if ~isempty(logsout_data)
                     all_data{end+1} = logsout_data;
@@ -70,6 +80,10 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                         fprintf('Logsout: %d columns extracted\n', width(logsout_data));
                     end
                 end
+                
+                logsout_time = toc(logsout_start);
+                fprintf('  ⏱️  Logsout extraction completed in %.3f seconds\n', logsout_time);
+                
             catch ME
                 if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
                     if options.verbose
@@ -133,6 +147,9 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                     fprintf('Extracting from Simscape simlog...\n');
                 end
 
+                fprintf('  ⏱️  Starting Simscape extraction...\n');
+                simscape_start = tic;
+                
                 simscape_data = extractSimscapeDataRecursive(simlog_data);
                 if ~isempty(simscape_data)
                     all_data{end+1} = simscape_data;
@@ -144,6 +161,10 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
                         fprintf('Warning: No Simscape data extracted despite simlog being available\n');
                     end
                 end
+                
+                simscape_time = toc(simscape_start);
+                fprintf('  ⏱️  Simscape extraction completed in %.3f seconds\n', simscape_time);
+                
             else
                 if options.verbose
                     fprintf('Warning: No simlog found in simulation output\n');
@@ -153,9 +174,15 @@ function [data_table, signal_info] = extractSignalsFromSimOut(simOut, options)
 
         % Combine all data sources
         if ~isempty(all_data)
+            fprintf('  ⏱️  Starting data combination...\n');
+            combination_start = tic;
+            
             data_table = combineDataSources(all_data);
             signal_info.sources_found = length(all_data);
             signal_info.total_columns = width(data_table);
+            
+            combination_time = toc(combination_start);
+            fprintf('  ⏱️  Data combination completed in %.3f seconds\n', combination_time);
         else
             if options.verbose
                 fprintf('Warning: No data extracted from any source\n');
