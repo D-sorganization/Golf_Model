@@ -21,10 +21,5 @@ try
     fprintf('  - Memory-efficient processing\n');
 catch ME
     fprintf('Error launching enhanced GUI: %s\n', ME.message);
-    fprintf('Falling back to original GUI...\n');
-    try
-        Data_GUI();
-    catch ME2
-        fprintf('Error launching original GUI: %s\n', ME2.message);
-    end
+    fprintf('Please check the error and try again.\n');
 end
