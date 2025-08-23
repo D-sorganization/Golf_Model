@@ -239,10 +239,8 @@ try
                             end
                         end
 
-
-
-                        % Handle 3x3xN time series (e.g., inertia over time)
                     elseif ndims(numeric_data) == 3 && all(size(numeric_data,1:2) == [3 3])
+                        % Handle 3x3xN time series (e.g., inertia over time)
                         n_steps = size(numeric_data,3);
                         if n_steps ~= expected_length
                             fprintf('Debug: Skipping %s.%s (3x3xN but N=%d, expected %d)\n', field_name, sub_field_name, n_steps, expected_length);
