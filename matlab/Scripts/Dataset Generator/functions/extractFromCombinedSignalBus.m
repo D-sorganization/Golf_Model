@@ -225,8 +225,8 @@ try
                                 field_name, sub_field_name, dim, vector_data(dim), expected_length);
                         end
 
-                        % Handle 3x1xN time series (3D vectors over time)
                     elseif ndims(numeric_data) == 3 && all(size(numeric_data,1:2) == [3 1])
+                        % Handle 3x1xN time series (3D vectors over time)
                         n_steps = size(numeric_data,3);
                         if n_steps ~= expected_length
                             fprintf('Debug: Skipping %s.%s (3x1xN but N=%d, expected %d)\n', field_name, sub_field_name, n_steps, expected_length);
@@ -237,6 +237,15 @@ try
                                 var_names{end+1} = sprintf('%s_%s_dim%d', field_name, sub_field_name, dim);
                                 fprintf('Debug: Added 3x1xN vector %s_%s_dim%d (N=%d)\n', field_name, sub_field_name, dim, n_steps);
                             end
+                        end
+
+                    elseif num_elements == 3 && size(numeric_data, 1) == 3 && size(numeric_data, 2) == 1 && size(numeric_data, 3) == expected_length
+                        % Handle [3 1 N] time-varying 3D vectors (e.g., position, velocity, unit vectors)
+                        % Extract each component of the 3D vector over time
+                        for dim = 1:3
+                            data_cells{end+1} = squeeze(numeric_data(dim, 1, :));
+                            var_names{end+1} = sprintf('%s_%s_dim%d', field_name, sub_field_name, dim);
+                            fprintf('Debug: Added [3 1 N] vector %s_%s_dim%d (N=%d)\n', field_name, sub_field_name, dim, expected_length);
                         end
 
                         % Handle 3x3xN time series (e.g., inertia over time)
