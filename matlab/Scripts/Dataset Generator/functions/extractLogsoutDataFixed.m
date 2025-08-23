@@ -79,25 +79,7 @@ try
                             end
                         end
 
-                    elseif num_elements == 3 && size(data, 1) == 3 && size(data, 2) == 1 && size(data, 3) == expected_length
-                        % Handle [3 1 N] time-varying 3D vectors (e.g., position, velocity, unit vectors)
-                        % Extract each component of the 3D vector over time
-                        for dim = 1:3
-                            data_cells{end+1} = squeeze(data(dim, 1, :));
-                            var_names{end+1} = sprintf('%s_dim%d', signalName, dim);
-                            fprintf('Debug: Added [3 1 N] logsout vector %s_dim%d (N=%d)\n', signalName, dim, expected_length);
-                        end
 
-                    elseif num_elements == 9 && size(data, 1) == 3 && size(data, 2) == 3 && size(data, 3) == expected_length
-                        % Handle [3 3 N] time-varying 3x3 matrices (e.g., inertia, rotation matrices)
-                        % Flatten each 3x3 matrix at each timestep into 9 columns
-                        flat_matrix = reshape(permute(data, [3 1 2]), expected_length, 9);
-                        for idx = 1:9
-                            [row, col] = ind2sub([3,3], idx);
-                            data_cells{end+1} = flat_matrix(:,idx);
-                            var_names{end+1} = sprintf('%s_I%d%d', signalName, row, col);
-                            fprintf('Debug: Added [3 3 N] logsout matrix %s_I%d%d (N=%d)\n', signalName, row, col, expected_length);
-                        end
 
                     else
                         fprintf('Debug: Skipping signal %s (size [%s] not supported - need time series, [3 1 N], or [3 3 N])\n', ...
@@ -125,25 +107,7 @@ try
                             fprintf('Debug: Skipping timeseries %s (flattened length mismatch: %d vs %d)\n', signalName, length(flat_data), expected_length);
                         end
 
-                    elseif num_elements == 3 && size(data, 1) == 3 && size(data, 2) == 1 && size(data, 3) == expected_length
-                        % Handle [3 1 N] time-varying 3D vectors (e.g., position, velocity, unit vectors)
-                        % Extract each component of the 3D vector over time
-                        for dim = 1:3
-                            data_cells{end+1} = squeeze(data(dim, 1, :));
-                            var_names{end+1} = sprintf('%s_dim%d', signalName, dim);
-                            fprintf('Debug: Added [3 1 N] timeseries vector %s_dim%d (N=%d)\n', signalName, dim, expected_length);
-                        end
 
-                    elseif num_elements == 9 && size(data, 1) == 3 && size(data, 2) == 3 && size(data, 3) == expected_length
-                        % Handle [3 3 N] time-varying 3x3 matrices (e.g., inertia, rotation matrices)
-                        % Flatten each 3x3 matrix at each timestep into 9 columns
-                        flat_matrix = reshape(permute(data, [3 1 2]), expected_length, 9);
-                        for idx = 1:9
-                            [row, col] = ind2sub([3,3], idx);
-                            data_cells{end+1} = flat_matrix(:,idx);
-                            var_names{end+1} = sprintf('%s_I%d%d', signalName, row, col);
-                            fprintf('Debug: Added [3 3 N] timeseries matrix %s_I%d%d (N=%d)\n', signalName, row, col, expected_length);
-                        end
 
                     else
                         fprintf('Debug: Skipping timeseries %s (size [%s] not supported - need time series, [3 1 N], or [3 3 N])\n', ...
