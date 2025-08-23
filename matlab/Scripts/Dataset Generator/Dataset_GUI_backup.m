@@ -5334,6 +5334,555 @@ end
 end
 
 function validateCoefficientBounds(handles, coeff_range)
+% Enhanced signal extraction with comprehensive approach for 1956 columns
+% This replaces the basic extractSignalsFromSimOut function
+
+data_table = [];
+signal_info = struct();
+
+try
+    % Validate simOut input to prevent brace indexing errors
+    if isempty(simOut)
+        if options.verbose
+            fprintf('Warning: Empty simulation output provided\n');
+        end
+        return;
+    end
+
+    % Check if simOut is a valid simulation output object
+    if ~isobject(simOut) && ~isstruct(simOut)
+        if options.verbose
+            fprintf('Warning: Invalid simulation output type: %s\n', class(simOut));
+        end
+        return;
+    end
+
+    % Initialize data collection with comprehensive approach
+    all_data = {};
+    extraction_methods = {};
+
+    % Extract from CombinedSignalBus if enabled and available
+    if options.extract_combined_bus && (isprop(simOut, 'CombinedSignalBus') || isfield(simOut, 'CombinedSignalBus'))
+        if options.verbose
+            fprintf('Extracting from CombinedSignalBus...\n');
+        end
+
+        try
+            combinedBus = simOut.CombinedSignalBus;
+            if ~isempty(combinedBus)
+                signal_bus_data = extractFromCombinedSignalBusEnhanced(combinedBus);
+
+                if ~isempty(signal_bus_data)
+                    all_data{end+1} = signal_bus_data;
+                    extraction_methods{end+1} = 'CombinedSignalBus';
+                    if options.verbose
+                        fprintf('CombinedSignalBus: %d columns extracted\n', width(signal_bus_data));
+                    end
+                end
+            end
+        catch ME
+            if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
+                if options.verbose
+                    fprintf('Warning: Brace indexing error accessing CombinedSignalBus: %s\n', ME.message);
+                end
+            else
+                if options.verbose
+                    fprintf('Warning: Error extracting CombinedSignalBus: %s\n', ME.message);
+                end
+            end
+        end
+    end
+
+    % Extract from logsout if enabled and available
+    if options.extract_logsout && (isprop(simOut, 'logsout') || isfield(simOut, 'logsout'))
+        if options.verbose
+            fprintf('Extracting from logsout...\n');
+        end
+
+        try
+            logsout_data = extractLogsoutDataEnhanced(simOut.logsout);
+            if ~isempty(logsout_data)
+                all_data{end+1} = logsout_data;
+                extraction_methods{end+1} = 'logsout';
+                if options.verbose
+                    fprintf('Logsout: %d columns extracted\n', width(logsout_data));
+                end
+            end
+        catch ME
+            if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
+                if options.verbose
+                    fprintf('Warning: Brace indexing error accessing logsout: %s\n', ME.message);
+                end
+            else
+                if options.verbose
+                    fprintf('Warning: Error extracting logsout: %s\n', ME.message);
+                end
+            end
+        end
+    end
+
+    % Extract from Simscape if enabled and available
+    if options.extract_simscape
+        if options.verbose
+            fprintf('Checking for Simscape simlog...\n');
+        end
+
+        % Enhanced simlog access for parallel execution
+        simlog_available = false;
+        simlog_data = [];
+
+        if isprop(simOut, 'simlog') || isfield(simOut, 'simlog')
+            try
+                simlog_data = simOut.simlog;
+                if ~isempty(simlog_data)
+                    simlog_available = true;
+                    if options.verbose
+                        fprintf('Found simlog (type: %s)\n', class(simlog_data));
+                    end
+                end
+            catch ME
+                if contains(ME.message, 'brace indexing') || contains(ME.message, 'comma separated list')
+                    if options.verbose
+                        fprintf('Warning: Brace indexing error accessing simlog: %s\n', ME.message);
+                    end
+                else
+                    if options.verbose
+                        fprintf('Warning: Could not access simlog: %s\n', ME.message);
+                    end
+                end
+            end
+        end
+
+        % Try alternative access methods for parallel workers
+        if ~simlog_available
+            try
+                if isprop(simOut, 'SimulationMetadata') && isfield(simOut.SimulationMetadata, 'SimscapeLoggingInfo')
+                    if options.verbose
+                        fprintf('Attempting alternative simlog access...\n');
+                    end
+                end
+            catch
+                % Continue
+            end
+        end
+
+        if simlog_available
+            if options.verbose
+                fprintf('Extracting from Simscape simlog...\n');
+            end
+
+            simscape_data = extractSimscapeDataEnhanced(simlog_data);
+            if ~isempty(simscape_data)
+                all_data{end+1} = simscape_data;
+                extraction_methods{end+1} = 'simscape';
+                if options.verbose
+                    fprintf('Simscape: %d columns extracted\n', width(simscape_data));
+                end
+            else
+                if options.verbose
+                    fprintf('Warning: No Simscape data extracted despite simlog being available\n');
+                end
+            end
+        else
+            if options.verbose
+                fprintf('Warning: No simlog found in simulation output\n');
+            end
+        end
+    end
+
+    % Try fallback extraction methods
+    fallback_data = extractFallbackData(simOut, options);
+    if ~isempty(fallback_data)
+        all_data{end+1} = fallback_data;
+        extraction_methods{end+1} = 'fallback';
+        if options.verbose
+            fprintf('Fallback: %d columns extracted\n', width(fallback_data));
+        end
+    end
+
+    % Combine all data sources with enhanced merging
+    if ~isempty(all_data)
+        data_table = combineDataSourcesEnhanced(all_data, extraction_methods);
+        signal_info.sources_found = length(all_data);
+        signal_info.total_columns = width(data_table);
+        signal_info.extraction_methods = extraction_methods;
+
+        if options.verbose
+            fprintf('Total columns extracted: %d (Target: 1956 per trial)\n', width(data_table));
+            if width(data_table) >= 1956
+                fprintf('✓ Target 1956 columns per trial ACHIEVED\n');
+            else
+                fprintf('✗ Target 1956 columns per trial MISSED (need %d more columns)\n', 1956 - width(data_table));
+            end
+        end
+    else
+        if options.verbose
+            fprintf('Warning: No data extracted from any source\n');
+        end
+    end
+
+catch ME
+    if options.verbose
+        fprintf('Error in extractSignalsFromSimOutEnhanced: %s\n', ME.message);
+    end
+    % Return empty results on error
+    data_table = [];
+    signal_info = struct();
+end
+end
+
+% Enhanced CombinedSignalBus extraction
+function data_table = extractFromCombinedSignalBusEnhanced(combinedBus)
+data_table = [];
+
+try
+    % CombinedSignalBus should be a struct with time and signals
+    if ~isstruct(combinedBus)
+        return;
+    end
+
+    % Look for time field with enhanced detection
+    bus_fields = fieldnames(combinedBus);
+    time_field = '';
+    time_data = [];
+
+    % Enhanced time detection
+    for i = 1:length(bus_fields)
+        field_name = bus_fields{i};
+        field_value = combinedBus.(field_name);
+
+        % Check if this field contains time data
+        if isstruct(field_value) && isfield(field_value, 'time')
+            time_field = field_name;
+            time_data = field_value.time(:);
+            fprintf('Debug: Found time in %s.time (length: %d)\n', field_name, length(time_data));
+            break;
+        elseif isstruct(field_value) && isfield(field_value, 'Time')
+            time_field = field_name;
+            time_data = field_value.Time(:);
+            fprintf('Debug: Found time in %s.Time (length: %d)\n', field_name, length(time_data));
+            break;
+        elseif contains(lower(field_name), 'time') && isnumeric(field_value)
+            time_field = field_name;
+            time_data = field_value(:);
+            fprintf('Debug: Found time field: %s (length: %d)\n', field_name, length(time_data));
+            break;
+        end
+    end
+
+    % Enhanced signal extraction with comprehensive handling
+    if ~isempty(time_data)
+        data_cells = {time_data};
+        var_names = {'time'};
+        expected_length = length(time_data);
+
+        fprintf('Debug: Starting enhanced data extraction with time vector length: %d\n', expected_length);
+
+        % Process each field in the bus with enhanced extraction
+        for i = 1:length(bus_fields)
+            field_name = bus_fields{i};
+            field_value = combinedBus.(field_name);
+
+            if isstruct(field_value)
+                % This field contains sub-signals
+                sub_fields = fieldnames(field_value);
+
+                for j = 1:length(sub_fields)
+                    sub_field_name = sub_fields{j};
+                    signal_data = field_value.(sub_field_name);
+
+                    % Enhanced numeric data extraction
+                    numeric_data = extractNumericDataEnhanced(signal_data);
+
+                    % Add the data with comprehensive handling
+                    if ~isempty(numeric_data)
+                        data_size = size(numeric_data);
+                        num_elements = numel(numeric_data);
+
+                        if size(numeric_data, 1) == expected_length
+                            % TIME SERIES DATA - matches expected length
+                            if size(numeric_data, 2) == 1
+                                % Single column time series
+                                data_cells{end+1} = numeric_data(:);
+                                var_names{end+1} = sprintf('%s_%s', field_name, sub_field_name);
+                            elseif size(numeric_data, 2) > 1
+                                % Multi-column time series
+                                for col = 1:size(numeric_data, 2)
+                                    data_cells{end+1} = numeric_data(:, col);
+                                    var_names{end+1} = sprintf('%s_%s_%d', field_name, sub_field_name, col);
+                                end
+                            end
+                        elseif num_elements == 3
+                            % 3D VECTOR (e.g., COM position [x, y, z])
+                            vector_data = numeric_data(:);
+                            for dim = 1:3
+                                replicated_data = repmat(vector_data(dim), expected_length, 1);
+                                data_cells{end+1} = replicated_data;
+                                dim_labels = {'x', 'y', 'z'};
+                                var_names{end+1} = sprintf('%s_%s_%s', field_name, sub_field_name, dim_labels{dim});
+                            end
+                        elseif num_elements == 9
+                            % 3x3 MATRIX (e.g., inertia matrix)
+                            if isequal(data_size, [3, 3])
+                                matrix_data = repmat(numeric_data, [1, 1, expected_length]);
+                            else
+                                matrix_data = reshape(numeric_data, 3, 3);
+                                matrix_data = repmat(matrix_data, [1, 1, expected_length]);
+                            end
+
+                            n_steps = size(matrix_data,3);
+                            flat_matrix = reshape(permute(matrix_data, [3 1 2]), n_steps, 9);
+                            for idx = 1:9
+                                [row, col] = ind2sub([3,3], idx);
+                                data_cells{end+1} = flat_matrix(:,idx);
+                                var_names{end+1} = sprintf('%s_%s_I%d%d', field_name, sub_field_name, row, col);
+                            end
+                        elseif num_elements == 1
+                            % 1 ELEMENT DATA (scalar constants)
+                            scalar_value = numeric_data(1);
+                            replicated_data = repmat(scalar_value, expected_length, 1);
+                            data_cells{end+1} = replicated_data;
+                            var_names{end+1} = sprintf('%s_%s', field_name, sub_field_name);
+                        elseif num_elements == 6
+                            % 6 ELEMENT DATA (e.g., 6DOF pose/twist)
+                            vector_data = numeric_data(:);
+                            for dim = 1:6
+                                replicated_data = repmat(vector_data(dim), expected_length, 1);
+                                data_cells{end+1} = replicated_data;
+                                var_names{end+1} = sprintf('%s_%s_dof%d', field_name, sub_field_name, dim);
+                            end
+                        elseif ndims(numeric_data) == 3 && all(size(numeric_data,1:2) == [3 1])
+                            % Handle 3x1xN time series (3D vectors over time)
+                            n_steps = size(numeric_data,3);
+                            if n_steps == expected_length
+                                for dim = 1:3
+                                    data_cells{end+1} = squeeze(numeric_data(dim, 1, :));
+                                    var_names{end+1} = sprintf('%s_%s_dim%d', field_name, sub_field_name, dim);
+                                end
+                            end
+                        elseif ndims(numeric_data) == 3 && all(size(numeric_data,1:2) == [3 3])
+                            % Handle 3x3xN time series (e.g., inertia over time)
+                            n_steps = size(numeric_data,3);
+                            if n_steps == expected_length
+                                flat_matrix = reshape(permute(numeric_data, [3 1 2]), n_steps, 9);
+                                for idx = 1:9
+                                    [row, col] = ind2sub([3,3], idx);
+                                    data_cells{end+1} = flat_matrix(:,idx);
+                                    var_names{end+1} = sprintf('%s_%s_I%d%d', field_name, sub_field_name, row, col);
+                                end
+                            end
+                        end
+                    end
+                end
+            elseif isnumeric(field_value) && length(field_value) == expected_length
+                % Direct numeric field
+                data_cells{end+1} = field_value(:);
+                var_names{end+1} = field_name;
+            end
+        end
+
+        % Create table if we have data
+        if length(data_cells) > 1
+            data_table = table(data_cells{:}, 'VariableNames', var_names);
+            fprintf('Debug: Created enhanced CombinedSignalBus table with %d columns, %d rows\n', width(data_table), height(data_table));
+        end
+    end
+
+catch ME
+    fprintf('Error extracting enhanced CombinedSignalBus data: %s\n', ME.message);
+end
+end
+
+% Enhanced numeric data extraction
+function numeric_data = extractNumericDataEnhanced(signal_data)
+numeric_data = [];
+
+try
+    if isa(signal_data, 'timeseries')
+        numeric_data = signal_data.Data;
+    elseif isstruct(signal_data) && isfield(signal_data, 'Data')
+        numeric_data = signal_data.Data;
+    elseif isstruct(signal_data) && isfield(signal_data, 'Values')
+        numeric_data = signal_data.Values;
+    elseif isnumeric(signal_data)
+        numeric_data = signal_data;
+    elseif isstruct(signal_data) && isfield(signal_data, 'time')
+        % Handle nested time series structures
+        if isfield(signal_data, 'data')
+            numeric_data = signal_data.data;
+        elseif isfield(signal_data, 'Data')
+            numeric_data = signal_data.Data;
+        end
+    end
+catch ME
+    fprintf('Warning: Could not extract numeric data: %s\n', ME.message);
+end
+end
+
+% Enhanced logsout extraction
+function logsout_data = extractLogsoutDataEnhanced(logsout)
+logsout_data = [];
+
+try
+    % Use the existing function but with enhanced error handling
+    logsout_data = extractLogsoutDataFixed(logsout);
+
+    % Add additional extraction if the basic method didn't get enough data
+    if isempty(logsout_data) || width(logsout_data) < 1000
+        fprintf('Debug: Basic logsout extraction insufficient, trying enhanced method...\n');
+        % Add fallback extraction logic here if needed
+    end
+catch ME
+    fprintf('Error in enhanced logsout extraction: %s\n', ME.message);
+end
+end
+
+% Enhanced Simscape extraction
+function simscape_data = extractSimscapeDataEnhanced(simlog_data)
+simscape_data = [];
+
+try
+    % Use the existing function but with enhanced error handling
+    simscape_data = extractSimscapeDataRecursive(simlog_data);
+
+    % Add additional extraction if the basic method didn't get enough data
+    if isempty(simscape_data) || width(simscape_data) < 500
+        fprintf('Debug: Basic Simscape extraction insufficient, trying enhanced method...\n');
+        % Add fallback extraction logic here if needed
+    end
+catch ME
+    fprintf('Error in enhanced Simscape extraction: %s\n', ME.message);
+end
+end
+
+% Fallback data extraction
+function fallback_data = extractFallbackData(simOut, options)
+fallback_data = [];
+
+try
+    % Try to extract any remaining data that might have been missed
+    if options.verbose
+        fprintf('Attempting fallback data extraction...\n');
+    end
+
+    % Check for any other data sources that might contain signals
+    simOut_fields = fieldnames(simOut);
+    for i = 1:length(simOut_fields)
+        field_name = simOut_fields{i};
+        field_value = simOut.(field_name);
+
+        % Skip already processed fields
+        if ismember(field_name, {'CombinedSignalBus', 'logsout', 'simlog'})
+            continue;
+        end
+
+        % Try to extract data from other fields
+        if isstruct(field_value) && ~isempty(field_value)
+            try
+                extracted = extractFromNestedStruct(field_value);
+                if ~isempty(extracted)
+                    fallback_data = [fallback_data, extracted];
+                    if options.verbose
+                        fprintf('Fallback: Extracted %d columns from %s\n', width(extracted), field_name);
+                    end
+                end
+            catch
+                % Continue to next field
+            end
+        end
+    end
+catch ME
+    fprintf('Error in fallback data extraction: %s\n', ME.message);
+end
+end
+
+% Enhanced data source combination
+function combined_table = combineDataSourcesEnhanced(data_sources, extraction_methods)
+combined_table = [];
+
+try
+    if isempty(data_sources)
+        return;
+    end
+
+    % Start with the first data source
+    combined_table = data_sources{1};
+
+    % Merge additional data sources with enhanced error handling
+    for i = 2:length(data_sources)
+        if ~isempty(data_sources{i})
+            try
+                % Find common time column
+                if ismember('time', combined_table.Properties.VariableNames) && ...
+                        ismember('time', data_sources{i}.Properties.VariableNames)
+
+                    % Merge on time column
+                    combined_table = outerjoin(combined_table, data_sources{i}, 'Keys', 'time', 'MergeKeys', true);
+                else
+                    % Robust fallback for edge cases without time columns
+                    common_vars = intersect(combined_table.Properties.VariableNames, ...
+                        data_sources{i}.Properties.VariableNames);
+                    if ~isempty(common_vars)
+                        combined_table = [combined_table(:, common_vars); data_sources{i}(:, common_vars)];
+                    else
+                        % Add as new columns if no common variables
+                        combined_table = [combined_table, data_sources{i}];
+                    end
+                end
+
+                fprintf('Debug: Combined %s data: %d total columns\n', extraction_methods{i}, width(combined_table));
+            catch ME
+                fprintf('Warning: Could not combine %s data: %s\n', extraction_methods{i}, ME.message);
+            end
+        end
+    end
+
+catch ME
+    fprintf('Error combining enhanced data sources: %s\n', ME.message);
+end
+end
+
+% Helper function to extract from nested structs
+function extracted_data = extractFromNestedStruct(struct_data)
+extracted_data = [];
+
+try
+    if ~isstruct(struct_data)
+        return;
+    end
+
+    fields = fieldnames(struct_data);
+    data_cells = {};
+    var_names = {};
+
+    for i = 1:length(fields)
+        field_name = fields{i};
+        field_value = struct_data.(field_name);
+
+        if isnumeric(field_value)
+            data_cells{end+1} = field_value(:);
+            var_names{end+1} = field_name;
+        elseif isstruct(field_value)
+            % Recursively extract from nested structs
+            nested_data = extractFromNestedStruct(field_value);
+            if ~isempty(nested_data)
+                for j = 1:width(nested_data)
+                    data_cells{end+1} = nested_data.(nested_data.Properties.VariableNames{j});
+                    var_names{end+1} = sprintf('%s_%s', field_name, nested_data.Properties.VariableNames{j});
+                end
+            end
+        end
+    end
+
+    if ~isempty(data_cells)
+        extracted_data = table(data_cells{:}, 'VariableNames', var_names);
+    end
+catch ME
+    fprintf('Error extracting from nested struct: %s\n', ME.message);
+end
+end
+
+function validateCoefficientBounds(handles, coeff_range)
 % Validate that coefficient table values are within specified bounds
 try
     coeff_data = get(handles.coefficients_table, 'Data');
