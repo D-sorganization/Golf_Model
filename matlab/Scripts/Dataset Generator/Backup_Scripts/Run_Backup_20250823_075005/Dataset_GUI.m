@@ -3419,6 +3419,8 @@ try
     if handles.should_stop
         set(handles.status_text, 'String', 'Status: Generation stopped by user');
         set(handles.progress_text, 'String', 'Stopped');
+        % Reset GUI state for next run
+        resetGUIState(handles);
     else
         % Final status
         failed_trials = config.num_simulations - successful_trials;
@@ -3455,7 +3457,8 @@ try
             fprintf('Warning: Could not save script and settings: %s\n', ME.message);
         end
 
-
+        % Reset GUI state for next run
+        resetGUIState(handles);
     end
 
 catch ME
@@ -3509,32 +3512,33 @@ try
 
     % Create new pool if needed
     if isempty(existing_pool)
-        % Try to use Local_Cluster profile first, fallback to local
+        % Auto-detect optimal number of workers, but respect cluster limits
+        max_cores = feature('numcores');
+
+        % Check cluster limits
         try
-            % Check if Local_Cluster profile exists
-            cluster_profiles = parallel.clusterProfiles();
-            if ismember('Local_Cluster', cluster_profiles)
-                cluster_obj = parcluster('Local_Cluster');
-                num_workers = cluster_obj.NumWorkers;
-                fprintf('Using Local_Cluster profile with %d workers\n', num_workers);
-                parpool(cluster_obj, num_workers);
-                fprintf('Successfully started parallel pool with Local_Cluster profile (%d workers)\n', num_workers);
+            cluster = gcp('nocreate');
+            if isempty(cluster)
+                % Use local profile
+                temp_cluster = parcluster('local');
+                max_workers = temp_cluster.NumWorkers;
+                fprintf('Using local profile with max %d workers\n', max_workers);
             else
-                % Fallback to local profile with more workers
-                max_cores = feature('numcores');
-                num_workers = max_cores;
-                fprintf('Local_Cluster not found, using local profile with %d workers\n', num_workers);
-                parpool('local', num_workers);
-                fprintf('Successfully started parallel pool with local profile (%d workers)\n', num_workers);
+                max_workers = cluster.NumWorkers;
             end
-        catch ME
-            % Final fallback
-            max_cores = feature('numcores');
-            num_workers = max_cores;
-            fprintf('Error with cluster profiles, using local profile with %d workers: %s\n', num_workers, ME.message);
-            parpool('local', num_workers);
-            fprintf('Successfully started parallel pool with local profile (%d workers)\n', num_workers);
+        catch
+            max_workers = 6; % Default fallback
         end
+
+        % Use the minimum of available cores and cluster limit
+        num_workers = min(max_cores, max_workers);
+
+        % Try to create the pool with timeout
+        fprintf('Starting parallel pool with %d workers...\n', num_workers);
+
+        % Start parallel pool with local profile
+        parpool('local', num_workers);
+        fprintf('Successfully started parallel pool with local profile (%d workers)\n', num_workers);
     end
 catch ME
     warning(ME.identifier, 'Failed to start parallel pool: %s. Falling back to sequential execution.', ME.message);
@@ -3665,6 +3669,8 @@ for batch_idx = start_batch:num_batches
             'generateRandomCoefficients.m', ...
             'prepareSimulationInputsForBatch.m', ...
             'restoreWorkspace.m', ...
+            'getMemoryInfo.m', ...
+            'checkHighMemoryUsage.m', ...
             'loadInputFile.m', ...
             'checkStopRequest.m', ...
             'extractCoefficientsFromTable.m', ...
@@ -3798,9 +3804,18 @@ for batch_idx = start_batch:num_batches
     restoreWorkspace(initial_vars);
     java.lang.System.gc();  % Force garbage collection
 
-    % Memory monitoring disabled for parallel performance
+    % Check memory usage if monitoring is enabled
     if config.enable_memory_monitoring
-        fprintf('Memory monitoring disabled for parallel performance\n');
+        try
+            memoryInfo = getMemoryInfo();
+            fprintf('Memory usage after batch %d: %.1f%%\n', batch_idx, memoryInfo.usage_percent);
+
+            if memoryInfo.usage_percent > 85
+                fprintf('Warning: High memory usage detected. Consider reducing batch size.\n');
+            end
+        catch ME
+            fprintf('Warning: Could not check memory usage: %s\n', ME.message);
+        end
     end
 
     % Save checkpoint if needed
@@ -3889,7 +3904,65 @@ catch
 end
 end
 
-% Memory monitoring functions removed for parallel performance
+% Helper function to monitor memory usage
+function memoryInfo = getMemoryInfo()
+try
+    % Get MATLAB memory info
+    memoryInfo = memory;
+
+    % Calculate memory usage percentage
+    memoryInfo.usage_percent = (memoryInfo.MemUsedMATLAB / memoryInfo.PhysicalMemory.Total) * 100;
+
+    % Get system memory info if available
+    if ispc
+        try
+            [~, result] = system('wmic OS get TotalVisibleMemorySize,FreePhysicalMemory /Value');
+            lines = strsplit(result, '\n');
+            total_mem = 0;
+            free_mem = 0;
+
+            for i = 1:length(lines)
+                line = strtrim(lines{i});
+                if startsWith(line, 'TotalVisibleMemorySize=')
+                    total_mem = str2double(extractAfter(line, '='));
+                elseif startsWith(line, 'FreePhysicalMemory=')
+                    free_mem = str2double(extractAfter(line, '='));
+                end
+            end
+
+            if total_mem > 0
+                memoryInfo.system_total_mb = total_mem / 1024;
+                memoryInfo.system_free_mb = free_mem / 1024;
+                memoryInfo.system_usage_percent = ((total_mem - free_mem) / total_mem) * 100;
+            end
+        catch
+            % Ignore system memory check errors
+        end
+    end
+
+catch
+    memoryInfo = struct('usage_percent', 0);
+end
+end
+
+% Helper function to check if memory usage is high
+function isHighMemory = checkHighMemoryUsage(threshold_percent)
+if nargin < 1
+    threshold_percent = 85; % Default threshold
+end
+
+try
+    memoryInfo = getMemoryInfo();
+    isHighMemory = memoryInfo.usage_percent > threshold_percent;
+
+    if isHighMemory
+        fprintf('Warning: High memory usage detected: %.1f%%\n', memoryInfo.usage_percent);
+    end
+
+catch
+    isHighMemory = false;
+end
+end
 
 % Helper function to generate random coefficients
 function coefficients = generateRandomCoefficients(num_coefficients)
@@ -4031,9 +4104,18 @@ for batch_idx = start_batch:num_batches
     restoreWorkspace(initial_vars);
     java.lang.System.gc();  % Force garbage collection
 
-    % Memory monitoring disabled for parallel performance
+    % Check memory usage if monitoring is enabled
     if config.enable_memory_monitoring
-        fprintf('Memory monitoring disabled for parallel performance\n');
+        try
+            memoryInfo = getMemoryInfo();
+            fprintf('Memory usage after batch %d: %.1f%%\n', batch_idx, memoryInfo.usage_percent);
+
+            if memoryInfo.usage_percent > 85
+                fprintf('Warning: High memory usage detected. Consider reducing batch size.\n');
+            end
+        catch ME
+            fprintf('Warning: Could not check memory usage: %s\n', ME.message);
+        end
     end
 
     % Save checkpoint if needed

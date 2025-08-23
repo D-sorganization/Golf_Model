@@ -14,6 +14,9 @@ try
     options.extract_simscape = config.use_simscape;
     options.verbose = config.verbose; % Use config verbose setting for debugging 1956 column extraction
 
+    % Run diagnostic to see what data sources are available
+    diagnoseDataExtraction(simOut, config);
+
     % Use existing extraction method for comprehensive data capture
     [data_table, signal_info] = extractSignalsFromSimOut(simOut, options);
 
