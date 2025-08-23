@@ -300,29 +300,9 @@ function id = extractIdentifierFallback(msgs)
 end
 
 function v = getNumericField(s, fn)
-    % Return a scalar double for numeric-like fields; fallback to NaN.
     if isfield(s, fn)
-        v = s.(fn);
-        if isempty(v)
-            v = NaN;
-        else
-            try
-                % Coerce to scalar double; if vector, take first element.
-                v = double(v(1));
-            catch
-                % Some older MATLAB versions may give unusual types; be safe.
-                vv = str2double(string(v));
-                if isnan(vv)
-                    v = NaN;
-                else
-                    v = vv;
-                end
-            end
-        end
-    else
-        v = NaN;
-    end
-end
+        v = double(s.(fn));
+        if isempty(v), v = NaN; end
     else
         v = NaN;
     end
