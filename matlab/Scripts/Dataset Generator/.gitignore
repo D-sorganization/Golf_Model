@@ -1,0 +1,16 @@
+# Dataset output folders - these contain large CSV files that shouldn't be tracked
+golf_swing_dataset_*/
+
+# Individual trial CSV files
+trial_*.csv
+
+# Master dataset files
+master_dataset_*.csv
+master_dataset_*.mat
+
+# Code analysis output
+code_issues.csv
+
+# MATLAB work directories
+work/
+*/work/
