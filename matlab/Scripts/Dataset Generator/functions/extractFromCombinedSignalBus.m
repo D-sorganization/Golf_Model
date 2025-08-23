@@ -225,8 +225,8 @@ try
                                 field_name, sub_field_name, dim, vector_data(dim), expected_length);
                         end
 
-                    elseif ndims(numeric_data) == 3 && all(size(numeric_data,1:2) == [3 1])
                         % Handle 3x1xN time series (3D vectors over time)
+                    elseif ndims(numeric_data) == 3 && all(size(numeric_data,1:2) == [3 1])
                         n_steps = size(numeric_data,3);
                         if n_steps ~= expected_length
                             fprintf('Debug: Skipping %s.%s (3x1xN but N=%d, expected %d)\n', field_name, sub_field_name, n_steps, expected_length);
