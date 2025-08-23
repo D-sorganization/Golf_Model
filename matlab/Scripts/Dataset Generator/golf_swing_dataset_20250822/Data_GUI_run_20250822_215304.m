@@ -1,4 +1,48 @@
-function Dataset_GUI()
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-08-22 21:53:04
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 2
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: enabled
+% Logsout Dataset: enabled
+% Simscape Results: enabled
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Repositories\Golf_Model\matlab\Scripts\Dataset Generator\golf_swing_dataset_20250822
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: OGLaptop
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 2 trials x 189 coefficients
+% First trial coefficients (first 10): -11.540, 8.300, -24.820, -20.960, 11.710, -23.470, 32.440, 48.270, 23.020, -15.610
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
+
+function Data_GUI_Enhanced()
 % Forward Dynamics Dataset Generator - Modern GUI with tabbed interface
 % Features: Tabbed structure, pause/resume, post-processing, multiple export formats
 
@@ -3350,46 +3394,10 @@ handles = createJointEditorPanel(parent, handles, y2, h2);
 handles = createCoefficientsPanel(parent, handles, y3, h3);
 end
 
-
-
-% Extract coefficients from table
-function coefficient_values = extractCoefficientsFromTable(handles)
-try
-    table_data = get(handles.coefficients_table, 'Data');
-
-    if isempty(table_data)
-        coefficient_values = [];
-        return;
-    end
-
-    num_trials = size(table_data, 1);
-    num_total_coeffs = size(table_data, 2) - 1;
-    coefficient_values = zeros(num_trials, num_total_coeffs);
-
-    for row = 1:num_trials
-        for col = 2:(num_total_coeffs + 1)
-            value_str = table_data{row, col};
-            if ischar(value_str)
-                coefficient_values(row, col-1) = str2double(value_str);
-            else
-                coefficient_values(row, col-1) = value_str;
-            end
-        end
-    end
-
-catch ME
-    fprintf('Error extracting coefficients: %s\n', ME.message);
-    coefficient_values = [];
-end
-end
-
 % Run Generation Process
 function runGeneration(handles)
 try
     config = handles.config;
-
-    % Ensure config has enhanced settings for maximum data extraction (1956 columns)
-    config = ensureEnhancedConfig(config);
 
     % Extract coefficients from table
     config.coefficient_values = extractCoefficientsFromTable(handles);
@@ -3419,6 +3427,8 @@ try
     if handles.should_stop
         set(handles.status_text, 'String', 'Status: Generation stopped by user');
         set(handles.progress_text, 'String', 'Stopped');
+        % Reset GUI state for next run
+        resetGUIState(handles);
     else
         % Final status
         failed_trials = config.num_simulations - successful_trials;
@@ -3455,7 +3465,8 @@ try
             fprintf('Warning: Could not save script and settings: %s\n', ME.message);
         end
 
-
+        % Reset GUI state for next run
+        resetGUIState(handles);
     end
 
 catch ME
@@ -3509,32 +3520,33 @@ try
 
     % Create new pool if needed
     if isempty(existing_pool)
-        % Try to use Local_Cluster profile first, fallback to local
+        % Auto-detect optimal number of workers, but respect cluster limits
+        max_cores = feature('numcores');
+
+        % Check cluster limits
         try
-            % Check if Local_Cluster profile exists
-            cluster_profiles = parallel.clusterProfiles();
-            if ismember('Local_Cluster', cluster_profiles)
-                cluster_obj = parcluster('Local_Cluster');
-                num_workers = cluster_obj.NumWorkers;
-                fprintf('Using Local_Cluster profile with %d workers\n', num_workers);
-                parpool(cluster_obj, num_workers);
-                fprintf('Successfully started parallel pool with Local_Cluster profile (%d workers)\n', num_workers);
+            cluster = gcp('nocreate');
+            if isempty(cluster)
+                % Use local profile
+                temp_cluster = parcluster('local');
+                max_workers = temp_cluster.NumWorkers;
+                fprintf('Using local profile with max %d workers\n', max_workers);
             else
-                % Fallback to local profile with more workers
-                max_cores = feature('numcores');
-                num_workers = max_cores;
-                fprintf('Local_Cluster not found, using local profile with %d workers\n', num_workers);
-                parpool('local', num_workers);
-                fprintf('Successfully started parallel pool with local profile (%d workers)\n', num_workers);
+                max_workers = cluster.NumWorkers;
             end
-        catch ME
-            % Final fallback
-            max_cores = feature('numcores');
-            num_workers = max_cores;
-            fprintf('Error with cluster profiles, using local profile with %d workers: %s\n', num_workers, ME.message);
-            parpool('local', num_workers);
-            fprintf('Successfully started parallel pool with local profile (%d workers)\n', num_workers);
+        catch
+            max_workers = 6; % Default fallback
         end
+
+        % Use the minimum of available cores and cluster limit
+        num_workers = min(max_cores, max_workers);
+
+        % Try to create the pool with timeout
+        fprintf('Starting parallel pool with %d workers...\n', num_workers);
+
+        % Start parallel pool with local profile
+        parpool('local', num_workers);
+        fprintf('Successfully started parallel pool with local profile (%d workers)\n', num_workers);
     end
 catch ME
     warning(ME.identifier, 'Failed to start parallel pool: %s. Falling back to sequential execution.', ME.message);
@@ -3665,6 +3677,8 @@ for batch_idx = start_batch:num_batches
             'generateRandomCoefficients.m', ...
             'prepareSimulationInputsForBatch.m', ...
             'restoreWorkspace.m', ...
+            'getMemoryInfo.m', ...
+            'checkHighMemoryUsage.m', ...
             'loadInputFile.m', ...
             'checkStopRequest.m', ...
             'extractCoefficientsFromTable.m', ...
@@ -3798,9 +3812,18 @@ for batch_idx = start_batch:num_batches
     restoreWorkspace(initial_vars);
     java.lang.System.gc();  % Force garbage collection
 
-    % Memory monitoring disabled for parallel performance
+    % Check memory usage if monitoring is enabled
     if config.enable_memory_monitoring
-        fprintf('Memory monitoring disabled for parallel performance\n');
+        try
+            memoryInfo = getMemoryInfo();
+            fprintf('Memory usage after batch %d: %.1f%%\n', batch_idx, memoryInfo.usage_percent);
+
+            if memoryInfo.usage_percent > 85
+                fprintf('Warning: High memory usage detected. Consider reducing batch size.\n');
+            end
+        catch ME
+            fprintf('Warning: Could not check memory usage: %s\n', ME.message);
+        end
     end
 
     % Save checkpoint if needed
@@ -3889,7 +3912,65 @@ catch
 end
 end
 
-% Memory monitoring functions removed for parallel performance
+% Helper function to monitor memory usage
+function memoryInfo = getMemoryInfo()
+try
+    % Get MATLAB memory info
+    memoryInfo = memory;
+
+    % Calculate memory usage percentage
+    memoryInfo.usage_percent = (memoryInfo.MemUsedMATLAB / memoryInfo.PhysicalMemory.Total) * 100;
+
+    % Get system memory info if available
+    if ispc
+        try
+            [~, result] = system('wmic OS get TotalVisibleMemorySize,FreePhysicalMemory /Value');
+            lines = strsplit(result, '\n');
+            total_mem = 0;
+            free_mem = 0;
+
+            for i = 1:length(lines)
+                line = strtrim(lines{i});
+                if startsWith(line, 'TotalVisibleMemorySize=')
+                    total_mem = str2double(extractAfter(line, '='));
+                elseif startsWith(line, 'FreePhysicalMemory=')
+                    free_mem = str2double(extractAfter(line, '='));
+                end
+            end
+
+            if total_mem > 0
+                memoryInfo.system_total_mb = total_mem / 1024;
+                memoryInfo.system_free_mb = free_mem / 1024;
+                memoryInfo.system_usage_percent = ((total_mem - free_mem) / total_mem) * 100;
+            end
+        catch
+            % Ignore system memory check errors
+        end
+    end
+
+catch
+    memoryInfo = struct('usage_percent', 0);
+end
+end
+
+% Helper function to check if memory usage is high
+function isHighMemory = checkHighMemoryUsage(threshold_percent)
+if nargin < 1
+    threshold_percent = 85; % Default threshold
+end
+
+try
+    memoryInfo = getMemoryInfo();
+    isHighMemory = memoryInfo.usage_percent > threshold_percent;
+
+    if isHighMemory
+        fprintf('Warning: High memory usage detected: %.1f%%\n', memoryInfo.usage_percent);
+    end
+
+catch
+    isHighMemory = false;
+end
+end
 
 % Helper function to generate random coefficients
 function coefficients = generateRandomCoefficients(num_coefficients)
@@ -4031,9 +4112,18 @@ for batch_idx = start_batch:num_batches
     restoreWorkspace(initial_vars);
     java.lang.System.gc();  % Force garbage collection
 
-    % Memory monitoring disabled for parallel performance
+    % Check memory usage if monitoring is enabled
     if config.enable_memory_monitoring
-        fprintf('Memory monitoring disabled for parallel performance\n');
+        try
+            memoryInfo = getMemoryInfo();
+            fprintf('Memory usage after batch %d: %.1f%%\n', batch_idx, memoryInfo.usage_percent);
+
+            if memoryInfo.usage_percent > 85
+                fprintf('Warning: High memory usage detected. Consider reducing batch size.\n');
+            end
+        catch ME
+            fprintf('Warning: Could not check memory usage: %s\n', ME.message);
+        end
     end
 
     % Save checkpoint if needed
@@ -4329,35 +4419,13 @@ try
 
     [data_table, signal_info] = extractSignalsFromSimOut(simOut, options);
 
-    % ENHANCED: Extract additional Simscape data if enabled
-    if config.use_simscape && isfield(simOut, 'simlog') && ~isempty(simOut.simlog)
-        fprintf('Extracting additional Simscape data...\n');
-        simscape_data = extractSimscapeDataRecursive(simOut.simlog);
-
-        if ~isempty(simscape_data) && width(simscape_data) > 1
-            % Merge Simscape data with main data
-            fprintf('Found %d additional Simscape columns\n', width(simscape_data) - 1);
-
-            % Ensure both tables have the same number of rows
-            if height(simscape_data) == height(data_table)
-                % Merge tables
-                data_table = [data_table, simscape_data(:, 2:end)]; % Skip time column (already exists)
-                fprintf('Merged Simscape data: %d total columns\n', width(data_table));
-            else
-                fprintf('Warning: Row count mismatch - Simscape: %d, Main: %d\n', height(simscape_data), height(data_table));
-            end
-        else
-            fprintf('No additional Simscape data found\n');
-        end
-    end
-
     if isempty(data_table)
         result.error = 'No data extracted from simulation';
         fprintf('No data extracted from simulation output\n');
         return;
     end
 
-    fprintf('Extracted %d rows of data with %d total columns\n', height(data_table), width(data_table));
+    fprintf('Extracted %d rows of data\n', height(data_table));
 
     % Resample data to desired frequency if specified
     if isfield(config, 'sample_rate') && ~isempty(config.sample_rate) && config.sample_rate > 0
@@ -5109,42 +5177,21 @@ try
         return;
     end
 
-    % OPTIMIZED THREE-PASS ALGORITHM with proper preallocation
-    fprintf('Using optimized 3-pass algorithm with preallocation...\n');
+    % THREE-PASS ALGORITHM to preserve ALL columns (union approach)
+    fprintf('Using 3-pass algorithm to preserve all columns...\n');
 
     % PASS 1: Discover all unique column names across all files
-    fprintf('Pass 1: Discovering columns...\n');
-
-    % Preallocate with estimated size (most trials have similar column counts)
-    estimated_columns = 2000;  % Updated to handle typical 1956 columns with buffer
-    all_unique_columns = cell(estimated_columns, 1);
-    valid_files = cell(length(csv_files), 1);
-    column_count = 0;
-    valid_file_count = 0;
+    all_unique_columns = {};
+    valid_files = {};
 
     for i = 1:length(csv_files)
         file_path = fullfile(config.output_folder, csv_files(i).name);
         try
             trial_data = readtable(file_path);
             if ~isempty(trial_data)
-                valid_file_count = valid_file_count + 1;
-                valid_files{valid_file_count} = file_path;
-
+                valid_files{end+1} = file_path;
                 trial_columns = trial_data.Properties.VariableNames;
-
-                % Add new columns efficiently
-                for j = 1:length(trial_columns)
-                    col_name = trial_columns{j};
-                    if ~ismember(col_name, all_unique_columns(1:column_count))
-                        column_count = column_count + 1;
-                        if column_count > length(all_unique_columns)
-                            % Expand array if needed (rare case)
-                            all_unique_columns = [all_unique_columns; cell(estimated_columns, 1)];
-                        end
-                        all_unique_columns{column_count} = col_name;
-                    end
-                end
-
+                all_unique_columns = union(all_unique_columns, trial_columns);
                 fprintf('  Pass 1 - %s: %d columns found\n', csv_files(i).name, length(trial_columns));
             end
         catch ME
@@ -5152,102 +5199,72 @@ try
         end
     end
 
-    % Trim arrays to actual size
-    all_unique_columns = all_unique_columns(1:column_count);
-    valid_files = valid_files(1:valid_file_count);
-
     fprintf('  Total unique columns discovered: %d\n', length(all_unique_columns));
-    fprintf('  Valid files found: %d\n', valid_file_count);
 
     % PASS 2: Standardize each trial to have all columns (with NaN for missing)
-    fprintf('Pass 2: Standardizing trials...\n');
+    standardized_tables = {};
 
-    % Preallocate standardized tables array
-    standardized_tables = cell(valid_file_count, 1);
-
-    for i = 1:valid_file_count
+    for i = 1:length(valid_files)
         file_path = valid_files{i};
         [~, filename, ~] = fileparts(file_path);
 
         try
             trial_data = readtable(file_path);
 
-            % Preallocate standardized data table with known size
-            num_rows = height(trial_data);
+            % Create standardized table with all columns
             standardized_data = table();
-
-            % Preallocate all columns at once for efficiency
             for col = 1:length(all_unique_columns)
                 col_name = all_unique_columns{col};
                 if ismember(col_name, trial_data.Properties.VariableNames)
                     standardized_data.(col_name) = trial_data.(col_name);
                 else
-                    % Fill missing column with NaN - preallocate entire column
-                    standardized_data.(col_name) = NaN(num_rows, 1);
+                    % Fill missing column with NaN
+                    standardized_data.(col_name) = NaN(height(trial_data), 1);
                 end
             end
 
-            standardized_tables{i} = standardized_data;
+            standardized_tables{end+1} = standardized_data;
             fprintf('  Pass 2 - %s: standardized to %d columns\n', filename, width(standardized_data));
 
         catch ME
             warning('Failed to standardize %s: %s', filename, ME.message);
-            standardized_tables{i} = [];  % Mark as failed
         end
     end
 
-    % PASS 3: Concatenate all standardized tables efficiently
-    fprintf('Pass 3: Concatenating data...\n');
-
-    % Remove failed trials
-    valid_tables = standardized_tables(~cellfun(@isempty, standardized_tables));
-
-    if isempty(valid_tables)
-        warning('No valid tables to concatenate');
-        return;
-    end
-
-    % Preallocate master data with known dimensions
-    total_rows = sum(cellfun(@height, valid_tables));
-    master_data = table();
-
-    % Preallocate all columns in master table
-    for col = 1:length(all_unique_columns)
-        col_name = all_unique_columns{col};
-        master_data.(col_name) = NaN(total_rows, 1);
-    end
-
-    % Fill master table efficiently
-    current_row = 1;
-    for i = 1:length(valid_tables)
-        trial_data = valid_tables{i};
-        num_rows = height(trial_data);
-
-        % Copy data for all columns
-        for col = 1:length(all_unique_columns)
-            col_name = all_unique_columns{col};
-            if ismember(col_name, trial_data.Properties.VariableNames)
-                master_data.(col_name)(current_row:current_row+num_rows-1) = trial_data.(col_name);
-            end
+    % PASS 3: Concatenate all standardized tables
+    master_data = [];
+    for i = 1:length(standardized_tables)
+        if isempty(master_data)
+            master_data = standardized_tables{i};
+        else
+            master_data = [master_data; standardized_tables{i}];
         end
-
-        current_row = current_row + num_rows;
     end
 
-    % Save master dataset
-    master_file = fullfile(config.output_folder, 'master_dataset.csv');
-    writetable(master_data, master_file);
+    fprintf('✅ 3-pass compilation complete - preserved ALL %d columns!\n', width(master_data));
 
-    fprintf('Master dataset saved: %d rows, %d columns\n', height(master_data), width(master_data));
-    if width(master_data) >= 1956
-        fprintf('Target 1956 columns achieved: YES\n');
-    else
-        fprintf('Target 1956 columns achieved: NO\n');
+    if ~isempty(master_data)
+        % Save master dataset
+        timestamp = datestr(now, 'yyyymmdd_HHMMSS');
+        master_filename = sprintf('master_dataset_%s.csv', timestamp);
+        master_path = fullfile(config.output_folder, master_filename);
+
+        writetable(master_data, master_path);
+        fprintf('Master dataset saved: %s\n', master_filename);
+        fprintf('  Total rows: %d\n', height(master_data));
+        fprintf('  Total columns: %d\n', width(master_data));
+
+        % Also save as MAT file if requested
+        if config.file_format == 2 || config.file_format == 3
+            mat_filename = sprintf('master_dataset_%s.mat', timestamp);
+            mat_path = fullfile(config.output_folder, mat_filename);
+            save(mat_path, 'master_data', 'config');
+            fprintf('Master dataset saved as MAT: %s\n', mat_filename);
+        end
     end
 
 catch ME
     fprintf('Error compiling dataset: %s\n', ME.message);
-    rethrow(ME);
 end
 end
 
@@ -5285,8 +5302,54 @@ catch ME
 end
 end
 
-function saveScriptAndSettings(config)
+% Helper function to check if debug output should be shown
+function should_show_debug = shouldShowDebug(handles)
+if ~isfield(handles, 'verbosity_popup')
+    should_show_debug = true; % Default to showing if no verbosity control
+    return;
+end
+
+verbosity_options = {'Normal', 'Silent', 'Verbose', 'Debug'};
+verbosity_idx = get(handles.verbosity_popup, 'Value');
+if verbosity_idx <= length(verbosity_options)
+    verbosity_level = verbosity_options{verbosity_idx};
+else
+    verbosity_level = 'Normal';
+end
+
+% Only show debug output for Debug verbosity level
+should_show_debug = strcmp(verbosity_level, 'Debug');
+end
+
+function resetGUIState(handles)
+% Reset GUI state for next run
+try
+    % Reset running state
+    handles.is_running = false;
+    handles.is_paused = false;
+    handles.should_stop = false;
+
+    % Reset button states
+    set(handles.play_pause_button, 'Enable', 'on', 'String', 'Start');
+    set(handles.stop_button, 'Enable', 'off');
+
+    % Clear checkpoint data
+    handles.checkpoint_data = struct();
+
+    % Update status
+    set(handles.status_text, 'String', 'Status: Ready');
+    set(handles.progress_text, 'String', 'Ready to start');
+
+    % Store updated handles
+    guidata(handles.fig, handles);
+
+catch ME
+    fprintf('Warning: Could not reset GUI state: %s\n', ME.message);
+end
+end
+
 % Save script and settings for reproducibility
+function saveScriptAndSettings(config)
 try
     % Create timestamped filename
     timestamp = datestr(now, 'yyyymmdd_HHMMSS');
@@ -5445,11 +5508,92 @@ catch ME
 end
 end
 
-function result = logical2str(value)
-% Helper function to convert logical to string
-if value
-    result = 'YES';
-else
-    result = 'NO';
+function updatePreviewTable(~, ~)
+% Update the preview table based on current checkbox selections
+handles = guidata(gcbf);
+
+try
+    % Get current checkbox states
+    calculate_work = get(handles.calculate_work_checkbox, 'Value');
+    calculate_power = get(handles.calculate_power_checkbox, 'Value');
+    calculate_joint_torque_impulse = get(handles.calculate_joint_torque_impulse_checkbox, 'Value');
+    calculate_applied_torque_impulse = get(handles.calculate_applied_torque_impulse_checkbox, 'Value');
+    calculate_total_angular_impulse = get(handles.calculate_total_angular_impulse_checkbox, 'Value');
+    calculate_linear_impulse = get(handles.calculate_linear_impulse_checkbox, 'Value');
+    calculate_proximal_on_distal = get(handles.calculate_proximal_on_distal_checkbox, 'Value');
+    calculate_distal_on_proximal = get(handles.calculate_distal_on_proximal_checkbox, 'Value');
+
+    % Create updated preview data
+    preview_data = {};
+
+    % Define joint names and their ends
+    joints = {'Shoulder', 'Elbow', 'Wrist', 'Scapula', 'Spine', 'Torso', 'Hip'};
+    ends = {'Proximal', 'Distal', 'Total'};
+
+    % Work and Power signals
+    if calculate_work
+        preview_data{end+1, 1} = 'Work';
+        preview_data{end, 2} = 'All';
+        preview_data{end, 3} = 'N/A';
+        preview_data{end, 4} = 'Integral of power over time';
+    end
+
+    if calculate_power
+        preview_data{end+1, 1} = 'Power';
+        preview_data{end, 2} = 'All';
+        preview_data{end, 3} = 'N/A';
+        preview_data{end, 4} = 'Torque × angular velocity';
+    end
+
+    % Angular Impulse signals
+    if calculate_joint_torque_impulse || calculate_applied_torque_impulse || calculate_total_angular_impulse
+        for i = 1:length(joints)
+            joint = joints{i};
+            for j = 1:length(ends)
+                end_name = ends{j};
+                preview_data{end+1, 1} = 'Angular Impulse';
+                preview_data{end, 2} = joint;
+                preview_data{end, 3} = end_name;
+                preview_data{end, 4} = sprintf('Angular impulse at %s %s end', joint, lower(end_name));
+            end
+        end
+    end
+
+    % Linear Impulse signals
+    if calculate_linear_impulse
+        for i = 1:length(joints)
+            joint = joints{i};
+            for j = 1:length(ends)
+                end_name = ends{j};
+                preview_data{end+1, 1} = 'Linear Impulse';
+                preview_data{end, 2} = joint;
+                preview_data{end, 3} = end_name;
+                preview_data{end, 4} = sprintf('Linear impulse at %s %s end', joint, lower(end_name));
+            end
+        end
+    end
+
+    % Moments of Force signals
+    if calculate_proximal_on_distal
+        preview_data{end+1, 1} = 'Moment of Force';
+        preview_data{end, 2} = 'All';
+        preview_data{end, 3} = 'Proximal→Distal';
+        preview_data{end, 4} = 'Moments of force from proximal on distal';
+    end
+
+    if calculate_distal_on_proximal
+        preview_data{end+1, 1} = 'Moment of Force';
+        preview_data{end, 2} = 'All';
+        preview_data{end, 3} = 'Distal→Proximal';
+        preview_data{end, 4} = 'Moments of force from distal on proximal';
+    end
+
+    % Update the table
+    if isfield(handles, 'signals_preview_table') && ishandle(handles.signals_preview_table)
+        set(handles.signals_preview_table, 'Data', preview_data);
+    end
+
+catch ME
+    fprintf('Error updating preview table: %s\n', ME.message);
 end
 end

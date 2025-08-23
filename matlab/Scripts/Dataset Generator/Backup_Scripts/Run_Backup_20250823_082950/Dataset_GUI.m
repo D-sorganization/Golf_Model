@@ -5445,7 +5445,7 @@ catch ME
 end
 end
 
-function result = logical2str(value)
+function logical2str(value)
 % Helper function to convert logical to string
 if value
     result = 'YES';
