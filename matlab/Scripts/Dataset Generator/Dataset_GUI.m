@@ -2,6 +2,9 @@ function Dataset_GUI()
 % Forward Dynamics Dataset Generator - Modern GUI with tabbed interface
 % Features: Tabbed structure, pause/resume, post-processing, multiple export formats
 
+% Clean up MATLAB path to remove any backup script paths that might interfere
+cleanup_matlab_path();
+
 % Professional color scheme - sharp, vibrant tones
 colors = struct();
 colors.primary = [0.2, 0.4, 0.8];        % Sharp blue
