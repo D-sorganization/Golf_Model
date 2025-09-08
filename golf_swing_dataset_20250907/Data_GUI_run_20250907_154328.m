@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-09-07 15:43:28
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 2
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: YES
+% Logsout Dataset: YES
+% Simscape Results: YES
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Repositories\Golf_Model\golf_swing_dataset_20250907
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: OGLaptop
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 2 trials x 189 coefficients
+% First trial coefficients (first 10): 31.470, 40.580, -37.300, 41.340, 13.240, -40.250, -22.150, 4.690, 45.750, 46.490
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 function Dataset_GUI()
 % Forward Dynamics Dataset Generator - Modern GUI with tabbed interface
 % Features: Tabbed structure, pause/resume, post-processing, multiple export formats
@@ -310,7 +353,91 @@ handles = createCalculationOptionsContent(middlePanel, handles);
 handles = createProgressResultsContent(rightPanel, handles);
 end
 
-% REMOVED: createFileSelectionContent function - was unused
+function handles = createFileSelectionContent(parent, handles)
+% Create file selection interface
+colors = handles.colors;
+
+% Folder selection
+uicontrol('Parent', parent, ...
+    'Style', 'text', ...
+    'String', 'Data Folder:', ...
+    'Units', 'normalized', ...
+    'Position', [0.05, 0.95, 0.9, 0.04], ...
+    'FontWeight', 'bold', ...
+    'HorizontalAlignment', 'left', ...
+    'BackgroundColor', colors.panel);
+
+handles.folder_path_text = uicontrol('Parent', parent, ...
+    'Style', 'text', ...
+    'String', 'No folder selected', ...
+    'Units', 'normalized', ...
+    'Position', [0.05, 0.91, 0.7, 0.03], ...
+    'HorizontalAlignment', 'left', ...
+    'BackgroundColor', colors.panel, ...
+    'ForegroundColor', colors.textLight);
+
+handles.browse_folder_button = uicontrol('Parent', parent, ...
+    'Style', 'pushbutton', ...
+    'String', 'Browse', ...
+    'Units', 'normalized', ...
+    'Position', [0.77, 0.91, 0.18, 0.03], ...
+    'BackgroundColor', colors.lightGrey, ...
+    'ForegroundColor', colors.text, ...
+    'FontName', 'Arial', ...
+    'FontSize', 9, ...
+    'Callback', @browseDataFolder);
+
+% File selection mode
+uicontrol('Parent', parent, ...
+    'Style', 'text', ...
+    'String', 'Selection Mode:', ...
+    'Units', 'normalized', ...
+    'Position', [0.05, 0.87, 0.9, 0.04], ...
+    'FontWeight', 'bold', ...
+    'HorizontalAlignment', 'left', ...
+    'BackgroundColor', colors.panel);
+
+handles.selection_mode_group = uibuttongroup('Parent', parent, ...
+    'Units', 'normalized', ...
+    'Position', [0.05, 0.82, 0.9, 0.05], ...
+    'BackgroundColor', colors.panel, ...
+    'SelectionChangedFcn', @selectionModeChanged);
+
+handles.all_files_radio = uicontrol('Parent', handles.selection_mode_group, ...
+    'Style', 'radiobutton', ...
+    'String', 'All files in folder', ...
+    'Units', 'normalized', ...
+    'Position', [0.1, 0.6, 0.8, 0.3], ...
+    'BackgroundColor', colors.panel);
+
+handles.select_files_radio = uicontrol('Parent', handles.selection_mode_group, ...
+    'Style', 'radiobutton', ...
+    'String', 'Select specific files', ...
+    'Units', 'normalized', ...
+    'Position', [0.1, 0.1, 0.8, 0.3], ...
+    'BackgroundColor', colors.panel);
+
+% File list
+uicontrol('Parent', parent, ...
+    'Style', 'text', ...
+    'String', 'Selected Files:', ...
+    'Units', 'normalized', ...
+    'Position', [0.05, 0.76, 0.9, 0.04], ...
+    'FontWeight', 'bold', ...
+    'HorizontalAlignment', 'left', ...
+    'BackgroundColor', colors.panel);
+
+handles.file_listbox = uicontrol('Parent', parent, ...
+    'Style', 'listbox', ...
+    'Units', 'normalized', ...
+    'Position', [0.05, 0.66, 0.9, 0.1], ...
+    'BackgroundColor', 'white', ...
+    'Max', 2, ... % Allow multiple selection
+    'Min', 0);
+
+% Set default selection
+set(handles.selection_mode_group, 'SelectedObject', handles.all_files_radio);
+end
 
 function handles = createCalculationOptionsContent(parent, handles)
 % Create calculation options interface - completely redesigned from scratch
@@ -1518,7 +1645,11 @@ set(handles.log_text, 'Value', length(updated_log));
 drawnow;
 end
 
-% REMOVED: updateProgressText function - was unused
+function updateProgressText(handles, message)
+% Update progress text
+set(handles.progress_text, 'String', message);
+drawnow;
+end
 
 % Include all the existing functions from the original Data_GUI.m
 % (These would be copied from the original file)
@@ -3662,6 +3793,7 @@ for batch_idx = start_batch:num_batches
             };
 
         batch_simOuts = parsim(batch_simInputs, ...
+            'TransferBaseWorkspaceVariables', 'on', ...
             'AttachedFiles', attached_files, ...
             'StopOnError', 'off');  % Don't stop on individual simulation errors
 
@@ -4059,7 +4191,56 @@ end
 
 % Add missing critical functions from original Data_GUI.m
 
-% REMOVED: prepareSimulationInputs function - was unused
+function simInputs = prepareSimulationInputs(config, handles)
+% Load the Simulink model
+model_name = config.model_name;
+if ~bdIsLoaded(model_name)
+    try
+        load_system(model_name);
+    catch ME
+        error('Could not load Simulink model "%s": %s', model_name, ME.message);
+    end
+end
+
+% Create array of SimulationInput objects
+simInputs = Simulink.SimulationInput.empty(0, config.num_simulations);
+
+for trial = 1:config.num_simulations
+    % Get coefficients for this trial
+    if trial <= size(config.coefficient_values, 1)
+        trial_coefficients = config.coefficient_values(trial, :);
+    else
+        % Generate random coefficients for additional trials
+        trial_coefficients = generateRandomCoefficients(size(config.coefficient_values, 2));
+    end
+
+    % Ensure coefficients are numeric (fix for parallel execution)
+    if iscell(trial_coefficients)
+        trial_coefficients = cell2mat(trial_coefficients);
+    end
+    trial_coefficients = double(trial_coefficients);  % Ensure double precision
+
+    % Create SimulationInput object
+    simIn = Simulink.SimulationInput(model_name);
+
+    % Set simulation parameters safely
+    simIn = setModelParameters(simIn, config, handles);
+
+    % Set polynomial coefficients
+    try
+        simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
+    catch ME
+        fprintf('Warning: Could not set polynomial coefficients: %s\n', ME.message);
+    end
+
+    % Load input file if specified
+    if ~isempty(config.input_file) && exist(config.input_file, 'file')
+        simIn = loadInputFile(simIn, config.input_file);
+    end
+
+    simInputs(trial) = simIn;
+end
+end
 
 function simIn = setModelParameters(simIn, config, ~)
 % External function for setting model parameters - can be used in parallel processing
@@ -4226,7 +4407,26 @@ for joint_idx = 1:length(param_info.joint_names)
 end
 end
 
-% REMOVED: loadInputFile function - was unused
+function simIn = loadInputFile(simIn, input_file)
+try
+    % Load input data
+    input_data = load(input_file);
+
+    % Get field names and set as model variables
+    field_names = fieldnames(input_data);
+    for i = 1:length(field_names)
+        field_name = field_names{i};
+        field_value = input_data.(field_name);
+
+        % Only set scalar values or small arrays
+        if isscalar(field_value) || (isnumeric(field_value) && numel(field_value) <= 100)
+            simIn = simIn.setVariable(field_name, field_value);
+        end
+    end
+catch ME
+    warning('Could not load input file %s: %s', input_file, ME.message);
+end
+end
 
 function result = processSimulationOutput(trial_num, config, simOut, capture_workspace)
 result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);

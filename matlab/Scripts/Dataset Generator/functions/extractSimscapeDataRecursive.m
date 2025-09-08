@@ -78,17 +78,8 @@ try
     [time_data, all_signals] = traverseSimlogNode(simlog, '');
 
     if isempty(time_data) || isempty(all_signals)
-        fprintf('⚠️  Primary method found no data. Trying fallback methods...\n');
-
-        % FALLBACK METHOD: Simple property inspection
-        [time_data, all_signals] = fallbackSimlogExtraction(simlog);
-
-        if isempty(time_data) || isempty(all_signals)
-            fprintf('❌ All extraction methods failed. No usable Simscape data found.\n');
-            return;
-        else
-            fprintf('✅ Fallback method found data!\n');
-        end
+        fprintf('❌ Primary extraction method failed. No usable Simscape data found.\n');
+        return;
     else
         fprintf('✅ Primary method found data!\n');
     end

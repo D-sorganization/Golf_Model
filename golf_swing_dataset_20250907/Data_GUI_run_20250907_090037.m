@@ -1,3 +1,46 @@
+% GOLF SWING DATA GENERATION RUN RECORD
+% Generated: 2025-09-07 09:00:37
+% This file contains the exact script and settings used for this data generation run
+%
+% =================================================================
+% RUN CONFIGURATION SETTINGS
+% =================================================================
+%
+% SIMULATION PARAMETERS:
+% Number of trials: 2
+% Simulation time: 0.300 seconds
+% Sample rate: 100.0 Hz
+%
+% TORQUE CONFIGURATION:
+% Torque scenario: Variable Torque
+% Coefficient range: 50.000
+%
+% MODEL INFORMATION:
+% Model name: GolfSwing3D_Kinetic
+% Model path: Model/GolfSwing3D_Kinetic.slx
+%
+% DATA SOURCES ENABLED:
+% CombinedSignalBus: YES
+% Logsout Dataset: YES
+% Simscape Results: YES
+%
+% OUTPUT SETTINGS:
+% Output folder: C:\Users\diete\Repositories\Golf_Model\golf_swing_dataset_20250907
+% File format: CSV Files
+%
+% SYSTEM INFORMATION:
+% MATLAB version: 25.1.0.2943329 (R2025a)
+% Computer: PCWIN64
+% Hostname: OGLaptop
+%
+% POLYNOMIAL COEFFICIENTS:
+% Coefficient matrix size: 2 trials x 189 coefficients
+% First trial coefficients (first 10): 31.470, 40.580, -37.300, 41.340, 13.240, -40.250, -22.150, 4.690, 45.750, 46.490
+%
+% =================================================================
+% END OF CONFIGURATION - ORIGINAL SCRIPT FOLLOWS
+% =================================================================
+
 function Dataset_GUI()
 % Forward Dynamics Dataset Generator - Modern GUI with tabbed interface
 % Features: Tabbed structure, pause/resume, post-processing, multiple export formats
@@ -310,7 +353,91 @@ handles = createCalculationOptionsContent(middlePanel, handles);
 handles = createProgressResultsContent(rightPanel, handles);
 end
 
-% REMOVED: createFileSelectionContent function - was unused
+function handles = createFileSelectionContent(parent, handles)
+% Create file selection interface
+colors = handles.colors;
+
+% Folder selection
+uicontrol('Parent', parent, ...
+    'Style', 'text', ...
+    'String', 'Data Folder:', ...
+    'Units', 'normalized', ...
+    'Position', [0.05, 0.95, 0.9, 0.04], ...
+    'FontWeight', 'bold', ...
+    'HorizontalAlignment', 'left', ...
+    'BackgroundColor', colors.panel);
+
+handles.folder_path_text = uicontrol('Parent', parent, ...
+    'Style', 'text', ...
+    'String', 'No folder selected', ...
+    'Units', 'normalized', ...
+    'Position', [0.05, 0.91, 0.7, 0.03], ...
+    'HorizontalAlignment', 'left', ...
+    'BackgroundColor', colors.panel, ...
+    'ForegroundColor', colors.textLight);
+
+handles.browse_folder_button = uicontrol('Parent', parent, ...
+    'Style', 'pushbutton', ...
+    'String', 'Browse', ...
+    'Units', 'normalized', ...
+    'Position', [0.77, 0.91, 0.18, 0.03], ...
+    'BackgroundColor', colors.lightGrey, ...
+    'ForegroundColor', colors.text, ...
+    'FontName', 'Arial', ...
+    'FontSize', 9, ...
+    'Callback', @browseDataFolder);
+
+% File selection mode
+uicontrol('Parent', parent, ...
+    'Style', 'text', ...
+    'String', 'Selection Mode:', ...
+    'Units', 'normalized', ...
+    'Position', [0.05, 0.87, 0.9, 0.04], ...
+    'FontWeight', 'bold', ...
+    'HorizontalAlignment', 'left', ...
+    'BackgroundColor', colors.panel);
+
+handles.selection_mode_group = uibuttongroup('Parent', parent, ...
+    'Units', 'normalized', ...
+    'Position', [0.05, 0.82, 0.9, 0.05], ...
+    'BackgroundColor', colors.panel, ...
+    'SelectionChangedFcn', @selectionModeChanged);
+
+handles.all_files_radio = uicontrol('Parent', handles.selection_mode_group, ...
+    'Style', 'radiobutton', ...
+    'String', 'All files in folder', ...
+    'Units', 'normalized', ...
+    'Position', [0.1, 0.6, 0.8, 0.3], ...
+    'BackgroundColor', colors.panel);
+
+handles.select_files_radio = uicontrol('Parent', handles.selection_mode_group, ...
+    'Style', 'radiobutton', ...
+    'String', 'Select specific files', ...
+    'Units', 'normalized', ...
+    'Position', [0.1, 0.1, 0.8, 0.3], ...
+    'BackgroundColor', colors.panel);
+
+% File list
+uicontrol('Parent', parent, ...
+    'Style', 'text', ...
+    'String', 'Selected Files:', ...
+    'Units', 'normalized', ...
+    'Position', [0.05, 0.76, 0.9, 0.04], ...
+    'FontWeight', 'bold', ...
+    'HorizontalAlignment', 'left', ...
+    'BackgroundColor', colors.panel);
+
+handles.file_listbox = uicontrol('Parent', parent, ...
+    'Style', 'listbox', ...
+    'Units', 'normalized', ...
+    'Position', [0.05, 0.66, 0.9, 0.1], ...
+    'BackgroundColor', 'white', ...
+    'Max', 2, ... % Allow multiple selection
+    'Min', 0);
+
+% Set default selection
+set(handles.selection_mode_group, 'SelectedObject', handles.all_files_radio);
+end
 
 function handles = createCalculationOptionsContent(parent, handles)
 % Create calculation options interface - completely redesigned from scratch
@@ -1468,7 +1595,6 @@ end
 function feature_list = updateFeatureList(~, ~)
 % Update feature list with new data
 % This is a placeholder - implement actual feature extraction
-feature_list = struct(); % Return empty struct as placeholder
 end
 
 function exportFeatureList(feature_list, output_folder)
@@ -1518,7 +1644,11 @@ set(handles.log_text, 'Value', length(updated_log));
 drawnow;
 end
 
-% REMOVED: updateProgressText function - was unused
+function updateProgressText(handles, message)
+% Update progress text
+set(handles.progress_text, 'String', message);
+drawnow;
+end
 
 % Include all the existing functions from the original Data_GUI.m
 % (These would be copied from the original file)
@@ -1659,7 +1789,7 @@ handles = guidata(gcbf);
 [filename, pathname] = uiputfile('*.mat', 'Save Configuration');
 if filename ~= 0
     config = struct();
-    config.timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss'));
+    config.timestamp = datestr(now);
 
     % Save only essential configuration data, not the entire handles structure
     config.input_file = get(handles.input_file_edit, 'String');
@@ -1763,6 +1893,7 @@ panel = uipanel('Parent', parent, ...
 % Layout
 rowHeight = 0.030;  % Slightly smaller to fit more elements
 labelWidth = 0.22;
+fieldSpacing = 0.02;
 textBoxStart = 0.20;  % Move text boxes slightly to the right to avoid cutting off titles
 textBoxWidth = 0.48;  % Consistent width
 y = 0.95;  % Start higher to fit more elements
@@ -1868,7 +1999,7 @@ uicontrol('Parent', panel, ...
 
 handles.folder_name_edit = uicontrol('Parent', panel, ...
     'Style', 'edit', ...
-    'String', sprintf('golf_swing_dataset_%s', char(datetime('now', 'Format', 'yyyyMMdd'))), ...
+    'String', sprintf('golf_swing_dataset_%s', datestr(now, 'yyyymmdd')), ...
     'Units', 'normalized', ...
     'Position', [textBoxStart, y, textBoxWidth, rowHeight], ...
     'BackgroundColor', 'white', ...
@@ -2270,11 +2401,11 @@ handles.selected_input_file = '';
 
 % Try to find default model in multiple locations
 possible_paths = {
-    'Model/GolfSwing3D_Kinetic.slx', ...
-    'GolfSwing3D_Kinetic.slx', ...
-    fullfile(pwd, 'Model', 'GolfSwing3D_Kinetic.slx'), ...
-    fullfile(pwd, 'GolfSwing3D_Kinetic.slx'), ...
-    which('GolfSwing3D_Kinetic.slx'), ...
+    'Model/GolfSwing3D_Kinetic.slx',
+    'GolfSwing3D_Kinetic.slx',
+    fullfile(pwd, 'Model', 'GolfSwing3D_Kinetic.slx'),
+    fullfile(pwd, 'GolfSwing3D_Kinetic.slx'),
+    which('GolfSwing3D_Kinetic.slx'),
     which('GolfSwing3D_Kinetic')
     };
 
@@ -2535,11 +2666,11 @@ buttonSpacing = 0.01;
 
 % Button configuration
 buttons = {
-    {'Reset', 'reset_coeffs', colors.lightGrey, @resetCoefficientsToGenerated}, ...
-    {'Apply Row', 'apply_row', colors.lightGrey, @applyRowToAll}, ...
-    {'Export', 'export', colors.lightGrey, @exportCoefficientsToCSV}, ...
-    {'Import', 'import', colors.lightGrey, @importCoefficientsFromCSV}, ...
-    {'Save Set', 'save_scenario', colors.lightGrey, @saveScenario}, ...
+    {'Reset', 'reset_coeffs', colors.lightGrey, @resetCoefficientsToGenerated},
+    {'Apply Row', 'apply_row', colors.lightGrey, @applyRowToAll},
+    {'Export', 'export', colors.lightGrey, @exportCoefficientsToCSV},
+    {'Import', 'import', colors.lightGrey, @importCoefficientsFromCSV},
+    {'Save Set', 'save_scenario', colors.lightGrey, @saveScenario},
     {'Load Set', 'load_scenario', colors.lightGrey, @loadScenario}
     };
 
@@ -2559,23 +2690,11 @@ for i = 1:length(buttons)
 end
 
 % Coefficients table
-% Preallocate arrays for performance
-total_cols = 1; % Start with 'Trial' column
-for i = 1:length(param_info.joint_names)
-    total_cols = total_cols + length(param_info.joint_coeffs{i});
-end
-
-col_names = cell(1, total_cols);
-col_widths = cell(1, total_cols);
-col_editable = false(1, total_cols);
-
-% Initialize first column
-col_names{1} = 'Trial';
-col_widths{1} = 50;
-col_editable(1) = false;
+col_names = {'Trial'};
+col_widths = {50};
+col_editable = false;
 
 % Add columns for joints
-col_idx = 2;
 for i = 1:length(param_info.joint_names)
     joint_name = param_info.joint_names{i};
     coeffs = param_info.joint_coeffs{i};
@@ -2583,10 +2702,9 @@ for i = 1:length(param_info.joint_names)
 
     for j = 1:length(coeffs)
         coeff = coeffs(j);
-        col_names{col_idx} = sprintf('%s_%s', short_name, coeff);
-        col_widths{col_idx} = 55;
-        col_editable(col_idx) = true;
-        col_idx = col_idx + 1;
+        col_names{end+1} = sprintf('%s_%s', short_name, coeff);
+        col_widths{end+1} = 55;
+        col_editable(end+1) = true;
     end
 end
 
@@ -2619,6 +2737,7 @@ function autoUpdateSummary(~, ~, fig)
 if nargin < 3 || isempty(fig)
     fig = gcbf;
 end
+handles = guidata(fig);
 
 % Update both summary and coefficients preview
 updatePreview([], [], fig);
@@ -2643,7 +2762,7 @@ autoUpdateSummary([], [], gcbf);
 guidata(handles.fig, handles);
 end
 
-function browseOutputFolder(~, ~)
+function browseOutputFolder(src, ~)
 handles = guidata(gcbf);
 folder = uigetdir(get(handles.output_folder_edit, 'String'), 'Select Output Folder');
 if folder ~= 0
@@ -2803,7 +2922,7 @@ end
 end
 
 % Joint Editor callbacks
-function updateJointCoefficients(~, ~)
+function updateJointCoefficients(src, evt)
 handles = guidata(gcbf);
 selected_idx = get(handles.joint_selector, 'Value');
 joint_names = get(handles.joint_selector, 'String');
@@ -2816,7 +2935,7 @@ set(handles.joint_status, 'String', sprintf('Ready - %s selected', joint_names{s
 guidata(handles.fig, handles);
 end
 
-function updateTrialSelectionMode(~, ~)
+function updateTrialSelectionMode(src, evt)
 handles = guidata(gcbf);
 selection_idx = get(handles.trial_selection_popup, 'Value');
 
@@ -2829,7 +2948,7 @@ end
 guidata(handles.fig, handles);
 end
 
-function validateCoefficientInput(src, ~)
+function validateCoefficientInput(src, evt)
 value = get(src, 'String');
 num_value = str2double(value);
 
@@ -2841,7 +2960,7 @@ else
 end
 end
 
-function applyJointToTable(~, ~)
+function applyJointToTable(src, evt)
 handles = guidata(gcbf);
 
 try
@@ -2897,7 +3016,7 @@ catch ME
 end
 end
 
-function loadJointFromTable(~, ~, fig)
+function loadJointFromTable(src, evt, fig)
 if nargin < 3
     fig = gcbf;
 end
@@ -2948,7 +3067,7 @@ end
 end
 
 % Coefficients table callbacks
-function resetCoefficientsToGenerated(~, ~)
+function resetCoefficientsToGenerated(src, evt)
 handles = guidata(gcbf);
 
 if isfield(handles, 'original_coefficients_data')
@@ -2995,7 +3114,7 @@ if evt.Column > 1 % Only coefficient columns are editable
 end
 end
 
-function applyRowToAll(~, ~)
+function applyRowToAll(src, evt)
 handles = guidata(gcbf);
 
 table_data = get(handles.coefficients_table, 'Data');
@@ -3025,7 +3144,7 @@ if ~isempty(answer)
 end
 end
 
-function exportCoefficientsToCSV(~, ~)
+function exportCoefficientsToCSV(src, evt)
 handles = guidata(gcbf);
 
 [filename, pathname] = uiputfile('*.csv', 'Save Coefficients As');
@@ -3047,7 +3166,7 @@ if filename ~= 0
 end
 end
 
-function importCoefficientsFromCSV(~, ~)
+function importCoefficientsFromCSV(src, evt)
 handles = guidata(gcbf);
 
 [filename, pathname] = uigetfile('*.csv', 'Select Coefficients File');
@@ -3068,7 +3187,7 @@ if filename ~= 0
 end
 end
 
-function saveScenario(~, ~)
+function saveScenario(src, evt)
 handles = guidata(gcbf);
 
 prompt = 'Enter name for this scenario:';
@@ -3093,7 +3212,7 @@ if ~isempty(answer)
 end
 end
 
-function loadScenario(~, ~)
+function loadScenario(src, evt)
 handles = guidata(gcbf);
 
 [filename, pathname] = uigetfile('scenario_*.mat', 'Select Scenario File');
@@ -3118,7 +3237,7 @@ if filename ~= 0
 end
 end
 
-function searchCoefficients(~, ~)
+function searchCoefficients(src, evt)
 handles = guidata(gcbf);
 search_term = lower(get(handles.search_edit, 'String'));
 
@@ -3130,20 +3249,12 @@ end
 col_names = get(handles.coefficients_table, 'ColumnName');
 
 % Find matching columns
-% Preallocate array for performance
-max_cols = length(col_names) - 1; % Skip trial column
-matching_cols = zeros(1, max_cols);
-match_count = 0;
-
+matching_cols = [];
 for i = 2:length(col_names) % Skip trial column
     if contains(lower(col_names{i}), search_term)
-        match_count = match_count + 1;
-        matching_cols(match_count) = i;
+        matching_cols(end+1) = i;
     end
 end
-
-% Trim array to actual size
-matching_cols = matching_cols(1:match_count);
 
 if ~isempty(matching_cols)
     msgbox(sprintf('Found %d matching columns', length(matching_cols)), 'Search Results');
@@ -3153,13 +3264,13 @@ else
 end
 end
 
-function clearSearch(~, ~)
+function clearSearch(src, evt)
 handles = guidata(gcbf);
 set(handles.search_edit, 'String', '');
 end
 
 % Additional helper functions
-function selectSimulinkModel(~, ~)
+function selectSimulinkModel(src, evt)
 handles = guidata(gcbf);
 
 % Get list of open models
@@ -3167,17 +3278,14 @@ open_models = find_system('type', 'block_diagram');
 
 if isempty(open_models)
     % No models open, try to find models in the project
-    % Preallocate arrays for performance
-    max_models = 100; % Reasonable upper bound
-    possible_models = cell(1, max_models);
-    possible_paths = cell(1, max_models);
-    model_count = 0;
+    possible_models = {};
+    possible_paths = {};
 
     % Check common locations
     search_paths = {
-        'Model', ...
-        '.', ...
-        fullfile(pwd, 'Model'), ...
+        'Model',
+        '.',
+        fullfile(pwd, 'Model'),
         fullfile(pwd, '..', 'Model')
         };
 
@@ -3188,23 +3296,17 @@ if isempty(open_models)
 
             for j = 1:length(slx_files)
                 model_name = slx_files(j).name(1:end-4); % Remove .slx
-                model_count = model_count + 1;
-                possible_models{model_count} = model_name;
-                possible_paths{model_count} = fullfile(search_paths{i}, slx_files(j).name);
+                possible_models{end+1} = model_name;
+                possible_paths{end+1} = fullfile(search_paths{i}, slx_files(j).name);
             end
 
             for j = 1:length(mdl_files)
                 model_name = mdl_files(j).name(1:end-4); % Remove .mdl
-                model_count = model_count + 1;
-                possible_models{model_count} = model_name;
-                possible_paths{model_count} = fullfile(search_paths{i}, mdl_files(j).name);
+                possible_models{end+1} = model_name;
+                possible_paths{end+1} = fullfile(search_paths{i}, mdl_files(j).name);
             end
         end
     end
-
-    % Trim arrays to actual size
-    possible_models = possible_models(1:model_count);
-    possible_paths = possible_paths(1:model_count);
 
     if isempty(possible_models)
         msgbox('No Simulink models found. Please ensure you have .slx or .mdl files in the Model directory or current directory.', 'No Models Found', 'warn');
@@ -3241,6 +3343,8 @@ end
 end
 
 function clearAllCheckpoints(~, ~)
+handles = guidata(gcbf);
+
 % Find all checkpoint files
 checkpoint_files = dir('checkpoint_*.mat');
 
@@ -3475,8 +3579,7 @@ try
             % Test if the pool is responsive
             try
                 spmd
-                    % Test if pool is responsive
-                    % Just execute a simple operation
+                    test_var = 1;
                 end
                 fprintf('Existing pool is healthy, using it\n');
             catch
@@ -3657,11 +3760,13 @@ for batch_idx = start_batch:num_batches
             'shouldShowNormal.m', ...
             'mergeTables.m', ...
             'logical2str.m', ...
+            'fallbackSimlogExtraction.m', ...
             'extractTimeSeriesData.m', ...
             'extractConstantMatrixData.m'
             };
 
         batch_simOuts = parsim(batch_simInputs, ...
+            'TransferBaseWorkspaceVariables', 'on', ...
             'AttachedFiles', attached_files, ...
             'StopOnError', 'off');  % Don't stop on individual simulation errors
 
@@ -3791,7 +3896,7 @@ for batch_idx = start_batch:num_batches
             checkpoint_data = struct();
             checkpoint_data.completed_trials = successful_trials;
             checkpoint_data.next_batch = batch_idx + 1;
-            checkpoint_data.timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss'));
+            checkpoint_data.timestamp = datestr(now, 'yyyy-mm-dd HH:MM:SS');
             checkpoint_data.batch_idx = batch_idx;
             checkpoint_data.total_batches = num_batches;
 
@@ -4024,7 +4129,7 @@ for batch_idx = start_batch:num_batches
             checkpoint_data = struct();
             checkpoint_data.completed_trials = successful_trials;
             checkpoint_data.next_batch = batch_idx + 1;
-            checkpoint_data.timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss'));
+            checkpoint_data.timestamp = datestr(now, 'yyyy-mm-dd HH:MM:SS');
             checkpoint_data.batch_idx = batch_idx;
             checkpoint_data.total_batches = num_batches;
 
@@ -4059,9 +4164,58 @@ end
 
 % Add missing critical functions from original Data_GUI.m
 
-% REMOVED: prepareSimulationInputs function - was unused
+function simInputs = prepareSimulationInputs(config, handles)
+% Load the Simulink model
+model_name = config.model_name;
+if ~bdIsLoaded(model_name)
+    try
+        load_system(model_name);
+    catch ME
+        error('Could not load Simulink model "%s": %s', model_name, ME.message);
+    end
+end
 
-function simIn = setModelParameters(simIn, config, ~)
+% Create array of SimulationInput objects
+simInputs = Simulink.SimulationInput.empty(0, config.num_simulations);
+
+for trial = 1:config.num_simulations
+    % Get coefficients for this trial
+    if trial <= size(config.coefficient_values, 1)
+        trial_coefficients = config.coefficient_values(trial, :);
+    else
+        % Generate random coefficients for additional trials
+        trial_coefficients = generateRandomCoefficients(size(config.coefficient_values, 2));
+    end
+
+    % Ensure coefficients are numeric (fix for parallel execution)
+    if iscell(trial_coefficients)
+        trial_coefficients = cell2mat(trial_coefficients);
+    end
+    trial_coefficients = double(trial_coefficients);  % Ensure double precision
+
+    % Create SimulationInput object
+    simIn = Simulink.SimulationInput(model_name);
+
+    % Set simulation parameters safely
+    simIn = setModelParameters(simIn, config, handles);
+
+    % Set polynomial coefficients
+    try
+        simIn = setPolynomialCoefficients(simIn, trial_coefficients, config);
+    catch ME
+        fprintf('Warning: Could not set polynomial coefficients: %s\n', ME.message);
+    end
+
+    % Load input file if specified
+    if ~isempty(config.input_file) && exist(config.input_file, 'file')
+        simIn = loadInputFile(simIn, config.input_file);
+    end
+
+    simInputs(trial) = simIn;
+end
+end
+
+function simIn = setModelParameters(simIn, config, handles)
 % External function for setting model parameters - can be used in parallel processing
 % This function accepts config as a parameter instead of relying on handles
 
@@ -4143,7 +4297,7 @@ catch ME
 end
 end
 
-function simIn = setPolynomialCoefficients(simIn, coefficients, ~)
+function simIn = setPolynomialCoefficients(simIn, coefficients, config)
 % Get parameter info for coefficient mapping
 param_info = getPolynomialParameterInfo();
 
@@ -4226,7 +4380,26 @@ for joint_idx = 1:length(param_info.joint_names)
 end
 end
 
-% REMOVED: loadInputFile function - was unused
+function simIn = loadInputFile(simIn, input_file)
+try
+    % Load input data
+    input_data = load(input_file);
+
+    % Get field names and set as model variables
+    field_names = fieldnames(input_data);
+    for i = 1:length(field_names)
+        field_name = field_names{i};
+        field_value = input_data.(field_name);
+
+        % Only set scalar values or small arrays
+        if isscalar(field_value) || (isnumeric(field_value) && numel(field_value) <= 100)
+            simIn = simIn.setVariable(field_name, field_value);
+        end
+    end
+catch ME
+    warning('Could not load input file %s: %s', input_file, ME.message);
+end
+end
 
 function result = processSimulationOutput(trial_num, config, simOut, capture_workspace)
 result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
@@ -4241,7 +4414,7 @@ try
     options.extract_simscape = config.use_simscape;
     options.verbose = false; % Set to true for debugging
 
-    [data_table, ~] = extractSignalsFromSimOut(simOut, options);
+    [data_table, signal_info] = extractSignalsFromSimOut(simOut, options);
 
     % ENHANCED: Extract additional Simscape data if enabled
     if config.use_simscape && isfield(simOut, 'simlog') && ~isempty(simOut.simlog)
@@ -4311,7 +4484,7 @@ try
     end
 
     % Save to file in selected format(s)
-    timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
+    timestamp = datestr(now, 'yyyymmdd_HHMMSS');
     saved_files = {};
 
     % Determine file format from config (handle both field names for compatibility)
@@ -4664,7 +4837,7 @@ try
         end
     end
 
-    if ~isempty(variables)
+    if length(variables) > 0
         fprintf('Adding %d model workspace variables to CSV...\n', length(variables));
     else
         fprintf('No model workspace variables found\n');
@@ -4955,10 +5128,10 @@ catch ME
 end
 end
 
-function backupScripts(~)
+function backupScripts(handles)
 % Create backup of current scripts before generation
 try
-    timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
+    timestamp = datestr(now, 'yyyymmdd_HHMMSS');
     backup_dir = fullfile(pwd, 'Backup_Scripts', sprintf('Run_Backup_%s', timestamp));
 
     if ~exist(backup_dir, 'dir')
@@ -5051,13 +5224,11 @@ try
                     col_name = trial_columns{j};
                     if ~ismember(col_name, all_unique_columns(1:column_count))
                         column_count = column_count + 1;
-                        if column_count <= length(all_unique_columns)
-                            all_unique_columns{column_count} = col_name;
-                        else
-                            % This should not happen with proper estimation
-                            fprintf('Warning: Column count exceeded estimation. Consider increasing estimated_columns.\n');
-                            break;
+                        if column_count > length(all_unique_columns)
+                            % Expand array if needed (rare case)
+                            all_unique_columns = [all_unique_columns; cell(estimated_columns, 1)];
                         end
+                        all_unique_columns{column_count} = col_name;
                     end
                 end
 
@@ -5205,7 +5376,7 @@ function saveScriptAndSettings(config)
 % Save script and settings for reproducibility
 try
     % Create timestamped filename
-    timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
+    timestamp = datestr(now, 'yyyymmdd_HHMMSS');
     script_filename = sprintf('Data_GUI_run_%s.m', timestamp);
     script_path = fullfile(config.output_folder, script_filename);
 
@@ -5237,7 +5408,7 @@ try
 
     % Write settings header
     fprintf(fid_out, '%% GOLF SWING DATA GENERATION RUN RECORD\n');
-    fprintf(fid_out, '%% Generated: %s\n', char(datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss')));
+    fprintf(fid_out, '%% Generated: %s\n', datestr(now, 'yyyy-mm-dd HH:MM:SS'));
     fprintf(fid_out, '%% This file contains the exact script and settings used for this data generation run\n');
     fprintf(fid_out, '%%\n');
     fprintf(fid_out, '%% =================================================================\n');
