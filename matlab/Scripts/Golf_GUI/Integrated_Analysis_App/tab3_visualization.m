@@ -94,7 +94,7 @@ end
 function display_welcome_message(viz_panel)
     % Display welcome message in visualization panel
     delete(allchild(viz_panel));
-    
+
     welcome_text = uicontrol('Parent', viz_panel, ...
         'Style', 'text', ...
         'String', {
@@ -116,23 +116,23 @@ end
 
 function embed_skeleton_plotter(viz_panel, datasets, tab_handles)
     % Embed the skeleton plotter in the visualization panel
-    
+
     try
         fprintf('Embedding skeleton plotter in Tab 3...\n');
-        
+
         % Clear existing content
         delete(allchild(viz_panel));
-        
+
         % Create embedded plotter
         plotter_handles = EmbeddedSkeletonPlotter(viz_panel, ...
             datasets.BASEQ, datasets.ZTCFQ, datasets.DELTAQ);
-        
+
         % Store handles
         tab_handles.skeleton_plotter_handles = plotter_handles;
         tab_handles.data_loaded = true;
-        
+
         fprintf('✓ Skeleton plotter embedded successfully\n');
-        
+
     catch ME
         errordlg(sprintf('Failed to embed skeleton plotter: %s', ME.message), ...
             'Embedding Error');
@@ -146,26 +146,26 @@ end
 
 function load_from_tab2(app_handles, tab_handles, viz_panel)
     % Load data from Tab 2 (ZTCF calculation results)
-    
+
     if app_handles.data_manager.has_ztcf_data()
         ztcf_data = app_handles.data_manager.get_ztcf_data();
-        
+
         % Validate data structure
         if isstruct(ztcf_data) && ...
                 isfield(ztcf_data, 'BASEQ') && ...
                 isfield(ztcf_data, 'ZTCFQ') && ...
                 isfield(ztcf_data, 'DELTAQ')
-            
+
             tab_handles.datasets = ztcf_data;
-            
+
             % Update status
             num_frames = height(ztcf_data.BASEQ);
             set(tab_handles.status_text, 'String', ...
                 sprintf('✓ Data loaded from Tab 2 (%d frames) - Visualizing...', num_frames));
-            
+
             % Embed plotter
             embed_skeleton_plotter(viz_panel, ztcf_data, tab_handles);
-            
+
             fprintf('Tab 3: Data loaded from ZTCF calculation (%d frames)\n', num_frames);
         else
             errordlg('Invalid data structure from Tab 2', 'Data Error');
@@ -178,7 +178,7 @@ end
 
 function load_from_file(app_handles, tab_handles, viz_panel)
     % Load data from MAT file
-    
+
     % Get last directory from config
     if isfield(app_handles.config, 'tab3') && ...
             isfield(app_handles.config.tab3, 'last_data_file') && ...
@@ -187,18 +187,18 @@ function load_from_file(app_handles, tab_handles, viz_panel)
     else
         start_path = pwd;
     end
-    
+
     [file, path] = uigetfile('*.mat', 'Load Golf Data', start_path);
-    
+
     if file ~= 0
         fullpath = fullfile(path, file);
-        
+
         try
             loaded = load(fullpath);
-            
+
             % Try to find BASEQ, ZTCFQ, DELTAQ in loaded data
             datasets = struct();
-            
+
             if isfield(loaded, 'BASEQ')
                 datasets.BASEQ = loaded.BASEQ;
             elseif isfield(loaded, 'datasets') && isfield(loaded.datasets, 'BASEQ')
@@ -206,29 +206,29 @@ function load_from_file(app_handles, tab_handles, viz_panel)
             else
                 error('Could not find BASEQ in file');
             end
-            
+
             % Validate all required fields
             if ~isfield(datasets, 'ZTCFQ') || ~isfield(datasets, 'DELTAQ')
                 error('File must contain BASEQ, ZTCFQ, and DELTAQ');
             end
-            
+
             % Store datasets
             tab_handles.datasets = datasets;
-            
+
             % Update status
             num_frames = height(datasets.BASEQ);
             set(tab_handles.status_text, 'String', ...
                 sprintf('✓ Loaded: %s (%d frames) - Visualizing...', file, num_frames));
-            
+
             % Save to config
             app_handles.config.tab3.last_data_file = fullpath;
             guidata(app_handles.main_fig, app_handles);
-            
+
             % Embed plotter
             embed_skeleton_plotter(viz_panel, datasets, tab_handles);
-            
+
             fprintf('Tab 3: Data loaded from file: %s (%d frames)\n', fullpath, num_frames);
-            
+
         catch ME
             errordlg(sprintf('Failed to load file: %s', ME.message), 'Load Error');
             display_welcome_message(viz_panel);
@@ -238,25 +238,25 @@ end
 
 function clear_visualization(tab_handles, viz_panel)
     % Clear current visualization
-    
+
     % Clear plotter
     tab_handles.skeleton_plotter_handles = [];
     tab_handles.datasets = [];
     tab_handles.data_loaded = false;
-    
+
     % Display welcome message
     display_welcome_message(viz_panel);
-    
+
     % Update status
     set(tab_handles.status_text, 'String', ...
         'Visualization cleared. Load data to continue.');
-    
+
     fprintf('Tab 3: Visualization cleared\n');
 end
 
 function check_for_existing_data(app_handles, tab_handles, viz_panel)
     % Check if data is already available from Tab 2
-    
+
     if app_handles.data_manager.has_ztcf_data()
         % Auto-load from Tab 2
         load_from_tab2(app_handles, tab_handles, viz_panel);
@@ -265,9 +265,9 @@ end
 
 function refresh_tab3(app_handles, tab_handles, viz_panel)
     % Refresh tab with latest data
-    
+
     fprintf('Tab 3: Refreshing...\n');
-    
+
     % Check for new data
     if ~tab_handles.data_loaded
         check_for_existing_data(app_handles, tab_handles, viz_panel);
@@ -276,12 +276,12 @@ end
 
 function cleanup_tab3(tab_handles)
     % Cleanup when tab or app is closed
-    
+
     fprintf('Tab 3: Cleaning up...\n');
-    
+
     % Clear plotter handles
     tab_handles.skeleton_plotter_handles = [];
     tab_handles.datasets = [];
-    
+
     fprintf('Tab 3: Cleanup complete\n');
 end

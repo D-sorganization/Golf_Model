@@ -281,11 +281,11 @@ updatePlot();
             if handles.current_frame > handles.num_frames
                 handles.current_frame = 1;
             end
-            
+
             % Update slider and plot
             set(handles.slider, 'Value', handles.current_frame);
             updatePlot();
-            
+
             % Control speed
             handles.play_speed = get(handles.speed_slider, 'Value');
             pause(0.03 / handles.play_speed);
@@ -301,11 +301,11 @@ updatePlot();
         delete(handles.torque_arrows);
         delete(handles.trail_line);
         delete(handles.club_graphics);
-        
+
         % Get current frame data
         frame = handles.current_frame;
         data = handles.current_data;
-        
+
         % Extract positions
         positions = {
             [data.Buttx(frame), data.Butty(frame), data.Buttz(frame)];
@@ -318,12 +318,12 @@ updatePlot();
             [data.MPx(frame), data.MPy(frame), data.MPz(frame)];
             [data.HUBx(frame), data.HUBy(frame), data.HUBz(frame)];
             [data.CHx(frame), data.CHy(frame), data.CHz(frame)]
-        };
-        
+            };
+
         % Draw skeleton
         connections = [1 2; 1 3; 2 4; 3 5; 4 6; 5 7; 6 8; 7 8];
         handles.skeleton_lines = [];
-        
+
         for i = 1:size(connections, 1)
             p1 = positions{connections(i,1)};
             p2 = positions{connections(i,2)};
@@ -331,23 +331,22 @@ updatePlot();
                 'b-', 'LineWidth', 3);
             handles.skeleton_lines = [handles.skeleton_lines; h];
         end
-        
+
         % Draw club if enabled
         if get(handles.check_club, 'Value')
             mp = positions{8};
             hub = positions{9};
             ch = positions{10};
-            
+
             h1 = plot3(handles.ax, [mp(1) hub(1)], [mp(2) hub(2)], [mp(3) hub(3)], ...
                 'k-', 'LineWidth', 4);
             h2 = plot3(handles.ax, [hub(1) ch(1)], [hub(2) ch(2)], [hub(3) ch(3)], ...
                 'Color', [0.5 0.3 0.1], 'LineWidth', 2);
             handles.club_graphics = [h1; h2];
         end
-        
+
         % Update frame label
         set(handles.frame_label, 'String', sprintf('Frame: %d / %d', frame, handles.num_frames));
     end
 
 end
-
