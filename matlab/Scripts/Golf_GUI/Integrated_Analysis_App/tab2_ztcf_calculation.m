@@ -1,5 +1,5 @@
-function tab_handles = init_tab2_ztcf_calculation(parent_tab, app_handles)
-% INIT_TAB2_ZTCF_CALCULATION - Initialize ZTCF Calculation Tab
+function tab_handles = tab2_ztcf_calculation(parent_tab, app_handles)
+% TAB2_ZTCF_CALCULATION - Initialize ZTCF Calculation Tab
 %
 % This tab will provide ZTCF (Zero Torque Counterfactual) calculation
 % with parallel processing and progress monitoring.

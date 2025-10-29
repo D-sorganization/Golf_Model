@@ -1,5 +1,5 @@
-function tab_handles = init_tab1_model_setup(parent_tab, app_handles)
-% INIT_TAB1_MODEL_SETUP - Initialize Model Setup Tab
+function tab_handles = tab1_model_setup(parent_tab, app_handles)
+% TAB1_MODEL_SETUP - Initialize Model Setup Tab
 %
 % This tab will provide model configuration and Simscape simulation
 % interface. Currently implemented as a placeholder.

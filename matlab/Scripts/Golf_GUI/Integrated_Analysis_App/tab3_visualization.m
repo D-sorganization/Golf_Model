@@ -1,5 +1,5 @@
-function tab_handles = init_tab3_visualization(parent_tab, app_handles)
-% INIT_TAB3_VISUALIZATION - Initialize Visualization Tab
+function tab_handles = tab3_visualization(parent_tab, app_handles)
+% TAB3_VISUALIZATION - Initialize Visualization Tab
 %
 % This tab provides embedded 3D skeleton visualization directly in the tab.
 %

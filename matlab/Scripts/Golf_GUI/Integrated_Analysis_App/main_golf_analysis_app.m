@@ -57,13 +57,13 @@ guidata(main_fig, app_handles);
 
 %% Initialize Each Tab
 fprintf('  Initializing Tab 1: Model Setup...\n');
-app_handles.tab1_handles = init_tab1_model_setup(tab1, app_handles);
+app_handles.tab1_handles = tab1_model_setup(tab1, app_handles);
 
 fprintf('  Initializing Tab 2: ZTCF Calculation...\n');
-app_handles.tab2_handles = init_tab2_ztcf_calculation(tab2, app_handles);
+app_handles.tab2_handles = tab2_ztcf_calculation(tab2, app_handles);
 
 fprintf('  Initializing Tab 3: Visualization...\n');
-app_handles.tab3_handles = init_tab3_visualization(tab3, app_handles);
+app_handles.tab3_handles = tab3_visualization(tab3, app_handles);
 
 % Update handles
 guidata(main_fig, app_handles);
