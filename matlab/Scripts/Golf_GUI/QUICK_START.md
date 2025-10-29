@@ -27,8 +27,8 @@ main_golf_analysis_app();
 1. Go to Tab 3
 2. Click "Load from File..."
 3. Select MAT file with `BASEQ`, `ZTCFQ`, `DELTAQ`
-4. Click "Launch Skeleton Plotter"
-5. Enjoy!
+4. The 3D skeleton plotter appears directly in the tab!
+5. Use the controls on the left to play, adjust speed, etc.
 
 ---
 

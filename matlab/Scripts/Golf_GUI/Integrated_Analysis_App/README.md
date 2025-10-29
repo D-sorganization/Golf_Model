@@ -122,17 +122,24 @@ Provides:
 ### Tab 3: Visualization (Current)
 
 1. **Load Data:**
-   - Click "Load from ZTCF Calculation" to load data from Tab 2
+   - Click "Load from Tab 2" to load data from ZTCF Calculation
    - Or click "Load from File..." to load from a MAT file
    - Data must contain `BASEQ`, `ZTCFQ`, and `DELTAQ` tables
 
-2. **Launch Visualization:**
-   - Click "Launch Skeleton Plotter" after loading data
-   - This opens the 3D skeleton visualization window
-   - You can also open the Interactive Signal Plotter from there
+2. **Visualization Appears:**
+   - The 3D skeleton plotter is embedded directly in Tab 3
+   - No separate window - everything is in the tab!
+   - Use the controls on the left side to interact
 
-3. **Clear Visualization:**
-   - Click "Clear Visualization" to reset
+3. **Controls:**
+   - Play/Pause animation
+   - Adjust playback speed
+   - Frame slider to scrub through time
+   - Toggle display options (forces, torques, trail, club)
+   - Change datasets (BASEQ, ZTCFQ, DELTAQ)
+
+4. **Clear Visualization:**
+   - Click "Clear" to reset and load new data
 
 ### Menu Options
 

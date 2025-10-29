@@ -279,8 +279,8 @@ test_tabbed_app
 1. Navigate to Tab 3
 2. Click "Load from File..."
 3. Select a MAT file with BASEQ, ZTCFQ, DELTAQ
-4. Click "Launch Skeleton Plotter"
-5. Enjoy full visualization capabilities!
+4. The 3D visualization appears directly in the tab!
+5. Use controls on the left to play, adjust speed, toggle options
 
 ---
 
