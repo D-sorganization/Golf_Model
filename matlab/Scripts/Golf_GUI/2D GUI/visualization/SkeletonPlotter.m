@@ -619,31 +619,46 @@ updatePlot();
         end
     end
 
-    function openSignalPlot(~, ~)
-        % Open or bring to focus the signal plotter window
-
-        % Check if signal plotter is already open
-        if ~isempty(signal_plotter_handle) && isvalid(signal_plotter_handle.fig)
-            % Bring existing window to front
-            figure(signal_plotter_handle.fig);
-            fprintf('📊 Signal plotter already open. Bringing to front.\n');
-            return;
-        end
-
-        try
-            fprintf('📊 Opening Interactive Signal Plotter...\n');
-
-            % Open the signal plotter
-            signal_plotter_handle = InteractiveSignalPlotter(datasets_struct, handles, signal_plot_config);
-
-            fprintf('✅ Signal plotter opened successfully.\n');
-
-        catch ME
-            fprintf('❌ Error opening signal plotter: %s\n', ME.message);
-            fprintf('   Location: %s (line %d)\n', ME.stack(1).name, ME.stack(1).line);
-            errordlg(sprintf('Failed to open signal plotter: %s', ME.message), 'Signal Plotter Error');
-        end
+function openSignalPlot(~, ~)
+    % Open or bring to focus the signal plotter window
+    
+    % Check if signal plotter is already open
+    if ~isempty(signal_plotter_handle) && isvalid(signal_plotter_handle.fig)
+        % Bring existing window to front
+        figure(signal_plotter_handle.fig);
+        fprintf('📊 Signal plotter already open. Bringing to front.\n');
+        return;
     end
+    
+    try
+        fprintf('📊 Opening Interactive Signal Plotter...\n');
+        
+        % Pause playback if active (prevents conflicts during initialization)
+        was_playing = false;
+        if handles.playing
+            fprintf('   Pausing playback during initialization...\n');
+            was_playing = true;
+            handles.playing = false;
+            set(handles.play_pause_button, 'Value', 0);
+            set(handles.play_pause_button, 'String', 'Play');
+        end
+        
+        % Open the signal plotter
+        signal_plotter_handle = InteractiveSignalPlotter(datasets_struct, handles, signal_plot_config);
+        
+        fprintf('✅ Signal plotter opened successfully.\n');
+        
+        % Optionally resume playback
+        if was_playing
+            fprintf('   (Playback was paused. Press Play to resume)\n');
+        end
+        
+    catch ME
+        fprintf('❌ Error opening signal plotter: %s\n', ME.message);
+        fprintf('   Location: %s (line %d)\n', ME.stack(1).name, ME.stack(1).line);
+        errordlg(sprintf('Failed to open signal plotter: %s', ME.message), 'Signal Plotter Error');
+    end
+end
 
     function updateSignalPlotter()
         % Update the signal plotter when frame changes
@@ -651,10 +666,17 @@ updatePlot();
             try
                 % Get current frame
                 current_frame = round(get(handles.slider, 'Value'));
-
+                
                 % Update the signal plotter's time line
                 plot_handles = guidata(signal_plotter_handle.fig);
-                if ~isempty(plot_handles) && isfield(plot_handles, 'time_vector')
+                
+                % Check if signal plotter is fully initialized
+                if isempty(plot_handles) || ~isfield(plot_handles, 'signal_listbox')
+                    % Signal plotter not fully initialized yet, skip update
+                    return;
+                end
+                
+                if isfield(plot_handles, 'time_vector')
                     % Call the update function
                     if isfield(plot_handles, 'axes_handle') && ~isempty(plot_handles.axes_handle)
                         current_time = plot_handles.time_vector(current_frame);
