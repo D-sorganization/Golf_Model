@@ -111,35 +111,46 @@ Will provide:
 
 Provides:
 
-- Data loading from Tab 2 or file
-- 3D Skeleton visualization via `SkeletonPlotter`
-- Interactive signal plotting via `InteractiveSignalPlotter`
-- Time-synchronized visualization
-- All existing visualization features
+- **Auto-loads default data on startup** - visualization appears immediately!
+- Load 3 separate files (BASEQ, ZTCFQ, DELTAQ)
+- Load combined MAT file
+- Load from Tab 2 calculations
+- Embedded 3D skeleton visualization
+- Playback controls (play, speed, frame slider)
+- Display options (forces, torques, trail, club)
+- Dataset switching (BASEQ, ZTCFQ, DELTAQ)
 
 ## Usage
 
 ### Tab 3: Visualization (Current)
 
-1. **Load Data:**
-   - Click "Load from Tab 2" to load data from ZTCF Calculation
-   - Or click "Load from File..." to load from a MAT file
-   - Data must contain `BASEQ`, `ZTCFQ`, and `DELTAQ` tables
+**Automatic Startup:**
+- Default data loads automatically when you open Tab 3
+- Visualization appears immediately - no manual loading required!
 
-2. **Visualization Appears:**
-   - The 3D skeleton plotter is embedded directly in Tab 3
-   - No separate window - everything is in the tab!
-   - Use the controls on the left side to interact
+**Loading Your Own Data:**
 
-3. **Controls:**
-   - Play/Pause animation
-   - Adjust playback speed
-   - Frame slider to scrub through time
-   - Toggle display options (forces, torques, trail, club)
-   - Change datasets (BASEQ, ZTCFQ, DELTAQ)
+1. **Load 3 Files...** (Recommended for separate files)
+   - Select BASEQ.mat
+   - Select ZTCFQ.mat
+   - Select DELTAQ.mat
 
-4. **Clear Visualization:**
-   - Click "Clear" to reset and load new data
+2. **Load Combined...** (For single combined file)
+   - Select MAT file containing all three datasets
+
+3. **Load from Tab 2** (For calculated data)
+   - Uses results from ZTCF Calculation tab
+
+4. **Reload Defaults**
+   - Reloads the example data from repository
+
+**Interactive Controls:**
+- **Play/Pause** - Animate the golf swing
+- **Speed Slider** - Adjust playback speed (0.1x to 2x)
+- **Frame Slider** - Scrub through frames manually
+- **Dataset Dropdown** - Switch between BASEQ, ZTCFQ, DELTAQ views
+- **Display Checkboxes** - Toggle forces, torques, trail, club visibility
+- **Clear** - Remove current visualization
 
 ### Menu Options
 

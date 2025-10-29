@@ -24,11 +24,15 @@ main_golf_analysis_app();
 
 ### Using Tab 3 (Visualization)
 
-1. Go to Tab 3
-2. Click "Load from File..."
-3. Select MAT file with `BASEQ`, `ZTCFQ`, `DELTAQ`
-4. The 3D skeleton plotter appears directly in the tab!
-5. Use the controls on the left to play, adjust speed, etc.
+**Default data loads automatically!** Just go to Tab 3 and the visualization appears.
+
+To load your own data:
+1. **Load 3 Files...** - Select BASEQ, ZTCFQ, DELTAQ separately (recommended)
+2. **Load Combined...** - Select single MAT file with all datasets
+3. **Load from Tab 2** - Use ZTCF calculation results
+4. **Reload Defaults** - Reload the example data
+
+Controls are on the left: Play, Stop, Speed, Display options.
 
 ---
 

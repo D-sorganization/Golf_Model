@@ -311,49 +311,94 @@ if isfield(app_handles, 'tab3_handles') && ...
 end
 end
 
-function on_close_request(~, ~, app_handles)
+function on_close_request(src, ~, app_handles)
 % Handle application close request
 
 fprintf('Closing Golf Swing Analysis Application...\n');
 
-% Ask user if they want to save session
-if app_handles.config.general.confirm_on_exit
-    answer = questdlg('Save session before exiting?', ...
-        'Exit Application', 'Yes', 'No', 'Cancel', 'Yes');
-
-    if strcmp(answer, 'Cancel')
-        return;  % Don't close
-    elseif strcmp(answer, 'Yes')
-        on_save_session(app_handles.main_fig, []);
+try
+    % Ask user if they want to save session
+    if isfield(app_handles, 'config') && isfield(app_handles.config, 'general') && ...
+            isfield(app_handles.config.general, 'confirm_on_exit') && ...
+            app_handles.config.general.confirm_on_exit
+        
+        answer = questdlg('Save session before exiting?', ...
+            'Exit Application', 'Yes', 'No', 'Cancel', 'Yes');
+        
+        if strcmp(answer, 'Cancel')
+            fprintf('Close cancelled by user.\n');
+            return;  % Don't close
+        elseif strcmp(answer, 'Yes')
+            try
+                on_save_session(app_handles.main_fig, []);
+            catch ME
+                warning('Failed to save session: %s', ME.message);
+            end
+        end
     end
+    
+    % Save window state
+    try
+        if isfield(app_handles, 'config_manager') && isfield(app_handles, 'config')
+            app_handles.config_manager.update_window_state(app_handles.config, src);
+            app_handles.config_manager.save_config(app_handles.config);
+        end
+    catch ME
+        warning('Failed to save config: %s', ME.message);
+    end
+    
+    % Clean up each tab
+    try
+        if isfield(app_handles, 'tab1_handles') && ...
+                isfield(app_handles.tab1_handles, 'cleanup_callback')
+            app_handles.tab1_handles.cleanup_callback();
+        end
+    catch ME
+        warning('Tab 1 cleanup failed: %s', ME.message);
+    end
+    
+    try
+        if isfield(app_handles, 'tab2_handles') && ...
+                isfield(app_handles.tab2_handles, 'cleanup_callback')
+            app_handles.tab2_handles.cleanup_callback();
+        end
+    catch ME
+        warning('Tab 2 cleanup failed: %s', ME.message);
+    end
+    
+    try
+        if isfield(app_handles, 'tab3_handles') && ...
+                isfield(app_handles.tab3_handles, 'cleanup_callback')
+            app_handles.tab3_handles.cleanup_callback();
+        end
+    catch ME
+        warning('Tab 3 cleanup failed: %s', ME.message);
+    end
+    
+    % Clear app data
+    try
+        if isfield(app_handles, 'data_manager')
+            app_handles.data_manager.clear_all_data();
+        end
+    catch ME
+        warning('Failed to clear app data: %s', ME.message);
+    end
+    
+catch ME
+    warning('Error during close: %s', ME.message);
 end
 
-% Save window state
-app_handles.config_manager.update_window_state(app_handles.config, ...
-    app_handles.main_fig);
-app_handles.config_manager.save_config(app_handles.config);
-
-% Clean up each tab
-if isfield(app_handles, 'tab1_handles') && ...
-        isfield(app_handles.tab1_handles, 'cleanup_callback')
-    app_handles.tab1_handles.cleanup_callback();
+% Always delete the figure, even if there were errors
+try
+    if ishandle(src)
+        delete(src);
+    elseif isfield(app_handles, 'main_fig') && ishandle(app_handles.main_fig)
+        delete(app_handles.main_fig);
+    end
+catch
+    % Force close using closereq
+    closereq;
 end
 
-if isfield(app_handles, 'tab2_handles') && ...
-        isfield(app_handles.tab2_handles, 'cleanup_callback')
-    app_handles.tab2_handles.cleanup_callback();
-end
-
-if isfield(app_handles, 'tab3_handles') && ...
-        isfield(app_handles.tab3_handles, 'cleanup_callback')
-    app_handles.tab3_handles.cleanup_callback();
-end
-
-% Clear app data
-app_handles.data_manager.clear_all_data();
-
-% Delete figure
-delete(app_handles.main_fig);
-
-fprintf('Application closed successfully.\n');
+fprintf('Application closed.\n');
 end
