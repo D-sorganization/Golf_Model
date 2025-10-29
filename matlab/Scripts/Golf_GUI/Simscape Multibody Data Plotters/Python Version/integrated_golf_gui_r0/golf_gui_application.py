@@ -6,7 +6,8 @@ Supports multiple data sources including motion capture and future Simulink mode
 
 import sys
 import traceback
-from typing import Tuple
+from typing import Tuple, Optional
+from copy import copy
 
 import moderngl as mgl
 import numpy as np
@@ -15,7 +16,8 @@ import pandas as pd
 # Local imports
 from golf_data_core import FrameData, FrameProcessor, RenderConfig
 from golf_opengl_renderer import OpenGLRenderer
-from PyQt6.QtCore import Qt, QTimer
+from golf_video_export import VideoExportDialog
+from PyQt6.QtCore import Qt, QTimer, QObject, QPropertyAnimation, QEasingCurve, pyqtProperty, pyqtSignal
 from PyQt6.QtGui import QAction, QKeySequence
 
 # OpenGL imports
@@ -41,21 +43,258 @@ from PyQt6.QtWidgets import (
 from wiffle_data_loader import MotionDataLoader
 
 # ============================================================================
+# SMOOTH PLAYBACK CONTROLLER
+# ============================================================================
+
+
+class SmoothPlaybackController(QObject):
+    """
+    Smooth playback controller with frame interpolation for 60+ FPS animation
+
+    Features:
+    - VSync-synchronized rendering (60+ FPS)
+    - Frame interpolation for smooth motion between keyframes
+    - Variable playback speed
+    - Scrubbing support
+    """
+
+    # Signals
+    frameUpdated = pyqtSignal(FrameData)  # Emits interpolated frame data
+    positionChanged = pyqtSignal(float)   # Emits current position (0.0 to total_frames)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Frame data
+        self.frame_processor: Optional[FrameProcessor] = None
+        self._current_position: float = 0.0
+        self._playback_speed: float = 1.0
+
+        # Animation
+        self.animation = QPropertyAnimation(self, b"position")
+        self.animation.setEasingCurve(QEasingCurve.Type.Linear)
+        self.animation.valueChanged.connect(self._on_position_changed)
+        self.animation.finished.connect(self._on_animation_finished)
+
+        # State
+        self.is_playing = False
+        self.loop_playback = True  # Default to looping
+
+    def load_frame_processor(self, frame_processor: FrameProcessor):
+        """Load frame processor with motion data"""
+        self.frame_processor = frame_processor
+        self.stop()
+        self.seek(0.0)
+
+    # ========================================================================
+    # Position Property (for QPropertyAnimation)
+    # ========================================================================
+
+    @pyqtProperty(float)
+    def position(self) -> float:
+        """Current playback position (0.0 to total_frames - 1)"""
+        return self._current_position
+
+    @position.setter
+    def position(self, value: float):
+        """Set playback position with interpolation"""
+        if self.frame_processor is None:
+            return
+
+        total_frames = len(self.frame_processor.time_vector)
+        self._current_position = np.clip(value, 0.0, total_frames - 1)
+        self.positionChanged.emit(self._current_position)
+
+        # Interpolate frame data
+        interpolated_frame = self._get_interpolated_frame(self._current_position)
+        self.frameUpdated.emit(interpolated_frame)
+
+    # ========================================================================
+    # Playback Control
+    # ========================================================================
+
+    def play(self):
+        """Start smooth playback"""
+        if self.frame_processor is None:
+            return
+
+        if self.is_playing:
+            return  # Already playing
+
+        total_frames = len(self.frame_processor.time_vector)
+
+        # Calculate duration based on actual data time span
+        start_pos = self._current_position
+        end_pos = total_frames - 1
+
+        if start_pos >= end_pos - 0.1:  # Near end, restart from beginning
+            start_pos = 0.0
+            self.seek(0.0)
+
+        # Duration in milliseconds (maintain original timing)
+        frame_time_ms = 33.33  # ~30 FPS from motion capture
+        duration_ms = int((end_pos - start_pos) * frame_time_ms / self._playback_speed)
+
+        # Setup animation
+        self.animation.setStartValue(start_pos)
+        self.animation.setEndValue(end_pos)
+        self.animation.setDuration(duration_ms)
+        self.animation.start()
+
+        self.is_playing = True
+
+    def pause(self):
+        """Pause playback"""
+        if not self.is_playing:
+            return
+
+        self.animation.pause()
+        self.is_playing = False
+
+    def stop(self):
+        """Stop playback and reset to beginning"""
+        self.animation.stop()
+        self.is_playing = False
+        self.seek(0.0)
+
+    def toggle_playback(self):
+        """Toggle between play and pause"""
+        if self.is_playing:
+            self.pause()
+        else:
+            self.play()
+
+    def seek(self, position: float):
+        """Seek to specific frame position"""
+        if self.frame_processor is None:
+            return
+
+        was_playing = self.is_playing
+
+        if was_playing:
+            self.animation.stop()
+
+        self.position = position
+
+        if was_playing:
+            self.play()
+
+    def set_playback_speed(self, speed: float):
+        """Set playback speed multiplier (0.5 = half speed, 2.0 = double speed)"""
+        self._playback_speed = np.clip(speed, 0.1, 10.0)
+
+        # If playing, restart with new speed
+        if self.is_playing:
+            current_pos = self._current_position
+            self.pause()
+            self.seek(current_pos)
+            self.play()
+
+    # ========================================================================
+    # Frame Interpolation (The Magic!)
+    # ========================================================================
+
+    def _get_interpolated_frame(self, position: float) -> FrameData:
+        """
+        Get interpolated frame data at fractional position
+
+        For example:
+        - position = 5.0 → Frame 5 exactly
+        - position = 5.7 → 70% between frame 5 and 6
+
+        This creates smooth motion between keyframes!
+        """
+        if self.frame_processor is None:
+            raise ValueError("No frame processor loaded")
+
+        total_frames = len(self.frame_processor.time_vector)
+
+        # Clamp position
+        position = np.clip(position, 0.0, total_frames - 1)
+
+        # Get integer frame indices
+        low_idx = int(np.floor(position))
+        high_idx = min(low_idx + 1, total_frames - 1)
+
+        # Calculate interpolation factor (0.0 to 1.0)
+        t = position - low_idx
+
+        # Get frames at integer indices
+        frame_low = self.frame_processor.get_frame_data(low_idx)
+        frame_high = self.frame_processor.get_frame_data(high_idx)
+
+        # Interpolate all positions
+        return self._lerp_frame_data(frame_low, frame_high, t)
+
+    @staticmethod
+    def _lerp_frame_data(frame_a: FrameData, frame_b: FrameData, t: float) -> FrameData:
+        """
+        Linear interpolation between two frames
+
+        Args:
+            frame_a: Starting frame
+            frame_b: Ending frame
+            t: Interpolation factor (0.0 = frame_a, 1.0 = frame_b)
+
+        Returns:
+            Interpolated frame data
+        """
+        result = copy(frame_a)
+
+        # List of all position attributes to interpolate
+        position_attrs = [
+            'left_wrist', 'left_elbow', 'left_shoulder',
+            'right_wrist', 'right_elbow', 'right_shoulder',
+            'hub', 'butt', 'clubhead'
+        ]
+
+        # Lerp each position: result = a * (1 - t) + b * t
+        for attr in position_attrs:
+            pos_a = getattr(frame_a, attr)
+            pos_b = getattr(frame_b, attr)
+
+            # Check for valid data
+            if np.isfinite(pos_a).all() and np.isfinite(pos_b).all():
+                interpolated_pos = pos_a * (1.0 - t) + pos_b * t
+                setattr(result, attr, interpolated_pos)
+
+        return result
+
+    # ========================================================================
+    # Internal Callbacks
+    # ========================================================================
+
+    def _on_position_changed(self, value: float):
+        """Called by QPropertyAnimation on every frame update"""
+        # Position property setter handles the interpolation
+        pass
+
+    def _on_animation_finished(self):
+        """Called when animation completes"""
+        self.is_playing = False
+
+        if self.loop_playback:
+            self.seek(0.0)
+            self.play()
+
+
+# ============================================================================
 # TAB WIDGETS
 # ============================================================================
 
 
 class MotionCaptureTab(QWidget):
-    """Tab for motion capture data visualization"""
+    """Tab for motion capture data visualization with smooth playback"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
         self.frame_processor = None
-        self.current_frame = 0
-        self.is_playing = False
-        self.playback_timer = QTimer()
-        self.playback_timer.timeout.connect(self._next_frame)
+
+        # Use smooth playback controller instead of QTimer
+        self.playback_controller = SmoothPlaybackController(self)
+        self.playback_controller.frameUpdated.connect(self._on_smooth_frame_updated)
+        self.playback_controller.positionChanged.connect(self._on_position_changed)
 
         self._setup_ui()
         self._setup_connections()
@@ -130,13 +369,11 @@ class MotionCaptureTab(QWidget):
         """Setup signal connections"""
         self.load_button.clicked.connect(self._load_motion_capture_data)
         self.play_button.clicked.connect(self._toggle_playback)
-        self.frame_slider.valueChanged.connect(self._on_frame_changed)
+        self.frame_slider.valueChanged.connect(self._on_slider_moved)
         self.swing_combo.currentTextChanged.connect(self._on_swing_changed)
 
-        # Visualization checkboxes
-        self.show_body_check.toggled.connect(self._update_visualization)
-        self.show_club_check.toggled.connect(self._update_visualization)
-        self.show_ground_check.toggled.connect(self._update_visualization)
+        # Visualization checkboxes don't need connections anymore
+        # (handled by smooth frame updates)
 
     def _load_motion_capture_data(self):
         """Load motion capture data"""
@@ -157,6 +394,9 @@ class MotionCaptureTab(QWidget):
                 (baseq_data, ztcfq_data, deltaq_data), config
             )
 
+            # Load into smooth playback controller
+            self.playback_controller.load_frame_processor(self.frame_processor)
+
             # Update UI
             total_frames = len(self.frame_processor.time_vector)
             self.frame_slider.setMaximum(total_frames - 1)
@@ -167,7 +407,7 @@ class MotionCaptureTab(QWidget):
                 (baseq_data, ztcfq_data, deltaq_data)
             )
 
-            self.status_label.setText(f"Loaded {swing_type} data successfully")
+            self.status_label.setText(f"Loaded {swing_type} data successfully - Smooth playback ready!")
 
         except Exception as e:
             self.status_label.setText(f"Error loading data: {str(e)}")
@@ -179,51 +419,41 @@ class MotionCaptureTab(QWidget):
             self._load_motion_capture_data()
 
     def _toggle_playback(self):
-        """Toggle playback"""
+        """Toggle smooth playback"""
         if not self.frame_processor:
             return
 
-        if self.is_playing:
-            self.play_button.setText("Play")
-            self.playback_timer.stop()
-            self.is_playing = False
-        else:
+        self.playback_controller.toggle_playback()
+
+        if self.playback_controller.is_playing:
             self.play_button.setText("Pause")
-            self.playback_timer.start(33)  # ~30 FPS
-            self.is_playing = True
+        else:
+            self.play_button.setText("Play")
 
-    def _next_frame(self):
-        """Advance to next frame"""
-        if not self.frame_processor:
-            return
+    def _on_slider_moved(self, value: int):
+        """Handle manual slider movement (scrubbing)"""
+        # Seek to slider position for smooth scrubbing
+        self.playback_controller.seek(float(value))
 
-        current_frame = self.frame_slider.value()
-        total_frames = len(self.frame_processor.time_vector)
+    def _on_position_changed(self, position: float):
+        """Update UI when playback position changes"""
+        total_frames = len(self.frame_processor.time_vector) if self.frame_processor else 0
 
-        next_frame = (current_frame + 1) % total_frames
-        self.frame_slider.setValue(next_frame)
+        # Update frame label with fractional position for smooth display
+        self.frame_label.setText(f"Frame: {position:.1f}/{total_frames}")
 
-    def _on_frame_changed(self, frame_index: int):
-        """Handle frame slider change"""
-        if not self.frame_processor:
-            return
+        # Update slider (without triggering valueChanged)
+        self.frame_slider.blockSignals(True)
+        self.frame_slider.setValue(int(position))
+        self.frame_slider.blockSignals(False)
 
-        total_frames = len(self.frame_processor.time_vector)
-        self.frame_label.setText(f"Frame: {frame_index}/{total_frames}")
-
-        # Update visualization
-        self._update_visualization()
-
-    def _update_visualization(self):
-        """Update the 3D visualization"""
-        if not self.frame_processor or not self.opengl_widget.renderer:
+    def _on_smooth_frame_updated(self, frame_data: FrameData):
+        """Called on every interpolated frame update (60+ FPS!)"""
+        if not self.opengl_widget.renderer:
             return
 
         try:
-            frame_index = self.frame_slider.value()
-            frame_data = self.frame_processor.get_frame_data(frame_index)
-
-            # Update render config
+            # Get current render config from UI checkboxes
             render_config = RenderConfig()
             render_config.show_body_segments = {
                 "left_forearm": self.show_body_check.isChecked(),
@@ -236,7 +466,7 @@ class MotionCaptureTab(QWidget):
             render_config.show_club = self.show_club_check.isChecked()
             render_config.show_ground = self.show_ground_check.isChecked()
 
-            # Update visualization
+            # Update 3D visualization with interpolated frame
             self.opengl_widget.update_frame(frame_data, render_config)
 
         except Exception as e:
@@ -781,6 +1011,14 @@ class GolfVisualizerMainWindow(QMainWindow):
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
+        # Export menu
+        export_menu = menubar.addMenu("Export")
+
+        export_video_action = QAction("Export Video...", self)
+        export_video_action.setShortcut("Ctrl+E")
+        export_video_action.triggered.connect(self._export_video)
+        export_menu.addAction(export_video_action)
+
         # View menu
         view_menu = menubar.addMenu("View")
 
@@ -947,6 +1185,28 @@ class GolfVisualizerMainWindow(QMainWindow):
         # This will be handled by the motion capture tab
         self.tab_widget.setCurrentIndex(0)
         self.motion_capture_tab._load_motion_capture_data()
+
+    def _export_video(self):
+        """Export current animation to high-quality video"""
+        # Check if we have data loaded
+        tab = self.motion_capture_tab
+
+        if not tab.frame_processor or not tab.opengl_widget.renderer:
+            QMessageBox.warning(
+                self,
+                "No Data Loaded",
+                "Please load motion capture data before exporting video.\n\n"
+                "Use File → Load Motion Capture Data to get started."
+            )
+            return
+
+        # Show export dialog
+        dialog = VideoExportDialog(
+            self,
+            tab.opengl_widget.renderer,
+            tab.frame_processor
+        )
+        dialog.exec()
 
     def _reset_camera(self):
         """Reset camera to default position"""
