@@ -35,7 +35,7 @@
 ```matlab
 % In SkeletonPlotter.m, line ~702 after setting XData:
 set(time_line, 'XData', [current_time, current_time]);
-drawnow limitrate;  % ADD THIS - forces rendering
+drawnow limitrate;  % ADD THIS - ensures rendering update (rate-limited)
 ```
 
 **Files to modify**: `matlab/Scripts/Golf_GUI/2D GUI/visualization/SkeletonPlotter.m`
