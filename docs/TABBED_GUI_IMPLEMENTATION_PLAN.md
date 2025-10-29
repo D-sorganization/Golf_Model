@@ -249,7 +249,7 @@ matlab/Scripts/Golf_GUI/
 
 ## Questions for User
 
-1. **Animation smoothing**: Should we implement interpolation? (Minimal performance impact)
+1. **Animation smoothing**: Should we implement interpolation? (Minimal runtime performance impact; initial load may be slightly slower)
 2. **Parallel processing**: How many cores typically available? Need specific optimization?
 3. **Tab 2 script**: Can you provide the current ZTCF calculation script for review?
 4. **Default parameters**: Where are model defaults currently stored?
