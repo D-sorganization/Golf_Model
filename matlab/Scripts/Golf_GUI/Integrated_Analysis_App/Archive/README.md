@@ -5,6 +5,7 @@ This directory contains previous versions and experimental implementations that 
 ## Files
 
 ### EmbeddedSkeletonPlotter.m
+
 - **Date Archived:** October 28, 2025
 - **Reason:** Simplified version with poor graphics quality compared to original SkeletonPlotter
 - **Issue:** Only drew basic line segments instead of proper 3D cylinders, spheres, and materials
@@ -14,12 +15,14 @@ This directory contains previous versions and experimental implementations that 
 ## Recovery
 
 If you need to restore any of these files:
+
 ```matlab
 % Copy from archive back to parent directory
 copyfile('Archive/EmbeddedSkeletonPlotter.m', 'EmbeddedSkeletonPlotter.m');
 ```
 
 Or using git:
+
 ```bash
 git log -- Archive/EmbeddedSkeletonPlotter.m  # See history
 git show <commit>:path/to/file > recovered_file.m  # Recover specific version
@@ -31,4 +34,3 @@ git show <commit>:path/to/file > recovered_file.m  # Recover specific version
 - They are not tested or maintained
 - Use for reference only
 - Check git history for full context
-
