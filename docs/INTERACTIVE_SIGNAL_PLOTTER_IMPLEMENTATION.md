@@ -42,6 +42,7 @@ The Interactive Signal Plotter consists of four main components that work togeth
 **Purpose**: Configuration management and persistence
 
 **Public Interface**:
+
 ```matlab
 config = SignalPlotConfig('load')     % Load saved config
 SignalPlotConfig('save', config)      % Save config
@@ -49,6 +50,7 @@ config = SignalPlotConfig('default')  % Get default config
 ```
 
 **Configuration Structure**:
+
 ```matlab
 config = struct(
     'hotlist_signals',        % Cell array of signal names
@@ -60,12 +62,14 @@ config = struct(
 ```
 
 **Key Functions**:
+
 - `load_config()`: Loads from `.mat` file with fallback to defaults
 - `save_config()`: Saves with directory creation and validation
 - `get_default_config()`: Returns sensible defaults
 - `validate_config()`: Ensures config structure integrity
 
 **Storage Location**:
+
 ```
 matlab/Scripts/Golf_GUI/2D GUI/config/signal_plot_config.mat
 ```
@@ -75,23 +79,27 @@ matlab/Scripts/Golf_GUI/2D GUI/config/signal_plot_config.mat
 **Purpose**: Modal dialog for hotlist management
 
 **Public Interface**:
+
 ```matlab
 updated_hotlist = SignalDataInspector(data_table, current_hotlist, config)
 ```
 
 **Parameters**:
+
 - `data_table`: MATLAB table containing all signals
 - `current_hotlist`: Cell array of current hotlist signal names
 - `config`: Configuration structure from SignalPlotConfig
 - **Returns**: Updated hotlist or original if cancelled
 
 **UI Components**:
+
 1. **Search Box**: Real-time filtering of signal list
 2. **Signal List**: Checkboxes organized by category
 3. **Action Buttons**: Select All, Select None, Apply & Close, Cancel
 4. **Count Display**: Shows number of selected signals
 
 **Signal Categorization Algorithm**:
+
 ```matlab
 % Priority: Force/Torque keywords
 if contains(signal, {'Force', 'Torque', 'Couple', 'Power', 'Work'})
@@ -107,6 +115,7 @@ else
 ```
 
 **Key Features**:
+
 - Modal dialog (blocks parent until closed)
 - Uses `uiwait`/`uiresume` for synchronous operation
 - Result passed via `appdata` mechanism
@@ -117,16 +126,19 @@ else
 **Purpose**: Main plotting window with time synchronization
 
 **Public Interface**:
+
 ```matlab
 plotter_handles = InteractiveSignalPlotter(datasets, skeleton_handles, config)
 ```
 
 **Parameters**:
+
 - `datasets`: Struct with BASEQ, ZTCFQ, DELTAQ fields
 - `skeleton_handles`: Handles from SkeletonPlotter for sync
 - `config`: Configuration structure
 
 **Returns**:
+
 - `plotter_handles`: Structure with:
   - `fig`: Figure handle
   - `datasets`: Reference to data
@@ -136,6 +148,7 @@ plotter_handles = InteractiveSignalPlotter(datasets, skeleton_handles, config)
 #### Plotting Modes
 
 **Single Plot Mode**:
+
 ```matlab
 % All signals on one axes
 ax = axes('Parent', panel, ...);
@@ -147,6 +160,7 @@ legend(...);
 ```
 
 **Subplot Mode**:
+
 ```matlab
 % Grid of subplots
 n_cols = min(3, n_signals);
@@ -160,6 +174,7 @@ end
 #### Time Synchronization
 
 **Vertical Line Indicator**:
+
 ```matlab
 % Create red vertical line
 time_line = plot(ax, [current_time, current_time], ylim, ...
@@ -170,6 +185,7 @@ set(time_line, 'XData', [new_time, new_time]);
 ```
 
 **Value Display**:
+
 ```matlab
 % Calculate current value at frame
 current_value = signal_data(current_frame);
@@ -182,6 +198,7 @@ set(value_display, 'String', ...
 #### Mouse Interaction
 
 **Timeline Dragging**:
+
 ```matlab
 % Mouse down - start dragging
 on_mouse_down():
@@ -200,14 +217,15 @@ on_mouse_up():
 ```
 
 **Bidirectional Sync**:
+
 ```matlab
 update_time_position(time_value):
     % Find nearest frame
     frame_idx = find_nearest_frame(time_value)
-    
+
     % Update skeleton plotter
     set(skeleton_handles.slider, 'Value', frame_idx)
-    
+
     % Update own display
     update_time_line(frame_idx)
 ```
@@ -215,6 +233,7 @@ update_time_position(time_value):
 #### Data Handling
 
 **Matrix Column Detection**:
+
 ```matlab
 if size(signal_data, 2) > 1
     % Calculate magnitude for vector data
@@ -224,6 +243,7 @@ end
 ```
 
 **Color Generation**:
+
 ```matlab
 % Use predefined colors, then generate more if needed
 base_colors = [0 0.4 1; 1 0 0; 0 0.7 0; ...];
@@ -237,6 +257,7 @@ end
 **Added Components**:
 
 1. **Button**:
+
 ```matlab
 uicontrol('Style', 'pushbutton', ...
     'String', '📊 Signal Plot', ...
@@ -244,6 +265,7 @@ uicontrol('Style', 'pushbutton', ...
 ```
 
 2. **Initialization**:
+
 ```matlab
 % Store datasets in structure
 datasets_struct = struct('BASEQ', BASEQ, 'ZTCFQ', ZTCFQ, 'DELTAQ', DELTAQ);
@@ -256,6 +278,7 @@ signal_plotter_handle = [];
 ```
 
 3. **Open Signal Plot Function**:
+
 ```matlab
 function openSignalPlot(~, ~)
     % Check if already open
@@ -263,7 +286,7 @@ function openSignalPlot(~, ~)
         figure(signal_plotter_handle.fig);
         return;
     end
-    
+
     % Open new plotter
     signal_plotter_handle = InteractiveSignalPlotter(...
         datasets_struct, handles, signal_plot_config);
@@ -271,12 +294,13 @@ end
 ```
 
 4. **Update Signal Plotter Function**:
+
 ```matlab
 function updateSignalPlotter()
     if ~isempty(signal_plotter_handle) && isvalid(signal_plotter_handle.fig)
         % Get current frame
         current_frame = get(handles.slider, 'Value');
-        
+
         % Update plotter's time line and values
         plot_handles = guidata(signal_plotter_handle.fig);
         % ... update time line
@@ -286,10 +310,11 @@ end
 ```
 
 5. **Integration in updatePlot**:
+
 ```matlab
 function updatePlot(~, ~)
     % ... existing code ...
-    
+
     % Update signal plotter if open
     updateSignalPlotter();
 end
@@ -326,6 +351,7 @@ Return to user
 ### Synchronization Flow
 
 **Skeleton Plotter → Signal Plotter**:
+
 ```
 Frame slider moved or playback
     ↓
@@ -343,6 +369,7 @@ Update info text
 ```
 
 **Signal Plotter → Skeleton Plotter**:
+
 ```
 User clicks/drags on plot
     ↓
@@ -409,16 +436,19 @@ Refresh plot with new data
 ### Scalability
 
 **Large Datasets**:
+
 - Handles thousands of time points efficiently
 - Plot rendering is MATLAB-optimized
 - No performance degradation during scrubbing
 
 **Many Signals**:
+
 - Single plot: Up to ~10 signals for clarity
 - Subplot mode: Handles 20+ signals
 - Color generation: Unlimited via HSV
 
 **Memory**:
+
 - Datasets passed by reference
 - Minimal memory overhead
 - Config file: < 1 KB typically
@@ -428,6 +458,7 @@ Refresh plot with new data
 ### Graceful Degradation
 
 1. **Config Loading**:
+
 ```matlab
 try
     config = load(config_file);
@@ -438,6 +469,7 @@ end
 ```
 
 2. **Signal Plotter Updates**:
+
 ```matlab
 try
     updateSignalPlotter();
@@ -447,6 +479,7 @@ end
 ```
 
 3. **Missing Signals**:
+
 ```matlab
 if ismember(signal_name, dataset.Properties.VariableNames)
     plot_signal(signal_data);
@@ -459,12 +492,14 @@ end
 ### Validation
 
 **Config Validation**:
+
 - Check all required fields exist
 - Validate data types
 - Clean up invalid entries
 - Intersect last_selected with hotlist
 
 **Dataset Validation**:
+
 - Check for required fields (BASEQ, ZTCFQ, DELTAQ)
 - Verify tables are valid
 - Check Time column exists
@@ -555,7 +590,6 @@ end
 
 ---
 
-**Version**: 1.0  
-**Last Updated**: October 2025  
+**Version**: 1.0
+**Last Updated**: October 2025
 **Maintainer**: Golf Swing Analysis Team
-

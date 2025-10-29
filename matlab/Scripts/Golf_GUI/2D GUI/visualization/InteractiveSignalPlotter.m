@@ -56,17 +56,17 @@ plotter_handles.plot_mode = config.plot_mode;
 plotter_handles.dragging = false;
 plotter_handles.value_displays = [];
 
-    % Create UI components
-    create_ui_components(fig, plotter_handles);
-    
-    % Get updated handles (create_ui_components adds UI elements to handles)
-    plotter_handles = guidata(fig);
-    
-    % Set up initial plot
-    update_plot(plotter_handles);
-    
-    % Store handles in figure (in case update_plot modified anything)
-    guidata(fig, plotter_handles);
+% Create UI components
+create_ui_components(fig, plotter_handles);
+
+% Get updated handles (create_ui_components adds UI elements to handles)
+plotter_handles = guidata(fig);
+
+% Set up initial plot
+update_plot(plotter_handles);
+
+% Store handles in figure (in case update_plot modified anything)
+guidata(fig, plotter_handles);
 
 % Set close callback to save config
 set(fig, 'CloseRequestFcn', @on_close);
@@ -152,15 +152,15 @@ set(fig, 'CloseRequestFcn', @on_close);
 
         % Data Inspector button
         uicontrol('Parent', control_panel, ...
-            'Style', 'pushbutton', ...
-            'String', '🔍 Manage Hotlist', ...
-            'FontSize', 10, ...
-            'FontWeight', 'bold', ...
-            'Units', 'normalized', ...
-            'Position', [0.45, 0.52, 0.12, 0.38], ...
-            'BackgroundColor', [0.3, 0.6, 0.9], ...
-            'ForegroundColor', [1, 1, 1], ...
-            'Callback', @on_open_data_inspector);
+                  'Style', 'pushbutton', ...
+                  'String', 'Manage Hotlist', ...
+                  'FontSize', 10, ...
+                  'FontWeight', 'bold', ...
+                  'Units', 'normalized', ...
+                  'Position', [0.45, 0.52, 0.12, 0.38], ...
+                  'BackgroundColor', [0.3, 0.6, 0.9], ...
+                  'ForegroundColor', [1, 1, 1], ...
+                  'Callback', @on_open_data_inspector);
 
         % Plot mode toggle
         handles.plot_mode_button = uicontrol('Parent', control_panel, ...
@@ -577,18 +577,24 @@ set(fig, 'CloseRequestFcn', @on_close);
 
     function update_time_position(handles, time_value)
         % Update time position and sync with skeleton plotter
-
+        
         % Find nearest frame
         [~, frame_idx] = min(abs(handles.time_vector - time_value));
-
-        % Update skeleton plotter slider (this will trigger updatePlot in skeleton)
+        
+        % Update skeleton plotter slider value
         set(handles.skeleton_handles.slider, 'Value', frame_idx);
-
-        % Manually call skeleton plotter's updatePlot if it exists
-        if isfield(handles.skeleton_handles, 'updatePlot')
-            handles.skeleton_handles.updatePlot();
+        
+        % Manually trigger the slider's callback to update skeleton plotter
+        % (Setting value programmatically doesn't fire callback automatically)
+        callback = get(handles.skeleton_handles.slider, 'Callback');
+        if ~isempty(callback)
+            if isa(callback, 'function_handle')
+                callback(handles.skeleton_handles.slider, []);
+            elseif iscell(callback)
+                feval(callback{1}, handles.skeleton_handles.slider, [], callback{2:end});
+            end
         end
-
+        
         % Update our own time line
         update_time_line(handles, frame_idx);
     end

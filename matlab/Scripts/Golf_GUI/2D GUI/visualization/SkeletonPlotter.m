@@ -285,7 +285,7 @@ uicontrol('Style', 'togglebutton', ...
 
 % Open Signal Plot Button (new)
 uicontrol('Style', 'pushbutton', ...
-    'String', '📊 Signal Plot', ...
+    'String', 'Signal Plot', ...
     'Units', 'normalized', ...
     'Position', [button_x_position, initial_y_position - 5 * button_spacing, button_width, button_height], ...
     'BackgroundColor', [0.3, 0.7, 0.9], ...
@@ -443,12 +443,12 @@ updatePlot();
             set(handles.face_normal_quiver, 'Visible', 'off');
         end
 
-    % Forces and Torques
-    for k = 1:3
-        dataset_k = datasets{k,2};  % Don't overwrite 'data' variable!
-        force_vec = dataset_k.TotalHandForceGlobal(i,:);
-        torque_vec = dataset_k.EquivalentMidpointCoupleGlobal(i,:);
-        mp = [dataset_k.MPx(i), dataset_k.MPy(i), dataset_k.MPz(i)];
+        % Forces and Torques
+        for k = 1:3
+            dataset_k = datasets{k,2};  % Don't overwrite 'data' variable!
+            force_vec = dataset_k.TotalHandForceGlobal(i,:);
+            torque_vec = dataset_k.EquivalentMidpointCoupleGlobal(i,:);
+            mp = [dataset_k.MPx(i), dataset_k.MPy(i), dataset_k.MPz(i)];
 
             if get(handles.checkbox_list(k), 'Value')
                 set(handles.force_quivers{k}, 'Visible', 'on', ...
@@ -504,30 +504,40 @@ updatePlot();
         updateSignalPlotter();
     end
 
-    function togglePlayPause(~, ~)
-        if get(handles.play_pause_button, 'Value') == 1
-            set(handles.play_pause_button, 'String', 'Pause');
-            handles.playing = true;
-            while handles.playing && ishandle(handles.slider)
-                i = round(get(handles.slider, 'Value'));
-                speed = get(handles.speed_slider, 'Value');
-                if i < num_frames
-                    set(handles.slider, 'Value', i+1);
-                else
-                    set(handles.slider, 'Value', 1);
-                end
-                updatePlot();
-                pause(0.03 / speed);
-                if get(handles.play_pause_button, 'Value') == 0
-                    break;
-                end
+function togglePlayPause(~, ~)
+    if get(handles.play_pause_button, 'Value') == 1
+        set(handles.play_pause_button, 'String', 'Pause');
+        handles.playing = true;
+        while handles.playing && ishandle(handles.slider) && ishandle(handles.play_pause_button)
+            i = round(get(handles.slider, 'Value'));
+            speed = get(handles.speed_slider, 'Value');
+            if i < num_frames
+                set(handles.slider, 'Value', i+1);
+            else
+                set(handles.slider, 'Value', 1);
             end
+            updatePlot();
+            pause(0.03 / speed);
+            % Check handles.playing flag instead of button value
+            % (button might be modified externally, e.g., when opening signal plotter)
+            if ~handles.playing
+                break;
+            end
+            % Also check button value if it still exists
+            if ishandle(handles.play_pause_button) && get(handles.play_pause_button, 'Value') == 0
+                break;
+            end
+        end
+        if ishandle(handles.play_pause_button)
             set(handles.play_pause_button, 'String', 'Play');
-        else
-            handles.playing = false;
+        end
+    else
+        handles.playing = false;
+        if ishandle(handles.play_pause_button)
             set(handles.play_pause_button, 'String', 'Play');
         end
     end
+end
 
     function toggleRecord(~, ~)
         if get(handles.record_button, 'Value')
@@ -619,20 +629,20 @@ updatePlot();
         end
     end
 
-function openSignalPlot(~, ~)
-    % Open or bring to focus the signal plotter window
-    
-    % Check if signal plotter is already open
-    if ~isempty(signal_plotter_handle) && isvalid(signal_plotter_handle.fig)
+    function openSignalPlot(~, ~)
+        % Open or bring to focus the signal plotter window
+
+        % Check if signal plotter is already open
+        if ~isempty(signal_plotter_handle) && isvalid(signal_plotter_handle.fig)
         % Bring existing window to front
         figure(signal_plotter_handle.fig);
-        fprintf('📊 Signal plotter already open. Bringing to front.\n');
-        return;
-    end
-    
-    try
-        fprintf('📊 Opening Interactive Signal Plotter...\n');
-        
+        fprintf('Signal plotter already open. Bringing to front.\n');
+            return;
+        end
+
+        try
+            fprintf('Opening Interactive Signal Plotter...\n');
+
         % Pause playback if active (prevents conflicts during initialization)
         was_playing = false;
         if handles.playing
@@ -641,24 +651,27 @@ function openSignalPlot(~, ~)
             handles.playing = false;
             set(handles.play_pause_button, 'Value', 0);
             set(handles.play_pause_button, 'String', 'Play');
+            
+            % Give playback loop time to exit cleanly
+            pause(0.1);
         end
-        
-        % Open the signal plotter
-        signal_plotter_handle = InteractiveSignalPlotter(datasets_struct, handles, signal_plot_config);
-        
-        fprintf('✅ Signal plotter opened successfully.\n');
-        
-        % Optionally resume playback
-        if was_playing
-            fprintf('   (Playback was paused. Press Play to resume)\n');
+
+            % Open the signal plotter
+            signal_plotter_handle = InteractiveSignalPlotter(datasets_struct, handles, signal_plot_config);
+
+            fprintf('✅ Signal plotter opened successfully.\n');
+
+            % Optionally resume playback
+            if was_playing
+                fprintf('   (Playback was paused. Press Play to resume)\n');
+            end
+
+        catch ME
+            fprintf('❌ Error opening signal plotter: %s\n', ME.message);
+            fprintf('   Location: %s (line %d)\n', ME.stack(1).name, ME.stack(1).line);
+            errordlg(sprintf('Failed to open signal plotter: %s', ME.message), 'Signal Plotter Error');
         end
-        
-    catch ME
-        fprintf('❌ Error opening signal plotter: %s\n', ME.message);
-        fprintf('   Location: %s (line %d)\n', ME.stack(1).name, ME.stack(1).line);
-        errordlg(sprintf('Failed to open signal plotter: %s', ME.message), 'Signal Plotter Error');
     end
-end
 
     function updateSignalPlotter()
         % Update the signal plotter when frame changes
@@ -666,16 +679,16 @@ end
             try
                 % Get current frame
                 current_frame = round(get(handles.slider, 'Value'));
-                
+
                 % Update the signal plotter's time line
                 plot_handles = guidata(signal_plotter_handle.fig);
-                
+
                 % Check if signal plotter is fully initialized
                 if isempty(plot_handles) || ~isfield(plot_handles, 'signal_listbox')
                     % Signal plotter not fully initialized yet, skip update
                     return;
                 end
-                
+
                 if isfield(plot_handles, 'time_vector')
                     % Call the update function
                     if isfield(plot_handles, 'axes_handle') && ~isempty(plot_handles.axes_handle)
@@ -697,33 +710,33 @@ end
                             end
                         end
 
-                    % Update value displays
-                    if isfield(plot_handles, 'value_displays') && ~isempty(plot_handles.value_displays) && isfield(plot_handles, 'signal_listbox')
-                        selected_idx = get(plot_handles.signal_listbox, 'Value');
-                        if ~isempty(selected_idx)
-                            signal_names = plot_handles.config.hotlist_signals(selected_idx);
-                            
-                            for i = 1:min(length(plot_handles.value_displays), length(signal_names))
-                                signal_name = signal_names{i};
-                                if ismember(signal_name, plot_handles.current_dataset.Properties.VariableNames)
-                                    signal_data = plot_handles.current_dataset.(signal_name);
-                                    if size(signal_data, 2) > 1
-                                        signal_data = vecnorm(signal_data, 2, 2);
+                        % Update value displays
+                        if isfield(plot_handles, 'value_displays') && ~isempty(plot_handles.value_displays) && isfield(plot_handles, 'signal_listbox')
+                            selected_idx = get(plot_handles.signal_listbox, 'Value');
+                            if ~isempty(selected_idx)
+                                signal_names = plot_handles.config.hotlist_signals(selected_idx);
+
+                                for i = 1:min(length(plot_handles.value_displays), length(signal_names))
+                                    signal_name = signal_names{i};
+                                    if ismember(signal_name, plot_handles.current_dataset.Properties.VariableNames)
+                                        signal_data = plot_handles.current_dataset.(signal_name);
+                                        if size(signal_data, 2) > 1
+                                            signal_data = vecnorm(signal_data, 2, 2);
+                                        end
+                                        current_value = signal_data(current_frame);
+                                        set(plot_handles.value_displays(i), 'String', ...
+                                            sprintf('%s: %.3f', signal_name, current_value));
                                     end
-                                    current_value = signal_data(current_frame);
-                                    set(plot_handles.value_displays(i), 'String', ...
-                                        sprintf('%s: %.3f', signal_name, current_value));
                                 end
                             end
                         end
-                    end
-                    
-                    % Update info text
-                    if isfield(plot_handles, 'info_text') && isfield(plot_handles, 'signal_listbox')
-                        set(plot_handles.info_text, 'String', sprintf('Plotting %d signal(s) | Frame: %d/%d | Time: %.3fs', ...
-                                                                       length(get(plot_handles.signal_listbox, 'Value')), ...
-                                                                       current_frame, length(plot_handles.time_vector), current_time));
-                    end
+
+                        % Update info text
+                        if isfield(plot_handles, 'info_text') && isfield(plot_handles, 'signal_listbox')
+                            set(plot_handles.info_text, 'String', sprintf('Plotting %d signal(s) | Frame: %d/%d | Time: %.3fs', ...
+                                length(get(plot_handles.signal_listbox, 'Value')), ...
+                                current_frame, length(plot_handles.time_vector), current_time));
+                        end
                     end
                 end
             catch ME

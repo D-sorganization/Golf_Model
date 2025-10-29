@@ -12,7 +12,7 @@ data_locations = {
     '../../../Golf_GUI/Simscape Multibody Data Plotters/Matlab Versions/SkeletonPlotter/',
     '../../../Golf_GUI/Simscape Multibody Data Plotters/Python Version/integrated_golf_gui_r0/',
     '../../../Golf_GUI/Simscape Multibody Data Plotters/Python Version/golf_gui_r0/'
-};
+    };
 
 BASEQ = [];
 ZTCFQ = [];
@@ -21,32 +21,32 @@ DELTAQ = [];
 fprintf('Searching for data files...\n');
 for i = 1:length(data_locations)
     location = data_locations{i};
-    
+
     baseq_file = fullfile(location, 'BASEQ.mat');
     ztcfq_file = fullfile(location, 'ZTCFQ.mat');
     deltaq_file = fullfile(location, 'DELTAQ.mat');
-    
+
     if exist(baseq_file, 'file')
         fprintf('  Found data in: %s\n', location);
-        
+
         % Load BASEQ
         if exist(baseq_file, 'file')
             load(baseq_file, 'BASEQ');
             fprintf('    ✅ Loaded BASEQ (%d frames)\n', height(BASEQ));
         end
-        
+
         % Load ZTCFQ
         if exist(ztcfq_file, 'file')
             load(ztcfq_file, 'ZTCFQ');
             fprintf('    ✅ Loaded ZTCFQ (%d frames)\n', height(ZTCFQ));
         end
-        
+
         % Load DELTAQ
         if exist(deltaq_file, 'file')
             load(deltaq_file, 'DELTAQ');
             fprintf('    ✅ Loaded DELTAQ (%d frames)\n', height(DELTAQ));
         end
-        
+
         break;
     end
 end
@@ -69,11 +69,11 @@ for i = 1:length(signal_names)
     if strcmp(sig, 'Time')
         continue;
     end
-    
+
     % Check for force/torque
     if contains(sig, {'Force', 'Torque', 'Couple', 'Power', 'Work'}, 'IgnoreCase', true)
         force_torque_signals{end+1} = sig;
-    % Check for positions
+        % Check for positions
     elseif ~isempty(regexp(sig, '[xyz]$', 'once')) || contains(sig, {'Butt', 'CH', 'MP', 'LW', 'LE', 'LS', 'RW', 'RE', 'RS', 'HUB'})
         position_signals{end+1} = sig;
     else
@@ -107,7 +107,7 @@ fprintf('   Look for the "📊 Signal Plot" button on the right side!\n\n');
 
 try
     SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ);
-    
+
     fprintf('✅ SkeletonPlotter launched successfully!\n\n');
     fprintf('=== How to Use the Interactive Signal Plotter ===\n');
     fprintf('1. Click the "📊 Signal Plot" button on the right side\n');
@@ -117,10 +117,9 @@ try
     fprintf('5. Try dragging on the plot to scrub through time!\n');
     fprintf('6. Watch the 3D skeleton update in sync!\n');
     fprintf('\nEnjoy exploring your golf swing data! 🏌️\n');
-    
+
 catch ME
     fprintf('❌ Error launching SkeletonPlotter:\n');
     fprintf('   %s\n', ME.message);
     fprintf('   Location: %s (line %d)\n', ME.stack(1).name, ME.stack(1).line);
 end
-
