@@ -529,6 +529,9 @@ updatePlot();
 
         % Update signal plotter if open
         updateSignalPlotter();
+        
+        % Use drawnow limitrate for smooth, controlled refresh
+        drawnow limitrate;
     end
 
     function togglePlayPause(~, ~)
@@ -544,7 +547,9 @@ updatePlot();
                     set(handles.slider, 'Value', 1);
                 end
                 updatePlot();
-                pause(0.03 / speed);
+                % Optimized timing: 0.025s = 40 FPS (was 0.03 = 33 FPS)
+                % drawnow limitrate in updatePlot ensures smooth rendering
+                pause(0.025 / speed);
                 % Check handles.playing flag instead of button value
                 % (button might be modified externally, e.g., when opening signal plotter)
                 if ~handles.playing
@@ -788,7 +793,7 @@ updatePlot();
             return;
         end
         setappdata(src, 'cleanup_in_progress', true);
-        
+
         % Check if embedded mode
         is_embedded = false;
         if isappdata(src, 'is_embedded')
