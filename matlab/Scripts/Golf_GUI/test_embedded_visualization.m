@@ -30,7 +30,7 @@ fprintf('Test %d: Launching application...\n', test_count);
 try
     app_handles = launch_tabbed_app();
     pause(2); % Allow time for GUI to render
-    
+
     if ishandle(app_handles.main_fig) && isvalid(app_handles.main_fig)
         fprintf('  ✓ PASS: Application launched successfully\n');
         test_results.test1 = 'PASS';
@@ -52,7 +52,7 @@ fprintf('\nTest %d: Checking Tab 3 initialization...\n', test_count);
 try
     if isfield(app_handles, 'tab3_handles')
         tab3 = app_handles.tab3_handles;
-        
+
         if isfield(tab3, 'viz_panel') && ishandle(tab3.viz_panel)
             fprintf('  ✓ PASS: Tab 3 visualization panel exists\n');
             test_results.test2 = 'PASS';
@@ -76,17 +76,17 @@ fprintf('\nTest %d: Checking for embedded visualization content...\n', test_coun
 try
     % Check if panel has children (axes, controls, etc.)
     panel_children = findobj(tab3.viz_panel, '-depth', 1);
-    
+
     if length(panel_children) > 5  % Should have many children (axes, panels, buttons)
         fprintf('  ✓ PASS: Panel has %d child objects (expected many)\n', length(panel_children));
         test_results.test3 = 'PASS';
         pass_count = pass_count + 1;
-        
+
         % List some key components
         axes_found = findobj(panel_children, 'Type', 'axes');
         panels_found = findobj(panel_children, 'Type', 'uipanel');
         buttons_found = findobj(panel_children, 'Type', 'uicontrol', 'Style', 'pushbutton');
-        
+
         fprintf('    - Found %d axes\n', length(axes_found));
         fprintf('    - Found %d panels\n', length(panels_found));
         fprintf('    - Found %d buttons\n', length(buttons_found));
@@ -104,14 +104,14 @@ test_count = test_count + 1;
 fprintf('\nTest %d: Checking 3D visualization axes...\n', test_count);
 try
     all_axes = findobj(tab3.viz_panel, 'Type', 'axes');
-    
+
     if ~isempty(all_axes)
         main_ax = all_axes(1); % Assume first is main 3D axes
-        
+
         % Check if it has 3D content
         view_angles = get(main_ax, 'View');
         children = get(main_ax, 'Children');
-        
+
         if length(children) > 10  % Should have many objects (cylinders, spheres, quivers)
             fprintf('  ✓ PASS: 3D axes has %d graphical objects\n', length(children));
             fprintf('    - View angles: [%.1f, %.1f]\n', view_angles(1), view_angles(2));
@@ -138,7 +138,7 @@ try
     play_button = findobj(tab3.viz_panel, 'Type', 'uicontrol', 'Style', 'togglebutton', 'String', 'Play');
     sliders = findobj(tab3.viz_panel, 'Type', 'uicontrol', 'Style', 'slider');
     dropdowns = findobj(tab3.viz_panel, 'Type', 'uicontrol', 'Style', 'popupmenu');
-    
+
     controls_found = 0;
     if ~isempty(play_button)
         fprintf('    ✓ Play button found\n');
@@ -146,21 +146,21 @@ try
     else
         fprintf('    ✗ Play button NOT found\n');
     end
-    
+
     if length(sliders) >= 3
         fprintf('    ✓ Sliders found (%d)\n', length(sliders));
         controls_found = controls_found + 1;
     else
         fprintf('    ✗ Expected 3+ sliders, found %d\n', length(sliders));
     end
-    
+
     if ~isempty(dropdowns)
         fprintf('    ✓ Dropdown menu found\n');
         controls_found = controls_found + 1;
     else
         fprintf('    ✗ Dropdown menu NOT found\n');
     end
-    
+
     if controls_found >= 2
         fprintf('  ✓ PASS: Key controls present (%d/3)\n', controls_found);
         test_results.test5 = 'PASS';
@@ -180,7 +180,7 @@ fprintf('\nTest %d: Verifying no separate window was created...\n', test_count);
 try
     % Find all figures
     all_figs = findall(0, 'Type', 'figure');
-    
+
     % Count figures with "Golf Swing Plotter" in name
     skeleton_figs = [];
     for i = 1:length(all_figs)
@@ -189,7 +189,7 @@ try
             skeleton_figs = [skeleton_figs; all_figs(i)];
         end
     end
-    
+
     if isempty(skeleton_figs)
         fprintf('  ✓ PASS: No separate SkeletonPlotter window found (embedded correctly)\n');
         test_results.test6 = 'PASS';
@@ -216,7 +216,7 @@ try
         close(app_handles.main_fig);
         pause(1); % Allow time for cleanup
     end
-    
+
     % Check if properly cleaned up
     if ~ishandle(app_handles.main_fig)
         fprintf('  ✓ PASS: Application closed successfully\n');
@@ -252,4 +252,3 @@ end
 fprintf('\n');
 
 end
-
