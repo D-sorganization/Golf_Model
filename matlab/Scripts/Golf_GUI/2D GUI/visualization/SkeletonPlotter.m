@@ -1,6 +1,23 @@
-function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)
+function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ, varargin)
 % === SkeletonPlotter - FINAL BUNDLED VERSION ===
 % Golf Swing Visualizer with Playback, Zoom, Recording, Multi-Dataset Forces
+%
+% Usage:
+%   SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)           - Standalone figure (default)
+%   SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ, parent)   - Embedded in parent container
+%
+% Inputs:
+%   BASEQ, ZTCFQ, DELTAQ - Dataset tables
+%   parent (optional)    - Parent container (panel/tab) for embedded mode
+
+% --- Parse optional parent parameter ---
+if nargin > 3 && ~isempty(varargin{1})
+    parent_container = varargin{1};
+    embedded_mode = true;
+else
+    parent_container = [];
+    embedded_mode = false;
+end
 
 % --- Save initial workspace variables ---
 vars_before = who;
@@ -45,12 +62,21 @@ signal_plot_config = SignalPlotConfig('load');
 % Initialize signal plotter handle
 signal_plotter_handle = [];
 
-%% === 2. Create Main Figure ===
-fig = figure('Name', 'Golf Swing Plotter - BASEQ', ...
-    'NumberTitle', 'off', ...
-    'Color', figure_background_color, ...
-    'Position', [100, 100, 1400, 800], ...
-    'CloseRequestFcn', @cleanup_and_close);
+%% === 2. Create Main Figure or Use Parent ===
+if embedded_mode
+    % Embedded mode - use parent container
+    fig = parent_container;
+    % Store embedded flag for cleanup
+    setappdata(fig, 'is_embedded', true);
+else
+    % Standalone mode - create new figure
+    fig = figure('Name', 'Golf Swing Plotter - BASEQ', ...
+        'NumberTitle', 'off', ...
+        'Color', figure_background_color, ...
+        'Position', [100, 100, 1400, 800], ...
+        'CloseRequestFcn', @cleanup_and_close);
+    setappdata(fig, 'is_embedded', false);
+end
 
 %% === 3. Create 3D Axes ===
 handles.ax = axes('Parent', fig, ...
@@ -503,6 +529,9 @@ updatePlot();
 
         % Update signal plotter if open
         updateSignalPlotter();
+
+        % Use drawnow limitrate for smooth, controlled refresh
+        drawnow limitrate;
     end
 
     function togglePlayPause(~, ~)
@@ -518,7 +547,9 @@ updatePlot();
                     set(handles.slider, 'Value', 1);
                 end
                 updatePlot();
-                pause(0.03 / speed);
+                % Optimized timing: 0.025s = 40 FPS (was 0.03 = 33 FPS)
+                % drawnow limitrate in updatePlot ensures smooth rendering
+                pause(0.025 / speed);
                 % Check handles.playing flag instead of button value
                 % (button might be modified externally, e.g., when opening signal plotter)
                 if ~handles.playing
@@ -752,57 +783,97 @@ updatePlot();
     function cleanup_and_close(src, ~)
         % Cleanup function called when closing the skeleton plotter
 
-        fprintf('DEBUG: cleanup_and_close called\n');
-        fprintf('DEBUG: Figure handle: %d\n', src);
+        % Prevent multiple calls
+        if ~ishandle(src) || ~isvalid(src)
+            return;
+        end
+
+        % Check if cleanup already started
+        if isappdata(src, 'cleanup_in_progress')
+            return;
+        end
+        setappdata(src, 'cleanup_in_progress', true);
+
+        % Check if embedded mode
+        is_embedded = false;
+        if isappdata(src, 'is_embedded')
+            is_embedded = getappdata(src, 'is_embedded');
+        end
+
         fprintf('Cleaning up Skeleton Plotter...\n');
 
         % Stop playback if running
-        if handles.playing
-            handles.playing = false;
-            pause(0.1);  % Let playback loop exit
+        try
+            if isfield(handles, 'playing') && handles.playing
+                handles.playing = false;
+                pause(0.1);  % Let playback loop exit
+            end
+        catch
+            % Handles may not be accessible
         end
 
         % Close signal plotter if open
-        if ~isempty(signal_plotter_handle) && isvalid(signal_plotter_handle.fig)
-            try
+        try
+            if exist('signal_plotter_handle', 'var') && ~isempty(signal_plotter_handle) && ...
+                    isstruct(signal_plotter_handle) && isfield(signal_plotter_handle, 'fig') && ...
+                    ishandle(signal_plotter_handle.fig)
                 fprintf('   Closing Signal Plotter...\n');
                 delete(signal_plotter_handle.fig);
-            catch
-                % Figure may already be closed
             end
+        catch
+            % Figure may already be closed
         end
 
         % Close video writer if recording
-        if isfield(handles, 'recording') && handles.recording
-            if ~isempty(handles.videoObj)
-                try
-                    close(handles.videoObj);
-                catch
-                    % Already closed
+        try
+            if exist('handles', 'var') && isfield(handles, 'recording') && handles.recording
+                if isfield(handles, 'videoObj') && ~isempty(handles.videoObj)
+                    try
+                        close(handles.videoObj);
+                    catch
+                        % Already closed
+                    end
                 end
             end
+        catch
+            % Recording state may not be accessible
         end
 
         % Clear app data from figure
-        if ishandle(fig)
+        if ishandle(src)
             try
                 % Remove any stored app data
-                props = getappdata(fig);
-                fields = fieldnames(props);
-                for i = 1:length(fields)
-                    rmappdata(fig, fields{i});
+                props = getappdata(src);
+                if ~isempty(props)
+                    fields = fieldnames(props);
+                    for i = 1:length(fields)
+                        try
+                            rmappdata(src, fields{i});
+                        catch
+                            % Field may already be removed
+                        end
+                    end
                 end
             catch
                 % No app data to remove
             end
         end
 
-        % Delete the figure
-        if ishandle(fig)
-            delete(fig);
+        % Delete the figure (only in standalone mode)
+        if ishandle(src)
+            if ~is_embedded
+                delete(src);
+                fprintf('Skeleton Plotter cleanup complete (figure closed).\n');
+            else
+                % In embedded mode, just clear children instead of deleting parent
+                try
+                    delete(findobj(src, '-depth', 1));
+                catch
+                    % Children may already be deleted
+                end
+                fprintf('Skeleton Plotter cleanup complete (embedded mode).\n');
+            end
         end
-
-        fprintf('Cleanup complete.\n');
     end
 
 end
