@@ -639,29 +639,35 @@ set(fig, 'CloseRequestFcn', @on_close);
 
             % Update value displays
             if ~isempty(handles.value_displays)
-                selected_idx = get(handles.signal_listbox, 'Value');
-                signal_names = handles.config.hotlist_signals(selected_idx);
+                for i = 1:length(handles.value_displays)
+                    display_name = get(handles.value_displays(i), 'Tag');
 
-                for i = 1:min(length(handles.value_displays), length(signal_names))
-                    signal_name = signal_names{i};
+                    % Extract signal name and component number from display name
+                    % Format is either 'SignalName' or 'SignalName_ComponentNum'
+                    if contains(display_name, '_')
+                        parts = strsplit(display_name, '_');
+                        comp_num = str2double(parts{end});
+                        if ~isnan(comp_num)
+                            % Multi-component signal
+                            signal_name = strjoin(parts(1:end-1), '_');
+                        else
+                            % Signal name contains underscore but no component number
+                            signal_name = display_name;
+                            comp_num = [];
+                        end
+                    else
+                        % Single component signal
+                        signal_name = display_name;
+                        comp_num = [];
+                    end
+
+                    % Get signal data and update display
                     if ismember(signal_name, handles.current_dataset.Properties.VariableNames)
                         signal_data = handles.current_dataset.(signal_name);
-                        if size(signal_data, 2) > 1
-                            % For multi-component signals, we need to find the right component
-                            % The display name format is 'SignalName_1', 'SignalName_2', etc.
-                            display_name = get(handles.value_displays(i), 'Tag');
-                            if contains(display_name, '_')
-                                comp_num = str2double(display_name(end));
-                                if ~isnan(comp_num) && comp_num <= size(signal_data, 2)
-                                    current_value = signal_data(frame_idx, comp_num);
-                                else
-                                    current_value = signal_data(frame_idx, 1); % Default to first component
-                                end
-                            else
-                                current_value = signal_data(frame_idx, 1); % Default to first component
-                            end
+                        if ~isempty(comp_num) && comp_num <= size(signal_data, 2)
+                            current_value = signal_data(frame_idx, comp_num);
                         else
-                            current_value = signal_data(frame_idx);
+                            current_value = signal_data(frame_idx, 1);
                         end
                         set(handles.value_displays(i), 'String', ...
                             sprintf('%s: %.3f', display_name, current_value));
@@ -679,29 +685,35 @@ set(fig, 'CloseRequestFcn', @on_close);
 
             % Update value displays
             if ~isempty(handles.value_displays)
-                selected_idx = get(handles.signal_listbox, 'Value');
-                signal_names = handles.config.hotlist_signals(selected_idx);
+                for i = 1:length(handles.value_displays)
+                    display_name = get(handles.value_displays(i), 'Tag');
 
-                for i = 1:min(length(handles.value_displays), length(signal_names))
-                    signal_name = signal_names{i};
+                    % Extract signal name and component number from display name
+                    % Format is either 'SignalName' or 'SignalName_ComponentNum'
+                    if contains(display_name, '_')
+                        parts = strsplit(display_name, '_');
+                        comp_num = str2double(parts{end});
+                        if ~isnan(comp_num)
+                            % Multi-component signal
+                            signal_name = strjoin(parts(1:end-1), '_');
+                        else
+                            % Signal name contains underscore but no component number
+                            signal_name = display_name;
+                            comp_num = [];
+                        end
+                    else
+                        % Single component signal
+                        signal_name = display_name;
+                        comp_num = [];
+                    end
+
+                    % Get signal data and update display
                     if ismember(signal_name, handles.current_dataset.Properties.VariableNames)
                         signal_data = handles.current_dataset.(signal_name);
-                        if size(signal_data, 2) > 1
-                            % For multi-component signals, we need to find the right component
-                            % The display name format is 'SignalName_1', 'SignalName_2', etc.
-                            display_name = get(handles.value_displays(i), 'Tag');
-                            if contains(display_name, '_')
-                                comp_num = str2double(display_name(end));
-                                if ~isnan(comp_num) && comp_num <= size(signal_data, 2)
-                                    current_value = signal_data(frame_idx, comp_num);
-                                else
-                                    current_value = signal_data(frame_idx, 1); % Default to first component
-                                end
-                            else
-                                current_value = signal_data(frame_idx, 1); % Default to first component
-                            end
+                        if ~isempty(comp_num) && comp_num <= size(signal_data, 2)
+                            current_value = signal_data(frame_idx, comp_num);
                         else
-                            current_value = signal_data(frame_idx);
+                            current_value = signal_data(frame_idx, 1);
                         end
                         set(handles.value_displays(i), 'String', ...
                             sprintf('%s: %.3f', display_name, current_value));
