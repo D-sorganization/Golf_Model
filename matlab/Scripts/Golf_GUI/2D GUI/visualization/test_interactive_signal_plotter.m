@@ -34,13 +34,13 @@ for i = 1:length(data_locations)
             load(baseq_file, 'BASEQ');
             fprintf('    Loaded BASEQ (%d frames)\n', height(BASEQ));
         end
-        
+
         % Load ZTCFQ
         if exist(ztcfq_file, 'file')
             load(ztcfq_file, 'ZTCFQ');
             fprintf('    Loaded ZTCFQ (%d frames)\n', height(ZTCFQ));
         end
-        
+
         % Load DELTAQ
         if exist(deltaq_file, 'file')
             load(deltaq_file, 'DELTAQ');
@@ -107,7 +107,7 @@ fprintf('   Look for the "Signal Plot" button on the right side!\n\n');
 
 try
     SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ);
-    
+
     fprintf('SkeletonPlotter launched successfully!\n\n');
     fprintf('=== How to Use the Interactive Signal Plotter ===\n');
     fprintf('1. Click the "Signal Plot" button on the right side\n');

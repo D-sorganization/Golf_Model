@@ -268,24 +268,37 @@ set(fig, 'CloseRequestFcn', @on_close);
             if ismember(signal_name, handles.current_dataset.Properties.VariableNames)
                 signal_data = handles.current_dataset.(signal_name);
 
-                % Handle matrix columns (extract magnitude if needed)
+                % Handle matrix columns (plot each component separately)
                 if size(signal_data, 2) > 1
-                    signal_data = vecnorm(signal_data, 2, 2);
-                    signal_name = [signal_name, ' (mag)'];
+                    % Plot each component separately
+                    for comp = 1:size(signal_data, 2)
+                        comp_data = signal_data(:, comp);
+                        comp_name = sprintf('%s_%d', signal_name, comp);
+
+                        h = plot(ax, handles.time_vector, comp_data, ...
+                            'Color', colors(i,:), ...
+                            'LineWidth', 1.5, ...
+                            'DisplayName', comp_name);
+                        line_handles = [line_handles; h];
+
+                        current_value = comp_data(current_frame);
+                        value_displays(end+1).signal = comp_name;
+                        value_displays(end).value = current_value;
+                        value_displays(end).color = colors(i,:);
+                    end
+                else
+                    % Single component - plot normally
+                    h = plot(ax, handles.time_vector, signal_data, ...
+                        'Color', colors(i,:), ...
+                        'LineWidth', 1.5, ...
+                        'DisplayName', signal_name);
+                    line_handles = [line_handles; h];
+
+                    current_value = signal_data(current_frame);
+                    value_displays(end+1).signal = signal_name;
+                    value_displays(end).value = current_value;
+                    value_displays(end).color = colors(i,:);
                 end
-
-                % Plot signal
-                h = plot(ax, handles.time_vector, signal_data, ...
-                    'Color', colors(i,:), ...
-                    'LineWidth', 1.5, ...
-                    'DisplayName', signal_name);
-                line_handles = [line_handles; h];
-
-                % Store current value for display
-                current_value = signal_data(current_frame);
-                value_displays(i).signal = signal_name;
-                value_displays(i).value = current_value;
-                value_displays(i).color = colors(i,:);
             end
         end
 
@@ -336,16 +349,35 @@ set(fig, 'CloseRequestFcn', @on_close);
             if ismember(signal_name, handles.current_dataset.Properties.VariableNames)
                 signal_data = handles.current_dataset.(signal_name);
 
-                % Handle matrix columns
+                % Handle matrix columns (plot each component separately)
                 if size(signal_data, 2) > 1
-                    signal_data = vecnorm(signal_data, 2, 2);
-                    signal_name = [signal_name, ' (mag)'];
-                end
+                    % Plot each component separately
+                    for comp = 1:size(signal_data, 2)
+                        comp_data = signal_data(:, comp);
+                        comp_name = sprintf('%s_%d', signal_name, comp);
 
-                % Plot signal
-                plot(ax, handles.time_vector, signal_data, ...
-                    'Color', [0.2, 0.4, 0.8], ...
-                    'LineWidth', 1.5);
+                        plot(ax, handles.time_vector, comp_data, ...
+                            'Color', [0.2, 0.4, 0.8], ...
+                            'LineWidth', 1.5);
+
+                        % Store current value for this component
+                        current_value = comp_data(current_frame);
+                        value_displays(end+1).signal = comp_name;
+                        value_displays(end).value = current_value;
+                        value_displays(end).color = [0.2, 0.4, 0.8];
+                    end
+                else
+                    % Single component - plot normally
+                    plot(ax, handles.time_vector, signal_data, ...
+                        'Color', [0.2, 0.4, 0.8], ...
+                        'LineWidth', 1.5);
+
+                    % Store current value
+                    current_value = signal_data(current_frame);
+                    value_displays(end+1).signal = signal_name;
+                    value_displays(end).value = current_value;
+                    value_displays(end).color = [0.2, 0.4, 0.8];
+                end
 
                 % Add vertical line
                 y_limits = ylim(ax);
@@ -358,12 +390,6 @@ set(fig, 'CloseRequestFcn', @on_close);
                 title(ax, signal_name, 'FontSize', 10, 'FontWeight', 'bold', 'Interpreter', 'none');
 
                 axes_handles = [axes_handles; ax];
-
-                % Store current value
-                current_value = signal_data(current_frame);
-                value_displays(i).signal = signal_name;
-                value_displays(i).value = current_value;
-                value_displays(i).color = [0.2, 0.4, 0.8];
             end
         end
 
@@ -621,11 +647,24 @@ set(fig, 'CloseRequestFcn', @on_close);
                     if ismember(signal_name, handles.current_dataset.Properties.VariableNames)
                         signal_data = handles.current_dataset.(signal_name);
                         if size(signal_data, 2) > 1
-                            signal_data = vecnorm(signal_data, 2, 2);
+                            % For multi-component signals, we need to find the right component
+                            % The display name format is 'SignalName_1', 'SignalName_2', etc.
+                            display_name = get(handles.value_displays(i), 'Tag');
+                            if contains(display_name, '_')
+                                comp_num = str2double(display_name(end));
+                                if ~isnan(comp_num) && comp_num <= size(signal_data, 2)
+                                    current_value = signal_data(frame_idx, comp_num);
+                                else
+                                    current_value = signal_data(frame_idx, 1); % Default to first component
+                                end
+                            else
+                                current_value = signal_data(frame_idx, 1); % Default to first component
+                            end
+                        else
+                            current_value = signal_data(frame_idx);
                         end
-                        current_value = signal_data(frame_idx);
                         set(handles.value_displays(i), 'String', ...
-                            sprintf('%s: %.3f', signal_name, current_value));
+                            sprintf('%s: %.3f', display_name, current_value));
                     end
                 end
             end
@@ -648,11 +687,24 @@ set(fig, 'CloseRequestFcn', @on_close);
                     if ismember(signal_name, handles.current_dataset.Properties.VariableNames)
                         signal_data = handles.current_dataset.(signal_name);
                         if size(signal_data, 2) > 1
-                            signal_data = vecnorm(signal_data, 2, 2);
+                            % For multi-component signals, we need to find the right component
+                            % The display name format is 'SignalName_1', 'SignalName_2', etc.
+                            display_name = get(handles.value_displays(i), 'Tag');
+                            if contains(display_name, '_')
+                                comp_num = str2double(display_name(end));
+                                if ~isnan(comp_num) && comp_num <= size(signal_data, 2)
+                                    current_value = signal_data(frame_idx, comp_num);
+                                else
+                                    current_value = signal_data(frame_idx, 1); % Default to first component
+                                end
+                            else
+                                current_value = signal_data(frame_idx, 1); % Default to first component
+                            end
+                        else
+                            current_value = signal_data(frame_idx);
                         end
-                        current_value = signal_data(frame_idx);
                         set(handles.value_displays(i), 'String', ...
-                            sprintf('%s: %.3f', signal_name, current_value));
+                            sprintf('%s: %.3f', display_name, current_value));
                     end
                 end
             end
@@ -666,24 +718,24 @@ set(fig, 'CloseRequestFcn', @on_close);
 
     function on_close(~, ~)
         % Save configuration and cleanup before closing
-        
+
         fprintf('Cleaning up Signal Plotter...\n');
-        
+
         try
             handles = guidata(fig);
-            
+
             % Update config with current state
             handles.config.last_selected = handles.selected_signals;
             handles.config.plot_mode = handles.plot_mode;
             handles.config.window_position = get(fig, 'Position');
-            
+
             % Save config
             SignalPlotConfig('save', handles.config);
         catch
             % If handles don't exist, just skip config save
             fprintf('   Unable to save config (window may have been force-closed)\n');
         end
-        
+
         % Clear app data from figure
         if ishandle(fig)
             try
@@ -696,12 +748,12 @@ set(fig, 'CloseRequestFcn', @on_close);
                 % No app data to remove
             end
         end
-        
+
         % Delete figure
         if ishandle(fig)
             delete(fig);
         end
-        
+
         fprintf('Signal Plotter cleanup complete.\n');
     end
 end

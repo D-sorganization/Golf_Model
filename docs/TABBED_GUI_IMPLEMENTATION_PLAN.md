@@ -1,6 +1,7 @@
 # Tabbed GUI Implementation Plan
 
 ## Overview
+
 Create a comprehensive three-tab GUI application for golf swing analysis integrating model setup, ZTCF calculation, and visualization.
 
 ## Architecture
@@ -20,9 +21,11 @@ Create a comprehensive three-tab GUI application for golf swing analysis integra
 ## Tab 1: Model Setup & Simulation
 
 ### Purpose
+
 Configure model inputs and visualize the golf swing using Simscape Multibody.
 
 ### Features
+
 1. **Input Parameters Panel**
    - Golfer physical parameters
    - Club parameters
@@ -42,17 +45,20 @@ Configure model inputs and visualize the golf swing using Simscape Multibody.
    - Error handling
 
 ### Workflow
+
 ```
-Load Defaults → Adjust Parameters → Run Simulation → View Animation → 
+Load Defaults → Adjust Parameters → Run Simulation → View Animation →
 Accept/Modify → Pass to Tab 2
 ```
 
 ## Tab 2: ZTCF/ZVCF Calculation
 
 ### Purpose
+
 Run ZTCF (Zero Torque Counterfactual) analysis to decompose active and passive dynamics.
 
 ### Features
+
 1. **Calculation Control**
    - Number of iterations
    - Parallel processing toggle
@@ -77,17 +83,20 @@ Run ZTCF (Zero Torque Counterfactual) analysis to decompose active and passive d
    - Quick preview plots
 
 ### Workflow
+
 ```
-Load from Tab 1 → Configure Iterations → Run (Parallel) → 
+Load from Tab 1 → Configure Iterations → Run (Parallel) →
 Monitor Progress → Generate Tables → Pass to Tab 3
 ```
 
 ## Tab 3: Analysis & Visualization (Current Skeleton Plotter)
 
 ### Purpose
+
 Analyze and visualize the golf swing data with interactive tools.
 
 ### Features
+
 1. **Data Loading**
    - Load from Tab 2 (in-memory)
    - Load from file
@@ -109,37 +118,43 @@ Analyze and visualize the golf swing data with interactive tools.
    - Statistical summaries
 
 ### Workflow
+
 ```
-Load Data → Select Dataset (BASE/ZTCF/DELTA) → 
+Load Data → Select Dataset (BASE/ZTCF/DELTA) →
 3D Visualization + Signal Analysis → Export Results
 ```
 
 ## Implementation Strategy
 
 ### Phase 1: Fix Current Issues (IMMEDIATE)
+
 1. Fix signal plot synchronization
 2. Fix force/torque vector plotting (no magnitude)
 3. Fix cleanup on close
 4. Test all features work correctly
 
 ### Phase 2: Create Tabbed Framework
+
 1. Create main GUI window with tab group
 2. Implement Tab 3 (migrate current skeleton plotter)
 3. Test data loading and visualization in tab context
 
 ### Phase 3: Implement Tab 1
+
 1. Design parameter input panel
 2. Integrate Simscape simulation
 3. Implement visualization embedding
 4. Add save/load defaults
 
 ### Phase 4: Implement Tab 2
+
 1. Clean up ZTCF calculation script
 2. Implement parallel processing
 3. Add progress monitoring
 4. Optimize for speed
 
 ### Phase 5: Integration & Testing
+
 1. Data passing between tabs
 2. Memory management
 3. Error handling
@@ -148,31 +163,38 @@ Load Data → Select Dataset (BASE/ZTCF/DELTA) →
 ## Technical Considerations
 
 ### Data Passing Between Tabs
+
 - Use `setappdata/getappdata` for in-memory sharing
 - Fall back to file-based if memory constrained
 - Clear intermediate data when not needed
 
 ### Performance
+
 - Lazy loading: Only load/compute when tab is accessed
 - Background processing for long calculations
 - Efficient memory management
 - Progress indicators for all long operations
 
 ### User Experience
+
 - Disable tabs that require previous steps
 - Clear status indicators
 - Save session state
 - Crash recovery
 
 ### Animation Smoothing
+
 **Question**: Can we add interpolation for smoother animation?
+
 - **Yes**: Use interp1() to upsample time vector
 - **Impact**: Minimal slowdown if done smart (pre-compute)
 - **Implementation**: Interpolate data before visualization
 - **Trade-off**: Smoother animation vs slightly slower initial load
 
 ### Graphics Performance
+
 **How to make graphics smooth and responsive:**
+
 1. Limit update rate (30-60 FPS max)
 2. Use efficient rendering (minimize redraws)
 3. Buffer frames for playback
@@ -204,18 +226,21 @@ matlab/Scripts/Golf_GUI/
 ## Next Steps
 
 ### Immediate (This Session)
+
 1. Fix synchronization issue
-2. Fix force/torque plotting  
+2. Fix force/torque plotting
 3. Fix cleanup
 4. Commit fixes to current branch
 
 ### Next Session
+
 1. Create new branch: `feature/integrated-tabbed-gui`
 2. Implement tabbed framework
 3. Migrate skeleton plotter to Tab 3
 4. Test integration
 
 ### Future Sessions
+
 1. Implement Tab 1 (Model Setup)
 2. Optimize and implement Tab 2 (ZTCF Calculation)
 3. Full integration and testing
@@ -231,7 +256,6 @@ matlab/Scripts/Golf_GUI/
 
 ---
 
-**Status**: Planning Phase  
-**Current Focus**: Fix critical issues in signal plotter  
+**Status**: Planning Phase
+**Current Focus**: Fix critical issues in signal plotter
 **Next Phase**: Create tabbed GUI framework
-

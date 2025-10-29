@@ -47,10 +47,10 @@ signal_plotter_handle = [];
 
 %% === 2. Create Main Figure ===
 fig = figure('Name', 'Golf Swing Plotter - BASEQ', ...
-             'NumberTitle', 'off', ...
-             'Color', figure_background_color, ...
-             'Position', [100, 100, 1400, 800], ...
-             'CloseRequestFcn', @cleanup_and_close);
+    'NumberTitle', 'off', ...
+    'Color', figure_background_color, ...
+    'Position', [100, 100, 1400, 800], ...
+    'CloseRequestFcn', @cleanup_and_close);
 
 %% === 3. Create 3D Axes ===
 handles.ax = axes('Parent', fig, ...
@@ -680,16 +680,16 @@ updatePlot();
             try
                 % Get current frame
                 current_frame = round(get(handles.slider, 'Value'));
-                
+
                 % Update the signal plotter's time line
                 plot_handles = guidata(signal_plotter_handle.fig);
-                
+
                 % Check if signal plotter is fully initialized
                 if isempty(plot_handles) || ~isfield(plot_handles, 'signal_listbox')
                     % Signal plotter not fully initialized yet, skip update
                     return;
                 end
-                
+
                 if isfield(plot_handles, 'time_vector')
                     % Call the update function
                     if isfield(plot_handles, 'axes_handle') && ~isempty(plot_handles.axes_handle)
@@ -700,6 +700,7 @@ updatePlot();
                             time_line = findobj(plot_handles.axes_handle, 'Tag', 'TimeLine');
                             if ~isempty(time_line)
                                 set(time_line, 'XData', [current_time, current_time]);
+                                drawnow limitrate;
                             end
                         else
                             % Update all subplot time lines
@@ -709,35 +710,36 @@ updatePlot();
                                     set(time_line, 'XData', [current_time, current_time]);
                                 end
                             end
+                            drawnow limitrate;
                         end
 
-                    % Update value displays
-                    if isfield(plot_handles, 'value_displays') && ~isempty(plot_handles.value_displays) && isfield(plot_handles, 'signal_listbox')
-                        selected_idx = get(plot_handles.signal_listbox, 'Value');
-                        if ~isempty(selected_idx)
-                            signal_names = plot_handles.config.hotlist_signals(selected_idx);
-                            
-                            for i = 1:min(length(plot_handles.value_displays), length(signal_names))
-                                signal_name = signal_names{i};
-                                if ismember(signal_name, plot_handles.current_dataset.Properties.VariableNames)
-                                    signal_data = plot_handles.current_dataset.(signal_name);
-                                    if size(signal_data, 2) > 1
-                                        signal_data = vecnorm(signal_data, 2, 2);
+                        % Update value displays
+                        if isfield(plot_handles, 'value_displays') && ~isempty(plot_handles.value_displays) && isfield(plot_handles, 'signal_listbox')
+                            selected_idx = get(plot_handles.signal_listbox, 'Value');
+                            if ~isempty(selected_idx)
+                                signal_names = plot_handles.config.hotlist_signals(selected_idx);
+
+                                for i = 1:min(length(plot_handles.value_displays), length(signal_names))
+                                    signal_name = signal_names{i};
+                                    if ismember(signal_name, plot_handles.current_dataset.Properties.VariableNames)
+                                        signal_data = plot_handles.current_dataset.(signal_name);
+                                        if size(signal_data, 2) > 1
+                                            signal_data = vecnorm(signal_data, 2, 2);
+                                        end
+                                        current_value = signal_data(current_frame);
+                                        set(plot_handles.value_displays(i), 'String', ...
+                                            sprintf('%s: %.3f', signal_name, current_value));
                                     end
-                                    current_value = signal_data(current_frame);
-                                    set(plot_handles.value_displays(i), 'String', ...
-                                        sprintf('%s: %.3f', signal_name, current_value));
                                 end
                             end
                         end
-                    end
-                    
-                    % Update info text
-                    if isfield(plot_handles, 'info_text') && isfield(plot_handles, 'signal_listbox')
-                        set(plot_handles.info_text, 'String', sprintf('Plotting %d signal(s) | Frame: %d/%d | Time: %.3fs', ...
-                                                                       length(get(plot_handles.signal_listbox, 'Value')), ...
-                                                                       current_frame, length(plot_handles.time_vector), current_time));
-                    end
+
+                        % Update info text
+                        if isfield(plot_handles, 'info_text') && isfield(plot_handles, 'signal_listbox')
+                            set(plot_handles.info_text, 'String', sprintf('Plotting %d signal(s) | Frame: %d/%d | Time: %.3fs', ...
+                                length(get(plot_handles.signal_listbox, 'Value')), ...
+                                current_frame, length(plot_handles.time_vector), current_time));
+                        end
                     end
                 end
             catch ME
@@ -747,58 +749,60 @@ updatePlot();
         end
     end
 
-function cleanup_and_close(~, ~)
-    % Cleanup function called when closing the skeleton plotter
-    
-    fprintf('Cleaning up Skeleton Plotter...\n');
-    
-    % Stop playback if running
-    if handles.playing
-        handles.playing = false;
-        pause(0.1);  % Let playback loop exit
-    end
-    
-    % Close signal plotter if open
-    if ~isempty(signal_plotter_handle) && isvalid(signal_plotter_handle.fig)
-        try
-            fprintf('   Closing Signal Plotter...\n');
-            delete(signal_plotter_handle.fig);
-        catch
-            % Figure may already be closed
+    function cleanup_and_close(src, ~)
+        % Cleanup function called when closing the skeleton plotter
+
+        fprintf('DEBUG: cleanup_and_close called\n');
+        fprintf('DEBUG: Figure handle: %d\n', src);
+        fprintf('Cleaning up Skeleton Plotter...\n');
+
+        % Stop playback if running
+        if handles.playing
+            handles.playing = false;
+            pause(0.1);  % Let playback loop exit
         end
-    end
-    
-    % Close video writer if recording
-    if isfield(handles, 'recording') && handles.recording
-        if ~isempty(handles.videoObj)
+
+        % Close signal plotter if open
+        if ~isempty(signal_plotter_handle) && isvalid(signal_plotter_handle.fig)
             try
-                close(handles.videoObj);
+                fprintf('   Closing Signal Plotter...\n');
+                delete(signal_plotter_handle.fig);
             catch
-                % Already closed
+                % Figure may already be closed
             end
         end
-    end
-    
-    % Clear app data from figure
-    if ishandle(fig)
-        try
-            % Remove any stored app data
-            props = getappdata(fig);
-            fields = fieldnames(props);
-            for i = 1:length(fields)
-                rmappdata(fig, fields{i});
+
+        % Close video writer if recording
+        if isfield(handles, 'recording') && handles.recording
+            if ~isempty(handles.videoObj)
+                try
+                    close(handles.videoObj);
+                catch
+                    % Already closed
+                end
             end
-        catch
-            % No app data to remove
         end
+
+        % Clear app data from figure
+        if ishandle(fig)
+            try
+                % Remove any stored app data
+                props = getappdata(fig);
+                fields = fieldnames(props);
+                for i = 1:length(fields)
+                    rmappdata(fig, fields{i});
+                end
+            catch
+                % No app data to remove
+            end
+        end
+
+        % Delete the figure
+        if ishandle(fig)
+            delete(fig);
+        end
+
+        fprintf('Cleanup complete.\n');
     end
-    
-    % Delete the figure
-    if ishandle(fig)
-        delete(fig);
-    end
-    
-    fprintf('Cleanup complete.\n');
-end
 
 end
