@@ -29,12 +29,21 @@ datasets = {'BASE', BASEQ; 'ZTCF', ZTCFQ; 'DELTA', DELTAQ};
 colors_force = {[1 0 0], [0 0 1], [1 0.5 0]};
 colors_torque = {[0.5 0 0.5], [0 1 1], [1 0 1]};
 
+% Store datasets for signal plotter
+datasets_struct = struct('BASEQ', BASEQ, 'ZTCFQ', ZTCFQ, 'DELTAQ', DELTAQ);
+
 % Frames
 num_frames = length(BASEQ.Buttx);
 
 % Scaling
 Max_force_mag = max(vecnorm(BASEQ.TotalHandForceGlobal,2,2));
 Max_torque_mag = max(vecnorm(BASEQ.EquivalentMidpointCoupleGlobal,2,2));
+
+% Load signal plot configuration
+signal_plot_config = SignalPlotConfig('load');
+
+% Initialize signal plotter handle
+signal_plotter_handle = [];
 
 %% === 2. Create Main Figure ===
 fig = figure('Name', 'Golf Swing Plotter - BASEQ', ...
@@ -274,6 +283,17 @@ uicontrol('Style', 'togglebutton', ...
     'FontSize', 10, ...
     'Callback', @toggleLegendVisibility);
 
+% Open Signal Plot Button (new)
+uicontrol('Style', 'pushbutton', ...
+    'String', '📊 Signal Plot', ...
+    'Units', 'normalized', ...
+    'Position', [button_x_position, initial_y_position - 5 * button_spacing, button_width, button_height], ...
+    'BackgroundColor', [0.3, 0.7, 0.9], ...
+    'ForegroundColor', [1, 1, 1], ...
+    'FontSize', 10, ...
+    'FontWeight', 'bold', ...
+    'Callback', @openSignalPlot);
+
 %% === 5. Create Plot Handles (Initialize Empty Graphics) ===
 
 % --- Shaft and Clubhead ---
@@ -344,6 +364,21 @@ function onDatasetChanged(src, ~)
 
     % Update the plot with the new dataset
     updatePlot();
+    
+    % Update signal plotter dataset if open
+    if ~isempty(signal_plotter_handle) && isvalid(signal_plotter_handle.fig)
+        try
+            plot_handles = guidata(signal_plotter_handle.fig);
+            if ~isempty(plot_handles)
+                % Sync dataset selection
+                set(plot_handles.dataset_selector, 'Value', src.Value);
+                % Trigger dataset change in signal plotter
+                % This will be handled automatically by the dataset_selector callback
+            end
+        catch
+            % Silent failure
+        end
+    end
 end
 
 function updatePlot(~, ~)
@@ -464,6 +499,9 @@ function updatePlot(~, ~)
         frame = getframe(fig);
         writeVideo(handles.videoObj, frame);
     end
+    
+    % Update signal plotter if open
+    updateSignalPlotter();
 end
 
 function togglePlayPause(~, ~)
@@ -578,6 +616,98 @@ function setView(viewtype)
         case 'iso'
             view(handles.ax, [-45 30]); % 3D angled view from left rear
             camup(handles.ax, [0 0 1]);
+    end
+end
+
+function openSignalPlot(~, ~)
+    % Open or bring to focus the signal plotter window
+    
+    % Check if signal plotter is already open
+    if ~isempty(signal_plotter_handle) && isvalid(signal_plotter_handle.fig)
+        % Bring existing window to front
+        figure(signal_plotter_handle.fig);
+        fprintf('📊 Signal plotter already open. Bringing to front.\n');
+        return;
+    end
+    
+    try
+        fprintf('📊 Opening Interactive Signal Plotter...\n');
+        
+        % Open the signal plotter
+        signal_plotter_handle = InteractiveSignalPlotter(datasets_struct, handles, signal_plot_config);
+        
+        fprintf('✅ Signal plotter opened successfully.\n');
+        
+    catch ME
+        fprintf('❌ Error opening signal plotter: %s\n', ME.message);
+        fprintf('   Location: %s (line %d)\n', ME.stack(1).name, ME.stack(1).line);
+        errordlg(sprintf('Failed to open signal plotter: %s', ME.message), 'Signal Plotter Error');
+    end
+end
+
+function updateSignalPlotter()
+    % Update the signal plotter when frame changes
+    if ~isempty(signal_plotter_handle) && isvalid(signal_plotter_handle.fig)
+        try
+            % Get current frame
+            current_frame = round(get(handles.slider, 'Value'));
+            
+            % Update the signal plotter's time line
+            plot_handles = guidata(signal_plotter_handle.fig);
+            if ~isempty(plot_handles) && isfield(plot_handles, 'time_vector')
+                % Call the update function
+                if isfield(plot_handles, 'axes_handle') && ~isempty(plot_handles.axes_handle)
+                    current_time = plot_handles.time_vector(current_frame);
+                    
+                    % Update time line(s)
+                    if strcmp(plot_handles.plot_mode, 'single')
+                        time_line = findobj(plot_handles.axes_handle, 'Tag', 'TimeLine');
+                        if ~isempty(time_line)
+                            set(time_line, 'XData', [current_time, current_time]);
+                        end
+                    else
+                        % Update all subplot time lines
+                        for i = 1:length(plot_handles.axes_handle)
+                            time_line = findobj(plot_handles.axes_handle(i), 'Tag', 'TimeLine');
+                            if ~isempty(time_line)
+                                set(time_line, 'XData', [current_time, current_time]);
+                            end
+                        end
+                    end
+                    
+                    % Update value displays
+                    if ~isempty(plot_handles.value_displays)
+                        selected_idx = get(plot_handles.signal_listbox, 'Value');
+                        if ~isempty(selected_idx)
+                            signal_names = plot_handles.config.hotlist_signals(selected_idx);
+                            
+                            for i = 1:min(length(plot_handles.value_displays), length(signal_names))
+                                signal_name = signal_names{i};
+                                if ismember(signal_name, plot_handles.current_dataset.Properties.VariableNames)
+                                    signal_data = plot_handles.current_dataset.(signal_name);
+                                    if size(signal_data, 2) > 1
+                                        signal_data = vecnorm(signal_data, 2, 2);
+                                    end
+                                    current_value = signal_data(current_frame);
+                                    set(plot_handles.value_displays(i), 'String', ...
+                                        sprintf('%s: %.3f', signal_name, current_value));
+                                end
+                            end
+                        end
+                    end
+                    
+                    % Update info text
+                    if isfield(plot_handles, 'info_text')
+                        set(plot_handles.info_text, 'String', sprintf('Plotting %d signal(s) | Frame: %d/%d | Time: %.3fs', ...
+                                                                       length(get(plot_handles.signal_listbox, 'Value')), ...
+                                                                       current_frame, length(plot_handles.time_vector), current_time));
+                    end
+                end
+            end
+        catch ME
+            % Silent failure - don't interrupt skeleton plotter
+            % fprintf('Warning: Could not update signal plotter: %s\n', ME.message);
+        end
     end
 end
 
