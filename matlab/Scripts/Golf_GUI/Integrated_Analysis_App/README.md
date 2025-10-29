@@ -86,6 +86,7 @@ Integrated_Analysis_App/
 **Status:** Placeholder (Phase 3)
 
 Will provide:
+
 - Model parameter configuration
 - Initial conditions setup
 - Simscape Multibody simulation
@@ -97,6 +98,7 @@ Will provide:
 **Status:** Placeholder (Phase 4)
 
 Will provide:
+
 - ZTCF (Zero Torque Counterfactual) calculation
 - Parallel processing with progress monitoring
 - Generation of BASEQ, ZTCFQ, and DELTAQ datasets
@@ -108,6 +110,7 @@ Will provide:
 **Status:** Fully Functional ✅
 
 Provides:
+
 - Data loading from Tab 2 or file
 - 3D Skeleton visualization via `SkeletonPlotter`
 - Interactive signal plotting via `InteractiveSignalPlotter`
@@ -188,6 +191,7 @@ Sessions can be saved and restored:
 3. **Load session:** File → Load Session
 
 Session files contain:
+
 - Simulation data (if available)
 - ZTCF calculation results (if available)
 - Analysis state (if available)
@@ -207,11 +211,13 @@ Session files contain:
 ### Application Won't Launch
 
 1. Ensure all paths are added:
+
    ```matlab
    addpath(genpath('matlab/Scripts/Golf_GUI/Integrated_Analysis_App'));
    ```
 
 2. Check for missing dependencies:
+
    ```matlab
    which SkeletonPlotter
    which data_manager
@@ -228,6 +234,7 @@ addpath('matlab/Scripts/Golf_GUI/2D GUI/visualization');
 ### Data Not Loading
 
 Ensure your data file contains the required fields:
+
 - `BASEQ` (table)
 - `ZTCFQ` (table)
 - `DELTAQ` (table)
@@ -265,4 +272,3 @@ The modular design allows easy extension:
 ## Support
 
 For issues or questions, refer to the main project documentation or the implementation plan.
-

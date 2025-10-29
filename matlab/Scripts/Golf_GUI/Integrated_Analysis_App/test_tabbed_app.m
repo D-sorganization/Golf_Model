@@ -49,7 +49,7 @@ try
     assert(isfield(app_handles.tabs, 'tab2'), 'tab2 missing');
     assert(isfield(app_handles.tabs, 'tab3'), 'tab3 missing');
     fprintf('  ✓ All three tabs exist\n');
-    
+
     % Check tab titles
     tab1_title = get(app_handles.tabs.tab1, 'Title');
     tab2_title = get(app_handles.tabs.tab2, 'Title');
@@ -68,7 +68,7 @@ try
     assert(isfield(app_handles, 'config_manager'), 'config_manager missing');
     fprintf('  ✓ Data manager exists\n');
     fprintf('  ✓ Config manager exists\n');
-    
+
     % Test data manager
     data_info = app_handles.data_manager.get_data_info();
     fprintf('  ✓ Data manager operational\n');
@@ -85,11 +85,11 @@ try
     app_handles.tab_group.SelectedTab = app_handles.tabs.tab1;
     pause(0.5);
     fprintf('  ✓ Switched to Tab 1\n');
-    
+
     app_handles.tab_group.SelectedTab = app_handles.tabs.tab2;
     pause(0.5);
     fprintf('  ✓ Switched to Tab 2\n');
-    
+
     app_handles.tab_group.SelectedTab = app_handles.tabs.tab3;
     pause(0.5);
     fprintf('  ✓ Switched to Tab 3\n');
@@ -103,21 +103,21 @@ try
     % Try to load test data if available
     test_data_file = fullfile(app_path, '..', '2D GUI', 'visualization', ...
         'test_data.mat');
-    
+
     if exist(test_data_file, 'file')
         fprintf('  Loading test data from: %s\n', test_data_file);
         test_data = load(test_data_file);
-        
+
         % Store in data manager
         if isfield(test_data, 'datasets')
             app_handles.data_manager.set_ztcf_data(test_data.datasets);
             fprintf('  ✓ Test data stored in data manager\n');
-            
+
             % Retrieve it
             retrieved_data = app_handles.data_manager.get_ztcf_data();
             assert(~isempty(retrieved_data), 'Failed to retrieve data');
             fprintf('  ✓ Test data retrieved successfully\n');
-            
+
             % Switch to Tab 3 and try to use it
             app_handles.tab_group.SelectedTab = app_handles.tabs.tab3;
             pause(1);
@@ -144,4 +144,3 @@ fprintf('  3. Test the File menu options\n');
 fprintf('  4. Close the application when done\n\n');
 fprintf('Note: Tab 1 and Tab 2 are placeholders and will be\n');
 fprintf('      implemented in future phases.\n\n');
-

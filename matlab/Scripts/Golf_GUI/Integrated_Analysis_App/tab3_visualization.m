@@ -113,194 +113,193 @@ end
 %% Callback Functions
 
 function load_from_tab2(app_handles, tab_handles)
-    % Load data from Tab 2 (ZTCF calculation results)
-    
-    if app_handles.data_manager.has_ztcf_data()
-        ztcf_data = app_handles.data_manager.get_ztcf_data();
-        
-        % Validate data structure
-        if isstruct(ztcf_data) && ...
-                isfield(ztcf_data, 'BASEQ') && ...
-                isfield(ztcf_data, 'ZTCFQ') && ...
-                isfield(ztcf_data, 'DELTAQ')
-            
-            tab_handles.datasets = ztcf_data;
-            
-            % Enable launch button
-            set(tab_handles.launch_button, 'Enable', 'on');
-            
-            % Update status
-            num_frames = height(ztcf_data.BASEQ);
-            set(tab_handles.status_text, 'String', ...
-                sprintf('Data loaded from Tab 2: %d frames. Ready to visualize.', num_frames));
-            
-            fprintf('Tab 3: Data loaded from ZTCF calculation (%d frames)\n', num_frames);
-        else
-            errordlg('Invalid data structure from Tab 2', 'Data Error');
-        end
+% Load data from Tab 2 (ZTCF calculation results)
+
+if app_handles.data_manager.has_ztcf_data()
+    ztcf_data = app_handles.data_manager.get_ztcf_data();
+
+    % Validate data structure
+    if isstruct(ztcf_data) && ...
+            isfield(ztcf_data, 'BASEQ') && ...
+            isfield(ztcf_data, 'ZTCFQ') && ...
+            isfield(ztcf_data, 'DELTAQ')
+
+        tab_handles.datasets = ztcf_data;
+
+        % Enable launch button
+        set(tab_handles.launch_button, 'Enable', 'on');
+
+        % Update status
+        num_frames = height(ztcf_data.BASEQ);
+        set(tab_handles.status_text, 'String', ...
+            sprintf('Data loaded from Tab 2: %d frames. Ready to visualize.', num_frames));
+
+        fprintf('Tab 3: Data loaded from ZTCF calculation (%d frames)\n', num_frames);
     else
-        warndlg('No data available from Tab 2. Please run ZTCF calculation first.', ...
-            'No Data');
+        errordlg('Invalid data structure from Tab 2', 'Data Error');
     end
+else
+    warndlg('No data available from Tab 2. Please run ZTCF calculation first.', ...
+        'No Data');
+end
 end
 
 function load_from_file(app_handles, tab_handles)
-    % Load data from MAT file
-    
-    % Get last directory from config
-    if isfield(app_handles.config, 'tab3') && ...
-            isfield(app_handles.config.tab3, 'last_data_file') && ...
-            ~isempty(app_handles.config.tab3.last_data_file)
-        start_path = fileparts(app_handles.config.tab3.last_data_file);
-    else
-        start_path = pwd;
-    end
-    
-    [file, path] = uigetfile('*.mat', 'Load Golf Data', start_path);
-    
-    if file ~= 0
-        fullpath = fullfile(path, file);
-        
-        try
-            loaded = load(fullpath);
-            
-            % Try to find BASEQ, ZTCFQ, DELTAQ in loaded data
-            datasets = struct();
-            
-            if isfield(loaded, 'BASEQ')
-                datasets.BASEQ = loaded.BASEQ;
-            elseif isfield(loaded, 'datasets') && isfield(loaded.datasets, 'BASEQ')
-                datasets = loaded.datasets;
-            else
-                error('Could not find BASEQ in file');
-            end
-            
-            % Validate all required fields
-            if ~isfield(datasets, 'ZTCFQ') || ~isfield(datasets, 'DELTAQ')
-                error('File must contain BASEQ, ZTCFQ, and DELTAQ');
-            end
-            
-            % Store datasets
-            tab_handles.datasets = datasets;
-            
-            % Enable launch button
-            set(tab_handles.launch_button, 'Enable', 'on');
-            
-            % Update status
-            num_frames = height(datasets.BASEQ);
-            set(tab_handles.status_text, 'String', ...
-                sprintf('Data loaded from file: %s (%d frames)', file, num_frames));
-            
-            % Save to config
-            app_handles.config.tab3.last_data_file = fullpath;
-            guidata(app_handles.main_fig, app_handles);
-            
-            fprintf('Tab 3: Data loaded from file: %s (%d frames)\n', fullpath, num_frames);
-            
-        catch ME
-            errordlg(sprintf('Failed to load file: %s', ME.message), 'Load Error');
+% Load data from MAT file
+
+% Get last directory from config
+if isfield(app_handles.config, 'tab3') && ...
+        isfield(app_handles.config.tab3, 'last_data_file') && ...
+        ~isempty(app_handles.config.tab3.last_data_file)
+    start_path = fileparts(app_handles.config.tab3.last_data_file);
+else
+    start_path = pwd;
+end
+
+[file, path] = uigetfile('*.mat', 'Load Golf Data', start_path);
+
+if file ~= 0
+    fullpath = fullfile(path, file);
+
+    try
+        loaded = load(fullpath);
+
+        % Try to find BASEQ, ZTCFQ, DELTAQ in loaded data
+        datasets = struct();
+
+        if isfield(loaded, 'BASEQ')
+            datasets.BASEQ = loaded.BASEQ;
+        elseif isfield(loaded, 'datasets') && isfield(loaded.datasets, 'BASEQ')
+            datasets = loaded.datasets;
+        else
+            error('Could not find BASEQ in file');
         end
+
+        % Validate all required fields
+        if ~isfield(datasets, 'ZTCFQ') || ~isfield(datasets, 'DELTAQ')
+            error('File must contain BASEQ, ZTCFQ, and DELTAQ');
+        end
+
+        % Store datasets
+        tab_handles.datasets = datasets;
+
+        % Enable launch button
+        set(tab_handles.launch_button, 'Enable', 'on');
+
+        % Update status
+        num_frames = height(datasets.BASEQ);
+        set(tab_handles.status_text, 'String', ...
+            sprintf('Data loaded from file: %s (%d frames)', file, num_frames));
+
+        % Save to config
+        app_handles.config.tab3.last_data_file = fullpath;
+        guidata(app_handles.main_fig, app_handles);
+
+        fprintf('Tab 3: Data loaded from file: %s (%d frames)\n', fullpath, num_frames);
+
+    catch ME
+        errordlg(sprintf('Failed to load file: %s', ME.message), 'Load Error');
     end
+end
 end
 
 function launch_skeleton_plotter(app_handles, tab_handles)
-    % Launch the SkeletonPlotter with loaded data
-    
-    if isempty(tab_handles.datasets)
-        warndlg('No data loaded', 'Launch Error');
-        return;
+% Launch the SkeletonPlotter with loaded data
+
+if isempty(tab_handles.datasets)
+    warndlg('No data loaded', 'Launch Error');
+    return;
+end
+
+try
+    % Get path to SkeletonPlotter
+    skeleton_plotter_path = fullfile(fileparts(mfilename('fullpath')), ...
+        '..', '2D GUI', 'visualization');
+
+    % Add to path if needed
+    if ~contains(path, skeleton_plotter_path)
+        addpath(skeleton_plotter_path);
     end
-    
-    try
-        % Get path to SkeletonPlotter
-        skeleton_plotter_path = fullfile(fileparts(mfilename('fullpath')), ...
-            '..', '2D GUI', 'visualization');
-        
-        % Add to path if needed
-        if ~contains(path, skeleton_plotter_path)
-            addpath(skeleton_plotter_path);
-        end
-        
-        % Launch SkeletonPlotter
-        fprintf('Launching SkeletonPlotter...\n');
-        skeleton_handles = SkeletonPlotter(tab_handles.datasets);
-        
-        % Store handles
-        tab_handles.skeleton_plotter_handles = skeleton_handles;
-        
-        % Update status
-        set(tab_handles.status_text, 'String', ...
-            'SkeletonPlotter launched successfully. Visualization is active.');
-        
-    catch ME
-        errordlg(sprintf('Failed to launch SkeletonPlotter: %s', ME.message), ...
-            'Launch Error');
-        fprintf('Error launching SkeletonPlotter: %s\n', ME.message);
-    end
+
+    % Launch SkeletonPlotter
+    fprintf('Launching SkeletonPlotter...\n');
+    skeleton_handles = SkeletonPlotter(tab_handles.datasets);
+
+    % Store handles
+    tab_handles.skeleton_plotter_handles = skeleton_handles;
+
+    % Update status
+    set(tab_handles.status_text, 'String', ...
+        'SkeletonPlotter launched successfully. Visualization is active.');
+
+catch ME
+    errordlg(sprintf('Failed to launch SkeletonPlotter: %s', ME.message), ...
+        'Launch Error');
+    fprintf('Error launching SkeletonPlotter: %s\n', ME.message);
+end
 end
 
 function clear_visualization(tab_handles)
-    % Clear current visualization
-    
-    % Close SkeletonPlotter if open
-    if ~isempty(tab_handles.skeleton_plotter_handles)
-        try
-            if isfield(tab_handles.skeleton_plotter_handles, 'fig') && ...
-                    ishandle(tab_handles.skeleton_plotter_handles.fig)
-                close(tab_handles.skeleton_plotter_handles.fig);
-            end
-        catch
-            % Figure may already be closed
+% Clear current visualization
+
+% Close SkeletonPlotter if open
+if ~isempty(tab_handles.skeleton_plotter_handles)
+    try
+        if isfield(tab_handles.skeleton_plotter_handles, 'fig') && ...
+                ishandle(tab_handles.skeleton_plotter_handles.fig)
+            close(tab_handles.skeleton_plotter_handles.fig);
         end
-        tab_handles.skeleton_plotter_handles = [];
+    catch
+        % Figure may already be closed
     end
-    
-    % Clear datasets
-    tab_handles.datasets = [];
-    
-    % Disable launch button
-    set(tab_handles.launch_button, 'Enable', 'off');
-    
-    % Update status
-    set(tab_handles.status_text, 'String', ...
-        'Visualization cleared. Load data to continue.');
-    
-    fprintf('Tab 3: Visualization cleared\n');
+    tab_handles.skeleton_plotter_handles = [];
+end
+
+% Clear datasets
+tab_handles.datasets = [];
+
+% Disable launch button
+set(tab_handles.launch_button, 'Enable', 'off');
+
+% Update status
+set(tab_handles.status_text, 'String', ...
+    'Visualization cleared. Load data to continue.');
+
+fprintf('Tab 3: Visualization cleared\n');
 end
 
 function check_for_existing_data(app_handles, tab_handles)
-    % Check if data is already available from Tab 2
-    
-    if app_handles.data_manager.has_ztcf_data()
-        % Auto-load from Tab 2
-        load_from_tab2(app_handles, tab_handles);
-    end
+% Check if data is already available from Tab 2
+
+if app_handles.data_manager.has_ztcf_data()
+    % Auto-load from Tab 2
+    load_from_tab2(app_handles, tab_handles);
+end
 end
 
 function refresh_tab3(app_handles, tab_handles)
-    % Refresh tab with latest data
-    
-    fprintf('Tab 3: Refreshing...\n');
-    check_for_existing_data(app_handles, tab_handles);
+% Refresh tab with latest data
+
+fprintf('Tab 3: Refreshing...\n');
+check_for_existing_data(app_handles, tab_handles);
 end
 
 function cleanup_tab3(tab_handles)
-    % Cleanup when tab or app is closed
-    
-    fprintf('Tab 3: Cleaning up...\n');
-    
-    % Close SkeletonPlotter if open
-    if ~isempty(tab_handles.skeleton_plotter_handles)
-        try
-            if isfield(tab_handles.skeleton_plotter_handles, 'fig') && ...
-                    ishandle(tab_handles.skeleton_plotter_handles.fig)
-                close(tab_handles.skeleton_plotter_handles.fig);
-            end
-        catch
-            % Already closed
+% Cleanup when tab or app is closed
+
+fprintf('Tab 3: Cleaning up...\n');
+
+% Close SkeletonPlotter if open
+if ~isempty(tab_handles.skeleton_plotter_handles)
+    try
+        if isfield(tab_handles.skeleton_plotter_handles, 'fig') && ...
+                ishandle(tab_handles.skeleton_plotter_handles.fig)
+            close(tab_handles.skeleton_plotter_handles.fig);
         end
+    catch
+        % Already closed
     end
-    
-    fprintf('Tab 3: Cleanup complete\n');
 end
 
+fprintf('Tab 3: Cleanup complete\n');
+end

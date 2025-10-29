@@ -751,46 +751,71 @@ updatePlot();
 
     function cleanup_and_close(src, ~)
         % Cleanup function called when closing the skeleton plotter
+        
+        % Prevent multiple calls
+        if ~ishandle(src) || ~isvalid(src)
+            return;
+        end
+        
+        % Check if cleanup already started
+        if isappdata(src, 'cleanup_in_progress')
+            return;
+        end
+        setappdata(src, 'cleanup_in_progress', true);
 
-        fprintf('DEBUG: cleanup_and_close called\n');
-        fprintf('DEBUG: Figure handle: %d\n', src);
         fprintf('Cleaning up Skeleton Plotter...\n');
 
         % Stop playback if running
-        if handles.playing
-            handles.playing = false;
-            pause(0.1);  % Let playback loop exit
+        try
+            if isfield(handles, 'playing') && handles.playing
+                handles.playing = false;
+                pause(0.1);  % Let playback loop exit
+            end
+        catch
+            % Handles may not be accessible
         end
 
         % Close signal plotter if open
-        if ~isempty(signal_plotter_handle) && isvalid(signal_plotter_handle.fig)
-            try
+        try
+            if exist('signal_plotter_handle', 'var') && ~isempty(signal_plotter_handle) && ...
+                    isstruct(signal_plotter_handle) && isfield(signal_plotter_handle, 'fig') && ...
+                    ishandle(signal_plotter_handle.fig)
                 fprintf('   Closing Signal Plotter...\n');
                 delete(signal_plotter_handle.fig);
-            catch
-                % Figure may already be closed
             end
+        catch
+            % Figure may already be closed
         end
 
         % Close video writer if recording
-        if isfield(handles, 'recording') && handles.recording
-            if ~isempty(handles.videoObj)
-                try
-                    close(handles.videoObj);
-                catch
-                    % Already closed
+        try
+            if exist('handles', 'var') && isfield(handles, 'recording') && handles.recording
+                if isfield(handles, 'videoObj') && ~isempty(handles.videoObj)
+                    try
+                        close(handles.videoObj);
+                    catch
+                        % Already closed
+                    end
                 end
             end
+        catch
+            % Recording state may not be accessible
         end
 
         % Clear app data from figure
-        if ishandle(fig)
+        if ishandle(src)
             try
                 % Remove any stored app data
-                props = getappdata(fig);
-                fields = fieldnames(props);
-                for i = 1:length(fields)
-                    rmappdata(fig, fields{i});
+                props = getappdata(src);
+                if ~isempty(props)
+                    fields = fieldnames(props);
+                    for i = 1:length(fields)
+                        try
+                            rmappdata(src, fields{i});
+                        catch
+                            % Field may already be removed
+                        end
+                    end
                 end
             catch
                 % No app data to remove
@@ -798,11 +823,11 @@ updatePlot();
         end
 
         % Delete the figure
-        if ishandle(fig)
-            delete(fig);
+        if ishandle(src)
+            delete(src);
         end
 
-        fprintf('Cleanup complete.\n');
+        fprintf('Skeleton Plotter cleanup complete.\n');
     end
 
 end
