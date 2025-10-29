@@ -529,7 +529,7 @@ updatePlot();
 
         % Update signal plotter if open
         updateSignalPlotter();
-        
+
         % Use drawnow limitrate for smooth, controlled refresh
         drawnow limitrate;
     end
