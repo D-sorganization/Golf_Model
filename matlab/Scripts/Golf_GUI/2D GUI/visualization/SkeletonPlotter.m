@@ -1,6 +1,23 @@
-function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)
+function SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ, varargin)
 % === SkeletonPlotter - FINAL BUNDLED VERSION ===
 % Golf Swing Visualizer with Playback, Zoom, Recording, Multi-Dataset Forces
+%
+% Usage:
+%   SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ)           - Standalone figure (default)
+%   SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ, parent)   - Embedded in parent container
+%
+% Inputs:
+%   BASEQ, ZTCFQ, DELTAQ - Dataset tables
+%   parent (optional)    - Parent container (panel/tab) for embedded mode
+
+% --- Parse optional parent parameter ---
+if nargin > 3 && ~isempty(varargin{1})
+    parent_container = varargin{1};
+    embedded_mode = true;
+else
+    parent_container = [];
+    embedded_mode = false;
+end
 
 % --- Save initial workspace variables ---
 vars_before = who;
@@ -45,12 +62,21 @@ signal_plot_config = SignalPlotConfig('load');
 % Initialize signal plotter handle
 signal_plotter_handle = [];
 
-%% === 2. Create Main Figure ===
-fig = figure('Name', 'Golf Swing Plotter - BASEQ', ...
-    'NumberTitle', 'off', ...
-    'Color', figure_background_color, ...
-    'Position', [100, 100, 1400, 800], ...
-    'CloseRequestFcn', @cleanup_and_close);
+%% === 2. Create Main Figure or Use Parent ===
+if embedded_mode
+    % Embedded mode - use parent container
+    fig = parent_container;
+    % Store embedded flag for cleanup
+    setappdata(fig, 'is_embedded', true);
+else
+    % Standalone mode - create new figure
+    fig = figure('Name', 'Golf Swing Plotter - BASEQ', ...
+        'NumberTitle', 'off', ...
+        'Color', figure_background_color, ...
+        'Position', [100, 100, 1400, 800], ...
+        'CloseRequestFcn', @cleanup_and_close);
+    setappdata(fig, 'is_embedded', false);
+end
 
 %% === 3. Create 3D Axes ===
 handles.ax = axes('Parent', fig, ...
@@ -762,6 +788,12 @@ updatePlot();
             return;
         end
         setappdata(src, 'cleanup_in_progress', true);
+        
+        % Check if embedded mode
+        is_embedded = false;
+        if isappdata(src, 'is_embedded')
+            is_embedded = getappdata(src, 'is_embedded');
+        end
 
         fprintf('Cleaning up Skeleton Plotter...\n');
 
@@ -822,12 +854,21 @@ updatePlot();
             end
         end
 
-        % Delete the figure
+        % Delete the figure (only in standalone mode)
         if ishandle(src)
-            delete(src);
+            if ~is_embedded
+                delete(src);
+                fprintf('Skeleton Plotter cleanup complete (figure closed).\n');
+            else
+                % In embedded mode, just clear children instead of deleting parent
+                try
+                    delete(findobj(src, '-depth', 1));
+                catch
+                    % Children may already be deleted
+                end
+                fprintf('Skeleton Plotter cleanup complete (embedded mode).\n');
+            end
         end
-
-        fprintf('Skeleton Plotter cleanup complete.\n');
     end
 
 end
