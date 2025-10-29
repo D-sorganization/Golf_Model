@@ -321,10 +321,10 @@ try
     if isfield(app_handles, 'config') && isfield(app_handles.config, 'general') && ...
             isfield(app_handles.config.general, 'confirm_on_exit') && ...
             app_handles.config.general.confirm_on_exit
-        
+
         answer = questdlg('Save session before exiting?', ...
             'Exit Application', 'Yes', 'No', 'Cancel', 'Yes');
-        
+
         if strcmp(answer, 'Cancel')
             fprintf('Close cancelled by user.\n');
             return;  % Don't close
@@ -336,7 +336,7 @@ try
             end
         end
     end
-    
+
     % Save window state
     try
         if isfield(app_handles, 'config_manager') && isfield(app_handles, 'config')
@@ -346,7 +346,7 @@ try
     catch ME
         warning('Failed to save config: %s', ME.message);
     end
-    
+
     % Clean up each tab
     try
         if isfield(app_handles, 'tab1_handles') && ...
@@ -356,7 +356,7 @@ try
     catch ME
         warning('Tab 1 cleanup failed: %s', ME.message);
     end
-    
+
     try
         if isfield(app_handles, 'tab2_handles') && ...
                 isfield(app_handles.tab2_handles, 'cleanup_callback')
@@ -365,7 +365,7 @@ try
     catch ME
         warning('Tab 2 cleanup failed: %s', ME.message);
     end
-    
+
     try
         if isfield(app_handles, 'tab3_handles') && ...
                 isfield(app_handles.tab3_handles, 'cleanup_callback')
@@ -374,7 +374,7 @@ try
     catch ME
         warning('Tab 3 cleanup failed: %s', ME.message);
     end
-    
+
     % Clear app data
     try
         if isfield(app_handles, 'data_manager')
@@ -383,7 +383,7 @@ try
     catch ME
         warning('Failed to clear app data: %s', ME.message);
     end
-    
+
 catch ME
     warning('Error during close: %s', ME.message);
 end
