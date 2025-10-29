@@ -135,12 +135,14 @@ function cleanup_and_close(src, ~)
 set(time_line, 'XData', [current_time, current_time]);
 
 # Add immediately after:
+% Request a rate-limited update to the figure (does not force immediate rendering)
 drawnow limitrate;
 
 # Also find line ~710 (in the else branch for subplots):
 set(time_line, 'XData', [current_time, current_time]);
 
 # Add immediately after:
+% Request a rate-limited update to the figure (does not force immediate rendering)
 drawnow limitrate;
 ```
 
