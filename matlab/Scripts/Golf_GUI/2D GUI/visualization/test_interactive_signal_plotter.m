@@ -32,19 +32,19 @@ for i = 1:length(data_locations)
         % Load BASEQ
         if exist(baseq_file, 'file')
             load(baseq_file, 'BASEQ');
-            fprintf('    ✅ Loaded BASEQ (%d frames)\n', height(BASEQ));
+            fprintf('    Loaded BASEQ (%d frames)\n', height(BASEQ));
         end
-
+        
         % Load ZTCFQ
         if exist(ztcfq_file, 'file')
             load(ztcfq_file, 'ZTCFQ');
-            fprintf('    ✅ Loaded ZTCFQ (%d frames)\n', height(ZTCFQ));
+            fprintf('    Loaded ZTCFQ (%d frames)\n', height(ZTCFQ));
         end
-
+        
         % Load DELTAQ
         if exist(deltaq_file, 'file')
             load(deltaq_file, 'DELTAQ');
-            fprintf('    ✅ Loaded DELTAQ (%d frames)\n', height(DELTAQ));
+            fprintf('    Loaded DELTAQ (%d frames)\n', height(DELTAQ));
         end
 
         break;
@@ -53,11 +53,11 @@ end
 
 %% Check if data was loaded
 if isempty(BASEQ)
-    error('❌ Could not find data files. Please ensure BASEQ.mat, ZTCFQ.mat, and DELTAQ.mat exist.');
+    error('Could not find data files. Please ensure BASEQ.mat, ZTCFQ.mat, and DELTAQ.mat exist.');
 end
 
 %% Display available signals
-fprintf('\n📊 Available signals in BASEQ:\n');
+fprintf('\nAvailable signals in BASEQ:\n');
 signal_names = BASEQ.Properties.VariableNames;
 force_torque_signals = {};
 position_signals = {};
@@ -102,24 +102,25 @@ fprintf('\n');
 fprintf('  Other Signals (%d)\n', length(other_signals));
 
 %% Launch SkeletonPlotter
-fprintf('\n🚀 Launching SkeletonPlotter...\n');
-fprintf('   Look for the "📊 Signal Plot" button on the right side!\n\n');
+fprintf('\nLaunching SkeletonPlotter...\n');
+fprintf('   Look for the "Signal Plot" button on the right side!\n\n');
 
 try
     SkeletonPlotter(BASEQ, ZTCFQ, DELTAQ);
-
-    fprintf('✅ SkeletonPlotter launched successfully!\n\n');
+    
+    fprintf('SkeletonPlotter launched successfully!\n\n');
     fprintf('=== How to Use the Interactive Signal Plotter ===\n');
-    fprintf('1. Click the "📊 Signal Plot" button on the right side\n');
+    fprintf('1. Click the "Signal Plot" button on the right side\n');
     fprintf('2. The Interactive Signal Plotter window will open\n');
-    fprintf('3. Click "🔍 Manage Hotlist" to add signals\n');
+    fprintf('3. Click "Manage Hotlist" to add signals\n');
     fprintf('4. Select signals from the hotlist to plot them\n');
     fprintf('5. Try dragging on the plot to scrub through time!\n');
     fprintf('6. Watch the 3D skeleton update in sync!\n');
-    fprintf('\nEnjoy exploring your golf swing data! 🏌️\n');
+    fprintf('\nNote: The app cleans up after itself when closed.\n');
+    fprintf('No variables will be left in your workspace.\n\n');
 
 catch ME
-    fprintf('❌ Error launching SkeletonPlotter:\n');
+    fprintf('Error launching SkeletonPlotter:\n');
     fprintf('   %s\n', ME.message);
     fprintf('   Location: %s (line %d)\n', ME.stack(1).name, ME.stack(1).line);
 end

@@ -152,15 +152,15 @@ set(fig, 'CloseRequestFcn', @on_close);
 
         % Data Inspector button
         uicontrol('Parent', control_panel, ...
-                  'Style', 'pushbutton', ...
-                  'String', 'Manage Hotlist', ...
-                  'FontSize', 10, ...
-                  'FontWeight', 'bold', ...
-                  'Units', 'normalized', ...
-                  'Position', [0.45, 0.52, 0.12, 0.38], ...
-                  'BackgroundColor', [0.3, 0.6, 0.9], ...
-                  'ForegroundColor', [1, 1, 1], ...
-                  'Callback', @on_open_data_inspector);
+            'Style', 'pushbutton', ...
+            'String', 'Manage Hotlist', ...
+            'FontSize', 10, ...
+            'FontWeight', 'bold', ...
+            'Units', 'normalized', ...
+            'Position', [0.45, 0.52, 0.12, 0.38], ...
+            'BackgroundColor', [0.3, 0.6, 0.9], ...
+            'ForegroundColor', [1, 1, 1], ...
+            'Callback', @on_open_data_inspector);
 
         % Plot mode toggle
         handles.plot_mode_button = uicontrol('Parent', control_panel, ...
@@ -577,13 +577,13 @@ set(fig, 'CloseRequestFcn', @on_close);
 
     function update_time_position(handles, time_value)
         % Update time position and sync with skeleton plotter
-        
+
         % Find nearest frame
         [~, frame_idx] = min(abs(handles.time_vector - time_value));
-        
+
         % Update skeleton plotter slider value
         set(handles.skeleton_handles.slider, 'Value', frame_idx);
-        
+
         % Manually trigger the slider's callback to update skeleton plotter
         % (Setting value programmatically doesn't fire callback automatically)
         callback = get(handles.skeleton_handles.slider, 'Callback');
@@ -594,7 +594,7 @@ set(fig, 'CloseRequestFcn', @on_close);
                 feval(callback{1}, handles.skeleton_handles.slider, [], callback{2:end});
             end
         end
-        
+
         % Update our own time line
         update_time_line(handles, frame_idx);
     end
@@ -665,18 +665,43 @@ set(fig, 'CloseRequestFcn', @on_close);
     end
 
     function on_close(~, ~)
-        % Save configuration before closing
-        handles = guidata(fig);
-
-        % Update config with current state
-        handles.config.last_selected = handles.selected_signals;
-        handles.config.plot_mode = handles.plot_mode;
-        handles.config.window_position = get(fig, 'Position');
-
-        % Save config
-        SignalPlotConfig('save', handles.config);
-
+        % Save configuration and cleanup before closing
+        
+        fprintf('Cleaning up Signal Plotter...\n');
+        
+        try
+            handles = guidata(fig);
+            
+            % Update config with current state
+            handles.config.last_selected = handles.selected_signals;
+            handles.config.plot_mode = handles.plot_mode;
+            handles.config.window_position = get(fig, 'Position');
+            
+            % Save config
+            SignalPlotConfig('save', handles.config);
+        catch
+            % If handles don't exist, just skip config save
+            fprintf('   Unable to save config (window may have been force-closed)\n');
+        end
+        
+        % Clear app data from figure
+        if ishandle(fig)
+            try
+                props = getappdata(fig);
+                fields = fieldnames(props);
+                for i = 1:length(fields)
+                    rmappdata(fig, fields{i});
+                end
+            catch
+                % No app data to remove
+            end
+        end
+        
         % Delete figure
-        delete(fig);
+        if ishandle(fig)
+            delete(fig);
+        end
+        
+        fprintf('Signal Plotter cleanup complete.\n');
     end
 end
