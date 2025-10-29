@@ -34,7 +34,7 @@ main_golf_analysis_app();
 
 ## 🔧 Old Standalone Version
 
-### If you want the standalone (non-tabbed) version:
+### If you want the standalone (non-tabbed) version
 
 ```matlab
 % Load your data first
@@ -97,4 +97,3 @@ launch_tabbed_app;
 | Future-proof | No | Yes ✓ |
 
 **Recommendation:** Use the new tabbed version!
-

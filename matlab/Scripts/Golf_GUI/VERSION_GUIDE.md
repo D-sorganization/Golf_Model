@@ -9,11 +9,13 @@
 **Main Entry Point:** `main_golf_analysis_app.m`
 
 **Launch:**
+
 ```matlab
 launch_tabbed_app  % Easy launcher
 ```
 
 **Features:**
+
 - ✅ 3-tab interface
 - ✅ Tab 3: Visualization (FULLY FUNCTIONAL)
 - ⏳ Tab 1: Model Setup (placeholder)
@@ -31,11 +33,13 @@ launch_tabbed_app  % Easy launcher
 **Location:** `2D GUI/visualization/`
 
 **Main Entry Points:**
+
 - `SkeletonPlotter.m` - 3D skeleton visualization
 - `InteractiveSignalPlotter.m` - Signal plotting window
 - `test_interactive_signal_plotter.m` - Test script
 
 **Launch:**
+
 ```matlab
 % Manual launch (requires data already loaded)
 datasets = struct('BASEQ', BASEQ, 'ZTCFQ', ZTCFQ, 'DELTAQ', DELTAQ);
@@ -43,6 +47,7 @@ SkeletonPlotter(datasets);
 ```
 
 **Features:**
+
 - ✅ 3D skeleton visualization
 - ✅ Interactive signal plotter
 - ❌ No tabs
@@ -62,6 +67,7 @@ SkeletonPlotter(datasets);
 **What it is:** Older/alternative implementations
 
 Contains:
+
 - `Matlab Versions/SkeletonPlotter/` - Original skeleton plotter
 - `Python Version/` - Python-based GUI attempts
 
@@ -76,6 +82,7 @@ Contains:
 **What it is:** Python-based motion capture visualization
 
 Contains:
+
 - PyQt6-based GUI
 - Motion capture data analysis
 - Coordinate system analysis
@@ -124,18 +131,21 @@ matlab/Scripts/Golf_GUI/
 
 ## 🎯 Which Version Should I Use?
 
-### Use the **NEW Tabbed Version** if:
+### Use the **NEW Tabbed Version** if
+
 - ✅ You want the latest features
 - ✅ You want an integrated workflow
 - ✅ You need session management
 - ✅ You want future updates (Tab 1 & 2 coming)
 
-### Use the **OLD Standalone Version** if:
+### Use the **OLD Standalone Version** if
+
 - 🔧 You have existing scripts that use it
 - 🔧 You only need basic visualization
 - 🔧 You're working with legacy code
 
-### ⚠️ Don't Use:
+### ⚠️ Don't Use
+
 - ❌ Anything in `Simscape Multibody Data Plotters/` - outdated
 - ❌ Anything in archive folders
 
@@ -152,6 +162,7 @@ launch_tabbed_app
 ```
 
 This will:
+
 1. Close any stuck figures
 2. Set up paths automatically
 3. Launch the tabbed GUI
@@ -175,6 +186,7 @@ This will:
 ```
 
 **Key Point:** The NEW tabbed version **uses** the OLD visualization code internally! It's a wrapper that adds:
+
 - Tabs
 - Data management
 - Session persistence
@@ -185,6 +197,7 @@ This will:
 ## 📊 Version Count Summary
 
 **Active Versions:** 2
+
 1. ⭐ **NEW Tabbed** (`Integrated_Analysis_App/`)
 2. 📊 **OLD Standalone** (`2D GUI/visualization/`)
 
@@ -220,7 +233,6 @@ If you're using the old standalone version:
 
 ---
 
-**Last Updated:** October 28, 2025  
-**Current Branch:** `feature/tabbed-gui`  
+**Last Updated:** October 28, 2025
+**Current Branch:** `feature/tabbed-gui`
 **Status:** Phase 2 Complete ✅
-

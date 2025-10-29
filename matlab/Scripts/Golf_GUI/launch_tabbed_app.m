@@ -51,4 +51,3 @@ catch ME
     fprintf('Stack trace:\n');
     disp(ME.stack);
 end
-

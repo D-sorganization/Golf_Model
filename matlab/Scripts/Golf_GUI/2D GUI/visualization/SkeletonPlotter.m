@@ -751,12 +751,12 @@ updatePlot();
 
     function cleanup_and_close(src, ~)
         % Cleanup function called when closing the skeleton plotter
-        
+
         % Prevent multiple calls
         if ~ishandle(src) || ~isvalid(src)
             return;
         end
-        
+
         % Check if cleanup already started
         if isappdata(src, 'cleanup_in_progress')
             return;
