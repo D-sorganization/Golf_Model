@@ -3336,6 +3336,10 @@ end
 
 
 % Extract coefficients from table
+% NOTE: This function is now provided by functions/extractCoefficientsFromTable.m
+% Embedded version commented out to eliminate duplication (Original line: 3339)
+% Uncomment if external function has compatibility issues
+%{
 function coefficient_values = extractCoefficientsFromTable(handles)
 try
     table_data = get(handles.coefficients_table, 'Data');
@@ -3365,6 +3369,7 @@ catch ME
     coefficient_values = [];
 end
 end
+%}
 
 % Run Generation Process
 function runGeneration(handles)
@@ -3835,6 +3840,10 @@ end
 end
 
 % Helper function to check for stop requests and update progress
+% NOTE: This function is now provided by functions/checkStopRequest.m
+% Embedded version commented out to eliminate duplication (Original line: ~3843)
+% Uncomment if external function has compatibility issues
+%{
 function shouldStop = checkStopRequest(handles)
 shouldStop = false;
 try
@@ -3852,6 +3861,7 @@ catch
     shouldStop = true;
 end
 end
+%}
 
 % Helper function to update progress display
 function updateProgress(handles, current, total, message)
@@ -3874,6 +3884,10 @@ end
 % Memory monitoring functions removed for parallel performance
 
 % Helper function to generate random coefficients
+% NOTE: This function is now provided by functions/generateRandomCoefficients.m
+% Embedded version commented out to eliminate duplication (Original line: ~3887)
+% Uncomment if external function has compatibility issues
+%{
 function coefficients = generateRandomCoefficients(num_coefficients)
 % Generate random coefficients with reasonable ranges for golf swing parameters
 % These ranges are based on typical golf swing polynomial coefficients
@@ -3904,6 +3918,7 @@ for i = 1:num_coefficients
     end
 end
 end
+%}
 
 function successful_trials = runSequentialSimulations(handles, config)
 % Get batch processing parameters
@@ -4957,18 +4972,21 @@ end
 
 function backupScripts(~)
 % Create backup of current scripts before generation
+% NOTE: Backups are stored in archive/ directory to keep them out of MATLAB path
 try
     timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
-    backup_dir = fullfile(pwd, 'Backup_Scripts', sprintf('Run_Backup_%s', timestamp));
+    
+    % Get the directory where this script is located
+    [script_dir, ~, ~] = fileparts(mfilename('fullpath'));
+    
+    % Place backups in archive directory (NOT in Backup_Scripts to avoid path pollution)
+    backup_dir = fullfile(script_dir, 'archive', 'backups', sprintf('Run_Backup_%s', timestamp));
 
     if ~exist(backup_dir, 'dir')
         mkdir(backup_dir);
     end
 
-    % Get the directory where this script is located
-    [script_dir, ~, ~] = fileparts(mfilename('fullpath'));
-
-    % List of scripts to backup (all .m files in the Simulation_Dataset_GUI folder)
+    % List of scripts to backup (all .m files in the Dataset Generator root)
     script_files = dir(fullfile(script_dir, '*.m'));
 
     % Copy each script to backup folder
@@ -4985,6 +5003,7 @@ try
     % Create a README file with backup information
     readme_content = sprintf(['Script Backup Created: %s\n', ...
         'This backup contains all scripts used in the current simulation run.\n', ...
+        'Location: archive/backups/ (excluded from MATLAB path)\n\n', ...
         'Backup includes:\n', ...
         '- Main GUI script\n', ...
         '- Data extraction functions\n', ...
@@ -5002,6 +5021,7 @@ try
     end
 
     fprintf('Script backup created: %s (%d files)\n', backup_dir, copied_count);
+    fprintf('NOTE: Backups stored in archive/ directory to avoid MATLAB path conflicts\n');
 
 catch ME
     warning(ME.identifier, 'Failed to create script backup: %s', ME.message);
