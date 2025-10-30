@@ -220,19 +220,19 @@ class MatlabDataLoader:
         datasets = {}
 
         for name, filepath in files.items():
-            print(f"🔄 Loading {name} from {filepath}...")
+            print(f"[LOAD] Loading {name} from {filepath}...")
             try:
                 dataset = self._load_single_file(filepath, name)
                 datasets[name] = dataset
-                print(f"✅ {name}: {len(dataset)} frames loaded")
+                print(f"[OK] {name}: {len(dataset)} frames loaded")
             except Exception as e:
-                raise RuntimeError(f"❌ Failed to load {name} from {filepath}: {e}")
+                raise RuntimeError(f"[ERROR] Failed to load {name} from {filepath}: {e}")
 
         # Validate consistency between datasets
         self._validate_dataset_consistency(datasets)
 
         load_time = time.time() - start_time
-        print(f"📊 Total load time: {load_time:.2f}s")
+        print(f"[INFO] Total load time: {load_time:.2f}s")
 
         return datasets["BASEQ"], datasets["ZTCFQ"], datasets["DELTAQ"]
 
@@ -858,10 +858,10 @@ class GeometryUtils:
 
 if __name__ == "__main__":
     # Example usage and testing
-    print("🏌️ Golf Swing Visualizer - Core Data System Test")
+    print("[TEST] Golf Swing Visualizer - Core Data System Test")
 
     # Test geometry utilities
-    print("\n🔧 Testing geometry utilities...")
+    print("\n[TEST] Testing geometry utilities...")
     vertices, normals, indices = GeometryUtils.create_cylinder_mesh()
     print(f"   Cylinder: {len(vertices)//3} vertices, {len(indices)//3} triangles")
 
@@ -872,7 +872,7 @@ if __name__ == "__main__":
     print(f"   Arrow: {len(vertices)//3} vertices, {len(indices)//3} triangles")
 
     # Test data structures
-    print("\n📊 Testing data structures...")
+    print("\n[TEST] Testing data structures...")
     config = RenderConfig()
     stats = PerformanceStats()
 
@@ -889,7 +889,7 @@ if __name__ == "__main__":
         processor = FrameProcessor(datasets, config)
         frame_data = processor.get_frame_data(0)
 
-        print("\n✅ Successfully loaded and processed data:")
+        print("\n[OK] Successfully loaded and processed data:")
         print(f"   Frames: {processor.num_frames}")
         print(f"   Frame 0 valid: {frame_data.is_valid}")
         print(f"   Shaft length: {frame_data.shaft_length:.3f}")

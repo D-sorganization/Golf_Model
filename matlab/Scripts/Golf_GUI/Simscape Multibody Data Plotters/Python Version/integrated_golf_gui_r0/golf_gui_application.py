@@ -17,7 +17,15 @@ import pandas as pd
 from golf_data_core import FrameData, FrameProcessor, RenderConfig
 from golf_opengl_renderer import OpenGLRenderer
 from golf_video_export import VideoExportDialog
-from PyQt6.QtCore import Qt, QTimer, QObject, QPropertyAnimation, QEasingCurve, pyqtProperty, pyqtSignal
+from PyQt6.QtCore import (
+    Qt,
+    QTimer,
+    QObject,
+    QPropertyAnimation,
+    QEasingCurve,
+    pyqtProperty,
+    pyqtSignal,
+)
 from PyQt6.QtGui import QAction, QKeySequence
 
 # OpenGL imports
@@ -60,7 +68,7 @@ class SmoothPlaybackController(QObject):
 
     # Signals
     frameUpdated = pyqtSignal(FrameData)  # Emits interpolated frame data
-    positionChanged = pyqtSignal(float)   # Emits current position (0.0 to total_frames)
+    positionChanged = pyqtSignal(float)  # Emits current position (0.0 to total_frames)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -243,9 +251,15 @@ class SmoothPlaybackController(QObject):
 
         # List of all position attributes to interpolate
         position_attrs = [
-            'left_wrist', 'left_elbow', 'left_shoulder',
-            'right_wrist', 'right_elbow', 'right_shoulder',
-            'hub', 'butt', 'clubhead'
+            "left_wrist",
+            "left_elbow",
+            "left_shoulder",
+            "right_wrist",
+            "right_elbow",
+            "right_shoulder",
+            "hub",
+            "butt",
+            "clubhead",
         ]
 
         # Lerp each position: result = a * (1 - t) + b * t
@@ -407,7 +421,9 @@ class MotionCaptureTab(QWidget):
                 (baseq_data, ztcfq_data, deltaq_data)
             )
 
-            self.status_label.setText(f"Loaded {swing_type} data successfully - Smooth playback ready!")
+            self.status_label.setText(
+                f"Loaded {swing_type} data successfully - Smooth playback ready!"
+            )
 
         except Exception as e:
             self.status_label.setText(f"Error loading data: {str(e)}")
@@ -437,7 +453,9 @@ class MotionCaptureTab(QWidget):
 
     def _on_position_changed(self, position: float):
         """Update UI when playback position changes"""
-        total_frames = len(self.frame_processor.time_vector) if self.frame_processor else 0
+        total_frames = (
+            len(self.frame_processor.time_vector) if self.frame_processor else 0
+        )
 
         # Update frame label with fractional position for smooth display
         self.frame_label.setText(f"Frame: {position:.1f}/{total_frames}")
@@ -912,7 +930,7 @@ class GolfVisualizerMainWindow(QMainWindow):
         self._setup_menu()
         self._setup_status_bar()
 
-        print("🚀 Golf Visualizer main window created")
+        print("[*] Golf Visualizer main window created")
 
     def _setup_ui(self):
         """Setup the main UI with tabular structure"""
@@ -1196,15 +1214,13 @@ class GolfVisualizerMainWindow(QMainWindow):
                 self,
                 "No Data Loaded",
                 "Please load motion capture data before exporting video.\n\n"
-                "Use File → Load Motion Capture Data to get started."
+                "Use File → Load Motion Capture Data to get started.",
             )
             return
 
         # Show export dialog
         dialog = VideoExportDialog(
-            self,
-            tab.opengl_widget.renderer,
-            tab.frame_processor
+            self, tab.opengl_widget.renderer, tab.frame_processor
         )
         dialog.exec()
 
@@ -1288,7 +1304,7 @@ def main():
     window = GolfVisualizerMainWindow()
     window.show()
 
-    print("🚀 Golf Swing Visualizer started")
+    print("[*] Golf Swing Visualizer started")
     print("   Tabular interface ready for multi-data analysis")
     print("   Motion capture data visualization active")
     print("   Simulink model integration prepared for future use")
