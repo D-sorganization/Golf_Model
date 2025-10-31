@@ -4004,13 +4004,21 @@ result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0
 
 try
     fprintf('Processing simulation output for trial %d...\n', trial_num);
+    
+    % ENHANCED: Ensure config has all necessary settings for maximum data extraction
+    config = ensureEnhancedConfig(config);
+    
+    % ENHANCED: Optional diagnostic output for debugging data extraction
+    if isfield(config, 'verbose') && config.verbose
+        diagnoseDataExtraction(simOut, config);
+    end
 
     % Extract data using the enhanced signal extraction system
     options = struct();
     options.extract_combined_bus = config.use_signal_bus;
     options.extract_logsout = config.use_logsout;
     options.extract_simscape = config.use_simscape;
-    options.verbose = false; % Set to true for debugging
+    options.verbose = isfield(config, 'verbose') && config.verbose; % ENHANCED: respect config verbosity
 
     [data_table, ~] = extractSignalsFromSimOut(simOut, options);
 
@@ -4130,6 +4138,14 @@ try
     result.columns = width(data_table);
 
     fprintf('Trial %d completed: %d data points, %d columns\n', trial_num, num_rows, width(data_table));
+    
+    % ENHANCED: Report progress toward 1956 column target
+    if width(data_table) >= 1956
+        fprintf('✓ Trial %d: Target 1956 columns ACHIEVED (%d columns)\n', trial_num, width(data_table));
+    else
+        fprintf('✗ Trial %d: Target 1956 columns MISSED (%d columns, need %d more)\n', ...
+            trial_num, width(data_table), 1956 - width(data_table));
+    end
 
 catch ME
     result.success = false;
