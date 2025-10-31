@@ -24,11 +24,11 @@ try
     if config.use_simscape && isfield(simOut, 'simlog') && ~isempty(simOut.simlog)
         fprintf('Extracting additional Simscape data...\n');
         simscape_data = extractSimscapeDataRecursive(simOut.simlog);
-        
+
         if ~isempty(simscape_data) && width(simscape_data) > 1
             % Merge Simscape data with main data
             fprintf('Found %d additional Simscape columns\n', width(simscape_data) - 1);
-            
+
             % Ensure both tables have the same number of rows
             if height(simscape_data) == height(data_table)
                 % Merge tables

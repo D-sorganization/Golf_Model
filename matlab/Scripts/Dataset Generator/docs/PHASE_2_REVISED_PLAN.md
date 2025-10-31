@@ -1,14 +1,14 @@
 # Phase 2 Revised Plan - Correct Approach
-**Date:** 2025-10-31  
-**Branch:** `fix/gui-and-dataset-cleanup`  
+**Date:** 2025-10-31
+**Branch:** `fix/gui-and-dataset-cleanup`
 **Status:** 🎯 READY TO IMPLEMENT
 
 ## Lesson Applied
 
-**Original Phase 2 Mistake:** Deleted standalone files, kept local functions  
+**Original Phase 2 Mistake:** Deleted standalone files, kept local functions
 **Result:** ❌ Broke parallel mode
 
-**Correct Phase 2 Approach:** Delete local functions, keep standalone files  
+**Correct Phase 2 Approach:** Delete local functions, keep standalone files
 **Result:** ✅ Works for both sequential and parallel modes
 
 ---
@@ -37,7 +37,7 @@ Main Process (Dataset_GUI.m)
 
 The **local duplicate versions** inside Dataset_GUI.m:
 - `processSimulationOutput` (lines 4002-4145) ← Delete this
-- `addModelWorkspaceData` (lines 4156-4239) ← Delete this  
+- `addModelWorkspaceData` (lines 4156-4239) ← Delete this
 - `logical2str` (lines 4886-4893) ← Delete this
 
 Keep the **standalone versions** in `functions/` folder:
@@ -50,8 +50,8 @@ Keep the **standalone versions** in `functions/` folder:
 ## Implementation Plan - Revised
 
 ### Step 1: Remove Local processSimulationOutput from Dataset_GUI.m
-**Lines to remove:** 4002-4145 (144 lines)  
-**Replacement:** Add comment directing to standalone  
+**Lines to remove:** 4002-4145 (144 lines)
+**Replacement:** Add comment directing to standalone
 **Risk:** LOW - Standalone exists and will be called
 
 ```matlab
@@ -61,19 +61,19 @@ Keep the **standalone versions** in `functions/` folder:
 ```
 
 ### Step 2: Remove Local addModelWorkspaceData from Dataset_GUI.m
-**Lines to remove:** 4156-4239 (84 lines)  
-**Replacement:** Add comment directing to standalone  
+**Lines to remove:** 4156-4239 (84 lines)
+**Replacement:** Add comment directing to standalone
 **Risk:** LOW - Standalone exists and will be called
 
 ```matlab
-% REMOVED: Local addModelWorkspaceData function  
+% REMOVED: Local addModelWorkspaceData function
 % Using standalone version: functions/addModelWorkspaceData.m
 % This allows both sequential and parallel execution modes to work
 ```
 
 ### Step 3: Remove Local logical2str from Dataset_GUI.m
-**Lines to remove:** 4886-4893 (8 lines)  
-**Replacement:** Add comment directing to standalone  
+**Lines to remove:** 4886-4893 (8 lines)
+**Replacement:** Add comment directing to standalone
 **Risk:** LOW - Standalone exists and will be called
 
 ```matlab
@@ -154,7 +154,7 @@ When Dataset_GUI.m calls `processSimulationOutput(...)`:
 4. Verify: Success, 1956 columns, no errors
 ```
 
-### Test 2: Parallel Mode  
+### Test 2: Parallel Mode
 ```matlab
 1. Launch GUI: Dataset_GUI
 2. Configure: 2 trials, Parallel mode
@@ -168,7 +168,7 @@ When Dataset_GUI.m calls `processSimulationOutput(...)`:
 which processSimulationOutput
 % Should show: .../functions/processSimulationOutput.m
 
-which addModelWorkspaceData  
+which addModelWorkspaceData
 % Should show: .../functions/addModelWorkspaceData.m
 
 which logical2str
@@ -215,11 +215,11 @@ Copy the extra Simscape extraction code from local version to standalone BEFORE 
 if config.use_simscape && isfield(simOut, 'simlog') && ~isempty(simOut.simlog)
     fprintf('Extracting additional Simscape data...\n');
     simscape_data = extractSimscapeDataRecursive(simOut.simlog);
-    
+
     if ~isempty(simscape_data) && width(simscape_data) > 1
         % Merge Simscape data with main data
         fprintf('Found %d additional Simscape columns\n', width(simscape_data) - 1);
-        
+
         % Ensure both tables have the same number of rows
         if height(simscape_data) == height(data_table)
             % Merge tables
@@ -250,7 +250,7 @@ end
 - Add comment pointing to standalone
 - Test both sequential and parallel modes
 
-### Step 2: Remove Local addModelWorkspaceData  
+### Step 2: Remove Local addModelWorkspaceData
 - Delete lines 4156-4239 from Dataset_GUI.m
 - Add comment pointing to standalone
 - Test both modes
@@ -273,7 +273,7 @@ end
 - ✅ No local versions of the 3 functions
 - ✅ Standalone versions on path and working
 - ✅ Sequential mode: 2 trials, 1956 columns, success
-- ✅ Parallel mode: 2 trials, 1956 columns, success  
+- ✅ Parallel mode: 2 trials, 1956 columns, success
 - ✅ No errors or warnings
 - ✅ All commits are incremental and revertible
 
@@ -282,7 +282,7 @@ end
 ## Risk Mitigation
 
 ### Backup Current State
-Before starting, current commit is: `a14cbd3`  
+Before starting, current commit is: `a14cbd3`
 Easy rollback command:
 ```bash
 git checkout a14cbd3
@@ -305,7 +305,7 @@ which processSimulationOutput -all    % Should show standalone
 ## Expected Timeline
 
 1. **Verify Simscape code in standalone:** 5 minutes
-2. **Remove 3 local functions:** 10 minutes  
+2. **Remove 3 local functions:** 10 minutes
 3. **Test sequential mode:** 5 minutes
 4. **Test parallel mode:** 5 minutes
 5. **Documentation:** 5 minutes
@@ -325,4 +325,3 @@ This revised approach is **architecturally correct**:
 The original Phase 2 had the right goal (remove duplication) but chose the wrong target (deleted standalones instead of locals). This revision corrects that mistake.
 
 **Status:** Ready to implement with confidence! 🎯
-
