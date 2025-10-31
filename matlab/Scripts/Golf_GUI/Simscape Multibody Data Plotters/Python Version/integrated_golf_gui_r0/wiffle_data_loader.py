@@ -131,10 +131,12 @@ class MotionDataLoader:
         """
         # Try to find the Excel file in common locations
         possible_paths = [
+            Path("../../../Motion Capture Plotter/Wiffle_ProV1_club_3D_data.xlsx"),
             Path("../Matlab Inverse Dynamics/Wiffle_ProV1_club_3D_data.xlsx"),
             Path("../../Matlab Inverse Dynamics/Wiffle_ProV1_club_3D_data.xlsx"),
             Path("../../../Matlab Inverse Dynamics/Wiffle_ProV1_club_3D_data.xlsx"),
             Path("Matlab Inverse Dynamics/Wiffle_ProV1_club_3D_data.xlsx"),
+            Path("Wiffle_ProV1_club_3D_data.xlsx"),  # Current directory
         ]
 
         for path in possible_paths:
@@ -171,7 +173,7 @@ class MotionDataLoader:
         if not filepath_path.exists():
             raise FileNotFoundError(f"Excel file not found: {filepath}")
 
-        print(f"📊 Loading Wiffle_ProV1 data from: {filepath}")
+        print(f"[INFO] Loading Wiffle_ProV1 data from: {filepath}")
 
         try:
             # Read both sheets
@@ -182,8 +184,8 @@ class MotionDataLoader:
                 filepath_path, sheet_name=self.config.wiffle_sheet
             )
 
-            print(f"✅ Loaded ProV1 data: {prov1_data.shape}")
-            print(f"✅ Loaded Wiffle data: {wiffle_data.shape}")
+            print(f"[OK] Loaded ProV1 data: {prov1_data.shape}")
+            print(f"[OK] Loaded Wiffle data: {wiffle_data.shape}")
 
             # Process and clean data
             prov1_processed = self._process_sheet_data(prov1_data, "ProV1")
@@ -196,7 +198,7 @@ class MotionDataLoader:
 
     def _process_sheet_data(self, df: pd.DataFrame, sheet_name: str) -> pd.DataFrame:
         """Process and clean sheet data"""
-        print(f"🔧 Processing {sheet_name} data...")
+        print(f"[PROC] Processing {sheet_name} data...")
 
         # Based on the analysis, the structure is:
         # Row 0: Metadata (ball type, parameters)
@@ -205,7 +207,7 @@ class MotionDataLoader:
         # Row 3+: Actual data
 
         if len(df) < 3:
-            print(f"⚠️  Insufficient rows in {sheet_name}, creating dummy data")
+            print(f"[WARN] Insufficient rows in {sheet_name}, creating dummy data")
             return self._create_dummy_data(100)
 
         # Extract headers from row 2 (index 2)
@@ -222,9 +224,9 @@ class MotionDataLoader:
         # Time column (column 1)
         if len(data_df.columns) >= 2:
             processed_data["time"] = pd.to_numeric(data_df.iloc[:, 1], errors="coerce")
-            print(f"✅ Extracted time data from column 1 for {sheet_name}")
+            print(f"[OK] Extracted time data from column 1 for {sheet_name}")
         else:
-            print(f"⚠️  No Time column found in {sheet_name}, creating linear time")
+            print(f"[WARN] No Time column found in {sheet_name}, creating linear time")
             processed_data["time"] = np.linspace(0, 1, len(data_df))
 
         # Map the actual columns to our expected format
@@ -249,11 +251,11 @@ class MotionDataLoader:
             )
 
             print(
-                f"✅ Extracted position data from columns 2-4 (Mid-hands) for {sheet_name}"
+                f"[OK] Extracted position data from columns 2-4 (Mid-hands) for {sheet_name}"
             )
         else:
             print(
-                f"⚠️  Insufficient columns in {sheet_name}, using first 3 numeric columns"
+                f"[WARN] Insufficient columns in {sheet_name}, using first 3 numeric columns"
             )
             numeric_cols = data_df.select_dtypes(include=[np.number]).columns
             if len(numeric_cols) >= 3:
@@ -268,7 +270,7 @@ class MotionDataLoader:
                 )
             else:
                 print(
-                    f"⚠️  Insufficient numeric columns in {sheet_name}, creating dummy data"
+                    f"[WARN] Insufficient numeric columns in {sheet_name}, creating dummy data"
                 )
                 processed_data["clubhead_x"] = np.linspace(0, 1, len(processed_data))
                 processed_data["clubhead_y"] = np.linspace(0, 1, len(processed_data))
@@ -298,7 +300,7 @@ class MotionDataLoader:
             processed_data = self._interpolate_missing_values(processed_data)
 
         print(
-            f"✅ Processed {sheet_name}: {processed_data.shape}, "
+            f"[OK] Processed {sheet_name}: {processed_data.shape}, "
             f"time range: [{processed_data['time'].min():.3f}, {processed_data['time'].max():.3f}]"
         )
 
@@ -370,7 +372,7 @@ class MotionDataLoader:
         processed_data["hub_z"] = ch_z_array + 0.47
 
         print(
-            f"📐 Created body part estimates for {sheet_name} based on clubhead position"
+            f"[CALC] Created body part estimates for {sheet_name} based on clubhead position"
         )
 
     def _create_dummy_data(self, num_frames: int) -> pd.DataFrame:
@@ -428,7 +430,7 @@ class MotionDataLoader:
                     filtered_data = savgol_filter(df[col].ffill(), window_length, 3)
                     df[col] = filtered_data
                 except Exception as e:
-                    print(f"⚠️  Could not filter {col}: {e}")
+                    print(f"[WARN] Could not filter {col}: {e}")
 
         return df
 
@@ -458,7 +460,7 @@ class MotionDataLoader:
         Returns:
             Tuple of (BASEQ, ZTCFQ, DELTAQ) DataFrames for GUI compatibility
         """
-        print("🔄 Converting to GUI format...")
+        print("[CONV] Converting to GUI format...")
 
         # Use ProV1 data as the primary dataset (BASEQ equivalent)
         prov1_df = excel_data["ProV1"]
@@ -473,7 +475,7 @@ class MotionDataLoader:
         # Create DELTAQ format (difference between ProV1 and Wiffle)
         deltaq_data = self._create_deltaq_format(prov1_df, wiffle_df)
 
-        print("✅ Converted to GUI format:")
+        print("[OK] Converted to GUI format:")
         print(f"   BASEQ: {baseq_data.shape}")
         print(f"   ZTCFQ: {ztcfq_data.shape}")
         print(f"   DELTAQ: {deltaq_data.shape}")
@@ -581,13 +583,15 @@ class MotionDataLoader:
 
 def main():
     """Test the Wiffle data loader"""
-    print("🧪 Testing Wiffle Data Loader")
+    print("[TEST] Testing Wiffle Data Loader")
 
     # Find the Excel file - try multiple possible paths
     possible_paths = [
+        Path("../../../Motion Capture Plotter/Wiffle_ProV1_club_3D_data.xlsx"),
         Path("Matlab Inverse Dynamics/Wiffle_ProV1_club_3D_data.xlsx"),
         Path("../Matlab Inverse Dynamics/Wiffle_ProV1_club_3D_data.xlsx"),
         Path("../../Matlab Inverse Dynamics/Wiffle_ProV1_club_3D_data.xlsx"),
+        Path("Wiffle_ProV1_club_3D_data.xlsx"),
     ]
 
     excel_file = None
@@ -597,7 +601,7 @@ def main():
             break
 
     if excel_file is None:
-        print("❌ Excel file not found. Tried paths:")
+        print("[ERROR] Excel file not found. Tried paths:")
         for path in possible_paths:
             print(f"   {path}")
         return
@@ -610,17 +614,17 @@ def main():
         # Convert to GUI format
         baseq, ztcfq, deltaq = loader.convert_to_gui_format(excel_data)
 
-        print("\n📊 Data Summary:")
+        print("\n[SUMMARY] Data Summary:")
         print(f"ProV1 data points: {len(excel_data['ProV1'])}")
         print(f"Wiffle data points: {len(excel_data['Wiffle'])}")
         print(
             f"Time range: {excel_data['ProV1']['time'].min():.3f} - {excel_data['ProV1']['time'].max():.3f}"
         )
 
-        print("\n✅ Wiffle data loader test completed successfully!")
+        print("\n[OK] Wiffle data loader test completed successfully!")
 
     except Exception as e:
-        print(f"❌ Error during testing: {e}")
+        print(f"[ERROR] Error during testing: {e}")
         import traceback
 
         traceback.print_exc()

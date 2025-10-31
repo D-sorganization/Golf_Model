@@ -178,30 +178,30 @@ class GeometryManager:
             # Import geometry utilities from the core module
             from golf_data_core import GeometryUtils
 
-            print("  ✅ GeometryUtils imported")
+            print("  [OK] GeometryUtils imported")
 
             # Create simple meshes
             print("  Creating cylinder mesh...")
             self.mesh_library["cylinder"] = GeometryUtils.create_cylinder_mesh(
                 radius=1.0, height=1.0, segments=8
             )
-            print("  ✅ Cylinder mesh created")
+            print("  [OK] Cylinder mesh created")
 
             print("  Creating sphere mesh...")
             self.mesh_library["sphere"] = GeometryUtils.create_sphere_mesh(
                 radius=1.0, lat_segments=8, lon_segments=8
             )
-            print("  ✅ Sphere mesh created")
+            print("  [OK] Sphere mesh created")
 
             # Ground plane
             print("  Creating ground mesh...")
             self._create_ground_mesh()
-            print("  ✅ Ground mesh created")
+            print("  [OK] Ground mesh created")
 
-            print(f"✅ Created {len(self.mesh_library)} standard meshes")
+            print(f"[OK] Created {len(self.mesh_library)} standard meshes")
 
         except Exception as e:
-            print(f"❌ Failed to create standard meshes: {e}")
+            print(f"[ERROR] Failed to create standard meshes: {e}")
             traceback.print_exc()
             raise
 
@@ -250,7 +250,7 @@ class GeometryManager:
                 vertex_shader=ShaderLibrary.get_simple_vertex_shader(),
                 fragment_shader=ShaderLibrary.get_simple_fragment_shader(),
             )
-            print(f"  ✅ Simple shader compiled: {type(self.programs['simple'])}")
+            print(f"  [OK] Simple shader compiled: {type(self.programs['simple'])}")
 
             # Ground shader
             print("  Compiling ground shader...")
@@ -258,12 +258,12 @@ class GeometryManager:
                 vertex_shader=ShaderLibrary.get_ground_vertex_shader(),
                 fragment_shader=ShaderLibrary.get_ground_fragment_shader(),
             )
-            print(f"  ✅ Ground shader compiled: {type(self.programs['ground'])}")
+            print(f"  [OK] Ground shader compiled: {type(self.programs['ground'])}")
 
-            print(f"✅ Compiled {len(self.programs)} shader programs")
+            print(f"[OK] Compiled {len(self.programs)} shader programs")
 
         except Exception as e:
-            print(f"❌ Failed to compile shaders: {e}")
+            print(f"[ERROR] Failed to compile shaders: {e}")
             traceback.print_exc()
             raise RuntimeError(f"Failed to compile shaders: {e}")
 
@@ -410,7 +410,7 @@ class OpenGLRenderer:
         # Create standard geometry objects
         self._create_standard_objects()
 
-        print("✅ OpenGL renderer initialized")
+        print("[OK] OpenGL renderer initialized")
         print(f"   OpenGL Version: {self.ctx.info['GL_VERSION']}")
         print(f"   Renderer: {self.ctx.info['GL_RENDERER']}")
 
@@ -442,7 +442,7 @@ class OpenGLRenderer:
         self.geometry_manager.create_geometry_object("ground", "ground", "ground")
 
         print(
-            f"✅ Created {len(self.geometry_manager.geometry_objects)} geometry objects"
+            f"[OK] Created {len(self.geometry_manager.geometry_objects)} geometry objects"
         )
 
     def set_viewport(self, width: int, height: int):
@@ -519,7 +519,7 @@ class OpenGLRenderer:
             )
             program["gridSpacing"].value = 0.5  # 50cm grid spacing
         except Exception as e:
-            print(f"⚠️ Ground uniform error: {e}")
+            print(f"[WARN] Ground uniform error: {e}")
             return
 
         # Create ground plane at proper level
@@ -543,7 +543,7 @@ class OpenGLRenderer:
                 self.render_stats["draw_calls"] += 1
                 self.render_stats["triangles_rendered"] += ground_obj.index_count // 3
         except Exception as e:
-            print(f"⚠️ Ground render error: {e}")
+            print(f"[WARN] Ground render error: {e}")
 
     def _render_body_segments(
         self,
@@ -576,7 +576,7 @@ class OpenGLRenderer:
             )
             program["viewPosition"].write(view_position.astype(np.float32).tobytes())
         except Exception as e:
-            print(f"⚠️ Body segments uniform error: {e}")
+            print(f"[WARN] Body segments uniform error: {e}")
             return
 
         # Define body segments with their properties
@@ -738,7 +738,7 @@ class OpenGLRenderer:
             self.render_stats["draw_calls"] += 1
             self.render_stats["triangles_rendered"] += obj.index_count // 3
         except Exception as e:
-            print(f"⚠️ Cylinder render error: {e}")
+            print(f"[WARN] Cylinder render error: {e}")
 
     def _render_sphere_at_point(
         self,
@@ -778,7 +778,7 @@ class OpenGLRenderer:
             self.render_stats["draw_calls"] += 1
             self.render_stats["triangles_rendered"] += obj.index_count // 3
         except Exception as e:
-            print(f"⚠️ Sphere render error: {e}")
+            print(f"[WARN] Sphere render error: {e}")
 
     def _render_club(
         self,
@@ -811,7 +811,7 @@ class OpenGLRenderer:
             )
             program["viewPosition"].write(view_position.astype(np.float32).tobytes())
         except Exception as e:
-            print(f"⚠️ Club uniform error: {e}")
+            print(f"[WARN] Club uniform error: {e}")
             return
 
         # Render shaft with realistic proportions
@@ -916,8 +916,8 @@ if __name__ == "__main__":
             f"   Simple shaders: {len(vertex_shader)} + {len(fragment_shader)} characters"
         )
 
-        print("✅ Shader compilation test passed")
+        print("[OK] Shader compilation test passed")
     except Exception as e:
-        print(f"❌ Shader compilation test failed: {e}")
+        print(f"[ERROR] Shader compilation test failed: {e}")
 
     print("\n🎉 Fixed OpenGL renderer ready for integration!")

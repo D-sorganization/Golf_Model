@@ -12,4 +12,4 @@ end
 parpool('local', 4);  % or however many workers you want
 
 % 4. Now run your GUI
-Data_GUI
+Dataset_GUI
