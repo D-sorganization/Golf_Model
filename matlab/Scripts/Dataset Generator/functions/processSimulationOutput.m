@@ -20,6 +20,28 @@ try
     % Use existing extraction method for comprehensive data capture
     [data_table, signal_info] = extractSignalsFromSimOut(simOut, options);
 
+    % ENHANCED: Extract additional Simscape data if enabled (CRITICAL for 1956 columns)
+    if config.use_simscape && isfield(simOut, 'simlog') && ~isempty(simOut.simlog)
+        fprintf('Extracting additional Simscape data...\n');
+        simscape_data = extractSimscapeDataRecursive(simOut.simlog);
+        
+        if ~isempty(simscape_data) && width(simscape_data) > 1
+            % Merge Simscape data with main data
+            fprintf('Found %d additional Simscape columns\n', width(simscape_data) - 1);
+            
+            % Ensure both tables have the same number of rows
+            if height(simscape_data) == height(data_table)
+                % Merge tables
+                data_table = [data_table, simscape_data(:, 2:end)]; % Skip time column (already exists)
+                fprintf('Merged Simscape data: %d total columns\n', width(data_table));
+            else
+                fprintf('Warning: Row count mismatch - Simscape: %d, Main: %d\n', height(simscape_data), height(data_table));
+            end
+        else
+            fprintf('No additional Simscape data found\n');
+        end
+    end
+
     if isempty(data_table)
         result.error = 'No data extracted from simulation';
         fprintf('No data extracted from simulation output\n');
