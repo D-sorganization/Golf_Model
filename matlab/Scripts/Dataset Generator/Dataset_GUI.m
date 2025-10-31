@@ -4975,10 +4975,10 @@ function backupScripts(~)
 % NOTE: Backups are stored in archive/ directory to keep them out of MATLAB path
 try
     timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
-    
+
     % Get the directory where this script is located
     [script_dir, ~, ~] = fileparts(mfilename('fullpath'));
-    
+
     % Place backups in archive directory (NOT in Backup_Scripts to avoid path pollution)
     backup_dir = fullfile(script_dir, 'archive', 'backups', sprintf('Run_Backup_%s', timestamp));
 
