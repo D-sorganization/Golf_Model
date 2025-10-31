@@ -3999,150 +3999,15 @@ end
 
 % REMOVED: loadInputFile function - was unused
 
-function result = processSimulationOutput(trial_num, config, simOut, capture_workspace)
-result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
-
-try
-    fprintf('Processing simulation output for trial %d...\n', trial_num);
-
-    % Extract data using the enhanced signal extraction system
-    options = struct();
-    options.extract_combined_bus = config.use_signal_bus;
-    options.extract_logsout = config.use_logsout;
-    options.extract_simscape = config.use_simscape;
-    options.verbose = false; % Set to true for debugging
-
-    [data_table, ~] = extractSignalsFromSimOut(simOut, options);
-
-    % ENHANCED: Extract additional Simscape data if enabled
-    if config.use_simscape && isfield(simOut, 'simlog') && ~isempty(simOut.simlog)
-        fprintf('Extracting additional Simscape data...\n');
-        simscape_data = extractSimscapeDataRecursive(simOut.simlog);
-
-        if ~isempty(simscape_data) && width(simscape_data) > 1
-            % Merge Simscape data with main data
-            fprintf('Found %d additional Simscape columns\n', width(simscape_data) - 1);
-
-            % Ensure both tables have the same number of rows
-            if height(simscape_data) == height(data_table)
-                % Merge tables
-                data_table = [data_table, simscape_data(:, 2:end)]; % Skip time column (already exists)
-                fprintf('Merged Simscape data: %d total columns\n', width(data_table));
-            else
-                fprintf('Warning: Row count mismatch - Simscape: %d, Main: %d\n', height(simscape_data), height(data_table));
-            end
-        else
-            fprintf('No additional Simscape data found\n');
-        end
-    end
-
-    if isempty(data_table)
-        result.error = 'No data extracted from simulation';
-        fprintf('No data extracted from simulation output\n');
-        return;
-    end
-
-    fprintf('Extracted %d rows of data with %d total columns\n', height(data_table), width(data_table));
-
-    % Resample data to desired frequency if specified
-    if isfield(config, 'sample_rate') && ~isempty(config.sample_rate) && config.sample_rate > 0
-        data_table = resampleDataToFrequency(data_table, config.sample_rate, config.simulation_time);
-        fprintf('Resampled to %d rows at %g Hz\n', height(data_table), config.sample_rate);
-    end
-
-    % Add trial metadata
-    num_rows = height(data_table);
-    data_table.trial_id = repmat(trial_num, num_rows, 1);
-
-    % Add coefficient columns
-    param_info = getPolynomialParameterInfo();
-    coeff_idx = 1;
-    for j = 1:length(param_info.joint_names)
-        joint_name = param_info.joint_names{j};
-        coeffs = param_info.joint_coeffs{j};
-        for k = 1:length(coeffs)
-            coeff_name = sprintf('input_%s_%s', getShortenedJointName(joint_name), coeffs(k));
-            if coeff_idx <= size(config.coefficient_values, 2)
-                data_table.(coeff_name) = repmat(config.coefficient_values(trial_num, coeff_idx), num_rows, 1);
-            end
-            coeff_idx = coeff_idx + 1;
-        end
-    end
-
-    % Add model workspace variables (segment lengths, masses, inertias, etc.)
-    % Use the capture_workspace parameter passed to this function
-    if nargin < 4
-        capture_workspace = true; % Default to true if not provided
-    end
-
-    if capture_workspace
-        data_table = addModelWorkspaceData(data_table, simOut, num_rows);
-    else
-        fprintf('Debug: Model workspace capture disabled by user setting\n');
-    end
-
-    % Save to file in selected format(s)
-    timestamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
-    saved_files = {};
-
-    % Determine file format from config (handle both field names for compatibility)
-    file_format = 1; % Default to CSV
-    if isfield(config, 'file_format')
-        file_format = config.file_format;
-    elseif isfield(config, 'format')
-        file_format = config.format;
-    end
-
-    % Save based on selected format
-    switch file_format
-        case 1 % CSV Files
-            filename = sprintf('trial_%03d_%s.csv', trial_num, timestamp);
-            filepath = fullfile(config.output_folder, filename);
-            writetable(data_table, filepath);
-            saved_files{end+1} = filename;
-
-        case 2 % MAT Files
-            filename = sprintf('trial_%03d_%s.mat', trial_num, timestamp);
-            filepath = fullfile(config.output_folder, filename);
-            save(filepath, 'data_table', 'config');
-            saved_files{end+1} = filename;
-
-        case 3 % Both CSV and MAT
-            % Save CSV
-            csv_filename = sprintf('trial_%03d_%s.csv', trial_num, timestamp);
-            csv_filepath = fullfile(config.output_folder, csv_filename);
-            writetable(data_table, csv_filepath);
-            saved_files{end+1} = csv_filename;
-
-            % Save MAT
-            mat_filename = sprintf('trial_%03d_%s.mat', trial_num, timestamp);
-            mat_filepath = fullfile(config.output_folder, mat_filename);
-            save(mat_filepath, 'data_table', 'config');
-            saved_files{end+1} = mat_filename;
-    end
-
-    % Update result with primary filename
-    filename = saved_files{1};
-
-    result.success = true;
-    result.filename = filename;
-    result.data_points = num_rows;
-    result.columns = width(data_table);
-
-    fprintf('Trial %d completed: %d data points, %d columns\n', trial_num, num_rows, width(data_table));
-
-catch ME
-    result.success = false;
-    result.error = ME.message;
-    fprintf('Error processing trial %d output: %s\n', trial_num, ME.message);
-
-    % Print stack trace for debugging
-    fprintf('Processing error details:\n');
-    for i = 1:length(ME.stack)
-        fprintf('  %s (line %d)\n', ME.stack(i).name, ME.stack(i).line);
-    end
-end
-end
+% REMOVED: Local processSimulationOutput function (was lines 4002-4145, 144 lines)
+% Now using standalone version: functions/processSimulationOutput.m
+% Standalone version includes ALL features:
+%   - Enhanced config validation (ensureEnhancedConfig)
+%   - Optional diagnostics (diagnoseDataExtraction)
+%   - Respects config.verbose setting
+%   - 1956 column target reporting
+%   - CRITICAL: Extra Simscape data extraction for full column count
+% This allows both sequential and parallel execution modes to work.
 
 % REMOVED: restoreWorkspace function (lines 4308-4316, 9 lines)
 % Now using standalone version from functions/restoreWorkspace.m
@@ -4153,89 +4018,10 @@ end
 % REMOVED: extractSignalsFromSimOut function (lines 4395-4567, 173 lines)
 % Now using standalone version from functions/extractSignalsFromSimOut.m
 
-function data_table = addModelWorkspaceData(data_table, simOut, num_rows)
-% Extract model workspace variables and add as constant columns
-% These include segment lengths, masses, inertias, and other model parameters
-
-try
-    % Get model workspace from simulation output
-    model_name = simOut.SimulationMetadata.ModelInfo.ModelName;
-
-    % Check if model is loaded
-    if ~bdIsLoaded(model_name)
-        fprintf('Warning: Model %s not loaded, skipping workspace data\n', model_name);
-        return;
-    end
-
-    model_workspace = get_param(model_name, 'ModelWorkspace');
-    try
-        variables = model_workspace.getVariableNames;
-    catch
-        % For older MATLAB versions, try alternative method
-        try
-            variables = model_workspace.whos;
-            variables = {variables.name};
-        catch
-            fprintf('Warning: Could not retrieve model workspace variable names\n');
-            return;
-        end
-    end
-
-    if ~isempty(variables)
-        fprintf('Adding %d model workspace variables to CSV...\n', length(variables));
-    else
-        fprintf('No model workspace variables found\n');
-        return;
-    end
-
-    for i = 1:length(variables)
-        var_name = variables{i};
-
-        try
-            var_value = model_workspace.getVariable(var_name);
-
-            % Handle different variable types
-            if isnumeric(var_value) && isscalar(var_value)
-                % Scalar numeric values (lengths, masses, etc.)
-                column_name = sprintf('model_%s', var_name);
-                data_table.(column_name) = repmat(var_value, num_rows, 1);
-
-            elseif isnumeric(var_value) && isvector(var_value)
-                % Vector values (3D coordinates, etc.)
-                for j = 1:length(var_value)
-                    column_name = sprintf('model_%s_%d', var_name, j);
-                    data_table.(column_name) = repmat(var_value(j), num_rows, 1);
-                end
-
-            elseif isnumeric(var_value) && ismatrix(var_value)
-                % Matrix values (inertia matrices, etc.)
-                [rows, cols] = size(var_value);
-                for r = 1:rows
-                    for c = 1:cols
-                        column_name = sprintf('model_%s_%d_%d', var_name, r, c);
-                        data_table.(column_name) = repmat(var_value(r,c), num_rows, 1);
-                    end
-                end
-
-            elseif isa(var_value, 'Simulink.Parameter')
-                % Handle Simulink Parameters
-                param_val = var_value.Value;
-                if isnumeric(param_val) && isscalar(param_val)
-                    column_name = sprintf('model_%s', var_name);
-                    data_table.(column_name) = repmat(param_val, num_rows, 1);
-                end
-            end
-
-        catch ME
-            % Skip variables that can't be extracted
-            fprintf('Warning: Could not extract variable %s: %s\n', var_name, ME.message);
-        end
-    end
-
-catch ME
-    fprintf('Warning: Could not access model workspace: %s\n', ME.message);
-end
-end
+% REMOVED: Local addModelWorkspaceData function (was lines 4021-4103, 83 lines)
+% Now using standalone version: functions/addModelWorkspaceData.m
+% Standalone version uses helper functions for robust matrix handling.
+% This allows both sequential and parallel execution modes to work.
 
 % Validate inputs
 function config = validateInputs(handles)
@@ -4883,11 +4669,7 @@ catch ME
 end
 end
 
-function result = logical2str(value)
-% Helper function to convert logical to string
-if value
-    result = 'YES';
-else
-    result = 'NO';
-end
-end
+% REMOVED: Local logical2str function (was lines 4751-4758, 8 lines)
+% Now using standalone version: functions/logical2str.m
+% Returns 'enabled'/'disabled' format for boolean values.
+% This allows both sequential and parallel execution modes to work.
