@@ -3337,39 +3337,7 @@ end
 
 % Extract coefficients from table
 % NOTE: This function is now provided by functions/extractCoefficientsFromTable.m
-% Embedded version commented out to eliminate duplication (Original line: 3339)
-% Uncomment if external function has compatibility issues
-%{
-function coefficient_values = extractCoefficientsFromTable(handles)
-try
-    table_data = get(handles.coefficients_table, 'Data');
-
-    if isempty(table_data)
-        coefficient_values = [];
-        return;
-    end
-
-    num_trials = size(table_data, 1);
-    num_total_coeffs = size(table_data, 2) - 1;
-    coefficient_values = zeros(num_trials, num_total_coeffs);
-
-    for row = 1:num_trials
-        for col = 2:(num_total_coeffs + 1)
-            value_str = table_data{row, col};
-            if ischar(value_str)
-                coefficient_values(row, col-1) = str2double(value_str);
-            else
-                coefficient_values(row, col-1) = value_str;
-            end
-        end
-    end
-
-catch ME
-    fprintf('Error extracting coefficients: %s\n', ME.message);
-    coefficient_values = [];
-end
-end
-%}
+% Embedded version removed - using external function (verified working with 1956 columns)
 
 % Run Generation Process
 function runGeneration(handles)
@@ -3841,27 +3809,7 @@ end
 
 % Helper function to check for stop requests and update progress
 % NOTE: This function is now provided by functions/checkStopRequest.m
-% Embedded version commented out to eliminate duplication (Original line: ~3843)
-% Uncomment if external function has compatibility issues
-%{
-function shouldStop = checkStopRequest(handles)
-shouldStop = false;
-try
-    % Get current handles
-    current_handles = guidata(handles.fig);
-    if isfield(current_handles, 'should_stop') && current_handles.should_stop
-        shouldStop = true;
-    end
-
-    % Force UI update to prevent freezing
-    drawnow;
-
-catch
-    % If we can't access handles, assume we should stop
-    shouldStop = true;
-end
-end
-%}
+% Embedded version removed - using external function (verified working with 1956 columns)
 
 % Helper function to update progress display
 function updateProgress(handles, current, total, message)
@@ -3885,40 +3833,7 @@ end
 
 % Helper function to generate random coefficients
 % NOTE: This function is now provided by functions/generateRandomCoefficients.m
-% Embedded version commented out to eliminate duplication (Original line: ~3887)
-% Uncomment if external function has compatibility issues
-%{
-function coefficients = generateRandomCoefficients(num_coefficients)
-% Generate random coefficients with reasonable ranges for golf swing parameters
-% These ranges are based on typical golf swing polynomial coefficients
-
-% Different ranges for different coefficient types (A, B, C, D, E, F, G)
-% A (t^6): Large range for major motion
-% B (t^5): Large range for major motion
-% C (t^4): Medium range for control
-% D (t^3): Medium range for control
-% E (t^2): Small range for fine control
-% F (t^1): Small range for fine control
-% G (constant): Small range for offset
-
-coefficients = zeros(1, num_coefficients);
-
-for i = 1:num_coefficients
-    coeff_type = mod(i-1, 7) + 1; % A=1, B=2, C=3, D=4, E=5, F=6, G=7
-
-    switch coeff_type
-        case {1, 2} % A, B - Large range
-            coefficients(i) = (rand() - 0.5) * 2000; % -1000 to 1000
-        case {3, 4} % C, D - Medium range
-            coefficients(i) = (rand() - 0.5) * 1000; % -500 to 500
-        case {5, 6} % E, F - Small range
-            coefficients(i) = (rand() - 0.5) * 200;  % -100 to 100
-        case 7 % G - Very small range
-            coefficients(i) = (rand() - 0.5) * 50;   % -25 to 25
-    end
-end
-end
-%}
+% Embedded version removed - using external function (verified working with 1956 columns)
 
 function successful_trials = runSequentialSimulations(handles, config)
 % Get batch processing parameters
