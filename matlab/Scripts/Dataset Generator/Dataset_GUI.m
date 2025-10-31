@@ -4004,10 +4004,10 @@ result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0
 
 try
     fprintf('Processing simulation output for trial %d...\n', trial_num);
-    
+
     % ENHANCED: Ensure config has all necessary settings for maximum data extraction
     config = ensureEnhancedConfig(config);
-    
+
     % ENHANCED: Optional diagnostic output for debugging data extraction
     if isfield(config, 'verbose') && config.verbose
         diagnoseDataExtraction(simOut, config);
@@ -4138,7 +4138,7 @@ try
     result.columns = width(data_table);
 
     fprintf('Trial %d completed: %d data points, %d columns\n', trial_num, num_rows, width(data_table));
-    
+
     % ENHANCED: Report progress toward 1956 column target
     if width(data_table) >= 1956
         fprintf('✓ Trial %d: Target 1956 columns ACHIEVED (%d columns)\n', trial_num, width(data_table));
