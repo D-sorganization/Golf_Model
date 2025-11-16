@@ -27,6 +27,45 @@ function [SummaryTable, ClubQuiverAlphaReversal, ClubQuiverMaxCHS, ClubQuiverZTC
 %       ClubQuiverMaxCHS          - Struct with data for club/shaft quiver at Base Max CHS time.
 %       ClubQuiverZTCFAlphaReversal - Struct with data for club/shaft quiver at ZTCF Alpha Reversal time.
 %       ClubQuiverDELTAAlphaReversal - Struct with data for club/shaft quiver at DELTA Alpha Reversal time.
+%
+%   Example:
+%       [summary, qAR, qMaxCHS, qZTCF, qDELTA] = ...
+%           generateSummaryTableAndQuiverData3D(BASEQ, ZTCFQ, DELTAQ);
+%
+%   See also: CALCULATEWORKPOWERANDANGULARIMPULSE3D
+
+% Input validation
+arguments
+    BASEQ table {mustBeNonempty}
+    ZTCFQ table {mustBeNonempty}
+    DELTAQ table {mustBeNonempty}
+end
+
+% Validate all tables have Time column
+assert(ismember('Time', BASEQ.Properties.VariableNames), ...
+    'BASEQ table must contain a ''Time'' column');
+assert(ismember('Time', ZTCFQ.Properties.VariableNames), ...
+    'ZTCFQ table must contain a ''Time'' column');
+assert(ismember('Time', DELTAQ.Properties.VariableNames), ...
+    'DELTAQ table must contain a ''Time'' column');
+
+% Validate Time columns are numeric and have no NaN
+assert(isnumeric(BASEQ.Time) && all(~isnan(BASEQ.Time)), ...
+    'BASEQ.Time must be numeric and contain no NaN values');
+assert(isnumeric(ZTCFQ.Time) && all(~isnan(ZTCFQ.Time)), ...
+    'ZTCFQ.Time must be numeric and contain no NaN values');
+assert(isnumeric(DELTAQ.Time) && all(~isnan(DELTAQ.Time)), ...
+    'DELTAQ.Time must be numeric and contain no NaN values');
+
+% Validate tables have same length (same time grid)
+assert(height(BASEQ) == height(ZTCFQ), ...
+    'BASEQ and ZTCFQ tables must have the same number of rows');
+assert(height(BASEQ) == height(DELTAQ), ...
+    'BASEQ and DELTAQ tables must have the same number of rows');
+
+% Validate tables have sufficient data
+assert(height(BASEQ) >= 2, ...
+    'Input tables must have at least 2 rows for meaningful analysis');
 
 % Initialize outputs
 SummaryTable = table();

@@ -1,27 +1,21 @@
 function Dataset_GUI()
 % Forward Dynamics Dataset Generator - Modern GUI with tabbed interface
 % Features: Tabbed structure, pause/resume, post-processing, multiple export formats
+%
+% This GUI uses standardized constants from:
+%   - UIColors: Professional color scheme
+%   - GUILayoutConstants: Consistent sizing and spacing
+%
+% See also: UICOLORS, GUILAYOUTCONSTANTS
 
-% Professional color scheme - sharp, vibrant tones
-colors = struct();
-colors.primary = [0.2, 0.4, 0.8];        % Sharp blue
-colors.secondary = [0.3, 0.5, 0.9];      % Bright blue
-colors.success = [0.2, 0.7, 0.3];        % Sharp green
-colors.danger = [0.8, 0.2, 0.2];         % Sharp red
-colors.warning = [0.9, 0.6, 0.1];        % Sharp amber
-colors.background = [0.95, 0.95, 0.97];  % Slightly cooler background
-colors.panel = [1, 1, 1];                % White
-colors.text = [0.1, 0.1, 0.1];           % Very dark gray
-colors.textLight = [0.4, 0.4, 0.4];      % Darker medium gray
-colors.border = [0.8, 0.8, 0.8];         % Darker gray border
-colors.tabActive = [0.7, 0.8, 1.0];      % Bright blue for active tab
-colors.tabInactive = [0.9, 0.9, 0.9];    % Light gray for inactive tab
-colors.lightGrey = [0.85, 0.85, 0.85];   % Light grey for main text buttons
+% Import standardized UI colors and layout constants
+colors = UIColors.getColorScheme();
+layout = GUILayoutConstants.getDefaultLayout();
 
-% Create main figure
+% Create main figure with responsive sizing
 screenSize = get(0, 'ScreenSize');
-figWidth = min(1800, screenSize(3) * 0.9);
-figHeight = min(1000, screenSize(4) * 0.9);
+figWidth = min(layout.FIGURE_MAX_WIDTH, screenSize(3) * layout.SCREEN_WIDTH_RATIO);
+figHeight = min(layout.FIGURE_MAX_HEIGHT, screenSize(4) * layout.SCREEN_HEIGHT_RATIO);
 
 fig = figure('Name', 'Forward Dynamics Dataset Generator', ...
     'Position', [(screenSize(3)-figWidth)/2, (screenSize(4)-figHeight)/2, figWidth, figHeight], ...
