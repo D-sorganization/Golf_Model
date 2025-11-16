@@ -8,6 +8,11 @@ function Dataset_GUI()
 %
 % See also: UICOLORS, GUILAYOUTCONSTANTS
 
+% Add required paths for constants and functions
+script_path = fileparts(mfilename('fullpath'));
+addpath(fullfile(script_path, '..', 'Constants'));
+addpath(fullfile(script_path, '..', 'Functions'));
+
 % Import standardized UI colors and layout constants
 colors = UIColors.getColorScheme();
 layout = GUILayoutConstants.getDefaultLayout();
