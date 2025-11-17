@@ -5,6 +5,10 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
     time_data = [];
     signals = {};
 
+    % Pre-allocate for signals to avoid dynamic growth (performance optimization)
+    signals_temp = cell(100, 1);  % Conservative estimate, will trim later
+    signal_count = 0;
+
     try
         % Get current node name
         node_name = '';
@@ -33,7 +37,11 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
 
                     % Create meaningful signal name
                     signal_name = matlab.lang.makeValidName(sprintf('%s_data', current_path));
-                    signals{end+1} = struct('name', signal_name, 'data', extracted_data);
+                    signal_count = signal_count + 1;
+                    if signal_count > length(signals_temp)
+                        signals_temp{end+100} = [];  % Grow by chunks if needed
+                    end
+                    signals_temp{signal_count} = struct('name', signal_name, 'data', extracted_data);
                     node_has_data = true;
                 end
             catch ME
@@ -75,7 +83,11 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
 
                     % Create meaningful signal name: Body_Joint_Component_Axis_Signal
                     signal_name = matlab.lang.makeValidName(sprintf('%s_%s', current_path, signal_id));
-                    signals{end+1} = struct('name', signal_name, 'data', extracted_data);
+                    signal_count = signal_count + 1;
+                    if signal_count > length(signals_temp)
+                        signals_temp{end+100} = [];  % Grow by chunks if needed
+                    end
+                    signals_temp{signal_count} = struct('name', signal_name, 'data', extracted_data);
                     node_has_data = true;
                 end
             catch ME
@@ -111,7 +123,10 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
                     end
                 end
 
-                % Process children
+                % Process children - accumulate signals efficiently
+                children_signals_cell = cell(length(child_ids), 1);
+                children_count = 0;
+
                 for i = 1:length(child_ids)
                     try
                         child_node = node.(child_ids{i});
@@ -122,11 +137,27 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
                             time_data = child_time;
                         end
 
-                        % Merge signals
-                        signals = [signals, child_signals];
+                        % Accumulate child signals instead of concatenating in loop
+                        if ~isempty(child_signals)
+                            children_count = children_count + 1;
+                            children_signals_cell{children_count} = child_signals;
+                        end
 
                     catch ME
                         % Skip this child if there's an error
+                    end
+                end
+
+                % Concatenate all child signals once at the end
+                if children_count > 0
+                    child_signals_combined = [children_signals_cell{1:children_count}];
+                    % Add to our signal list
+                    for j = 1:length(child_signals_combined)
+                        signal_count = signal_count + 1;
+                        if signal_count > length(signals_temp)
+                            signals_temp{end+100} = [];  % Grow by chunks if needed
+                        end
+                        signals_temp{signal_count} = child_signals_combined{j};
                     end
                 end
 
@@ -140,5 +171,10 @@ function [time_data, signals] = traverseSimlogNode(node, parent_path)
         if ~contains(ME.message, 'brace indexing') && ~contains(ME.message, 'comma separated list')
             fprintf('Error traversing Simscape node: %s\n', ME.message);
         end
+    end
+
+    % Trim signals to actual size (performance optimization)
+    if signal_count > 0
+        signals = signals_temp(1:signal_count);
     end
 end

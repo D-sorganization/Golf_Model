@@ -165,11 +165,13 @@ else
     fractionalPowerFields = {'ZTCFQLSFractionalPower', 'ZTCFQRSFractionalPower', 'ZTCFQLEFractionalPower', 'ZTCFQREFractionalPower', 'ZTCFQLHFractionalPower', 'ZTCFQRHFractionalPower', ...
                              'DELTAQLSFractionalPower', 'DELTAQRSFractionalPower', 'DELTAQLEFractionalPower', 'DELTAQREFractionalPower', 'DELTAQLHFractionalPower', 'DELTAQRHFractionalPower'};
 
+     % Pre-create NaN column for performance (avoid repeated allocation)
+     nan_col = NaN(height(BASEQ_updated), 1);
      for k = 1:length(fractionalWorkFields)
-         BASEQ_updated.(fractionalWorkFields{k}) = NaN(height(BASEQ_updated), 1);
+         BASEQ_updated.(fractionalWorkFields{k}) = nan_col;
      end
-      for k = 1:length(fractionalPowerFields)
-         BASEQ_updated.(fractionalPowerFields{k}) = NaN(height(BASEQ_updated), 1);
+     for k = 1:length(fractionalPowerFields)
+         BASEQ_updated.(fractionalPowerFields{k}) = nan_col;
      end
 end
 

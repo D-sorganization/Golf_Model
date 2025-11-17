@@ -39,16 +39,9 @@ try
         fprintf('❌ Could not get children method: %s\n', ME.message);
         fprintf(' Using properties as children (Multibody approach)\n');
 
-        % Get properties excluding system properties
+        % Get properties excluding system properties (vectorized for performance)
         all_props = properties(simlog);
-        children_ids = {};
-        for i = 1:length(all_props)
-            prop_name = all_props{i};
-            % Skip system properties, keep actual joint/body names
-            if ~ismember(prop_name, {'id', 'savable', 'exportable'})
-                children_ids{end+1} = prop_name;
-            end
-        end
+        children_ids = all_props(~ismember(all_props, {'id', 'savable', 'exportable'}));
         fprintf('✅ Found %d children from properties: %s\n', length(children_ids), strjoin(children_ids, ', '));
     end
 
@@ -84,12 +77,18 @@ try
         fprintf('✅ Primary method found data!\n');
     end
 
-    % Build table
-    data_cells = {time_data};
-    var_names = {'time'};
+    % Build table - pre-allocate for performance
     expected_length = length(time_data);
+    num_signals = length(all_signals);
+    data_cells = cell(num_signals + 1, 1);  % Pre-allocate (+1 for time)
+    var_names = cell(num_signals + 1, 1);
 
-    for i = 1:length(all_signals)
+    % Initialize with time
+    data_cells{1} = time_data;
+    var_names{1} = 'time';
+    cell_idx = 1;
+
+    for i = 1:num_signals
         signal = all_signals{i};
         signal_data = signal.data;
         data_size = size(signal_data);
@@ -97,17 +96,19 @@ try
 
         if length(signal_data) == expected_length
             % Standard time series data
-            data_cells{end+1} = signal_data(:);
-            var_names{end+1} = signal.name;
+            cell_idx = cell_idx + 1;
+            data_cells{cell_idx} = signal_data(:);
+            var_names{cell_idx} = signal.name;
             fprintf('Debug: Added Simscape signal: %s (length: %d)\n', signal.name, expected_length);
-
-
-
         else
             fprintf('Debug: Skipped %s (size [%s] not supported - need time series, [3 1 N], or [3 3 N])\n', ...
                 signal.name, num2str(data_size));
         end
     end
+
+    % Trim to actual size
+    data_cells = data_cells(1:cell_idx);
+    var_names = var_names(1:cell_idx);
 
     if length(data_cells) > 1
         simscape_data = table(data_cells{:}, 'VariableNames', var_names);
