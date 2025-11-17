@@ -205,6 +205,8 @@ for i = 1:length(masses)
 end
 
 % Analyze parameter sweep
+% NOTE: 'analyzeParameterSweep' is a placeholder for user-defined analysis.
+% You must implement this function to suit your analysis needs.
 analyzeParameterSweep(results);
 ```
 
@@ -231,6 +233,8 @@ data_base = readtable(fullfile(path_base, 'master_dataset.csv'));
 data_cf = readtable(fullfile(path_cf, 'master_dataset.csv'));
 
 % Analyze counterfactual effect
+% NOTE: 'analyzeCounterfactual' is a user-defined function for comparing results.
+% You must implement this function to suit your analysis needs.
 effect = analyzeCounterfactual(data_base, data_cf);
 fprintf('Effect of +10%% swing speed:\n');
 fprintf('  ΔDistance: %.1f yards\n', effect.distance_diff);

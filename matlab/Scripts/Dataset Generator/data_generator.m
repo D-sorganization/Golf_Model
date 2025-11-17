@@ -29,8 +29,10 @@ function [successful_trials, dataset_path, metadata] = runSimulation(config, opt
 %       config.driver_mass = driver_masses(i);
 %       config.folder_name = sprintf('mass_%.3f', driver_masses(i));
 %       [trials, path, meta] = runSimulation(config);
+%       % NOTE: loadResults is a user-defined function - implement as needed
 %       results{i} = loadResults(path);
 %   end
+%   % NOTE: analyzeParameterSweep is a user-defined function - implement as needed
 %   analyzeParameterSweep(results);
 %
 % Example - Counterfactual Comparison:
@@ -44,6 +46,7 @@ function [successful_trials, dataset_path, metadata] = runSimulation(config, opt
 %   [~, path_cf, ~] = runSimulation(config_cf);
 %
 %   % Compare
+%   % NOTE: analyzeCounterfactual is a user-defined function - implement as needed
 %   effect = analyzeCounterfactual(path_base, path_cf);
 %
 % Key Features:
@@ -96,7 +99,11 @@ try
         logMessage(config, 'Normal', 'Created output directory: %s', output_dir);
     end
 
+    % CRITICAL: Update config.output_folder to point to the run-specific directory
+    % This ensures all downstream functions (processSimulationOutput, compileDataset, checkpoints)
+    % write to the correct per-run subdirectory instead of the parent folder
     config.full_output_path = output_dir;
+    config.output_folder = output_dir;  % Update to use run-specific directory
 
     %% Save Configuration
 
