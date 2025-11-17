@@ -1,10 +1,10 @@
-% FIXED: Extract from CombinedSignalBus with enhanced 1956 column support
+% Extract from CombinedSignalBus with enhanced data extraction support
 function data_table = extractFromCombinedSignalBus(combinedBus)
 data_table = [];
 
 try
     % CombinedSignalBus should be a struct with time and signals
-    % Enhanced for comprehensive 1956 column extraction
+    % Enhanced for comprehensive data extraction
     if ~isstruct(combinedBus)
         return;
     end

@@ -3331,14 +3331,14 @@ end
 
 % Extract coefficients from table
 % NOTE: This function is now provided by functions/extractCoefficientsFromTable.m
-% Embedded version removed - using external function (verified working with 1956 columns)
+% Embedded version removed - using external function
 
 % Run Generation Process
 function runGeneration(handles)
 try
     config = handles.config;
 
-    % Ensure config has enhanced settings for maximum data extraction (1956 columns)
+    % Ensure config has enhanced settings for maximum data extraction
     config = ensureEnhancedConfig(config);
 
     % Extract coefficients from table
@@ -3803,7 +3803,7 @@ end
 
 % Helper function to check for stop requests and update progress
 % NOTE: This function is now provided by functions/checkStopRequest.m
-% Embedded version removed - using external function (verified working with 1956 columns)
+% Embedded version removed - using external function
 
 % Helper function to update progress display
 function updateProgress(handles, current, total, message)
@@ -3827,7 +3827,7 @@ end
 
 % Helper function to generate random coefficients
 % NOTE: This function is now provided by functions/generateRandomCoefficients.m
-% Embedded version removed - using external function (verified working with 1956 columns)
+% Embedded version removed - using external function
 
 function successful_trials = runSequentialSimulations(handles, config)
 % Get batch processing parameters
@@ -3999,7 +3999,7 @@ end
 %   - Enhanced config validation (ensureEnhancedConfig)
 %   - Optional diagnostics (diagnoseDataExtraction)
 %   - Respects config.verbose setting
-%   - 1956 column target reporting
+%   - Column count reporting
 %   - CRITICAL: Extra Simscape data extraction for full column count
 % This allows both sequential and parallel execution modes to work.
 
@@ -4134,7 +4134,6 @@ try
             try
                 subsystem_refs = find_system(model_name, 'BlockType', 'SubsystemReference');
                 if ~isempty(subsystem_refs)
-                    fprintf('Debug: Found %d Subsystem Reference blocks (may contain Simscape components)\n', length(subsystem_refs));
                     simscape_blocks = [simscape_blocks; subsystem_refs];
                 end
             catch
@@ -4175,15 +4174,6 @@ try
                     close_system(model_name, 0);
                 end
                 warning('Simscape data extraction is enabled, but no clear Simscape indicators found in model "%s". Simscape logging may still work if components are in referenced subsystems.', model_name);
-            else
-                if shouldShowDebug(handles)
-                    fprintf('Debug: Found %d Simscape indicators in model (blocks + references + config)\n', total_indicators);
-                end
-                if ~isempty(subsystem_refs)
-                    if shouldShowDebug(handles)
-                        fprintf('Debug: Model uses referenced subsystems - Simscape components may be inside references\n');
-                    end
-                end
             end
 
             if model_was_loaded
@@ -4332,7 +4322,7 @@ try
     fprintf('Pass 1: Discovering columns...\n');
 
     % Preallocate with estimated size (most trials have similar column counts)
-    estimated_columns = 2000;  % Updated to handle typical 1956 columns with buffer
+    estimated_columns = 2000;  % Buffer for comprehensive data extraction
     all_unique_columns = cell(estimated_columns, 1);
     valid_files = cell(length(csv_files), 1);
     column_count = 0;
@@ -4457,11 +4447,6 @@ try
     writetable(master_data, master_file);
 
     fprintf('Master dataset saved: %d rows, %d columns\n', height(master_data), width(master_data));
-    if width(master_data) >= 1956
-        fprintf('Target 1956 columns achieved: YES\n');
-    else
-        fprintf('Target 1956 columns achieved: NO\n');
-    end
 
 catch ME
     fprintf('Error compiling dataset: %s\n', ME.message);

@@ -52,7 +52,6 @@ function simIn = setModelParameters(simIn, config)
         % Only set the essential parameter that actually works
         try
             simIn = simIn.setModelParameter('SimscapeLogType', 'all');
-            fprintf('Debug: ✅ Set SimscapeLogType = all (essential parameter)\n');
         catch ME
             fprintf('Warning: Could not set essential SimscapeLogType parameter: %s\n', ME.message);
             fprintf('Warning: Simscape data extraction may not work without this parameter\n');
@@ -61,7 +60,6 @@ function simIn = setModelParameters(simIn, config)
         % Set simulation mode (animation control removed for now to fix data capture)
         try
             simIn = simIn.setModelParameter('SimulationMode', 'normal');
-            fprintf('Debug: Set to normal simulation mode\n');
         catch ME
             fprintf('Warning: Could not set simulation mode: %s\n', ME.message);
         end
