@@ -452,11 +452,7 @@ function changeFile(src, handles)
     if strcmp(selected, 'Browse...')
         [file, path] = uigetfile({'*.mat', 'MAT-files (*.mat)'}, 'Select Motion Capture Data');
         if isequal(file, 0)
-            currentIdx = find(strcmp(files, handles.currentFile), 1);
-            if isempty(currentIdx)
-                currentIdx = 1;
-            end
-            set(src, 'Value', currentIdx);
+            set(src, 'Value', safeFileIndex(files, handles.currentFile));
             return;
         end
         selected = fullfile(path, file);
@@ -472,11 +468,7 @@ function changeFile(src, handles)
         [data, params] = loadData(selected);
     catch ME
         errordlg(sprintf('Failed to load %s:\n%s', selected, ME.message), 'Load Error');
-        currentIdx = find(strcmp(files, handles.currentFile), 1);
-        if isempty(currentIdx)
-            currentIdx = 1;
-        end
-        set(src, 'Value', currentIdx);
+        set(src, 'Value', safeFileIndex(files, handles.currentFile));
         return;
     end
 
@@ -547,6 +539,13 @@ function validateAccScale(src)
     set(src, 'String', num2str(val));
     handles = guidata(src);
     animateFrame(handles);
+end
+
+function idx = safeFileIndex(files, currentFile)
+    idx = find(strcmp(files, currentFile), 1);
+    if isempty(idx)
+        idx = 1;
+    end
 end
 
 function jumpToKeyframe(src)
