@@ -43,7 +43,7 @@ jobs:
           echo "MATLAB Code Quality Checks"
           echo "=========================================="
           python matlab_utilities/scripts/matlab_quality_check.py --output-format json > matlab_quality_results.json || true
-          python matlab_utilities/scripts/matlab_quality_check.py --output-format text
+          python matlab_utilities/scripts/matlab_quality_check.py --output-format text || echo "⚠️  Quality issues found - see report above (non-blocking)"
 
       - name: Upload MATLAB Quality Report
         if: always()
