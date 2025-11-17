@@ -1,27 +1,26 @@
 function Dataset_GUI()
 % Forward Dynamics Dataset Generator - Modern GUI with tabbed interface
 % Features: Tabbed structure, pause/resume, post-processing, multiple export formats
+%
+% This GUI uses standardized constants from:
+%   - UIColors: Professional color scheme
+%   - GUILayoutConstants: Consistent sizing and spacing
+%
+% See also: UICOLORS, GUILAYOUTCONSTANTS
 
-% Professional color scheme - sharp, vibrant tones
-colors = struct();
-colors.primary = [0.2, 0.4, 0.8];        % Sharp blue
-colors.secondary = [0.3, 0.5, 0.9];      % Bright blue
-colors.success = [0.2, 0.7, 0.3];        % Sharp green
-colors.danger = [0.8, 0.2, 0.2];         % Sharp red
-colors.warning = [0.9, 0.6, 0.1];        % Sharp amber
-colors.background = [0.95, 0.95, 0.97];  % Slightly cooler background
-colors.panel = [1, 1, 1];                % White
-colors.text = [0.1, 0.1, 0.1];           % Very dark gray
-colors.textLight = [0.4, 0.4, 0.4];      % Darker medium gray
-colors.border = [0.8, 0.8, 0.8];         % Darker gray border
-colors.tabActive = [0.7, 0.8, 1.0];      % Bright blue for active tab
-colors.tabInactive = [0.9, 0.9, 0.9];    % Light gray for inactive tab
-colors.lightGrey = [0.85, 0.85, 0.85];   % Light grey for main text buttons
+% Add required paths for constants and functions
+script_path = fileparts(mfilename('fullpath'));
+addpath(fullfile(script_path, '..', 'Constants'));
+addpath(fullfile(script_path, '..', 'Functions'));
 
-% Create main figure
+% Import standardized UI colors and layout constants
+colors = UIColors.getColorScheme();
+layout = GUILayoutConstants.getDefaultLayout();
+
+% Create main figure with responsive sizing
 screenSize = get(0, 'ScreenSize');
-figWidth = min(1800, screenSize(3) * 0.9);
-figHeight = min(1000, screenSize(4) * 0.9);
+figWidth = min(layout.FIGURE_MAX_WIDTH, screenSize(3) * layout.SCREEN_WIDTH_RATIO);
+figHeight = min(layout.FIGURE_MAX_HEIGHT, screenSize(4) * layout.SCREEN_HEIGHT_RATIO);
 
 fig = figure('Name', 'Forward Dynamics Dataset Generator', ...
     'Position', [(screenSize(3)-figWidth)/2, (screenSize(4)-figHeight)/2, figWidth, figHeight], ...
@@ -1558,6 +1557,68 @@ try
     if isfield(handles, 'preferences')
         prefs = handles.preferences;
 
+        % Apply last input file if it exists and is valid
+        if isfield(prefs, 'last_input_file_path') && ~isempty(prefs.last_input_file_path)
+            if exist(prefs.last_input_file_path, 'file')
+                if isfield(handles, 'input_file_edit')
+                    set(handles.input_file_edit, 'String', prefs.last_input_file_path);
+                    handles.selected_input_file = prefs.last_input_file_path;
+                end
+            else
+                % File no longer exists, clear the preference
+                prefs.last_input_file_path = '';
+                handles.preferences = prefs;
+            end
+        end
+
+        % Auto-load last config file if it exists and is valid
+        if isfield(prefs, 'last_config_file') && ~isempty(prefs.last_config_file)
+            if exist(prefs.last_config_file, 'file')
+                try
+                    config = load(prefs.last_config_file);
+                    if isfield(config, 'config')
+                        config = config.config;
+                    end
+                    if ~isfield(config, 'handles')  % Skip legacy format
+                        % Restore configuration values to the GUI
+                        if isfield(config, 'input_file') && isfield(handles, 'input_file_edit')
+                            set(handles.input_file_edit, 'String', config.input_file);
+                            handles.selected_input_file = config.input_file;
+                        end
+                        if isfield(config, 'output_folder') && isfield(handles, 'output_folder_edit')
+                            set(handles.output_folder_edit, 'String', config.output_folder);
+                        end
+                        if isfield(config, 'folder_name') && isfield(handles, 'folder_name_edit')
+                            set(handles.folder_name_edit, 'String', config.folder_name);
+                        end
+                        if isfield(config, 'num_trials') && isfield(handles, 'num_trials_edit')
+                            set(handles.num_trials_edit, 'String', config.num_trials);
+                        end
+                        if isfield(config, 'sim_time') && isfield(handles, 'sim_time_edit')
+                            set(handles.sim_time_edit, 'String', config.sim_time);
+                        end
+                        if isfield(config, 'sample_rate') && isfield(handles, 'sample_rate_edit')
+                            set(handles.sample_rate_edit, 'String', config.sample_rate);
+                        end
+                        if isfield(config, 'use_logsout') && isfield(handles, 'use_logsout')
+                            set(handles.use_logsout, 'Value', config.use_logsout);
+                        end
+                        if isfield(config, 'model_path')
+                            handles.model_path = config.model_path;
+                        end
+                        guidata(handles.fig, handles);
+                    end
+                catch ME
+                    % Silently fail if config file can't be loaded
+                    fprintf('Note: Could not auto-load last config file: %s\n', ME.message);
+                end
+            else
+                % Config file no longer exists, clear the preference
+                prefs.last_config_file = '';
+                handles.preferences = prefs;
+            end
+        end
+
         % Apply any other saved preferences here
         if isfield(prefs, 'default_sim_time') && isfield(handles, 'sim_time_edit')
             set(handles.sim_time_edit, 'String', num2str(prefs.default_sim_time));
@@ -1656,7 +1717,16 @@ function saveConfiguration(~, ~)
 % Save configuration
 handles = guidata(gcbf);
 
-[filename, pathname] = uiputfile('*.mat', 'Save Configuration');
+% Try to use last config file path as starting directory
+start_path = '';
+if isfield(handles, 'preferences') && isfield(handles.preferences, 'last_config_file')
+    last_path = handles.preferences.last_config_file;
+    if ~isempty(last_path) && exist(last_path, 'file')
+        [start_path, ~, ~] = fileparts(last_path);
+    end
+end
+
+[filename, pathname] = uiputfile('*.mat', 'Save Configuration', start_path);
 if filename ~= 0
     config = struct();
     config.timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss'));
@@ -1671,8 +1741,17 @@ if filename ~= 0
     config.use_logsout = get(handles.use_logsout, 'Value');
     config.model_path = handles.model_path;
 
-    save(fullfile(pathname, filename), 'config');
-    fprintf('Configuration saved to %s\n', fullfile(pathname, filename));
+    config_path = fullfile(pathname, filename);
+    save(config_path, 'config');
+    fprintf('Configuration saved to %s\n', config_path);
+
+    % Save to preferences for next time
+    if ~isfield(handles, 'preferences')
+        handles.preferences = struct();
+    end
+    handles.preferences.last_config_file = config_path;
+    guidata(gcbf, handles);
+    saveUserPreferences(handles);
 end
 end
 
@@ -1680,7 +1759,16 @@ function loadConfiguration(~, ~)
 % Load configuration
 handles = guidata(gcbf);
 
-[filename, pathname] = uigetfile('*.mat', 'Load Configuration');
+% Try to use last config file path as starting directory
+start_path = '';
+if isfield(handles, 'preferences') && isfield(handles.preferences, 'last_config_file')
+    last_path = handles.preferences.last_config_file;
+    if ~isempty(last_path) && exist(last_path, 'file')
+        [start_path, ~, ~] = fileparts(last_path);
+    end
+end
+
+[filename, pathname] = uigetfile('*.mat', 'Load Configuration', start_path);
 if filename ~= 0
     try
         config = load(fullfile(pathname, filename));
@@ -1737,7 +1825,16 @@ if filename ~= 0
         % Update the handles structure
         guidata(gcbf, handles);
 
-        fprintf('Configuration loaded from %s\n', fullfile(pathname, filename));
+        % Save to preferences for next time
+        config_path = fullfile(pathname, filename);
+        if ~isfield(handles, 'preferences')
+            handles.preferences = struct();
+        end
+        handles.preferences.last_config_file = config_path;
+        guidata(gcbf, handles);
+        saveUserPreferences(handles);
+
+        fprintf('Configuration loaded from %s\n', config_path);
     catch ME
         errordlg(sprintf('Error loading configuration: %s', ME.message), 'Load Error');
     end
@@ -2609,9 +2706,24 @@ end
 function browseInputFile(~, ~)
 handles = guidata(gcbf);
 
-[filename, pathname] = uigetfile('*.mat', 'Select Input File');
+% Try to use last input file path as starting directory
+start_path = '';
+if isfield(handles, 'preferences') && isfield(handles.preferences, 'last_input_file_path')
+    last_path = handles.preferences.last_input_file_path;
+    if ~isempty(last_path) && exist(last_path, 'file')
+        [start_path, ~, ~] = fileparts(last_path);
+    end
+end
+
+[filename, pathname] = uigetfile('*.mat', 'Select Input File', start_path);
 if filename ~= 0
-    set(handles.input_file_edit, 'String', fullfile(pathname, filename));
+    full_path = fullfile(pathname, filename);
+    set(handles.input_file_edit, 'String', full_path);
+    handles.selected_input_file = full_path;
+    guidata(gcbf, handles);
+
+    % Save to preferences for next time
+    saveUserPreferences(handles);
 end
 end
 
@@ -3268,13 +3380,31 @@ end
 function saveUserPreferences(handles)
 % Save user preferences to file
 try
-    preferences = struct();
-    preferences.last_input_file_path = handles.selected_input_file;
-    preferences.output_folder = get(handles.output_folder_edit, 'String');
-    preferences.model_name = handles.model_name;
+    % Load existing preferences if they exist
+    if isfield(handles, 'preferences')
+        preferences = handles.preferences;
+    else
+        preferences = struct();
+    end
+
+    % Update with current values
+    if isfield(handles, 'selected_input_file')
+        preferences.last_input_file_path = handles.selected_input_file;
+    end
+    if isfield(handles, 'output_folder_edit')
+        preferences.output_folder = get(handles.output_folder_edit, 'String');
+    end
+    if isfield(handles, 'model_name')
+        preferences.model_name = handles.model_name;
+    end
 
     if isfield(handles, 'enable_master_dataset')
         preferences.enable_master_dataset = get(handles.enable_master_dataset, 'Value');
+    end
+
+    % Save last_config_file if it exists in preferences
+    if isfield(handles, 'preferences') && isfield(handles.preferences, 'last_config_file')
+        preferences.last_config_file = handles.preferences.last_config_file;
     end
 
     save('user_preferences.mat', 'preferences');
@@ -3337,14 +3467,14 @@ end
 
 % Extract coefficients from table
 % NOTE: This function is now provided by functions/extractCoefficientsFromTable.m
-% Embedded version removed - using external function (verified working with 1956 columns)
+% Embedded version removed - using external function
 
 % Run Generation Process
 function runGeneration(handles)
 try
     config = handles.config;
 
-    % Ensure config has enhanced settings for maximum data extraction (1956 columns)
+    % Ensure config has enhanced settings for maximum data extraction
     config = ensureEnhancedConfig(config);
 
     % Extract coefficients from table
@@ -3429,6 +3559,25 @@ try
     set(handles.play_pause_button, 'Enable', 'on', 'String', 'Start');
     set(handles.stop_button, 'Enable', 'off');
     guidata(handles.fig, handles);
+
+    % Prompt user to shutdown parallel pool if it exists (in case of early stop or error)
+    try
+        pool = gcp('nocreate');
+        if ~isempty(pool)
+            answer = questdlg(sprintf('Parallel pool is running with %d workers. Shut it down now?', pool.NumWorkers), ...
+                'Shutdown Parallel Pool', ...
+                'Yes', 'No', 'No');
+            if strcmp(answer, 'Yes')
+                fprintf('Shutting down parallel pool...\n');
+                delete(pool);
+                fprintf('Parallel pool shut down successfully\n');
+            else
+                fprintf('Parallel pool left running (%d workers)\n', pool.NumWorkers);
+            end
+        end
+    catch ME
+        fprintf('Warning: Could not shut down parallel pool: %s\n', ME.message);
+    end
 catch
     % GUI might be destroyed, ignore the error
 end
@@ -3805,11 +3954,30 @@ if successful_trials == total_trials && exist(checkpoint_file, 'file')
         fprintf('Warning: Could not clean up checkpoint file: %s\n', ME.message);
     end
 end
+
+% Prompt user to shutdown parallel pool when complete
+try
+    pool = gcp('nocreate');
+    if ~isempty(pool)
+        answer = questdlg(sprintf('Parallel pool is running with %d workers. Shut it down now?', pool.NumWorkers), ...
+            'Shutdown Parallel Pool', ...
+            'Yes', 'No', 'No');
+        if strcmp(answer, 'Yes')
+            fprintf('Shutting down parallel pool...\n');
+            delete(pool);
+            fprintf('Parallel pool shut down successfully\n');
+        else
+            fprintf('Parallel pool left running (%d workers)\n', pool.NumWorkers);
+        end
+    end
+catch ME
+    fprintf('Warning: Could not shut down parallel pool: %s\n', ME.message);
+end
 end
 
 % Helper function to check for stop requests and update progress
 % NOTE: This function is now provided by functions/checkStopRequest.m
-% Embedded version removed - using external function (verified working with 1956 columns)
+% Embedded version removed - using external function
 
 % Helper function to update progress display
 function updateProgress(handles, current, total, message)
@@ -3833,7 +4001,7 @@ end
 
 % Helper function to generate random coefficients
 % NOTE: This function is now provided by functions/generateRandomCoefficients.m
-% Embedded version removed - using external function (verified working with 1956 columns)
+% Embedded version removed - using external function
 
 function successful_trials = runSequentialSimulations(handles, config)
 % Get batch processing parameters
@@ -4005,7 +4173,7 @@ end
 %   - Enhanced config validation (ensureEnhancedConfig)
 %   - Optional diagnostics (diagnoseDataExtraction)
 %   - Respects config.verbose setting
-%   - 1956 column target reporting
+%   - Column count reporting
 %   - CRITICAL: Extra Simscape data extraction for full column count
 % This allows both sequential and parallel execution modes to work.
 
@@ -4140,7 +4308,6 @@ try
             try
                 subsystem_refs = find_system(model_name, 'BlockType', 'SubsystemReference');
                 if ~isempty(subsystem_refs)
-                    fprintf('Debug: Found %d Subsystem Reference blocks (may contain Simscape components)\n', length(subsystem_refs));
                     simscape_blocks = [simscape_blocks; subsystem_refs];
                 end
             catch
@@ -4181,15 +4348,6 @@ try
                     close_system(model_name, 0);
                 end
                 warning('Simscape data extraction is enabled, but no clear Simscape indicators found in model "%s". Simscape logging may still work if components are in referenced subsystems.', model_name);
-            else
-                if shouldShowDebug(handles)
-                    fprintf('Debug: Found %d Simscape indicators in model (blocks + references + config)\n', total_indicators);
-                end
-                if ~isempty(subsystem_refs)
-                    if shouldShowDebug(handles)
-                        fprintf('Debug: Model uses referenced subsystems - Simscape components may be inside references\n');
-                    end
-                end
             end
 
             if model_was_loaded
@@ -4338,7 +4496,7 @@ try
     fprintf('Pass 1: Discovering columns...\n');
 
     % Preallocate with estimated size (most trials have similar column counts)
-    estimated_columns = 2000;  % Updated to handle typical 1956 columns with buffer
+    estimated_columns = 2000;  % Buffer for comprehensive data extraction
     all_unique_columns = cell(estimated_columns, 1);
     valid_files = cell(length(csv_files), 1);
     column_count = 0;
@@ -4463,11 +4621,6 @@ try
     writetable(master_data, master_file);
 
     fprintf('Master dataset saved: %d rows, %d columns\n', height(master_data), width(master_data));
-    if width(master_data) >= 1956
-        fprintf('Target 1956 columns achieved: YES\n');
-    else
-        fprintf('Target 1956 columns achieved: NO\n');
-    end
 
 catch ME
     fprintf('Error compiling dataset: %s\n', ME.message);

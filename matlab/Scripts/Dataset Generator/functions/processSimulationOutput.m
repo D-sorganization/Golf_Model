@@ -7,12 +7,12 @@ try
     % Ensure config has enhanced settings for maximum data extraction
     config = ensureEnhancedConfig(config);
 
-    % Extract data using the enhanced signal extraction system with 1956 column support
+    % Extract data using the enhanced signal extraction system
     options = struct();
     options.extract_combined_bus = config.use_signal_bus;
     options.extract_logsout = config.use_logsout;
     options.extract_simscape = config.use_simscape;
-    options.verbose = config.verbose; % Use config verbose setting for debugging 1956 column extraction
+    options.verbose = config.verbose;
 
     % Run diagnostic to see what data sources are available
     diagnoseDataExtraction(simOut, config);
@@ -20,7 +20,7 @@ try
     % Use existing extraction method for comprehensive data capture
     [data_table, signal_info] = extractSignalsFromSimOut(simOut, options);
 
-    % ENHANCED: Extract additional Simscape data if enabled (CRITICAL for 1956 columns)
+    % ENHANCED: Extract additional Simscape data if enabled
     if config.use_simscape && isfield(simOut, 'simlog') && ~isempty(simOut.simlog)
         fprintf('Extracting additional Simscape data...\n');
         simscape_data = extractSimscapeDataRecursive(simOut.simlog);
@@ -135,13 +135,8 @@ try
     result.data_points = num_rows;
     result.columns = width(data_table);
 
-    % Report column count and 1956 target achievement for individual trial
+    % Report column count for individual trial
     fprintf('Trial %d completed: %d data points, %d columns\n', trial_num, num_rows, width(data_table));
-    if width(data_table) >= 1956
-        fprintf('✓ Trial %d: Target 1956 columns ACHIEVED (%d columns)\n', trial_num, width(data_table));
-    else
-        fprintf('✗ Trial %d: Target 1956 columns MISSED (%d columns, need %d more)\n', trial_num, width(data_table), 1956 - width(data_table));
-    end
 
 catch ME
     result.success = false;

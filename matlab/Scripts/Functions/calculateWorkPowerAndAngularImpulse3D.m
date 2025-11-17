@@ -16,11 +16,41 @@ function [ZTCFQ_updated, DELTAQ_updated] = calculateWorkPowerAndAngularImpulse3D
 %   Output:
 %       ZTCFQ_updated  - Updated ZTCFQ table with added power, work (optional), and angular impulse columns
 %       DELTAQ_updated - Updated DELTAQ table with added power, work (optional), and angular impulse columns
+%
+%   Example:
+%       options = struct('calculate_work', true);
+%       [ZTCFQ_new, DELTAQ_new] = calculateWorkPowerAndAngularImpulse3D(ZTCFQ, DELTAQ, options);
+%
+%   See also: GENERATESUMMARYTABLEANDQUIVERDATA3D
+
+% Input validation
+arguments
+    ZTCFQ table {mustBeNonempty}
+    DELTAQ table {mustBeNonempty}
+    options struct = struct()
+end
+
+% Validate tables have required Time column
+assert(ismember('Time', ZTCFQ.Properties.VariableNames), ...
+    'ZTCFQ table must contain a ''Time'' column');
+assert(ismember('Time', DELTAQ.Properties.VariableNames), ...
+    'DELTAQ table must contain a ''Time'' column');
+
+% Validate Time columns contain numeric data and no NaN values
+assert(isnumeric(ZTCFQ.Time) && all(~isnan(ZTCFQ.Time)), ...
+    'ZTCFQ.Time must be numeric and contain no NaN values');
+assert(isnumeric(DELTAQ.Time) && all(~isnan(DELTAQ.Time)), ...
+    'DELTAQ.Time must be numeric and contain no NaN values');
+
+% Validate tables have same length (same time grid)
+assert(height(ZTCFQ) == height(DELTAQ), ...
+    'ZTCFQ and DELTAQ tables must have the same number of rows (same time grid)');
+
+% Validate tables have at least 2 rows (needed for time step calculation)
+assert(height(ZTCFQ) >= 2, ...
+    'Input tables must have at least 2 rows to calculate work/power/impulse');
 
 % Set default options
-if nargin < 3
-    options = struct();
-end
 if ~isfield(options, 'calculate_work')
     options.calculate_work = false;
 end
