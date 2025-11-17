@@ -44,3 +44,7 @@ logs/
 
 # Large data files that should not be in version control
 *.csv
+
+# Simulation checkpoint files (temporary, deleted after successful runs)
+**/checkpoint*.mat
+**/*checkpoint*.mat
