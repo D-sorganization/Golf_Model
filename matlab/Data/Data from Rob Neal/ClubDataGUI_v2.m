@@ -14,7 +14,14 @@ function ClubDataGUI_v2()
     defaultFile = matFiles{1};
 
     % --- Load Initial Data ---
-    [data, params] = loadData(defaultFile);
+    initialLoadOk = true;
+    try
+        [data, params] = loadData(defaultFile);
+    catch ME
+        initialLoadOk = false;
+        warning('Initial data load failed: %s', ME.message);
+        [data, params] = placeholderData();
+    end
 
     % --- GUI Setup ---
     fig = figure('Name', 'Club Shaft Viewer', 'NumberTitle', 'off', 'Color', 'w', 'Position', [100 100 1200 700], ...
@@ -44,6 +51,9 @@ function ClubDataGUI_v2()
 
     % Frame slider
     handles.frameSlider = uicontrol(fig, 'Style', 'slider', 'Min', 1, 'Max', length(data.time), 'Value', 1, 'Units', 'normalized', 'Position', [0.35 0.01 0.6 0.02], 'Callback', @(src,~) updateFrameSlider(src, guidata(src)));
+    if ~initialLoadOk
+        set(handles.frameSlider, 'Enable', 'off');
+    end
 
     % --- Data Plot Init ---
     handles.data = data;
@@ -179,20 +189,16 @@ function ClubDataGUI_v2()
 
     guidata(fig, handles);
 
-    % Apply initial view and plot first frame
+    % Apply initial view and plot first frame when data is valid
     guidata(fig, handles);
     set(handles.viewMenu, 'Value', 2);
     view(handles.ax, [180 0]);
-    animateFrame(handles);
-
-    % Set axis limits to fit the motion
-    allPts = [handles.data.midhands_xyz; handles.data.clubface_xyz];
-    minVals = min(allPts, [], 1);
-    maxVals = max(allPts, [], 1);
-    rangePad = 0.1 * norm(maxVals - minVals);
-    xlim(handles.ax, [minVals(1)-rangePad, maxVals(1)+rangePad]);
-    ylim(handles.ax, [minVals(2)-rangePad, maxVals(2)+rangePad]);
-    zlim(handles.ax, [minVals(3)-rangePad, maxVals(3)+rangePad]);
+    if initialLoadOk
+        animateFrame(handles);
+        updateAxisLimits(handles);
+    else
+        warndlg('Default file could not be loaded. Please use Browse... to select a data file.', 'Load Warning');
+    end
 end
 
 function toggleTimer(src, handles)
@@ -256,6 +262,20 @@ function [data, params] = loadData(filename)
         data.([char(name) '_vel']) = vel;
         data.([char(name) '_acc']) = acc;
     end
+end
+
+function [data, params] = placeholderData()
+    data.time = 0;
+    data.midhands_xyz = zeros(1, 3);
+    data.clubface_xyz = zeros(1, 3);
+    data.midhands_dircos = zeros(1, 9);
+    data.clubface_dircos = zeros(1, 9);
+    data.midhands_xyz_vel = zeros(1, 3);
+    data.clubface_xyz_vel = zeros(1, 3);
+    data.midhands_xyz_acc = zeros(1, 3);
+    data.clubface_xyz_acc = zeros(1, 3);
+    params.Address = 1;
+    params.impact_frame = 1;
 end
 
 function animateFrame(handles)
@@ -372,6 +392,26 @@ function animateFrame(handles)
     drawnow;
 
 
+function updateAxisLimits(handles)
+    if ~isfield(handles, 'data') || ~isstruct(handles.data)
+        return;
+    end
+
+    if ~isfield(handles.data, 'midhands_xyz') || isempty(handles.data.midhands_xyz) || ...
+            ~isfield(handles.data, 'clubface_xyz') || isempty(handles.data.clubface_xyz)
+        return;
+    end
+
+    allPts = [handles.data.midhands_xyz; handles.data.clubface_xyz];
+    minVals = min(allPts, [], 1);
+    maxVals = max(allPts, [], 1);
+    rangePad = 0.1 * norm(maxVals - minVals);
+    xlim(handles.ax, [minVals(1)-rangePad, maxVals(1)+rangePad]);
+    ylim(handles.ax, [minVals(2)-rangePad, maxVals(2)+rangePad]);
+    zlim(handles.ax, [minVals(3)-rangePad, maxVals(3)+rangePad]);
+end
+
+
 function updateFrameSlider(src, handles)
     handles.frame = round(get(src, 'Value'));
     guidata(src, handles);
@@ -430,9 +470,10 @@ function changeFile(src, handles)
     handles.params = params;
     handles.currentFile = selected;
     handles.frame = 1;
-    set(handles.frameSlider, 'Min', 1, 'Max', length(data.time), 'Value', 1);
+    set(handles.frameSlider, 'Min', 1, 'Max', length(data.time), 'Value', 1, 'Enable', 'on');
     guidata(src, handles);
     animateFrame(handles);
+    updateAxisLimits(handles);
 end
 
 function val = ternary(cond, t, f)
