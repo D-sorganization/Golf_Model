@@ -14,12 +14,9 @@ function ClubDataGUI_v2()
     defaultFile = matFiles{1};
 
     % --- Load Initial Data ---
-    initialLoadOk = true;
-    try
-        [data, params] = loadData(defaultFile);
-    catch ME
-        initialLoadOk = false;
-        warning('Initial data load failed: %s', ME.message);
+    [data, params, initialLoadOk, initialErr] = safeLoad(defaultFile);
+    if ~initialLoadOk
+        warning('Initial data load failed: %s', initialErr);
         [data, params] = placeholderData();
     end
 
@@ -232,12 +229,7 @@ function onClose(src, ~)
 end
 
 function [data, params] = loadData(filename)
-    try
-        S = load(filename);
-    catch ME
-        errordlg(sprintf('Unable to load file %s:\n%s', filename, ME.message), 'Load Error');
-        rethrow(ME);
-    end
+    S = load(filename);
 
     if ~isfield(S, 'data') || ~isfield(S, 'params')
         error('Loaded file %s does not contain required ''data'' and ''params'' structures.', filename);
@@ -261,6 +253,19 @@ function [data, params] = loadData(filename)
         acc = ppval(fnder(pp, 2), t)';
         data.([char(name) '_vel']) = vel;
         data.([char(name) '_acc']) = acc;
+    end
+end
+
+function [data, params, ok, errMsg] = safeLoad(filename)
+    ok = true;
+    errMsg = '';
+    try
+        [data, params] = loadData(filename);
+    catch ME
+        ok = false;
+        errMsg = ME.message;
+        data = [];
+        params = [];
     end
 end
 
