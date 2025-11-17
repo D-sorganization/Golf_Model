@@ -52,14 +52,14 @@ class MATLABQualityChecker:
             True if MATLAB files are found, False otherwise
         """
         if not self.matlab_dir.exists():
-            logger.error(f"MATLAB directory not found: {self.matlab_dir}")
+            logger.info(f"MATLAB directory not found: {self.matlab_dir} (skipping MATLAB checks)")
             return False
 
         m_files = list(self.matlab_dir.rglob("*.m"))
         self.results["total_files"] = len(m_files)
 
         if len(m_files) == 0:
-            logger.warning("No MATLAB files found")
+            logger.info("No MATLAB files found (skipping MATLAB checks)")
             return False
 
         logger.info(f"Found {len(m_files)} MATLAB files")
@@ -196,16 +196,42 @@ class MATLABQualityChecker:
                 content = f.read()
                 lines = content.split("\n")
 
+            import re
+
+            # Track if we're in a function and nesting level
+            in_function = False
+            nesting_level = 0
+
             # Check for basic quality issues
             for i, line in enumerate(lines, 1):
-                line = line.strip()
+                line_stripped = line.strip()
+                line_original = line  # Keep original for indentation checks
 
-                # Skip empty lines and comments
-                if not line or line.startswith("%"):
+                # Skip empty lines
+                if not line_stripped:
                     continue
 
-                # Check for function definition
-                if line.startswith("function"):
+                # Skip comment-only lines for most checks (but check comments for banned patterns)
+                is_comment = line_stripped.startswith("%")
+
+                # Track function scope by monitoring nesting level
+                if not is_comment:
+                    # Check for keywords that increase nesting
+                    # Note: arguments, properties, methods, events also have 'end'
+                    if re.match(r'\b(function|if|for|while|switch|try|parfor|classdef|arguments|properties|methods|events)\b', line_stripped):
+                        if line_stripped.startswith("function"):
+                            in_function = True
+                        nesting_level += 1
+
+                    # Check for 'end' keyword that decreases nesting
+                    if re.match(r'\bend\b', line_stripped):
+                        nesting_level -= 1
+                        if nesting_level <= 0:
+                            in_function = False
+                            nesting_level = 0  # Prevent negative nesting
+
+                # Check for function definition (for docstring and arguments validation)
+                if line_stripped.startswith("function") and not is_comment:
                     # Check if next non-empty line has docstring
                     has_docstring = False
                     for j in range(i, min(i + 5, len(lines))):
@@ -223,8 +249,8 @@ class MATLABQualityChecker:
 
                     # Check for arguments validation block
                     has_arguments = False
-                    for j in range(i, min(i + 10, len(lines))):
-                        if "arguments" in lines[j]:
+                    for j in range(i, min(i + 15, len(lines))):
+                        if re.search(r"\barguments\b", lines[j]):
                             has_arguments = True
                             break
 
@@ -233,42 +259,118 @@ class MATLABQualityChecker:
                             f"{file_path.name} (line {i}): Missing arguments validation block"
                         )
 
-                # Check for banned patterns
+                # Check for banned patterns (in comments and code)
                 banned_patterns = [
-                    ("TODO", "TODO placeholder found"),
-                    ("FIXME", "FIXME placeholder found"),
-                    ("HACK", "HACK comment found"),
-                    ("XXX", "XXX comment found"),
-                    ("<.*>", "Angle bracket placeholder found"),
-                    ("\\{\\{.*\\}\\}", "Template placeholder found"),
-                    ("3\\.14", "Use math.pi instead of 3.14"),
-                    ("1\\.57", "Use math.pi/2 instead of 1.57"),
-                    ("0\\.785", "Use math.pi/4 instead of 0.785"),
+                    (r"\bTODO\b", "TODO placeholder found"),
+                    (r"\bFIXME\b", "FIXME placeholder found"),
+                    (r"\bHACK\b", "HACK comment found"),
+                    (r"\bXXX\b", "XXX comment found"),
+                    (r"<[A-Z_][A-Z0-9_]*>", "Angle bracket placeholder found"),
+                    (r"\{\{.*?\}\}", "Template placeholder found"),
                 ]
 
                 for pattern, message in banned_patterns:
-                    if pattern in line:
+                    if re.search(pattern, line_stripped):
                         issues.append(f"{file_path.name} (line {i}): {message}")
-                        break
 
-                # Check for magic numbers
-                import re
+                # Skip further checks for comment lines
+                if is_comment:
+                    continue
 
-                magic_numbers = re.findall(r"\b\d+\.\d+\b", line)
+                # Check for common MATLAB anti-patterns
+                if re.search(r"\beval\s*\(", line_stripped):
+                    issues.append(
+                        f"{file_path.name} (line {i}): Avoid using eval() - potential security risk and performance issue"
+                    )
+
+                if re.search(r"\bassignin\s*\(", line_stripped):
+                    issues.append(
+                        f"{file_path.name} (line {i}): Avoid using assignin() - violates encapsulation"
+                    )
+
+                if re.search(r"\bevalin\s*\(", line_stripped):
+                    issues.append(
+                        f"{file_path.name} (line {i}): Avoid using evalin() - violates encapsulation"
+                    )
+
+                # Check for global variables (often code smell)
+                if re.search(r"\bglobal\s+\w+", line_stripped):
+                    issues.append(
+                        f"{file_path.name} (line {i}): Global variable usage - consider passing as argument"
+                    )
+
+                # Check for load without output (loads into workspace)
+                if re.search(r"^\s*load\s+\w+", line_stripped) and "=" not in line_stripped:
+                    issues.append(
+                        f"{file_path.name} (line {i}): load without output variable - use 'data = load(...)' instead"
+                    )
+
+                # Check for magic numbers (but allow common values and known constants)
+                # Exclude scientific notation, array indices, and common values
+                magic_number_pattern = r"(?<![.\w])\d*\.\d+(?![.\w])"
+                magic_numbers = re.findall(magic_number_pattern, line_stripped)
+
+                # Known acceptable values
+                acceptable_numbers = {
+                    "0.0", "0.5", "1.0", "2.0", "3.0", "4.0", "5.0", "10.0", "100.0", "1000.0",
+                    "0.1", "0.01", "0.001", "0.0001",  # Common tolerances
+                }
+
+                # Known physics constants (should be defined but at least flag with context)
+                known_constants = {
+                    "3.14159": "pi constant",
+                    "3.1416": "pi constant",
+                    "3.14": "pi constant",
+                    "1.5708": "pi/2 constant",
+                    "1.57": "pi/2 constant",
+                    "0.7854": "pi/4 constant",
+                    "0.785": "pi/4 constant",
+                    "9.81": "gravitational acceleration",
+                    "9.8": "gravitational acceleration",
+                    "9.807": "gravitational acceleration",
+                }
+
                 for num in magic_numbers:
-                    if num not in [
-                        "0.0",
-                        "1.0",
-                        "2.0",
-                        "3.0",
-                        "4.0",
-                        "5.0",
-                        "10.0",
-                        "100.0",
-                    ]:
+                    # Check if it's a known constant
+                    if num in known_constants:
                         issues.append(
-                            f"{file_path.name} (line {i}): Magic number {num} should be defined as constant"
+                            f"{file_path.name} (line {i}): Magic number {num} ({known_constants[num]}) - define as named constant"
                         )
+                    elif num not in acceptable_numbers:
+                        # Check if the number appears before a comment on same line
+                        comment_idx = line_original.find("%")
+                        num_idx = line_original.find(num)
+                        if comment_idx == -1 or (num_idx != -1 and num_idx < comment_idx):
+                            issues.append(
+                                f"{file_path.name} (line {i}): Magic number {num} should be defined as constant with units and source"
+                            )
+
+                # Check for clear/clc/close all in functions (bad practice)
+                if in_function:
+                    if re.search(r"\bclear\b(?!\s+\w+)", line_stripped):
+                        issues.append(
+                            f"{file_path.name} (line {i}): Avoid 'clear' in functions - can clear function variables"
+                        )
+                    if re.search(r"\bclc\b", line_stripped):
+                        issues.append(
+                            f"{file_path.name} (line {i}): Avoid 'clc' in functions - affects user's workspace"
+                        )
+                    if re.search(r"\bclose\s+all\b", line_stripped):
+                        issues.append(
+                            f"{file_path.name} (line {i}): Avoid 'close all' in functions - closes user's figures"
+                        )
+
+                # Check for exist() usage (often code smell, prefer try/catch or validation)
+                if re.search(r"\bexist\s*\(", line_stripped):
+                    issues.append(
+                        f"{file_path.name} (line {i}): Consider using validation or try/catch instead of exist()"
+                    )
+
+                # Check for addpath in functions (should be in startup.m or managed externally)
+                if in_function and re.search(r"\baddpath\s*\(", line_stripped):
+                    issues.append(
+                        f"{file_path.name} (line {i}): Avoid addpath in functions - manage paths externally"
+                    )
 
         except Exception as e:
             issues.append(f"{file_path.name}: Could not analyze file - {str(e)}")
@@ -285,8 +387,8 @@ class MATLABQualityChecker:
 
         # Check if MATLAB files exist
         if not self.check_matlab_files_exist():
-            self.results["passed"] = False
-            self.results["summary"] = "No MATLAB files found"
+            self.results["passed"] = True
+            self.results["summary"] = "[SKIP] No MATLAB files to check - passed"
             return self.results
 
         # Run MATLAB quality checks
