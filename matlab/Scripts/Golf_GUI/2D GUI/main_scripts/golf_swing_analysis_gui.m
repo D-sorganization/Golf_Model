@@ -1195,10 +1195,14 @@ function plot_torques(src, ~)
         ZTCFQ = getappdata(main_fig, 'ZTCFQ');
         DELTAQ = getappdata(main_fig, 'DELTAQ');
 
-        if ~isfield(BASEQ, 'Time') || ~isfield(BASEQ, 'TotalHandTorqueGlobal') || ...
-                ~isfield(ZTCFQ, 'Time') || ~isfield(ZTCFQ, 'TotalHandTorqueGlobal') || ...
-                ~isfield(DELTAQ, 'Time') || ~isfield(DELTAQ, 'TotalHandTorqueGlobal')
-            errordlg('Required torque fields are missing from BASEQ/ZTCFQ/DELTAQ.', 'Plot Error');
+        required_fields = {'Time', 'EquivalentMidpointCoupleGlobal'};
+        has_base_fields = all(isfield(BASEQ, required_fields));
+        has_ztcf_fields = all(isfield(ZTCFQ, required_fields));
+        has_delta_fields = all(isfield(DELTAQ, required_fields));
+
+        if ~has_base_fields || ~has_ztcf_fields || ~has_delta_fields
+            errordlg(['Required torque fields (Time, EquivalentMidpointCoupleGlobal) are ' ...
+                'missing from BASEQ/ZTCFQ/DELTAQ.'], 'Plot Error');
             return;
         end
 
@@ -3492,8 +3496,10 @@ function export_animation_video(src, ~)
                 if any(profile_names == "mpeg-4")
                     v = VideoWriter(full_path, 'MPEG-4');
                 else
-                    warning('MPEG-4 profile unavailable; using default profile for MP4.');
-                    v = VideoWriter(full_path);
+                    warning('MPEG-4 profile unavailable; switching to AVI output.');
+                    [filepath, name, ~] = fileparts(full_path);
+                    full_path = fullfile(filepath, strcat(name, '.avi'));
+                    v = VideoWriter(full_path, 'Motion JPEG AVI');
                 end
             otherwise
                 errordlg('Unsupported video format.', 'Error');
@@ -3589,7 +3595,7 @@ end
 function main_fig = get_main_fig(src)
     if nargin > 0 && ishghandle(src)
         fig = ancestor(src, 'figure');
-        if ~isempty(fig)
+        if ~isempty(fig) && strcmp(get(fig, 'Tag'), 'golf_swing_analysis_main')
             main_fig = fig;
             return;
         end
