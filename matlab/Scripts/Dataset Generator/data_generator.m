@@ -530,10 +530,16 @@ for batch_idx = start_batch:num_batches
         logMessage(config, 'Normal', 'Batch %d failed: %s', batch_idx, ME.message);
     end
 
-    % Memory cleanup after each batch
-    logMessage(config, 'Debug', 'Performing memory cleanup after batch %d...', batch_idx);
-    restoreWorkspace(initial_vars);
-    java.lang.System.gc();  % Force garbage collection
+    % Memory cleanup after each batch - optimized frequency
+    % Only perform aggressive cleanup every 10 batches or on final batch
+    if mod(batch_idx, 10) == 0 || batch_idx == num_batches
+        logMessage(config, 'Debug', 'Performing memory cleanup after batch %d...', batch_idx);
+        restoreWorkspace(initial_vars);
+        % Only force GC every 10 batches to reduce overhead
+        if mod(batch_idx, 10) == 0
+            java.lang.System.gc();
+        end
+    end
 
     % Save checkpoint if needed
     if mod(batch_idx, save_interval) == 0 || batch_idx == num_batches
@@ -553,8 +559,11 @@ for batch_idx = start_batch:num_batches
         end
     end
 
-    % Small pause to let system recover
-    pause(0.5);
+    % Minimal pause only if needed - reduced from 0.5s to 0.1s
+    % Skip pause entirely for small batches to maximize throughput
+    if batch_idx < num_batches && num_batches > 5
+        pause(0.1);
+    end
 end
 
 % Final summary
@@ -706,10 +715,16 @@ for batch_idx = start_batch:num_batches
     logMessage(config, 'Verbose', 'Batch %d completed: %d/%d trials successful', ...
         batch_idx, batch_successful, batch_trials);
 
-    % Memory cleanup after each batch
-    logMessage(config, 'Debug', 'Performing memory cleanup after batch %d...', batch_idx);
-    restoreWorkspace(initial_vars);
-    java.lang.System.gc();  % Force garbage collection
+    % Memory cleanup after each batch - optimized frequency
+    % Only perform aggressive cleanup every 10 batches or on final batch
+    if mod(batch_idx, 10) == 0 || batch_idx == num_batches
+        logMessage(config, 'Debug', 'Performing memory cleanup after batch %d...', batch_idx);
+        restoreWorkspace(initial_vars);
+        % Only force GC every 10 batches to reduce overhead
+        if mod(batch_idx, 10) == 0
+            java.lang.System.gc();
+        end
+    end
 
     % Save checkpoint if needed
     if mod(batch_idx, save_interval) == 0 || batch_idx == num_batches
@@ -729,8 +744,11 @@ for batch_idx = start_batch:num_batches
         end
     end
 
-    % Small pause to let system recover
-    pause(0.5);
+    % Minimal pause only if needed - reduced from 0.5s to 0.1s
+    % Skip pause entirely for small batches to maximize throughput
+    if batch_idx < num_batches && num_batches > 5
+        pause(0.1);
+    end
 end
 
 % Final batch processing summary
