@@ -452,7 +452,11 @@ function changeFile(src, handles)
     if strcmp(selected, 'Browse...')
         [file, path] = uigetfile({'*.mat', 'MAT-files (*.mat)'}, 'Select Motion Capture Data');
         if isequal(file, 0)
-            set(src, 'Value', max(1, find(strcmp(files, handles.currentFile), 1)));
+            currentIdx = find(strcmp(files, handles.currentFile), 1);
+            if isempty(currentIdx)
+                currentIdx = 1;
+            end
+            set(src, 'Value', currentIdx);
             return;
         end
         selected = fullfile(path, file);
@@ -468,7 +472,11 @@ function changeFile(src, handles)
         [data, params] = loadData(selected);
     catch ME
         errordlg(sprintf('Failed to load %s:\n%s', selected, ME.message), 'Load Error');
-        set(src, 'Value', max(1, find(strcmp(files, handles.currentFile), 1)));
+        currentIdx = find(strcmp(files, handles.currentFile), 1);
+        if isempty(currentIdx)
+            currentIdx = 1;
+        end
+        set(src, 'Value', currentIdx);
         return;
     end
 
