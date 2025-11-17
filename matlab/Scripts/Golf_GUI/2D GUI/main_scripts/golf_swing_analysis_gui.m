@@ -24,6 +24,7 @@ function golf_swing_analysis_gui()
                       'MenuBar', 'none', ...
                       'ToolBar', 'none', ...
                       'Resize', 'on', ...
+                      'Tag', 'golf_swing_analysis_main', ...
                       'CloseRequestFcn', @close_gui_callback);
 
     % Create main tab group
@@ -884,11 +885,7 @@ function run_simulation(src, ~)
 
     try
         % Get the main figure and config
-        main_fig = findobj('Name', '2D Golf Swing Model - ZTCF/ZVCF Analysis');
-        if isempty(main_fig)
-            main_fig = findobj('Type', 'figure');
-            main_fig = main_fig(1);
-        end
+        main_fig = get_main_fig(src);
         config = getappdata(main_fig, 'config');
         
         % Get performance tracker
@@ -998,15 +995,12 @@ function load_simulation_data(src, ~)
 
     try
         % Get the main figure
-        main_fig = findobj('Name', '2D Golf Swing Model - ZTCF/ZVCF Analysis');
-        if isempty(main_fig)
-            main_fig = findobj('Type', 'figure');
-            main_fig = main_fig(1);
-        end
+        main_fig = get_main_fig(src);
 
         % Get progress text
         progress_text = findobj(main_fig, 'Tag', 'progress_text');
         if ~isempty(progress_text)
+            progress_text = progress_text(1);
             progress_text.String = 'Loading data files...';
             drawnow;
         end
@@ -1078,11 +1072,7 @@ function play_animation(src, ~)
 
     try
         % Get the main figure
-        main_fig = findobj('Name', '2D Golf Swing Model - ZTCF/ZVCF Analysis');
-        if isempty(main_fig)
-            main_fig = findobj('Type', 'figure');
-            main_fig = main_fig(1);
-        end
+        main_fig = get_main_fig(src);
 
         % Check if data is loaded
         data_loaded = getappdata(main_fig, 'data_loaded');
@@ -1098,9 +1088,13 @@ function play_animation(src, ~)
 
         % Launch the skeleton plotter for animation
         fprintf('   Launching skeleton plotter for animation...\n');
-        GolfSwingVisualizer(BASEQ, ZTCFQ, DELTAQ);
-
-        fprintf('✅ Animation launched successfully\n');
+        try
+            GolfSwingVisualizer(BASEQ, ZTCFQ, DELTAQ);
+            fprintf('✅ Animation launched successfully\n');
+        catch ME
+            errordlg(sprintf('Error launching animation:\n%s', ME.message), 'Animation Error');
+            rethrow(ME);
+        end
 
     catch ME
         fprintf('❌ Error playing animation: %s\n', ME.message);
@@ -1126,11 +1120,7 @@ function plot_forces(src, ~)
 
     try
         % Get the main figure
-        main_fig = findobj('Name', '2D Golf Swing Model - ZTCF/ZVCF Analysis');
-        if isempty(main_fig)
-            main_fig = findobj('Type', 'figure');
-            main_fig = main_fig(1);
-        end
+        main_fig = get_main_fig(src);
 
         % Check if data is loaded
         data_loaded = getappdata(main_fig, 'data_loaded');
@@ -1143,6 +1133,13 @@ function plot_forces(src, ~)
         BASEQ = getappdata(main_fig, 'BASEQ');
         ZTCFQ = getappdata(main_fig, 'ZTCFQ');
         DELTAQ = getappdata(main_fig, 'DELTAQ');
+
+        if ~isfield(BASEQ, 'Time') || ~isfield(BASEQ, 'TotalHandForceGlobal') || ...
+                ~isfield(ZTCFQ, 'Time') || ~isfield(ZTCFQ, 'TotalHandForceGlobal') || ...
+                ~isfield(DELTAQ, 'Time') || ~isfield(DELTAQ, 'TotalHandForceGlobal')
+            errordlg('Required force fields are missing from BASEQ/ZTCFQ/DELTAQ.', 'Plot Error');
+            return;
+        end
 
         % Create force plot
         figure('Name', 'Golf Swing Forces', 'NumberTitle', 'off');
@@ -1184,11 +1181,7 @@ function plot_torques(src, ~)
 
     try
         % Get the main figure
-        main_fig = findobj('Name', '2D Golf Swing Model - ZTCF/ZVCF Analysis');
-        if isempty(main_fig)
-            main_fig = findobj('Type', 'figure');
-            main_fig = main_fig(1);
-        end
+        main_fig = get_main_fig(src);
 
         % Check if data is loaded
         data_loaded = getappdata(main_fig, 'data_loaded');
@@ -1201,6 +1194,13 @@ function plot_torques(src, ~)
         BASEQ = getappdata(main_fig, 'BASEQ');
         ZTCFQ = getappdata(main_fig, 'ZTCFQ');
         DELTAQ = getappdata(main_fig, 'DELTAQ');
+
+        if ~isfield(BASEQ, 'Time') || ~isfield(BASEQ, 'TotalHandTorqueGlobal') || ...
+                ~isfield(ZTCFQ, 'Time') || ~isfield(ZTCFQ, 'TotalHandTorqueGlobal') || ...
+                ~isfield(DELTAQ, 'Time') || ~isfield(DELTAQ, 'TotalHandTorqueGlobal')
+            errordlg('Required torque fields are missing from BASEQ/ZTCFQ/DELTAQ.', 'Plot Error');
+            return;
+        end
 
         % Create torque plot
         figure('Name', 'Golf Swing Torques', 'NumberTitle', 'off');
@@ -1242,11 +1242,7 @@ function export_simulation_data(src, ~)
 
     try
         % Get the main figure
-        main_fig = findobj('Name', '2D Golf Swing Model - ZTCF/ZVCF Analysis');
-        if isempty(main_fig)
-            main_fig = findobj('Type', 'figure');
-            main_fig = main_fig(1);
-        end
+        main_fig = get_main_fig(src);
 
         % Check if data is loaded
         data_loaded = getappdata(main_fig, 'data_loaded');
@@ -1285,11 +1281,7 @@ function run_complete_analysis(src, ~)
 
     try
         % Get the main figure and config
-        main_fig = findobj('Name', '2D Golf Swing Model - ZTCF/ZVCF Analysis');
-        if isempty(main_fig)
-            main_fig = findobj('Type', 'figure');
-            main_fig = main_fig(1);
-        end
+        main_fig = get_main_fig(src);
         config = getappdata(main_fig, 'config');
 
         % Get progress text
@@ -1370,11 +1362,7 @@ function load_analysis_data(src, ~)
 
     try
         % Get the main figure
-        main_fig = findobj('Name', '2D Golf Swing Model - ZTCF/ZVCF Analysis');
-        if isempty(main_fig)
-            main_fig = findobj('Type', 'figure');
-            main_fig = main_fig(1);
-        end
+        main_fig = get_main_fig(src);
 
         % Get progress text
         progress_text = findobj(main_fig, 'Tag', 'analysis_progress_text');
@@ -1451,11 +1439,7 @@ function generate_base_data(src, ~)
 
     try
         % Get the main figure and config
-        main_fig = findobj('Name', '2D Golf Swing Model - ZTCF/ZVCF Analysis');
-        if isempty(main_fig)
-            main_fig = findobj('Type', 'figure');
-            main_fig = main_fig(1);
-        end
+        main_fig = get_main_fig(src);
         config = getappdata(main_fig, 'config');
 
         % Get progress text
@@ -1499,11 +1483,7 @@ function generate_ztcf_data(src, ~)
 
     try
         % Get the main figure and config
-        main_fig = findobj('Name', '2D Golf Swing Model - ZTCF/ZVCF Analysis');
-        if isempty(main_fig)
-            main_fig = findobj('Type', 'figure');
-            main_fig = main_fig(1);
-        end
+        main_fig = get_main_fig(src);
         config = getappdata(main_fig, 'config');
 
         % Get progress text
@@ -1555,11 +1535,7 @@ function generate_zvcf_data(src, ~)
 
     try
         % Get the main figure and config
-        main_fig = findobj('Name', '2D Golf Swing Model - ZTCF/ZVCF Analysis');
-        if isempty(main_fig)
-            main_fig = findobj('Type', 'figure');
-            main_fig = main_fig(1);
-        end
+        main_fig = get_main_fig(src);
         config = getappdata(main_fig, 'config');
 
         % Get progress text
@@ -1611,11 +1587,7 @@ function process_data_tables(src, ~)
 
     try
         % Get the main figure and config
-        main_fig = findobj('Name', '2D Golf Swing Model - ZTCF/ZVCF Analysis');
-        if isempty(main_fig)
-            main_fig = findobj('Type', 'figure');
-            main_fig = main_fig(1);
-        end
+        main_fig = get_main_fig(src);
         config = getappdata(main_fig, 'config');
 
         % Get progress text
@@ -3509,22 +3481,36 @@ function export_animation_video(src, ~)
 
         % Create video writer
         [~, ~, ext] = fileparts(filename);
+        main_fig = ancestor(viz_panel, 'figure');
+        config = getappdata(main_fig, 'config');
+        available_profiles = VideoWriter.getProfiles();
+        profile_names = lower(string({available_profiles.Name}));
         switch lower(ext)
             case '.avi'
                 v = VideoWriter(full_path, 'Motion JPEG AVI');
             case '.mp4'
-                v = VideoWriter(full_path, 'MPEG-4');
+                if any(profile_names == "mpeg-4")
+                    v = VideoWriter(full_path, 'MPEG-4');
+                else
+                    warning('MPEG-4 profile unavailable; using default profile for MP4.');
+                    v = VideoWriter(full_path);
+                end
             otherwise
                 errordlg('Unsupported video format.', 'Error');
                 return;
         end
 
-        v.FrameRate = 30; % 30 FPS
+        if isstruct(config) && isfield(config, 'animation_fps')
+            v.FrameRate = config.animation_fps;
+        else
+            v.FrameRate = 30; % Default FPS
+        end
         v.Quality = 95; % High quality
 
         % Show progress
         progress_text = findobj(simulation_tab, 'Tag', 'progress_text');
         if ~isempty(progress_text)
+            progress_text = progress_text(1);
             progress_text.String = 'Exporting video...';
         end
 
@@ -3567,7 +3553,7 @@ end
 function update_animation_frame(anim_ax, animation_data, frame_idx)
     % Update animation frame with data
     try
-        if frame_idx > length(animation_data)
+        if frame_idx < 1 || frame_idx > length(animation_data)
             return;
         end
 
@@ -3598,6 +3584,22 @@ function update_animation_frame(anim_ax, animation_data, frame_idx)
     catch ME
         warning('Error updating animation frame: %s', ME.message);
     end
+end
+
+function main_fig = get_main_fig(src)
+    if nargin > 0 && ishghandle(src)
+        fig = ancestor(src, 'figure');
+        if ~isempty(fig)
+            main_fig = fig;
+            return;
+        end
+    end
+
+    main_fig = findobj('Tag', 'golf_swing_analysis_main');
+    if isempty(main_fig)
+        error('Main GUI figure not found.');
+    end
+    main_fig = main_fig(1);
 end
 
 function result = validate_parameters()

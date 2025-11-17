@@ -8,7 +8,8 @@ function ClubDataGUI_v2()
         'TW_wiffle.mat',
         'TW_ProV1.mat',
         'GW_wiffle.mat',
-        'GW_ProV1.mat'
+        'GW_ProV1.mat',
+        'Browse...'
     };
     defaultFile = matFiles{1};
 
@@ -47,6 +48,7 @@ function ClubDataGUI_v2()
     % --- Data Plot Init ---
     handles.data = data;
     handles.params = params;
+    handles.currentFile = defaultFile;
     handles.frame = 1;
     handles.timer = timer('ExecutionMode', 'fixedSpacing', 'BusyMode', 'drop', ...
         'TimerFcn', @(~,~) playbackCallback(fig), 'Period', 0.01);
@@ -113,16 +115,6 @@ function ClubDataGUI_v2()
         handles.accHand, 'Hand Acceleration'
     };
 
-    % Extend legendItems
-    handles.legendItems(end+1:end+4, :) = {
-        handles.velQuiver, 'Club Velocity';
-        handles.accQuiver, 'Club Acceleration';
-        handles.velHand, 'Hand Velocity';
-        handles.accHand, 'Hand Acceleration'
-    };
-    handles.velHand = quiver3(handles.ax, 0, 0, 0, 0, 0, 0, 'g', 'LineWidth', 1.5);
-    handles.accHand = quiver3(handles.ax, 0, 0, 0, 0, 0, 0, 'y', 'LineWidth', 1.5);
-
     % Manual vector scaling controls (placed at the bottom)
     labelWidth = 0.35;
     inputWidth = 0.35;
@@ -171,10 +163,10 @@ function ClubDataGUI_v2()
     uicontrol(panel, 'Style', 'pushbutton', 'String', 'Frame >', 'Units', 'normalized', 'Position', [0.65 0.79 0.25 0.03], 'Callback', @(src,~) stepFrame(1));
 
     % Text labels for vector magnitudes
-    handles.velClubLabel = text(handles.ax, 0, 0, 0, '', 'Color', 'c', 'FontSize', 4);
-    handles.accClubLabel = text(handles.ax, 0, 0, 0, '', 'Color', 'm', 'FontSize', 4);
-    handles.velHandLabel = text(handles.ax, 0, 0, 0, '', 'Color', 'g', 'FontSize', 4);
-    handles.accHandLabel = text(handles.ax, 0, 0, 0, '', 'Color', 'y', 'FontSize', 4);
+    handles.velClubLabel = text(handles.ax, 0, 0, 0, '', 'Color', 'c', 'FontSize', 9);
+    handles.accClubLabel = text(handles.ax, 0, 0, 0, '', 'Color', 'm', 'FontSize', 9);
+    handles.velHandLabel = text(handles.ax, 0, 0, 0, '', 'Color', 'g', 'FontSize', 9);
+    handles.accHandLabel = text(handles.ax, 0, 0, 0, '', 'Color', 'y', 'FontSize', 9);
 
     % Ghost shaft line from midhands in negative Z direction
     handles.ghostLine = plot3(handles.ax, NaN, NaN, NaN, 'k--', 'LineWidth', 1.5);
@@ -234,9 +226,25 @@ function onClose(src, ~)
 end
 
 function [data, params] = loadData(filename)
-    S = load(filename);
+    try
+        S = load(filename);
+    catch ME
+        errordlg(sprintf('Unable to load file %s:\n%s', filename, ME.message), 'Load Error');
+        rethrow(ME);
+    end
+
+    if ~isfield(S, 'data') || ~isfield(S, 'params')
+        error('Loaded file %s does not contain required ''data'' and ''params'' structures.', filename);
+    end
+
     data = S.data;
     params = S.params;
+
+    required_fields = {"time", "midhands_xyz", "clubface_xyz", "midhands_dircos", "clubface_dircos"};
+    missing = required_fields(~isfield(data, required_fields));
+    if ~isempty(missing)
+        error('Data structure missing required fields: %s', strjoin(missing, ', '));
+    end
 
     % Quintic spline smoothing of clubface and midhands
     t = data.time(:);
@@ -312,7 +320,7 @@ function animateFrame(handles)
 
     if get(handles.showAcceleration, 'Value') && i > 2
         a = handles.data.clubface_xyz_acc(i,:);
-        set(handles.accQuiver, 'XData', B(1), 'YData', B(2), 'ZData', B(3), 'UData', accScale*a(1), 'VData', a(2), 'WData', a(3), 'Visible', 'on');  % Apply scale
+        set(handles.accQuiver, 'XData', B(1), 'YData', B(2), 'ZData', B(3), 'UData', accScale*a(1), 'VData', accScale*a(2), 'WData', accScale*a(3), 'Visible', 'on');  % Apply scale
         set(handles.accClubLabel, 'Position', B + a * 0.1, 'String', sprintf('%.2f m/s²', norm(a))); % No scale here
     else
         set(handles.accQuiver, 'Visible', 'off');
@@ -322,7 +330,7 @@ function animateFrame(handles)
     % Hand velocity vector
     if get(handles.showHandVelocity, 'Value') && i > 1
         vH = handles.data.midhands_xyz_vel(i,:);
-        set(handles.velHand, 'XData', A(1), 'YData', A(2), 'ZData', A(3), 'UData', velScale*vH(1), 'VData', vH(2), 'WData', vH(3), 'Visible', 'on');  % Apply scale
+        set(handles.velHand, 'XData', A(1), 'YData', A(2), 'ZData', A(3), 'UData', velScale*vH(1), 'VData', velScale*vH(2), 'WData', velScale*vH(3), 'Visible', 'on');  % Apply scale
         set(handles.velHandLabel, 'Position', A + vH * 0.1, 'String', sprintf('%.2f m/s', norm(vH))); % No scale here
     else
         set(handles.velHand, 'Visible', 'off');
@@ -332,7 +340,7 @@ function animateFrame(handles)
     % Hand acceleration vector
     if get(handles.showHandAcceleration, 'Value') && i > 2
         aH = handles.data.midhands_xyz_acc(i,:);
-        set(handles.accHand, 'XData', A(1), 'YData', A(2), 'ZData', A(3), 'UData', accScale*aH(1), 'VData', aH(2), 'WData', aH(3), 'Visible', 'on');  % Apply scale
+        set(handles.accHand, 'XData', A(1), 'YData', A(2), 'ZData', A(3), 'UData', accScale*aH(1), 'VData', accScale*aH(2), 'WData', accScale*aH(3), 'Visible', 'on');  % Apply scale
         set(handles.accHandLabel, 'Position', A + aH * 0.1, 'String', sprintf('%.2f m/s²', norm(aH))); % No scale here
     else
         set(handles.accHand, 'Visible', 'off');
@@ -390,11 +398,37 @@ function updateView(src, handles)
     end
 end
 function changeFile(src, handles)
+    handles = guidata(src);
     files = get(src, 'String');
-    selected = files{get(src, 'Value')};
-    [data, params] = loadData(selected);
+    idx = get(src, 'Value');
+    selected = files{idx};
+
+    if strcmp(selected, 'Browse...')
+        [file, path] = uigetfile({'*.mat', 'MAT-files (*.mat)'}, 'Select Motion Capture Data');
+        if isequal(file, 0)
+            set(src, 'Value', max(1, find(strcmp(files, handles.currentFile), 1)));
+            return;
+        end
+        selected = fullfile(path, file);
+        if ~any(strcmp(files, selected))
+            files = [files(1:end-1); {selected}; {'Browse...'}];
+            set(src, 'String', files);
+        end
+        idx = find(strcmp(files, selected), 1);
+        set(src, 'Value', idx);
+    end
+
+    try
+        [data, params] = loadData(selected);
+    catch ME
+        errordlg(sprintf('Failed to load %s:\n%s', selected, ME.message), 'Load Error');
+        set(src, 'Value', max(1, find(strcmp(files, handles.currentFile), 1)));
+        return;
+    end
+
     handles.data = data;
     handles.params = params;
+    handles.currentFile = selected;
     handles.frame = 1;
     set(handles.frameSlider, 'Min', 1, 'Max', length(data.time), 'Value', 1);
     guidata(src, handles);
@@ -426,8 +460,10 @@ end
 function validateUnitScale(src)
     val = str2double(get(src, 'String'));
     if isnan(val) || val <= 0
-        set(src, 'String', '0.1');
+        val = 0.1;
     end
+    val = min(max(val, 0.001), 1000);
+    set(src, 'String', num2str(val));
     handles = guidata(src);
     animateFrame(handles);
 end
@@ -435,8 +471,10 @@ end
 function validateVelScale(src)
     val = str2double(get(src, 'String'));
     if isnan(val) || val <= 0
-        set(src, 'String', '1');
+        val = 1;
     end
+    val = min(max(val, 0.001), 1000);
+    set(src, 'String', num2str(val));
     handles = guidata(src);
     animateFrame(handles);
 end
@@ -444,8 +482,10 @@ end
 function validateAccScale(src)
     val = str2double(get(src, 'String'));
     if isnan(val) || val <= 0
-        set(src, 'String', '1');
+        val = 1;
     end
+    val = min(max(val, 0.001), 1000);
+    set(src, 'String', num2str(val));
     handles = guidata(src);
     animateFrame(handles);
 end
