@@ -251,12 +251,10 @@ function processed_trial = calculateDerivedQuantities(processed_trial)
 
                 % Calculate velocities
                 if length(x_data) > 1
-                    vx = diff(x_data) ./ diff(time_data);
-                    vy = diff(y_data) ./ diff(time_data);
-                    vz = diff(z_data) ./ diff(time_data);
-
-                    % Pad with zeros
-                    vx = [vx; 0]; vy = [vy; 0]; vz = [vz; 0];
+                    % Calculate and pad with zeros (vectorized for performance)
+                    vx = [diff(x_data) ./ diff(time_data); 0];
+                    vy = [diff(y_data) ./ diff(time_data); 0];
+                    vz = [diff(z_data) ./ diff(time_data); 0];
 
                     processed_trial.position_data.(pos_name).velocity_x = vx;
                     processed_trial.position_data.(pos_name).velocity_y = vy;

@@ -31,8 +31,16 @@ function logsout_data = extractLogsoutDataFixed(logsout)
                 return;
             end
 
-            data_cells = {time};
-            var_names = {'time'};
+            % Pre-allocate with conservative estimate (performance optimization)
+            % Assume 2-4 columns per signal on average
+            estimated_total = 1 + (logsout.numElements * 3);
+            data_cells = cell(estimated_total, 1);
+            var_names = cell(estimated_total, 1);
+
+            % Initialize with time
+            data_cells{1} = time;
+            var_names{1} = 'time';
+            cell_idx = 1;
             expected_length = length(time);
 
             % Process each element in the dataset
@@ -59,8 +67,9 @@ function logsout_data = extractLogsoutDataFixed(logsout)
                                     col_data = data(:, col);
                                     % Ensure the column data is the right length
                                     if length(col_data) == expected_length
-                                        data_cells{end+1} = col_data;
-                                        var_names{end+1} = sprintf('%s_%d', signalName, col);
+                                        cell_idx = cell_idx + 1;
+                                        data_cells{cell_idx} = col_data;
+                                        var_names{cell_idx} = sprintf('%s_%d', signalName, col);
                                         fprintf('Debug: Added multi-dim signal %s_%d (length: %d)\n', signalName, col, length(col_data));
                                     else
                                         fprintf('Debug: Skipping column %d of signal %s (length mismatch: %d vs %d)\n', col, signalName, length(col_data), expected_length);
@@ -70,8 +79,9 @@ function logsout_data = extractLogsoutDataFixed(logsout)
                                 % Single column signal
                                 flat_data = data(:);
                                 if length(flat_data) == expected_length
-                                    data_cells{end+1} = flat_data;
-                                    var_names{end+1} = signalName;
+                                    cell_idx = cell_idx + 1;
+                                    data_cells{cell_idx} = flat_data;
+                                    var_names{cell_idx} = signalName;
                                     fprintf('Debug: Added signal %s (length: %d)\n', signalName, length(flat_data));
                                 else
                                     fprintf('Debug: Skipping signal %s (flattened length mismatch: %d vs %d)\n', signalName, length(flat_data), expected_length);
@@ -90,8 +100,9 @@ function logsout_data = extractLogsoutDataFixed(logsout)
                     if isnumeric(data) && length(data) == expected_length && ~isempty(data)
                         flat_data = data(:);
                         if length(flat_data) == expected_length
-                            data_cells{end+1} = flat_data;
-                            var_names{end+1} = signalName;
+                            cell_idx = cell_idx + 1;
+                            data_cells{cell_idx} = flat_data;
+                            var_names{cell_idx} = signalName;
                             fprintf('Debug: Added timeseries %s (length: %d)\n', signalName, length(flat_data));
                         else
                             fprintf('Debug: Skipping timeseries %s (flattened length mismatch: %d vs %d)\n', signalName, length(flat_data), expected_length);
@@ -103,6 +114,10 @@ function logsout_data = extractLogsoutDataFixed(logsout)
                     fprintf('Debug: Element %d is type: %s\n', i, class(element));
                 end
             end
+
+            % Trim to actual size (performance optimization)
+            data_cells = data_cells(1:cell_idx);
+            var_names = var_names(1:cell_idx);
 
             % Validate all data vectors have the same length before creating table
             if length(data_cells) > 1

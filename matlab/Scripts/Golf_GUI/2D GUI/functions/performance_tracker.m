@@ -368,60 +368,74 @@ classdef performance_tracker < handle
         
         function bottlenecks = identify_bottlenecks(obj, report)
             % Identify performance bottlenecks
-            bottlenecks = {};
             operation_names = fieldnames(report.operations);
-            
+
             if isempty(operation_names)
+                bottlenecks = {};
                 return;
             end
-            
+
+            % Pre-allocate for performance (estimate max possible bottlenecks)
+            bottlenecks_temp = cell(length(operation_names) * 2, 1);
+            count = 0;
+
             % Find operations taking more than 1 second on average
             for i = 1:length(operation_names)
                 op_name = operation_names{i};
                 op_data = report.operations.(op_name);
-                
+
                 if op_data.average_time > 1.0
-                    bottlenecks{end+1} = sprintf('%s: %.3f seconds average', op_name, op_data.average_time);
+                    count = count + 1;
+                    bottlenecks_temp{count} = sprintf('%s: %.3f seconds average', op_name, op_data.average_time);
                 end
             end
-            
+
             % Find operations with high memory usage
             for i = 1:length(operation_names)
                 op_name = operation_names{i};
                 op_data = report.operations.(op_name);
-                
+
                 if op_data.memory_delta > 100 * 1024 * 1024 % 100 MB
-                    bottlenecks{end+1} = sprintf('%s: High memory usage (%.2f MB)', ...
+                    count = count + 1;
+                    bottlenecks_temp{count} = sprintf('%s: High memory usage (%.2f MB)', ...
                         op_name, op_data.memory_delta / 1024 / 1024);
                 end
             end
+
+            % Trim to actual size
+            bottlenecks = bottlenecks_temp(1:count);
         end
         
         function recommendations = generate_recommendations(obj, report)
             % Generate performance improvement recommendations
-            recommendations = {};
             operation_names = fieldnames(report.operations);
-            
+
             if isempty(operation_names)
-                recommendations{end+1} = 'No operations tracked yet';
+                recommendations = {'No operations tracked yet'};
                 return;
             end
-            
+
+            % Pre-allocate for performance
+            recommendations_temp = cell(length(operation_names) * 3, 1);
+            count = 0;
+
             % Check for slow operations
             for i = 1:length(operation_names)
                 op_name = operation_names{i};
                 op_data = report.operations.(op_name);
-                
+
                 if op_data.average_time > 5.0
-                    recommendations{end+1} = sprintf('Consider optimizing %s (%.3f seconds average)', ...
+                    count = count + 1;
+                    recommendations_temp{count} = sprintf('Consider optimizing %s (%.3f seconds average)', ...
                         op_name, op_data.average_time);
                 end
-                
+
                 if op_data.count > 10 && op_data.average_time > 1.0
-                    recommendations{end+1} = sprintf('Cache results for frequently called %s', op_name);
+                    count = count + 1;
+                    recommendations_temp{count} = sprintf('Cache results for frequently called %s', op_name);
                 end
             end
-            
+
             % Check for memory issues
             total_memory = 0;
             for i = 1:length(operation_names)
@@ -429,13 +443,17 @@ classdef performance_tracker < handle
                 op_data = report.operations.(op_name);
                 total_memory = total_memory + op_data.memory_delta;
             end
-            
+
             if total_memory > 500 * 1024 * 1024 % 500 MB
-                recommendations{end+1} = 'Consider implementing memory cleanup for large operations';
+                count = count + 1;
+                recommendations_temp{count} = 'Consider implementing memory cleanup for large operations';
             end
-            
-            if isempty(recommendations)
-                recommendations{end+1} = 'Performance looks good! No major issues identified.';
+
+            if count == 0
+                recommendations = {'Performance looks good! No major issues identified.'};
+            else
+                % Trim to actual size
+                recommendations = recommendations_temp(1:count);
             end
         end
     end

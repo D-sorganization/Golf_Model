@@ -37,14 +37,11 @@ function [BASEQ, ZTCFQ, DELTAQ] = process_data_tables(config, BaseData, ZTCF)
         fprintf('   Creating DELTAQ table...\n');
         DELTAQ = BASEQ;
 
-        % Get numeric columns for difference calculation (excluding Time)
-        numeric_vars = {};
-        for i = 1:width(BASEQ)
-            var_name = BASEQ.Properties.VariableNames{i};
-            if ~strcmp(var_name, 'Time') && isnumeric(BASEQ.(var_name))
-                numeric_vars{end+1} = var_name;
-            end
-        end
+        % Get numeric columns for difference calculation (excluding Time) - vectorized for performance
+        var_names = BASEQ.Properties.VariableNames;
+        is_numeric = cellfun(@(x) isnumeric(BASEQ.(x)), var_names);
+        is_not_time = ~strcmp(var_names, 'Time');
+        numeric_vars = var_names(is_numeric & is_not_time);
 
         % Calculate differences for numeric columns
         for i = 1:length(numeric_vars)

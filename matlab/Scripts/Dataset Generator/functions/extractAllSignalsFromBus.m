@@ -467,12 +467,19 @@ end
 function [signal_table, signal_info] = createSignalTable(all_signals, time_data, expected_length, source_info, verbose)
     % Create the final signal table from all extracted signals
 
-    % Start with time column
-    table_data = {time_data};
-    table_names = {'time'};
+    % Pre-allocate with conservative estimate (performance optimization)
+    % Assuming ~10 components per signal on average (some 3D matrices expand to 9 columns)
+    signal_names = fieldnames(all_signals);
+    max_possible_signals = (length(signal_names) * 10) + 1;
+    table_data_pre = cell(max_possible_signals, 1);
+    table_names_pre = cell(max_possible_signals, 1);
+
+    % Initialize with time
+    table_data_pre{1} = time_data;
+    table_names_pre{1} = 'time';
+    data_idx = 1;
 
     % Add all signal data
-    signal_names = fieldnames(all_signals);
     valid_signals = 0;
 
     if verbose
@@ -497,8 +504,9 @@ function [signal_table, signal_info] = createSignalTable(all_signals, time_data,
 
                         % Check for any issues with the data
                         if ~any(isnan(signal_data)) && ~any(isinf(signal_data))
-                            table_data{end+1} = signal_data;
-                            table_names{end+1} = signal_name;
+                            data_idx = data_idx + 1;
+                            table_data_pre{data_idx} = signal_data;
+                            table_names_pre{data_idx} = signal_name;
                             valid_signals = valid_signals + 1;
                         else
                             if verbose
@@ -512,15 +520,16 @@ function [signal_table, signal_info] = createSignalTable(all_signals, time_data,
                             if length(col_data) == expected_length
                                 % Create unique column name
                                 base_name = sprintf('%s_%d', signal_name, col);
-                                unique_name = makeUniqueSignalName(base_name, table_names);
+                                unique_name = makeUniqueSignalName(base_name, table_names_pre(1:data_idx));
 
                                 % Ensure data is a double column vector
                                 col_data = double(col_data(:));
 
                                 % Check for any issues with the data
                                 if ~any(isnan(col_data)) && ~any(isinf(col_data))
-                                    table_data{end+1} = col_data;
-                                    table_names{end+1} = unique_name;
+                                    data_idx = data_idx + 1;
+                                    table_data_pre{data_idx} = col_data;
+                                    table_names_pre{data_idx} = unique_name;
                                     valid_signals = valid_signals + 1;
                                     if verbose
                                         fprintf('Extracted multi-dimensional signal: %s (column %d)\n', signal_name, col);
@@ -552,15 +561,16 @@ function [signal_table, signal_info] = createSignalTable(all_signals, time_data,
                             if length(element_data) == expected_length
                                 % Create unique column name for this matrix element
                                 base_name = sprintf('%s_%d_%d', signal_name, row, col);
-                                unique_name = makeUniqueSignalName(base_name, table_names);
+                                unique_name = makeUniqueSignalName(base_name, table_names_pre(1:data_idx));
 
                                 % Ensure data is a double column vector
                                 element_data = double(element_data(:));
 
                                 % Check for any issues with the data
                                 if ~any(isnan(element_data)) && ~any(isinf(element_data))
-                                    table_data{end+1} = element_data;
-                                    table_names{end+1} = unique_name;
+                                    data_idx = data_idx + 1;
+                                    table_data_pre{data_idx} = element_data;
+                                    table_names_pre{data_idx} = unique_name;
                                     valid_signals = valid_signals + 1;
                                     if verbose
                                         fprintf('Extracted 3x3 matrix element: %s (row %d, col %d)\n', signal_name, row, col);
@@ -592,6 +602,10 @@ function [signal_table, signal_info] = createSignalTable(all_signals, time_data,
     if verbose
         fprintf('Valid signals for table: %d\n', valid_signals);
     end
+
+    % Trim pre-allocated arrays to actual size (performance optimization)
+    table_data = table_data_pre(1:data_idx);
+    table_names = table_names_pre(1:data_idx);
 
     % Create the table only if we have valid data
     if length(table_data) > 1
