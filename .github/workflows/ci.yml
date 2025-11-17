@@ -37,6 +37,22 @@ jobs:
           if [ -f python/requirements.txt ]; then pip install -r python/requirements.txt || true; fi
           if [ -f requirements.txt ]; then pip install -r requirements.txt || true; fi
 
+      - name: Run MATLAB Quality Check (Static Analysis)
+        run: |
+          echo "=========================================="
+          echo "MATLAB Code Quality Checks"
+          echo "=========================================="
+          python matlab_utilities/scripts/matlab_quality_check.py --output-format json > matlab_quality_results.json || true
+          python matlab_utilities/scripts/matlab_quality_check.py --output-format text
+
+      - name: Upload MATLAB Quality Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: matlab-quality-report
+          path: matlab_quality_results.json
+          retention-days: 30
+
       - name: Run pre-commit (ruff/black/isort/mypy/etc.)
         run: pre-commit run --all-files
 
