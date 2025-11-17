@@ -198,8 +198,9 @@ class MATLABQualityChecker:
 
             import re
 
-            # Track if we're in a function
+            # Track if we're in a function and nesting level
             in_function = False
+            nesting_level = 0
 
             # Check for basic quality issues
             for i, line in enumerate(lines, 1):
@@ -213,10 +214,24 @@ class MATLABQualityChecker:
                 # Skip comment-only lines for most checks (but check comments for banned patterns)
                 is_comment = line_stripped.startswith("%")
 
-                # Check for function definition
-                if line_stripped.startswith("function") and not is_comment:
-                    in_function = True
+                # Track function scope by monitoring nesting level
+                if not is_comment:
+                    # Check for keywords that increase nesting
+                    # Note: arguments, properties, methods, events also have 'end'
+                    if re.match(r'\b(function|if|for|while|switch|try|parfor|classdef|arguments|properties|methods|events)\b', line_stripped):
+                        if line_stripped.startswith("function"):
+                            in_function = True
+                        nesting_level += 1
 
+                    # Check for 'end' keyword that decreases nesting
+                    if re.match(r'\bend\b', line_stripped):
+                        nesting_level -= 1
+                        if nesting_level <= 0:
+                            in_function = False
+                            nesting_level = 0  # Prevent negative nesting
+
+                # Check for function definition (for docstring and arguments validation)
+                if line_stripped.startswith("function") and not is_comment:
                     # Check if next non-empty line has docstring
                     has_docstring = False
                     for j in range(i, min(i + 5, len(lines))):
