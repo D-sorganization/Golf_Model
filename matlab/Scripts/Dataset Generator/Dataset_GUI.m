@@ -4304,7 +4304,6 @@ try
             end
 
             % Method 3: Look for Subsystem Reference blocks (your case!)
-            subsystem_refs = [];
             try
                 subsystem_refs = find_system(model_name, 'BlockType', 'SubsystemReference');
                 if ~isempty(subsystem_refs)
