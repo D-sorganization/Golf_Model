@@ -3,6 +3,22 @@
 **Date:** 2025-11-17
 **Optimization Session:** Performance & Speed Tuning
 **Status:** ✅ Complete
+**Revision:** 1.1 (Bug Fix Applied)
+
+---
+
+## Changelog
+
+### Revision 1.1 (2025-11-17)
+- **Fixed:** Critical bug where garbage collection was skipped on final batch unless batch number was a multiple of 10
+- **Updated:** GC condition now includes final batch: `if mod(batch_idx, 10) == 0 || batch_idx == num_batches`
+- **Added:** Testing & validation section with recommended test scenarios
+- **Added:** Bug fixes section documenting the issue and resolution
+- **Credit:** Bug identified by Copilot AI and Cursor Bugbot during PR review
+
+### Revision 1.0 (2025-11-17)
+- Initial performance optimization implementation
+- Pause delay reduction, UI throttling, memory management optimization
 
 ---
 
@@ -105,7 +121,8 @@ java.lang.System.gc();
 % After:
 if mod(batch_idx, 10) == 0 || batch_idx == num_batches
     restoreWorkspace(initial_vars);
-    if mod(batch_idx, 10) == 0
+    % Force GC every 10 batches AND on final batch to ensure clean state
+    if mod(batch_idx, 10) == 0 || batch_idx == num_batches
         java.lang.System.gc();
     end
 end
@@ -263,18 +280,70 @@ config.execution_mode = 'sequential'; % Easier to debug
 
 ---
 
+## Bug Fixes
+
+### Critical Bug Fix: Final Batch Garbage Collection
+**Issue Identified:** Initial implementation had a nested conditional that prevented garbage collection on the final batch unless it was a multiple of 10.
+
+**Fix Applied:** Updated GC condition to include final batch: `if mod(batch_idx, 10) == 0 || batch_idx == num_batches`
+
+**Impact:** Ensures "clean state" cleanup on final batch as documented, preventing potential memory buildup.
+
+**Credit:** Identified by Copilot AI and Cursor Bugbot during PR review.
+
+---
+
+## Testing & Validation
+
+### Current Test Status
+⚠️ **Note:** The optimization changes currently lack automated test coverage. Manual testing is recommended.
+
+### Recommended Test Scenarios
+
+1. **Final Batch GC Test**
+   - Run with 15 trials (batch_size=1, num_batches=15)
+   - Verify GC occurs on batches 10 and 15
+   - Run with 23 trials (batch_size=1, num_batches=23)
+   - Verify GC occurs on batches 10, 20, and 23
+
+2. **Pause Logic Test**
+   - Small run (≤5 batches): Verify no pauses
+   - Large run (>5 batches): Verify 0.1s pauses between batches
+   - Verify no pause after final batch
+
+3. **UI Update Test** (GUI only)
+   - Run with 50 batches
+   - Verify UI updates on batches 1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50
+   - Verify console output still shows all batches
+
+4. **Memory Cleanup Test**
+   - Run with 35 batches
+   - Verify cleanup on batches 10, 20, 30, 35
+   - Monitor memory usage remains stable
+
+### Future Test Coverage
+Consider adding automated tests for:
+- Memory cleanup intervals (every 10th + final)
+- Pause behavior (skip for ≤5 batches, 0.1s otherwise)
+- UI update frequency (1st, every 5th, last)
+- GC triggering (every 10th + final)
+
+---
+
 ## Validation Checklist
 
 - [x] Pause delays reduced (0.5s → 0.1s)
 - [x] UI update frequency optimized (every batch → every 5th)
 - [x] Memory cleanup optimized (every batch → every 10th)
 - [x] Garbage collection optimized (every batch → every 10th)
+- [x] **Final batch GC bug fixed** (now runs on final batch)
 - [x] Small batches skip pauses entirely
 - [x] First/last batch UI updates preserved
 - [x] Both parallel and sequential modes optimized
 - [x] Both data_generator and GUI optimized
 - [x] Backward compatibility maintained
 - [x] Documentation complete
+- [x] PR review feedback addressed
 
 ---
 

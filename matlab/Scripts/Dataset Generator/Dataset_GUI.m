@@ -3904,8 +3904,8 @@ for batch_idx = start_batch:num_batches
     if mod(batch_idx, 10) == 0 || batch_idx == num_batches
         fprintf('Performing memory cleanup after batch %d...\n', batch_idx);
         restoreWorkspace(initial_vars);
-        % Only force GC every 10 batches to reduce overhead
-        if mod(batch_idx, 10) == 0
+        % Force GC every 10 batches AND on final batch to ensure clean state
+        if mod(batch_idx, 10) == 0 || batch_idx == num_batches
             java.lang.System.gc();
         end
     end
@@ -4124,8 +4124,8 @@ for batch_idx = start_batch:num_batches
     if mod(batch_idx, 10) == 0 || batch_idx == num_batches
         fprintf('Performing memory cleanup after batch %d...\n', batch_idx);
         restoreWorkspace(initial_vars);
-        % Only force GC every 10 batches to reduce overhead
-        if mod(batch_idx, 10) == 0
+        % Force GC every 10 batches AND on final batch to ensure clean state
+        if mod(batch_idx, 10) == 0 || batch_idx == num_batches
             java.lang.System.gc();
         end
     end
