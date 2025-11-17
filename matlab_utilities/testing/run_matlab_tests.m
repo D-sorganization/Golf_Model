@@ -173,7 +173,7 @@ function results = run_matlab_tests()
 
     % 7. Save results to file
     try
-        output_dir = fullfile(pwd, 'output', datestr(now, 'yyyy-mm-dd'));
+        output_dir = fullfile(pwd, 'output', char(datetime('now', 'Format', 'yyyy-MM-dd')));
         if ~exist(output_dir, 'dir')
             mkdir(output_dir);
         end

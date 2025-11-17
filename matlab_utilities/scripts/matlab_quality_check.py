@@ -200,7 +200,6 @@ class MATLABQualityChecker:
 
             # Track if we're in a function
             in_function = False
-            function_line = 0
 
             # Check for basic quality issues
             for i, line in enumerate(lines, 1):
@@ -217,7 +216,6 @@ class MATLABQualityChecker:
                 # Check for function definition
                 if line_stripped.startswith("function") and not is_comment:
                     in_function = True
-                    function_line = i
 
                     # Check if next non-empty line has docstring
                     has_docstring = False
@@ -292,18 +290,6 @@ class MATLABQualityChecker:
                         f"{file_path.name} (line {i}): load without output variable - use 'data = load(...)' instead"
                     )
 
-                # Check for semicolon usage in scripts (should suppress output)
-                # This is a soft warning as sometimes display is intentional
-                if in_function and "=" in line_stripped and not line_stripped.rstrip().endswith(";"):
-                    # Exception: if/for/while/end/else/elseif/case/otherwise
-                    if not re.search(
-                        r"\b(if|for|while|end|else|elseif|case|otherwise|function|arguments)\b",
-                        line_stripped,
-                    ):
-                        # Check if it's an assignment
-                        if re.match(r"\s*\w+\s*=", line_stripped):
-                            pass  # This is OK to skip warning - too noisy
-
                 # Check for magic numbers (but allow common values and known constants)
                 # Exclude scientific notation, array indices, and common values
                 magic_number_pattern = r"(?<![.\w])\d*\.\d+(?![.\w])"
@@ -336,8 +322,10 @@ class MATLABQualityChecker:
                             f"{file_path.name} (line {i}): Magic number {num} ({known_constants[num]}) - define as named constant"
                         )
                     elif num not in acceptable_numbers:
-                        # Check if the number appears in a comment context on same line
-                        if "%" not in line_original or line_original.index(num) < line_original.index("%"):
+                        # Check if the number appears before a comment on same line
+                        comment_idx = line_original.find("%")
+                        num_idx = line_original.find(num)
+                        if comment_idx == -1 or (num_idx != -1 and num_idx < comment_idx):
                             issues.append(
                                 f"{file_path.name} (line {i}): Magic number {num} should be defined as constant with units and source"
                             )

@@ -22,9 +22,16 @@ function results = matlab_quality_config()
 
     % 1. Add current directory to path if not already there
     current_dir = pwd;
+    path_modified = false;
     if ~contains(path, current_dir)
         addpath(current_dir);
+        path_modified = true;
         fprintf('Added %s to MATLAB path\n', current_dir);
+    end
+
+    % Ensure path is cleaned up on function exit
+    if path_modified
+        cleanup_path = onCleanup(@() rmpath(current_dir));
     end
 
     % 2. Enable Code Analyzer warnings
@@ -130,6 +137,10 @@ function issues = check_function_structure(file_path)
     %
     % This function checks if a MATLAB function follows the required
     % structure from .cursorrules.md
+
+    arguments
+        file_path (1,1) string
+    end
 
     issues = {};
 

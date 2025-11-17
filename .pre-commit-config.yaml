@@ -79,7 +79,7 @@ repos:
       # MATLAB quality check script
       - id: matlab-quality-check
         name: MATLAB Quality Check
-        entry: python scripts/matlab_quality_check.py
+        entry: python matlab_utilities/scripts/matlab_quality_check.py
         language: system
         types: [text]
         pass_filenames: false
