@@ -8,6 +8,11 @@ function Dataset_GUI()
 %
 % See also: UICOLORS, GUILAYOUTCONSTANTS
 
+% Add required paths for constants and functions
+script_path = fileparts(mfilename('fullpath'));
+addpath(fullfile(script_path, '..', 'Constants'));
+addpath(fullfile(script_path, '..', 'Functions'));
+
 % Import standardized UI colors and layout constants
 colors = UIColors.getColorScheme();
 layout = GUILayoutConstants.getDefaultLayout();
@@ -1552,6 +1557,68 @@ try
     if isfield(handles, 'preferences')
         prefs = handles.preferences;
 
+        % Apply last input file if it exists and is valid
+        if isfield(prefs, 'last_input_file_path') && ~isempty(prefs.last_input_file_path)
+            if exist(prefs.last_input_file_path, 'file')
+                if isfield(handles, 'input_file_edit')
+                    set(handles.input_file_edit, 'String', prefs.last_input_file_path);
+                    handles.selected_input_file = prefs.last_input_file_path;
+                end
+            else
+                % File no longer exists, clear the preference
+                prefs.last_input_file_path = '';
+                handles.preferences = prefs;
+            end
+        end
+
+        % Auto-load last config file if it exists and is valid
+        if isfield(prefs, 'last_config_file') && ~isempty(prefs.last_config_file)
+            if exist(prefs.last_config_file, 'file')
+                try
+                    config = load(prefs.last_config_file);
+                    if isfield(config, 'config')
+                        config = config.config;
+                    end
+                    if ~isfield(config, 'handles')  % Skip legacy format
+                        % Restore configuration values to the GUI
+                        if isfield(config, 'input_file') && isfield(handles, 'input_file_edit')
+                            set(handles.input_file_edit, 'String', config.input_file);
+                            handles.selected_input_file = config.input_file;
+                        end
+                        if isfield(config, 'output_folder') && isfield(handles, 'output_folder_edit')
+                            set(handles.output_folder_edit, 'String', config.output_folder);
+                        end
+                        if isfield(config, 'folder_name') && isfield(handles, 'folder_name_edit')
+                            set(handles.folder_name_edit, 'String', config.folder_name);
+                        end
+                        if isfield(config, 'num_trials') && isfield(handles, 'num_trials_edit')
+                            set(handles.num_trials_edit, 'String', config.num_trials);
+                        end
+                        if isfield(config, 'sim_time') && isfield(handles, 'sim_time_edit')
+                            set(handles.sim_time_edit, 'String', config.sim_time);
+                        end
+                        if isfield(config, 'sample_rate') && isfield(handles, 'sample_rate_edit')
+                            set(handles.sample_rate_edit, 'String', config.sample_rate);
+                        end
+                        if isfield(config, 'use_logsout') && isfield(handles, 'use_logsout')
+                            set(handles.use_logsout, 'Value', config.use_logsout);
+                        end
+                        if isfield(config, 'model_path')
+                            handles.model_path = config.model_path;
+                        end
+                        guidata(handles.fig, handles);
+                    end
+                catch ME
+                    % Silently fail if config file can't be loaded
+                    fprintf('Note: Could not auto-load last config file: %s\n', ME.message);
+                end
+            else
+                % Config file no longer exists, clear the preference
+                prefs.last_config_file = '';
+                handles.preferences = prefs;
+            end
+        end
+
         % Apply any other saved preferences here
         if isfield(prefs, 'default_sim_time') && isfield(handles, 'sim_time_edit')
             set(handles.sim_time_edit, 'String', num2str(prefs.default_sim_time));
@@ -1650,7 +1717,16 @@ function saveConfiguration(~, ~)
 % Save configuration
 handles = guidata(gcbf);
 
-[filename, pathname] = uiputfile('*.mat', 'Save Configuration');
+% Try to use last config file path as starting directory
+start_path = '';
+if isfield(handles, 'preferences') && isfield(handles.preferences, 'last_config_file')
+    last_path = handles.preferences.last_config_file;
+    if ~isempty(last_path) && exist(last_path, 'file')
+        [start_path, ~, ~] = fileparts(last_path);
+    end
+end
+
+[filename, pathname] = uiputfile('*.mat', 'Save Configuration', start_path);
 if filename ~= 0
     config = struct();
     config.timestamp = char(datetime('now', 'Format', 'yyyy-MM-dd HH:mm:ss'));
@@ -1665,8 +1741,17 @@ if filename ~= 0
     config.use_logsout = get(handles.use_logsout, 'Value');
     config.model_path = handles.model_path;
 
-    save(fullfile(pathname, filename), 'config');
-    fprintf('Configuration saved to %s\n', fullfile(pathname, filename));
+    config_path = fullfile(pathname, filename);
+    save(config_path, 'config');
+    fprintf('Configuration saved to %s\n', config_path);
+
+    % Save to preferences for next time
+    if ~isfield(handles, 'preferences')
+        handles.preferences = struct();
+    end
+    handles.preferences.last_config_file = config_path;
+    guidata(gcbf, handles);
+    saveUserPreferences(handles);
 end
 end
 
@@ -1674,7 +1759,16 @@ function loadConfiguration(~, ~)
 % Load configuration
 handles = guidata(gcbf);
 
-[filename, pathname] = uigetfile('*.mat', 'Load Configuration');
+% Try to use last config file path as starting directory
+start_path = '';
+if isfield(handles, 'preferences') && isfield(handles.preferences, 'last_config_file')
+    last_path = handles.preferences.last_config_file;
+    if ~isempty(last_path) && exist(last_path, 'file')
+        [start_path, ~, ~] = fileparts(last_path);
+    end
+end
+
+[filename, pathname] = uigetfile('*.mat', 'Load Configuration', start_path);
 if filename ~= 0
     try
         config = load(fullfile(pathname, filename));
@@ -1731,7 +1825,16 @@ if filename ~= 0
         % Update the handles structure
         guidata(gcbf, handles);
 
-        fprintf('Configuration loaded from %s\n', fullfile(pathname, filename));
+        % Save to preferences for next time
+        config_path = fullfile(pathname, filename);
+        if ~isfield(handles, 'preferences')
+            handles.preferences = struct();
+        end
+        handles.preferences.last_config_file = config_path;
+        guidata(gcbf, handles);
+        saveUserPreferences(handles);
+
+        fprintf('Configuration loaded from %s\n', config_path);
     catch ME
         errordlg(sprintf('Error loading configuration: %s', ME.message), 'Load Error');
     end
@@ -2603,9 +2706,24 @@ end
 function browseInputFile(~, ~)
 handles = guidata(gcbf);
 
-[filename, pathname] = uigetfile('*.mat', 'Select Input File');
+% Try to use last input file path as starting directory
+start_path = '';
+if isfield(handles, 'preferences') && isfield(handles.preferences, 'last_input_file_path')
+    last_path = handles.preferences.last_input_file_path;
+    if ~isempty(last_path) && exist(last_path, 'file')
+        [start_path, ~, ~] = fileparts(last_path);
+    end
+end
+
+[filename, pathname] = uigetfile('*.mat', 'Select Input File', start_path);
 if filename ~= 0
-    set(handles.input_file_edit, 'String', fullfile(pathname, filename));
+    full_path = fullfile(pathname, filename);
+    set(handles.input_file_edit, 'String', full_path);
+    handles.selected_input_file = full_path;
+    guidata(gcbf, handles);
+
+    % Save to preferences for next time
+    saveUserPreferences(handles);
 end
 end
 
@@ -3262,13 +3380,31 @@ end
 function saveUserPreferences(handles)
 % Save user preferences to file
 try
-    preferences = struct();
-    preferences.last_input_file_path = handles.selected_input_file;
-    preferences.output_folder = get(handles.output_folder_edit, 'String');
-    preferences.model_name = handles.model_name;
+    % Load existing preferences if they exist
+    if isfield(handles, 'preferences')
+        preferences = handles.preferences;
+    else
+        preferences = struct();
+    end
+
+    % Update with current values
+    if isfield(handles, 'selected_input_file')
+        preferences.last_input_file_path = handles.selected_input_file;
+    end
+    if isfield(handles, 'output_folder_edit')
+        preferences.output_folder = get(handles.output_folder_edit, 'String');
+    end
+    if isfield(handles, 'model_name')
+        preferences.model_name = handles.model_name;
+    end
 
     if isfield(handles, 'enable_master_dataset')
         preferences.enable_master_dataset = get(handles.enable_master_dataset, 'Value');
+    end
+
+    % Save last_config_file if it exists in preferences
+    if isfield(handles, 'preferences') && isfield(handles.preferences, 'last_config_file')
+        preferences.last_config_file = handles.preferences.last_config_file;
     end
 
     save('user_preferences.mat', 'preferences');
@@ -3423,6 +3559,25 @@ try
     set(handles.play_pause_button, 'Enable', 'on', 'String', 'Start');
     set(handles.stop_button, 'Enable', 'off');
     guidata(handles.fig, handles);
+
+    % Prompt user to shutdown parallel pool if it exists (in case of early stop or error)
+    try
+        pool = gcp('nocreate');
+        if ~isempty(pool)
+            answer = questdlg(sprintf('Parallel pool is running with %d workers. Shut it down now?', pool.NumWorkers), ...
+                'Shutdown Parallel Pool', ...
+                'Yes', 'No', 'No');
+            if strcmp(answer, 'Yes')
+                fprintf('Shutting down parallel pool...\n');
+                delete(pool);
+                fprintf('Parallel pool shut down successfully\n');
+            else
+                fprintf('Parallel pool left running (%d workers)\n', pool.NumWorkers);
+            end
+        end
+    catch ME
+        fprintf('Warning: Could not shut down parallel pool: %s\n', ME.message);
+    end
 catch
     % GUI might be destroyed, ignore the error
 end
@@ -3798,6 +3953,25 @@ if successful_trials == total_trials && exist(checkpoint_file, 'file')
     catch ME
         fprintf('Warning: Could not clean up checkpoint file: %s\n', ME.message);
     end
+end
+
+% Prompt user to shutdown parallel pool when complete
+try
+    pool = gcp('nocreate');
+    if ~isempty(pool)
+        answer = questdlg(sprintf('Parallel pool is running with %d workers. Shut it down now?', pool.NumWorkers), ...
+            'Shutdown Parallel Pool', ...
+            'Yes', 'No', 'No');
+        if strcmp(answer, 'Yes')
+            fprintf('Shutting down parallel pool...\n');
+            delete(pool);
+            fprintf('Parallel pool shut down successfully\n');
+        else
+            fprintf('Parallel pool left running (%d workers)\n', pool.NumWorkers);
+        end
+    end
+catch ME
+    fprintf('Warning: Could not shut down parallel pool: %s\n', ME.message);
 end
 end
 
