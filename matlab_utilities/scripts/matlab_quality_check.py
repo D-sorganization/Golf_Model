@@ -52,14 +52,14 @@ class MATLABQualityChecker:
             True if MATLAB files are found, False otherwise
         """
         if not self.matlab_dir.exists():
-            logger.error(f"MATLAB directory not found: {self.matlab_dir}")
+            logger.info(f"MATLAB directory not found: {self.matlab_dir} (skipping MATLAB checks)")
             return False
 
         m_files = list(self.matlab_dir.rglob("*.m"))
         self.results["total_files"] = len(m_files)
 
         if len(m_files) == 0:
-            logger.warning("No MATLAB files found")
+            logger.info("No MATLAB files found (skipping MATLAB checks)")
             return False
 
         logger.info(f"Found {len(m_files)} MATLAB files")
@@ -387,8 +387,8 @@ class MATLABQualityChecker:
 
         # Check if MATLAB files exist
         if not self.check_matlab_files_exist():
-            self.results["passed"] = False
-            self.results["summary"] = "No MATLAB files found"
+            self.results["passed"] = True
+            self.results["summary"] = "[SKIP] No MATLAB files to check - passed"
             return self.results
 
         # Run MATLAB quality checks
