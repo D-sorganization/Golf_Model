@@ -166,12 +166,13 @@ else
                              'DELTAQLSFractionalPower', 'DELTAQRSFractionalPower', 'DELTAQLEFractionalPower', 'DELTAQREFractionalPower', 'DELTAQLHFractionalPower', 'DELTAQRHFractionalPower'};
 
      % Pre-create NaN column for performance (avoid repeated allocation)
+     % Use (:) to force independent copies for each table column
      nan_col = NaN(height(BASEQ_updated), 1);
      for k = 1:length(fractionalWorkFields)
-         BASEQ_updated.(fractionalWorkFields{k}) = nan_col;
+         BASEQ_updated.(fractionalWorkFields{k}) = nan_col(:);
      end
      for k = 1:length(fractionalPowerFields)
-         BASEQ_updated.(fractionalPowerFields{k}) = nan_col;
+         BASEQ_updated.(fractionalPowerFields{k}) = nan_col(:);
      end
 end
 
