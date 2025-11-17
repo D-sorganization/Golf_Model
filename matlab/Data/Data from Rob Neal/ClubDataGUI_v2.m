@@ -50,6 +50,7 @@ function ClubDataGUI_v2()
     handles.frameSlider = uicontrol(fig, 'Style', 'slider', 'Min', 1, 'Max', length(data.time), 'Value', 1, 'Units', 'normalized', 'Position', [0.35 0.01 0.6 0.02], 'Callback', @(src,~) updateFrameSlider(src, guidata(src)));
     if ~initialLoadOk
         set(handles.frameSlider, 'Enable', 'off');
+        set(handles.playBtn, 'Enable', 'off');
     end
 
     % --- Data Plot Init ---
@@ -476,6 +477,10 @@ function changeFile(src, handles)
     handles.currentFile = selected;
     handles.frame = 1;
     set(handles.frameSlider, 'Min', 1, 'Max', length(data.time), 'Value', 1, 'Enable', 'on');
+    if isfield(handles, 'playBtn') && isgraphics(handles.playBtn)
+        set(handles.playBtn, 'Enable', 'on', 'Value', 0, 'String', 'Play', 'BackgroundColor', [0.2 0.8 0.2]);
+        stop(handles.timer);
+    end
     guidata(src, handles);
     animateFrame(handles);
     updateAxisLimits(handles);
