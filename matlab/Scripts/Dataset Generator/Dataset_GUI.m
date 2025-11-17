@@ -3718,10 +3718,12 @@ for batch_idx = start_batch:num_batches
         fprintf('\n--- Batch %d/%d (Trials %d-%d) ---\n', batch_idx, num_batches, start_trial, end_trial);
     end
 
-    % Update progress
-    progress_msg = sprintf('Batch %d/%d: Processing trials %d-%d...', batch_idx, num_batches, start_trial, end_trial);
-    set(handles.progress_text, 'String', progress_msg);
-    drawnow;
+    % Update progress - optimized UI updates (only update every 5 batches or first/last)
+    if batch_idx == 1 || batch_idx == num_batches || mod(batch_idx, 5) == 0
+        progress_msg = sprintf('Batch %d/%d: Processing trials %d-%d...', batch_idx, num_batches, start_trial, end_trial);
+        set(handles.progress_text, 'String', progress_msg);
+        drawnow;
+    end
 
     % Prepare simulation inputs for this batch
     try
@@ -3897,10 +3899,16 @@ for batch_idx = start_batch:num_batches
         fprintf('Batch %d failed: %s\n', batch_idx, ME.message);
     end
 
-    % Memory cleanup after each batch
-    fprintf('Performing memory cleanup after batch %d...\n', batch_idx);
-    restoreWorkspace(initial_vars);
-    java.lang.System.gc();  % Force garbage collection
+    % Memory cleanup after each batch - optimized frequency
+    % Only perform aggressive cleanup every 10 batches or on final batch
+    if mod(batch_idx, 10) == 0 || batch_idx == num_batches
+        fprintf('Performing memory cleanup after batch %d...\n', batch_idx);
+        restoreWorkspace(initial_vars);
+        % Force GC every 10 batches AND on final batch to ensure clean state
+        if mod(batch_idx, 10) == 0 || batch_idx == num_batches
+            java.lang.System.gc();
+        end
+    end
 
     % Memory monitoring disabled for parallel performance
     if config.enable_memory_monitoring
@@ -3924,8 +3932,11 @@ for batch_idx = start_batch:num_batches
         end
     end
 
-    % Small pause to let system recover
-    pause(1);
+    % Minimal pause only if needed - reduced from 1s to 0.1s
+    % Skip pause entirely for small batches to maximize throughput
+    if batch_idx < num_batches && num_batches > 5
+        pause(0.1);
+    end
 end
 
 % Final summary
@@ -4061,10 +4072,12 @@ for batch_idx = start_batch:num_batches
         fprintf('\n--- Batch %d/%d (Trials %d-%d) ---\n', batch_idx, num_batches, start_trial, end_trial);
     end
 
-    % Update progress
-    progress_msg = sprintf('Batch %d/%d: Processing trials %d-%d...', batch_idx, num_batches, start_trial, end_trial);
-    set(handles.progress_text, 'String', progress_msg);
-    drawnow;
+    % Update progress - optimized UI updates (only update every 5 batches or first/last)
+    if batch_idx == 1 || batch_idx == num_batches || mod(batch_idx, 5) == 0
+        progress_msg = sprintf('Batch %d/%d: Processing trials %d-%d...', batch_idx, num_batches, start_trial, end_trial);
+        set(handles.progress_text, 'String', progress_msg);
+        drawnow;
+    end
 
     % Process trials in this batch
     batch_successful = 0;
@@ -4106,10 +4119,16 @@ for batch_idx = start_batch:num_batches
         fprintf('Batch %d completed: %d/%d trials successful\n', batch_idx, batch_successful, batch_trials);
     end
 
-    % Memory cleanup after each batch
-    fprintf('Performing memory cleanup after batch %d...\n', batch_idx);
-    restoreWorkspace(initial_vars);
-    java.lang.System.gc();  % Force garbage collection
+    % Memory cleanup after each batch - optimized frequency
+    % Only perform aggressive cleanup every 10 batches or on final batch
+    if mod(batch_idx, 10) == 0 || batch_idx == num_batches
+        fprintf('Performing memory cleanup after batch %d...\n', batch_idx);
+        restoreWorkspace(initial_vars);
+        % Force GC every 10 batches AND on final batch to ensure clean state
+        if mod(batch_idx, 10) == 0 || batch_idx == num_batches
+            java.lang.System.gc();
+        end
+    end
 
     % Memory monitoring disabled for parallel performance
     if config.enable_memory_monitoring
@@ -4133,8 +4152,11 @@ for batch_idx = start_batch:num_batches
         end
     end
 
-    % Small pause to let system recover
-    pause(1);
+    % Minimal pause only if needed - reduced from 1s to 0.1s
+    % Skip pause entirely for small batches to maximize throughput
+    if batch_idx < num_batches && num_batches > 5
+        pause(0.1);
+    end
 end
 
 % Final summary
