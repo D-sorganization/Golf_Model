@@ -80,17 +80,17 @@ metadata.errors = {};
 start_timer = tic;
 
 try
-    %% Validate Configuration
-
-    logMessage(config, 'Verbose', 'Validating configuration...');
-    validateSimulationConfig(config);
-    logMessage(config, 'Verbose', '  ✓ Configuration validated');
-
     %% Validate MATLAB Path Dependencies
 
     logMessage(config, 'Verbose', 'Checking required functions on MATLAB path...');
     validateFunctionDependencies();
     logMessage(config, 'Verbose', '  ✓ All required functions are available');
+
+    %% Validate Configuration
+
+    logMessage(config, 'Verbose', 'Validating configuration...');
+    validateSimulationConfig(config);
+    logMessage(config, 'Verbose', '  ✓ Configuration validated');
 
     %% Ensure Enhanced Configuration
 
@@ -1231,6 +1231,7 @@ end
 function required_functions = getRequiredFunctionList()
 % GETREQUIREDFUNCTIONLIST List of dataset generator helper functions
 required_functions = {
+    'validateSimulationConfig', ...
     'runSingleTrial', ...
     'processSimulationOutput', ...
     'setModelParameters', ...
