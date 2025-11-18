@@ -1,19 +1,32 @@
 function app_handles = main_golf_analysis_app()
-% MAIN_GOLF_ANALYSIS_APP - Integrated Golf Swing Analysis Application
-%
-% This is the main entry point for the integrated golf analysis application
-% featuring three tabs:
-%   Tab 1: Model Setup & Simulation
-%   Tab 2: ZTCF Calculation
-%   Tab 3: Analysis & Visualization
-%
-% Usage:
-%   app_handles = main_golf_analysis_app();
-%
-% Returns:
-%   app_handles - Structure containing all application handles and managers
+    % MAIN_GOLF_ANALYSIS_APP Integrated Golf Swing Analysis Application
+    %
+    % This is the main entry point for the integrated golf analysis application
+    % featuring three tabs:
+    %   Tab 1: Model Setup & Simulation
+    %   Tab 2: ZTCF Calculation
+    %   Tab 3: Analysis & Visualization
+    %
+    % Outputs:
+    %   app_handles - Structure containing all application handles and managers
+    %                 with fields:
+    %                 .main_fig - Main figure handle
+    %                 .tab_group - Tab group handle
+    %                 .tabs - Structure with tab handles
+    %                 .data_manager - Data manager instance
+    %                 .config_manager - Configuration manager instance
+    %                 .config - Configuration structure
+    %
+    % Usage:
+    %   app_handles = main_golf_analysis_app();
+    %
+    % See also: tab1_model_setup, tab2_ztcf_calculation, tab3_visualization
 
-fprintf('Initializing Golf Swing Analysis Application...\n');
+    arguments
+        % No input arguments
+    end
+
+    fprintf('Initializing Golf Swing Analysis Application...\n');
 
 %% Initialize Managers
 % Configuration manager
@@ -201,8 +214,8 @@ fig = ancestor(src, 'figure');
 app_handles = guidata(fig);
 
 % Default session filename with timestamp
-timestamp = datestr(now, 'yyyymmdd_HHMMSS');
-default_name = sprintf('golf_session_%s.mat', timestamp);
+timestamp = datetime('now', 'Format', 'yyyyMMdd_HHmmss');
+default_name = sprintf('golf_session_%s.mat', char(timestamp));
 
 try
     app_handles.data_manager.save_session(default_name);
@@ -332,7 +345,7 @@ try
             try
                 on_save_session(app_handles.main_fig, []);
             catch ME
-                warning('Failed to save session: %s', ME.message);
+                warning('%s: %s', ME.identifier, ME.message);
             end
         end
     end
@@ -344,7 +357,7 @@ try
             app_handles.config_manager.save_config(app_handles.config);
         end
     catch ME
-        warning('Failed to save config: %s', ME.message);
+        warning('%s: %s', ME.identifier, ME.message);
     end
 
     % Clean up each tab
@@ -354,7 +367,7 @@ try
             app_handles.tab1_handles.cleanup_callback();
         end
     catch ME
-        warning('Tab 1 cleanup failed: %s', ME.message);
+        warning('%s: %s', ME.identifier, ME.message);
     end
 
     try
@@ -363,7 +376,7 @@ try
             app_handles.tab2_handles.cleanup_callback();
         end
     catch ME
-        warning('Tab 2 cleanup failed: %s', ME.message);
+        warning('%s: %s', ME.identifier, ME.message);
     end
 
     try
@@ -372,7 +385,7 @@ try
             app_handles.tab3_handles.cleanup_callback();
         end
     catch ME
-        warning('Tab 3 cleanup failed: %s', ME.message);
+        warning('%s: %s', ME.identifier, ME.message);
     end
 
     % Clear app data
@@ -381,11 +394,11 @@ try
             app_handles.data_manager.clear_all_data();
         end
     catch ME
-        warning('Failed to clear app data: %s', ME.message);
+        warning('%s: %s', ME.identifier, ME.message);
     end
 
 catch ME
-    warning('Error during close: %s', ME.message);
+    warning('%s: %s', ME.identifier, ME.message);
 end
 
 % Always delete the figure, even if there were errors

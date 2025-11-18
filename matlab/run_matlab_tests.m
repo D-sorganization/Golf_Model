@@ -12,6 +12,15 @@ function results = run_matlab_tests()
     %            .quality_checks - Quality check results
     %            .timestamp - ISO 8601 timestamp
     %            .summary - Summary string of results
+    %
+    % Usage:
+    %   results = run_matlab_tests();
+    %
+    % See also: matlab_quality_config, matlab.unittest.TestRunner
+
+    arguments
+        % No input arguments
+    end
 
     fprintf('🧪 Starting comprehensive MATLAB test suite...\n');
 
