@@ -70,6 +70,7 @@ Create a `.cursor-rules` file in your project root:
 - Use descriptive function and variable names
 - Include function documentation headers
 - Validate input arguments at function start
+- Verify critical helper functions are on the MATLAB path before execution
 - Use vectorized operations instead of loops when possible
 - Follow MATLAB naming conventions (camelCase for functions)
 
