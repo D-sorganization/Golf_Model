@@ -47,7 +47,7 @@ jobs:
 
       - name: Upload MATLAB Quality Report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: matlab-quality-report
           path: matlab_quality_results.json
