@@ -198,11 +198,6 @@ function validateDependencies(requiredFunctions, requiredToolboxes)
 
     % exist() returns 2 for files on the MATLAB path
     EXIST_FILE = 2;
-<<<<<<< HEAD
-    
-=======
-
->>>>>>> beaed22 (Fix empty cell array bug in test functions - replace {} with cell(1,0))
     % Use logical indexing for efficient collection of missing functions
     functionExists = false(1, numel(requiredFunctions));
     for i = 1:numel(requiredFunctions)
@@ -223,11 +218,6 @@ function validateDependencies(requiredFunctions, requiredToolboxes)
         parts = cell(1, 3);
         numParts = 1;
         parts{1} = 'Missing dependencies:';
-<<<<<<< HEAD
-        
-=======
-
->>>>>>> beaed22 (Fix empty cell array bug in test functions - replace {} with cell(1,0))
         if ~isempty(missingFunctions)
             numParts = numParts + 1;
             parts{numParts} = sprintf('  Functions: %s', strjoin(missingFunctions, ', '));
@@ -251,11 +241,7 @@ end
 function test_validateDependencies_missing_function()
     % Test error for missing function
     try
-<<<<<<< HEAD
-        validateDependencies({'nonexistentFunction123'}, {});
-=======
         validateDependencies({'nonexistentFunction123'}, cell(1,0));
->>>>>>> beaed22 (Fix empty cell array bug in test functions - replace {} with cell(1,0))
         error('Expected error was not raised');
     catch ME
         assert(strcmp(ME.identifier, 'DependencyValidation:MissingDependencies'));
@@ -265,11 +251,7 @@ end
 function test_validateDependencies_missing_toolbox()
     % Test error for missing toolbox
     try
-<<<<<<< HEAD
-        validateDependencies({}, {'Nonexistent_Toolbox_XYZ'});
-=======
         validateDependencies(cell(1,0), {'Nonexistent_Toolbox_XYZ'});
->>>>>>> beaed22 (Fix empty cell array bug in test functions - replace {} with cell(1,0))
         error('Expected error was not raised');
     catch ME
         assert(strcmp(ME.identifier, 'DependencyValidation:MissingDependencies'));
