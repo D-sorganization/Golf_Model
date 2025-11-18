@@ -18,10 +18,6 @@ function results = run_matlab_tests()
     %
     % See also: matlab_quality_config, matlab.unittest.TestRunner
 
-    arguments
-        % No input arguments
-    end
-
     fprintf('🧪 Starting comprehensive MATLAB test suite...\n');
 
     % Initialize results structure

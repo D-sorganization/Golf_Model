@@ -22,10 +22,6 @@ function app_handles = main_golf_analysis_app()
     %
     % See also: tab1_model_setup, tab2_ztcf_calculation, tab3_visualization
 
-    arguments
-        % No input arguments
-    end
-
     fprintf('Initializing Golf Swing Analysis Application...\n');
 
 %% Initialize Managers
@@ -232,8 +228,8 @@ function on_save_session_as(src, ~)
 fig = ancestor(src, 'figure');
 app_handles = guidata(fig);
 
-timestamp = datestr(now, 'yyyymmdd_HHMMSS');
-default_name = sprintf('golf_session_%s.mat', timestamp);
+timestamp = datetime('now', 'Format', 'yyyyMMdd_HHmmss');
+default_name = sprintf('golf_session_%s.mat', char(timestamp));
 
 [file, path] = uiputfile('*.mat', 'Save Session As', default_name);
 if file ~= 0
