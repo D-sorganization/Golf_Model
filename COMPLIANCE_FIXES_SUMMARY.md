@@ -25,7 +25,7 @@
 3. **`matlab/Scripts/Golf_GUI/Integrated_Analysis_App/main_golf_analysis_app.m`**
    - ✅ Added `arguments` validation block to main function
    - ✅ Enhanced function docstring with detailed outputs
-   - ✅ Replaced deprecated `datestr(now)` with `datetime('now', 'Format', 'yyyyMMdd_HHmmss')` (2 instances)
+   - ✅ Replaced deprecated `datestr(now)` with `datetime('now', 'Format', "yyyyMMdd'T'HHmmss")` (2 instances)
    - ✅ Fixed warning calls to use format specifiers (6 instances)
    - ✅ Improved error handling with proper identifier usage
 
@@ -48,8 +48,8 @@
 - Added See also references
 
 ### Deprecated Functions Replaced
-- 2 instances of `datestr(now)` → `datetime('now', 'Format', 'yyyyMMdd_HHmmss')`
-- Format string updated to match ISO 8601 standard
+- 2 instances of `datestr(now)` → `datetime('now', 'Format', "yyyyMMdd'T'HHmmss")`
+- Format string updated to use ISO 8601 standard format (with 'T' separator)
 
 ### Code Quality Improvements
 - 6 warning calls now use proper format specifiers with identifiers
