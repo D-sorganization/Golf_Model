@@ -210,8 +210,8 @@ fig = ancestor(src, 'figure');
 app_handles = guidata(fig);
 
 % Default session filename with timestamp
-timestamp = datetime('now', 'Format', 'yyyyMMdd_HHmmss');
-default_name = sprintf('golf_session_%s.mat', char(timestamp));
+timestamp = datetime('now', 'Format', "yyyyMMdd'T'HHmmss");
+default_name = sprintf('golf_session_%s.mat', string(timestamp));
 
 try
     app_handles.data_manager.save_session(default_name);
@@ -228,8 +228,8 @@ function on_save_session_as(src, ~)
 fig = ancestor(src, 'figure');
 app_handles = guidata(fig);
 
-timestamp = datetime('now', 'Format', 'yyyyMMdd_HHmmss');
-default_name = sprintf('golf_session_%s.mat', char(timestamp));
+timestamp = datetime('now', 'Format', "yyyyMMdd'T'HHmmss");
+default_name = sprintf('golf_session_%s.mat', string(timestamp));
 
 [file, path] = uiputfile('*.mat', 'Save Session As', default_name);
 if file ~= 0

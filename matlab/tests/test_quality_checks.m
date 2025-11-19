@@ -11,7 +11,7 @@ function tests = test_quality_checks
     % Usage:
     %   results = runtests('test_quality_checks')
     %
-    % See also: functiontests, matlab.unittest.TestCase, matlab_quality_config, run_matlab_tests
+    % See also: functiontests, matlab.unittest.TestCase
 
     tests = functiontests(localfunctions);
 end
