@@ -12,12 +12,10 @@ Features:
 
 import subprocess
 import numpy as np
-from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import Tuple, Optional
 from dataclasses import dataclass
 from PyQt6.QtCore import QObject, pyqtSignal, QThread
 from PyQt6.QtWidgets import QProgressDialog
-import moderngl as mgl
 
 
 @dataclass
@@ -46,14 +44,18 @@ class VideoExporter(QObject):
     finished = pyqtSignal(str)  # output_path
     error = pyqtSignal(str)  # error_message
 
-    def __init__(self, renderer, frame_processor):
-        super().__init__()
+    def __init__(self, renderer, frame_processor) -> None:
+        """Initialize video exporter.
+        
+        Args:
+            renderer: 3D renderer instance
+            frame_processor: Frame processor with motion data
+        """
         self.renderer = renderer
         self.frame_processor = frame_processor
 
-    def export_video(self, config: VideoExportConfig):
-        """
-        Export animation to video file
+    def export_video(self, config: VideoExportConfig) -> None:
+        """Export animation to video file.
 
         Args:
             config: Video export configuration
@@ -223,8 +225,13 @@ class VideoExporter(QObject):
 
         return pixels
 
-    def _create_offscreen_framebuffer(self, width: int, height: int):
-        """Create offscreen framebuffer for rendering"""
+    def _create_offscreen_framebuffer(self, width: int, height: int) -> None:
+        """Create offscreen framebuffer for rendering.
+        
+        Args:
+            width: Framebuffer width in pixels
+            height: Framebuffer height in pixels
+        """
         ctx = self.renderer.ctx
 
         self._fbo_texture = ctx.texture((width, height), 3)
@@ -312,14 +319,20 @@ class VideoExportThread(QThread):
     finished = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self, renderer, frame_processor, config: VideoExportConfig):
-        super().__init__()
+    def __init__(self, renderer, frame_processor, config: VideoExportConfig) -> None:
+        """Initialize export thread.
+        
+        Args:
+            renderer: 3D renderer instance
+            frame_processor: Frame processor with motion data
+            config: Video export configuration
+        """
         self.renderer = renderer
         self.frame_processor = frame_processor
         self.config = config
 
-    def run(self):
-        """Run export in background thread"""
+    def run(self) -> None:
+        """Run export in background thread."""
         exporter = VideoExporter(self.renderer, self.frame_processor)
 
         # Connect signals
@@ -342,17 +355,22 @@ class VideoExportDialog:
     Integration into golf_gui_application.py:
     """
 
-    def __init__(self, parent, renderer, frame_processor):
-        self.parent = parent
+    def __init__(self, parent, renderer, frame_processor) -> None:
+        """Initialize video export dialog.
+        
+        Args:
+            parent: Parent widget
+            renderer: 3D renderer instance
+            frame_processor: Frame processor with motion data
+        """
         self.renderer = renderer
         self.frame_processor = frame_processor
 
-    def show_export_dialog(self):
-        """Show video export dialog"""
+    def show_export_dialog(self) -> None:
+        """Show video export dialog."""
         from PyQt6.QtWidgets import (
             QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-            QPushButton, QComboBox, QSpinBox, QLineEdit,
-            QFileDialog
+            QPushButton, QComboBox, QSpinBox, QLineEdit
         )
 
         dialog = QDialog(self.parent)
@@ -420,8 +438,8 @@ class VideoExportDialog:
         dialog.setLayout(layout)
         dialog.exec()
 
-    def _browse_output_file(self):
-        """Browse for output file"""
+    def _browse_output_file(self) -> None:
+        """Browse for output file location."""
         from PyQt6.QtWidgets import QFileDialog
 
         filename, _ = QFileDialog.getSaveFileName(
@@ -434,8 +452,12 @@ class VideoExportDialog:
         if filename:
             self.file_input.setText(filename)
 
-    def _start_export(self, dialog):
-        """Start video export"""
+    def _start_export(self, dialog) -> None:
+        """Start video export process.
+        
+        Args:
+            dialog: Parent dialog widget
+        """
         # Parse resolution
         res_text = self.res_combo.currentText()
         res_map = {
@@ -499,8 +521,13 @@ class VideoExportDialog:
         self.export_thread.start()
         progress_dialog.exec()
 
-    def _on_export_finished(self, progress_dialog, output_path):
-        """Handle export completion"""
+    def _on_export_finished(self, progress_dialog, output_path) -> None:
+        """Handle export completion.
+        
+        Args:
+            progress_dialog: Progress dialog to close
+            output_path: Path to exported video file
+        """
         from PyQt6.QtWidgets import QMessageBox
 
         progress_dialog.close()
@@ -511,8 +538,13 @@ class VideoExportDialog:
             f"Video exported successfully!\n\n{output_path}"
         )
 
-    def _on_export_error(self, progress_dialog, error_msg):
-        """Handle export error"""
+    def _on_export_error(self, progress_dialog, error_msg) -> None:
+        """Handle export error.
+        
+        Args:
+            progress_dialog: Progress dialog to close
+            error_msg: Error message to display
+        """
         from PyQt6.QtWidgets import QMessageBox
 
         progress_dialog.close()
