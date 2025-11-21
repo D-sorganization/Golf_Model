@@ -275,7 +275,6 @@ class SmoothPlaybackController(QObject):
             value: New position value from animation
         """
         # Position property setter handles the interpolation - no additional work needed
-        return None
 
     def _on_animation_finished(self) -> None:
         """Called when animation completes."""

@@ -51,6 +51,7 @@ class VideoExporter(QObject):
             renderer: 3D renderer instance
             frame_processor: Frame processor with motion data
         """
+        super().__init__()
         self.renderer = renderer
         self.frame_processor = frame_processor
 
@@ -327,6 +328,7 @@ class VideoExportThread(QThread):
             frame_processor: Frame processor with motion data
             config: Video export configuration
         """
+        super().__init__()
         self.renderer = renderer
         self.frame_processor = frame_processor
         self.config = config
