@@ -16,6 +16,9 @@ slprj/
 *.autosave
 *.mex*
 
+# Simulink cache (configured via configure_simulink_cache.m)
+matlab/cache/
+
 # IDE
 *.cursor-chat
 .vscode/
