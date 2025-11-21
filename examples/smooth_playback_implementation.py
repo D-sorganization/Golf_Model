@@ -10,7 +10,13 @@ INTEGRATION:
 """
 
 import numpy as np
-from PyQt6.QtCore import QObject, QPropertyAnimation, QEasingCurve, pyqtProperty, pyqtSignal
+from PyQt6.QtCore import (
+    QObject,
+    QPropertyAnimation,
+    QEasingCurve,
+    pyqtProperty,
+    pyqtSignal,
+)
 from typing import Optional, TYPE_CHECKING
 from golf_data_core import FrameData, FrameProcessor
 
@@ -31,11 +37,11 @@ class SmoothPlaybackController(QObject):
 
     # Signals
     frameUpdated = pyqtSignal(FrameData)  # Emits interpolated frame data
-    positionChanged = pyqtSignal(float)   # Emits current position (0.0 to total_frames)
+    positionChanged = pyqtSignal(float)  # Emits current position (0.0 to total_frames)
 
     def __init__(self, parent=None) -> None:
         """Initialize the smooth playback controller.
-        
+
         Args:
             parent: Optional parent QObject
         """
@@ -58,7 +64,7 @@ class SmoothPlaybackController(QObject):
 
     def load_frame_processor(self, frame_processor: FrameProcessor) -> None:
         """Load frame processor with motion data.
-        
+
         Args:
             frame_processor: FrameProcessor containing motion capture data
         """
@@ -78,7 +84,7 @@ class SmoothPlaybackController(QObject):
     @position.setter
     def position(self, value: float) -> None:
         """Set playback position with interpolation.
-        
+
         Args:
             value: New position value (0.0 to total_frames - 1)
         """
@@ -126,7 +132,9 @@ class SmoothPlaybackController(QObject):
         self.animation.start()
 
         self.is_playing = True
-        print(f"▶ Playing from frame {start_pos:.1f} to {end_pos:.1f} ({duration_ms}ms)")
+        print(
+            f"▶ Playing from frame {start_pos:.1f} to {end_pos:.1f} ({duration_ms}ms)"
+        )
 
     def pause(self) -> None:
         """Pause playback at current position."""
@@ -153,7 +161,7 @@ class SmoothPlaybackController(QObject):
 
     def seek(self, position: float) -> None:
         """Seek to specific frame position.
-        
+
         Args:
             position: Frame position to seek to (0.0 to total_frames - 1)
         """
@@ -243,9 +251,15 @@ class SmoothPlaybackController(QObject):
 
         # List of all position attributes to interpolate
         position_attrs = [
-            'left_wrist', 'left_elbow', 'left_shoulder',
-            'right_wrist', 'right_elbow', 'right_shoulder',
-            'hub', 'butt', 'clubhead'
+            "left_wrist",
+            "left_elbow",
+            "left_shoulder",
+            "right_wrist",
+            "right_elbow",
+            "right_shoulder",
+            "hub",
+            "butt",
+            "clubhead",
         ]
 
         # Lerp each position: result = a * (1 - t) + b * t
@@ -266,11 +280,11 @@ class SmoothPlaybackController(QObject):
 
     def _on_position_changed(self, value: float) -> None:
         """Called by QPropertyAnimation on every frame update.
-        
+
         Note: The position property setter handles the actual interpolation.
         This callback is required by Qt's signal/slot mechanism but has no
         additional work to perform.
-        
+
         Args:
             value: New position value from animation
         """
@@ -291,6 +305,7 @@ class SmoothPlaybackController(QObject):
 # INTEGRATION EXAMPLE
 # ============================================================================
 
+
 class MotionCaptureTabSmooth:
     """
     Example integration into existing MotionCaptureTab
@@ -300,7 +315,7 @@ class MotionCaptureTabSmooth:
 
     def __init__(self, parent=None) -> None:
         """Initialize MotionCaptureTab with smooth playback.
-        
+
         Args:
             parent: Optional parent widget
         """
@@ -339,7 +354,7 @@ class MotionCaptureTabSmooth:
 
     def _on_smooth_frame_updated(self, frame_data: FrameData) -> None:
         """Called on every interpolated frame update (60+ FPS!).
-        
+
         Args:
             frame_data: Interpolated frame data to render
         """
@@ -354,11 +369,13 @@ class MotionCaptureTabSmooth:
 
     def _on_position_changed(self, position: float) -> None:
         """Update UI when position changes.
-        
+
         Args:
             position: Current playback position
         """
-        total_frames = len(self.frame_processor.time_vector) if self.frame_processor else 0
+        total_frames = (
+            len(self.frame_processor.time_vector) if self.frame_processor else 0
+        )
 
         # Update frame label
         self.frame_label.setText(f"Frame: {position:.1f}/{total_frames}")
@@ -370,7 +387,7 @@ class MotionCaptureTabSmooth:
 
     def _on_slider_moved(self, value: int) -> None:
         """Handle manual slider movement (scrubbing).
-        
+
         Args:
             value: Slider value (frame index)
         """
@@ -379,7 +396,7 @@ class MotionCaptureTabSmooth:
 
     def _get_current_render_config(self) -> RenderConfig:
         """Get current render configuration from UI checkboxes.
-        
+
         Returns:
             RenderConfig object with current UI state
         """
