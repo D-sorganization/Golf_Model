@@ -209,7 +209,7 @@ def process(path, thresh=0.5):
 
 - Pin versions in `requirements.txt`
 - Use virtual environments (venv or conda)
-- Check for vulnerabilities: `pip-audit` (if available)
+- Check for vulnerabilities: use `pip-audit` or an equivalent tool
 
 ## 6. MATLAB-Specific Guidelines
 
