@@ -7,7 +7,8 @@ This guide provides best practices for using AI coding assistants (GitHub Copilo
 ## 1. Repository Structure Standards
 
 ### Python Project Structure
-```
+
+```text
 project_name/
 ├── README.md
 ├── requirements.txt
@@ -33,7 +34,8 @@ project_name/
 ```
 
 ### MATLAB Project Structure
-```
+
+```text
 matlab_project/
 ├── README.md
 ├── main.m
@@ -50,14 +52,16 @@ matlab_project/
 ## 2. AI Assistant Configuration
 
 ### GitHub Copilot
+
 - Configuration via `.github/copilot-instructions.md` (already set up in this repo)
 - Uses repository context automatically
 - Respects `.gitignore` patterns
 
 ### Cursor IDE
+
 Create a `.cursor-rules` file in your local workspace (not committed to repo):
 
-```
+```text
 # Python Development Rules
 - Use Python 3.11+ syntax and best practices
 - Follow PEP 8 style guidelines
@@ -92,6 +96,7 @@ Create a `.cursor-rules` file in your local workspace (not committed to repo):
 ## 3. Git Workflow Rules
 
 ### Branch Strategy
+
 - **main/master**: Production-ready code only
 - **develop**: Integration branch for features (if using)
 - **feature/**: Individual features (`feature/add-login-gui`)
@@ -99,9 +104,11 @@ Create a `.cursor-rules` file in your local workspace (not committed to repo):
 - **chore/**: Maintenance tasks (`chore/update-deps`)
 
 ### Commit Rules
+
 1. **Atomic commits**: One logical change per commit
 2. **Descriptive messages**: Use conventional commit format
-   ```
+
+   ```text
    type(scope): description
 
    Examples:
@@ -124,6 +131,7 @@ Create a `.cursor-rules` file in your local workspace (not committed to repo):
    - `perf`: Performance improvement
 
 ### Pre-Commit Checklist
+
 - [ ] Code runs without errors
 - [ ] All tests pass (`run_matlab_tests` or `pytest`)
 - [ ] No sensitive data (API keys, passwords)
@@ -134,6 +142,7 @@ Create a `.cursor-rules` file in your local workspace (not committed to repo):
 ## 4. AI Safety Guidelines
 
 ### Code Review Before Accepting
+
 1. **Always review suggestions** before accepting
 2. **Understand the code** - don't accept what you don't understand
 3. **Check for security issues**:
@@ -144,6 +153,7 @@ Create a `.cursor-rules` file in your local workspace (not committed to repo):
    - Path traversal vulnerabilities
 
 ### AI Usage Best Practices
+
 - Use AI for **boilerplate** and **common patterns**
 - **Verify algorithms** and complex logic manually
 - **Test generated code** thoroughly
@@ -152,6 +162,7 @@ Create a `.cursor-rules` file in your local workspace (not committed to repo):
 - **Don't blindly accept** large refactors without understanding
 
 ### What to Double-Check
+
 - **File operations**: Ensure proper path validation
 - **Database queries**: Check for SQL injection risks
 - **User input handling**: Validate and sanitize all inputs
@@ -162,6 +173,7 @@ Create a `.cursor-rules` file in your local workspace (not committed to repo):
 ## 5. Python-Specific Guidelines
 
 ### Code Style
+
 ```python
 # ✅ Good - Type hints, docstring, error handling
 def process_golf_data(file_path: Path, threshold: float = 0.5) -> pd.DataFrame:
@@ -194,6 +206,7 @@ def process(path, thresh=0.5):
 ```
 
 ### Dependencies
+
 - Pin versions in `requirements.txt`
 - Use virtual environments (venv or conda)
 - Check for vulnerabilities: `pip-audit` (if available)
@@ -201,6 +214,7 @@ def process(path, thresh=0.5):
 ## 6. MATLAB-Specific Guidelines
 
 ### Function Documentation
+
 ```matlab
 % ✅ Good - Clear documentation, input validation
 function results = analyzeSwingData(data, options)
@@ -238,6 +252,7 @@ end
 ```
 
 ### Path Management
+
 - Use `addpath(genpath(...))` sparingly
 - Prefer explicit path management
 - Clean up paths in cleanup functions
@@ -246,6 +261,7 @@ end
 ## 7. Testing Requirements
 
 ### Python Testing
+
 ```bash
 # Run all tests
 pytest
@@ -258,6 +274,7 @@ pytest tests/test_processing.py -v
 ```
 
 ### MATLAB Testing
+
 ```matlab
 % Run all tests
 cd matlab
@@ -270,6 +287,7 @@ runtests('tests/testSwingAnalysis.m')
 ## 8. Continuous Integration
 
 This repository uses GitHub Actions for CI. All PRs must pass:
+
 - Pre-commit hooks (ruff, mypy for Python)
 - Test suite (pytest for Python, run_matlab_tests for MATLAB)
 - Code quality checks
@@ -279,6 +297,7 @@ See `.github/workflows/` for workflow definitions.
 ## 9. Common Pitfalls
 
 ### Security
+
 - ❌ Never commit `.env` files with real credentials
 - ❌ Don't hardcode API keys or passwords
 - ❌ Avoid `eval()` or `exec()` with user input
@@ -287,6 +306,7 @@ See `.github/workflows/` for workflow definitions.
 - ✅ Use parameterized queries for databases
 
 ### Performance
+
 - ❌ Don't load entire datasets into memory unnecessarily
 - ❌ Avoid nested loops on large datasets (use vectorization)
 - ✅ Profile code before optimizing
@@ -294,6 +314,7 @@ See `.github/workflows/` for workflow definitions.
 - ✅ Cache expensive computations
 
 ### Maintenance
+
 - ❌ Don't leave commented-out code
 - ❌ Avoid magic numbers (use named constants)
 - ❌ Don't create functions with 10+ parameters
@@ -339,6 +360,7 @@ git push origin feature/your-feature
 ## 12. Emergency Procedures
 
 ### Accidentally Committed Sensitive Data
+
 ```bash
 # Remove file from history (use with caution)
 git filter-branch --force --index-filter \
@@ -349,6 +371,7 @@ git filter-branch --force --index-filter \
 ```
 
 ### Need to Undo Last Commit
+
 ```bash
 # Keep changes, undo commit
 git reset --soft HEAD~1
@@ -358,6 +381,7 @@ git reset --hard HEAD~1
 ```
 
 ### Broke the Build
+
 ```bash
 # Check what changed
 git diff main...HEAD
@@ -372,4 +396,5 @@ git revert <commit-sha>
 
 ---
 
-**Remember**: AI assistants are powerful tools, but you are responsible for the code you commit. Always review, test, and understand AI-generated code before merging.
+**Remember**: AI assistants are powerful tools, but you are responsible for the code you commit.
+Always review, test, and understand AI-generated code before merging.
