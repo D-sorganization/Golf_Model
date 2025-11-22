@@ -17,9 +17,17 @@ from typing import Tuple, Optional
 from dataclasses import dataclass
 from PyQt6.QtCore import QObject, pyqtSignal, QThread
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QComboBox, QSpinBox, QLineEdit,
-    QFileDialog, QProgressDialog, QMessageBox
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QComboBox,
+    QSpinBox,
+    QLineEdit,
+    QFileDialog,
+    QProgressDialog,
+    QMessageBox,
 )
 from golf_data_core import RenderConfig
 
@@ -65,7 +73,9 @@ class VideoExporter(QObject):
         try:
             # Validate ffmpeg is available
             if not self._check_ffmpeg():
-                self.error.emit("ffmpeg not found. Please install: sudo apt install ffmpeg")
+                self.error.emit(
+                    "ffmpeg not found. Please install: sudo apt install ffmpeg"
+                )
                 return
 
             # Get frame range
@@ -74,7 +84,9 @@ class VideoExporter(QObject):
             end_frame = min(total_frames, config.end_frame or total_frames)
             frames_to_export = range(start_frame, end_frame)
 
-            print(f"🎬 Exporting {len(frames_to_export)} frames to {config.output_path}")
+            print(
+                f"🎬 Exporting {len(frames_to_export)} frames to {config.output_path}"
+            )
             print(f"   Resolution: {config.resolution[0]}x{config.resolution[1]}")
             print(f"   FPS: {config.fps}")
             print(f"   Quality: {config.quality}")
@@ -109,7 +121,9 @@ class VideoExporter(QObject):
                 print(f"✅ Video exported successfully to {config.output_path}")
                 self.finished.emit(config.output_path)
             else:
-                error_msg = f"ffmpeg failed with return code {ffmpeg_process.returncode}"
+                error_msg = (
+                    f"ffmpeg failed with return code {ffmpeg_process.returncode}"
+                )
                 print(f"❌ {error_msg}")
                 self.error.emit(error_msg)
 
@@ -117,6 +131,7 @@ class VideoExporter(QObject):
             error_msg = f"Video export failed: {str(e)}"
             print(f"❌ {error_msg}")
             import traceback
+
             traceback.print_exc()
             self.error.emit(error_msg)
 
@@ -127,39 +142,51 @@ class VideoExporter(QObject):
 
         # Quality presets
         quality_settings = {
-            'draft': {'preset': 'ultrafast', 'crf': '28'},
-            'medium': {'preset': 'medium', 'crf': '23'},
-            'high': {'preset': 'slow', 'crf': '18'},
-            'lossless': {'preset': 'slow', 'crf': '0'},
+            "draft": {"preset": "ultrafast", "crf": "28"},
+            "medium": {"preset": "medium", "crf": "23"},
+            "high": {"preset": "slow", "crf": "18"},
+            "lossless": {"preset": "slow", "crf": "0"},
         }
 
-        settings = quality_settings.get(config.quality, quality_settings['high'])
+        settings = quality_settings.get(config.quality, quality_settings["high"])
 
         # Build ffmpeg command
         command = [
-            'ffmpeg',
-            '-y',  # Overwrite output file
-            '-f', 'rawvideo',
-            '-vcodec', 'rawvideo',
-            '-s', f'{width}x{height}',
-            '-pix_fmt', 'rgb24',
-            '-r', str(config.fps),
-            '-i', '-',  # Read from stdin
-            '-an',  # No audio
-            '-vcodec', 'libx264',
-            '-preset', settings['preset'],
-            '-crf', settings['crf'],
-            '-pix_fmt', 'yuv420p',  # Compatibility with most players
-            config.output_path
+            "ffmpeg",
+            "-y",  # Overwrite output file
+            "-f",
+            "rawvideo",
+            "-vcodec",
+            "rawvideo",
+            "-s",
+            f"{width}x{height}",
+            "-pix_fmt",
+            "rgb24",
+            "-r",
+            str(config.fps),
+            "-i",
+            "-",  # Read from stdin
+            "-an",  # No audio
+            "-vcodec",
+            "libx264",
+            "-preset",
+            settings["preset"],
+            "-crf",
+            settings["crf"],
+            "-pix_fmt",
+            "yuv420p",  # Compatibility with most players
+            config.output_path,
         ]
 
-        print(f"   Running ffmpeg with preset '{settings['preset']}', CRF {settings['crf']}")
+        print(
+            f"   Running ffmpeg with preset '{settings['preset']}', CRF {settings['crf']}"
+        )
 
         return subprocess.Popen(
             command,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            stderr=subprocess.PIPE,
         )
 
     def _render_frame_to_buffer(
@@ -196,7 +223,7 @@ class VideoExporter(QObject):
         view_position = np.array([0.0, 1.5, 3.0], dtype=np.float32)
 
         # Create offscreen framebuffer if needed
-        if not hasattr(self, '_fbo') or self._fbo_size != resolution:
+        if not hasattr(self, "_fbo") or self._fbo_size != resolution:
             self._create_offscreen_framebuffer(width, height)
 
         # Bind framebuffer and render
@@ -209,7 +236,7 @@ class VideoExporter(QObject):
             render_config,
             view_matrix,
             proj_matrix,
-            view_position
+            view_position,
         )
 
         # Read pixels from framebuffer
@@ -231,8 +258,7 @@ class VideoExporter(QObject):
         self._fbo_texture = ctx.texture((width, height), 3)
         self._fbo_depth = ctx.depth_renderbuffer((width, height))
         self._fbo = ctx.framebuffer(
-            color_attachments=[self._fbo_texture],
-            depth_attachment=self._fbo_depth
+            color_attachments=[self._fbo_texture], depth_attachment=self._fbo_depth
         )
         self._fbo_size = (width, height)
 
@@ -269,12 +295,15 @@ class VideoExporter(QObject):
 
         f = 1.0 / np.tan(np.radians(fov) / 2.0)
 
-        proj_matrix = np.array([
-            [f / aspect, 0, 0, 0],
-            [0, f, 0, 0],
-            [0, 0, (far + near) / (near - far), (2 * far * near) / (near - far)],
-            [0, 0, -1, 0]
-        ], dtype=np.float32)
+        proj_matrix = np.array(
+            [
+                [f / aspect, 0, 0, 0],
+                [0, f, 0, 0],
+                [0, 0, (far + near) / (near - far), (2 * far * near) / (near - far)],
+                [0, 0, -1, 0],
+            ],
+            dtype=np.float32,
+        )
 
         return proj_matrix
 
@@ -283,10 +312,10 @@ class VideoExporter(QObject):
         """Check if ffmpeg is available"""
         try:
             subprocess.run(
-                ['ffmpeg', '-version'],
+                ["ffmpeg", "-version"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                check=True
+                check=True,
             )
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
@@ -296,6 +325,7 @@ class VideoExporter(QObject):
 # ============================================================================
 # THREADED VIDEO EXPORT (Non-blocking UI)
 # ============================================================================
+
 
 class VideoExportThread(QThread):
     """
@@ -334,6 +364,7 @@ class VideoExportThread(QThread):
 # ============================================================================
 # UI DIALOG
 # ============================================================================
+
 
 class VideoExportDialog(QDialog):
     """
@@ -377,12 +408,9 @@ class VideoExportDialog(QDialog):
         res_layout = QHBoxLayout()
         res_layout.addWidget(QLabel("Resolution:"))
         self.res_combo = QComboBox()
-        self.res_combo.addItems([
-            "1280x720 (HD)",
-            "1920x1080 (Full HD)",
-            "2560x1440 (2K)",
-            "3840x2160 (4K)"
-        ])
+        self.res_combo.addItems(
+            ["1280x720 (HD)", "1920x1080 (Full HD)", "2560x1440 (2K)", "3840x2160 (4K)"]
+        )
         self.res_combo.setCurrentIndex(1)  # Default to 1080p
         res_layout.addWidget(self.res_combo)
         layout.addLayout(res_layout)
@@ -401,12 +429,14 @@ class VideoExportDialog(QDialog):
         quality_layout = QHBoxLayout()
         quality_layout.addWidget(QLabel("Quality:"))
         self.quality_combo = QComboBox()
-        self.quality_combo.addItems([
-            "Draft (Fast, Large File)",
-            "Medium (Balanced)",
-            "High (Slow, Best Quality)",
-            "Lossless (Very Slow, Huge File)"
-        ])
+        self.quality_combo.addItems(
+            [
+                "Draft (Fast, Large File)",
+                "Medium (Balanced)",
+                "High (Slow, Best Quality)",
+                "Lossless (Very Slow, Huge File)",
+            ]
+        )
         self.quality_combo.setCurrentIndex(2)  # Default to high
         quality_layout.addWidget(self.quality_combo)
         layout.addLayout(quality_layout)
@@ -416,7 +446,9 @@ class VideoExportDialog(QDialog):
             "\n💡 Tip: 60 FPS High quality recommended for smooth playback.\n"
             "Higher resolutions and frame rates will take longer to export."
         )
-        info.setStyleSheet("color: #666; padding: 10px; background-color: #f9f9f9; border-radius: 4px;")
+        info.setStyleSheet(
+            "color: #666; padding: 10px; background-color: #f9f9f9; border-radius: 4px;"
+        )
         layout.addWidget(info)
 
         # Buttons
@@ -434,10 +466,7 @@ class VideoExportDialog(QDialog):
     def _browse_output_file(self):
         """Browse for output file"""
         filename, _ = QFileDialog.getSaveFileName(
-            self,
-            "Save Video As",
-            "golf_swing.mp4",
-            "Video Files (*.mp4 *.avi *.mov)"
+            self, "Save Video As", "golf_swing.mp4", "Video Files (*.mp4 *.avi *.mov)"
         )
 
         if filename:
@@ -469,7 +498,7 @@ class VideoExportDialog(QDialog):
             output_path=self.file_input.text(),
             fps=self.fps_spin.value(),
             resolution=resolution,
-            quality=quality
+            quality=quality,
         )
 
         # Close dialog
@@ -477,11 +506,7 @@ class VideoExportDialog(QDialog):
 
         # Show progress dialog
         progress_dialog = QProgressDialog(
-            "Exporting video...",
-            "Cancel",
-            0,
-            100,
-            self.parent()
+            "Exporting video...", "Cancel", 0, 100, self.parent()
         )
         progress_dialog.setWindowTitle("Video Export")
         progress_dialog.setWindowModality(2)  # Application modal
@@ -489,9 +514,7 @@ class VideoExportDialog(QDialog):
 
         # Start export thread
         self.export_thread = VideoExportThread(
-            self.renderer,
-            self.frame_processor,
-            config
+            self.renderer, self.frame_processor, config
         )
 
         # Connect signals
@@ -522,7 +545,7 @@ class VideoExportDialog(QDialog):
             self.parent(),
             "Export Complete",
             f"Video exported successfully!\n\n{output_path}\n\n"
-            f"You can now play the video in any media player."
+            f"You can now play the video in any media player.",
         )
 
     def _on_export_error(self, progress_dialog, error_msg):
@@ -533,7 +556,7 @@ class VideoExportDialog(QDialog):
             self.parent(),
             "Export Failed",
             f"Video export failed:\n\n{error_msg}\n\n"
-            f"Make sure ffmpeg is installed:\nsudo apt install ffmpeg"
+            f"Make sure ffmpeg is installed:\nsudo apt install ffmpeg",
         )
 
 

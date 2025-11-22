@@ -223,10 +223,14 @@ def main():
         if not passed:
             all_passed = False
 
-    print(f"\nOverall: {'✅ ALL TESTS PASSED' if all_passed else '❌ SOME TESTS FAILED'}")
+    print(
+        f"\nOverall: {'✅ ALL TESTS PASSED' if all_passed else '❌ SOME TESTS FAILED'}"
+    )
 
     if all_passed:
-        print("\n🎉 The GUI should be compatible with the current signal bus structure!")
+        print(
+            "\n🎉 The GUI should be compatible with the current signal bus structure!"
+        )
         print("Recommendations:")
         print("1. The current data structure appears to be compatible")
         print(
