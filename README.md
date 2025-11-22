@@ -104,7 +104,7 @@ cd matlab/Scripts/Golf_GUI
 All code changes are automatically checked with:
 
 - **Ruff** (Python linting and formatting)
-- **mypy** (Python type checking)  
+- **mypy** (Python type checking)
 - **pre-commit hooks** (automated checks before commit)
 - **CI/CD pipeline** (GitHub Actions on push/PR)
 

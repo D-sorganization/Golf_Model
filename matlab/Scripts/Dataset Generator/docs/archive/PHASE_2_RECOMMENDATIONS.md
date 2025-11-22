@@ -1,6 +1,6 @@
 # Phase 2 Recommendations - Safe Reconciliation Strategy
-**Date:** 2025-10-31  
-**Branch:** `fix/gui-and-dataset-cleanup`  
+**Date:** 2025-10-31
+**Branch:** `fix/gui-and-dataset-cleanup`
 **Status:** 📋 READY FOR DECISION
 
 ## Critical Finding ⚠️
@@ -31,7 +31,7 @@ This means:
 if config.use_simscape && isfield(simOut, 'simlog') && ~isempty(simOut.simlog)
     fprintf('Extracting additional Simscape data...\n');
     simscape_data = extractSimscapeDataRecursive(simOut.simlog);
-    
+
     if ~isempty(simscape_data) && width(simscape_data) > 1
         % Merge Simscape data with main data
         data_table = [data_table, simscape_data(:, 2:end)]; % Skip time column
@@ -40,7 +40,7 @@ if config.use_simscape && isfield(simOut, 'simlog') && ~isempty(simOut.simlog)
 end
 ```
 
-**Impact:**  
+**Impact:**
 - ⚠️ **Dataset_GUI version does ADDITIONAL Simscape data extraction**
 - ⚠️ This could be **critical for reaching 1956 column target**
 - ⚠️ Standalone version **lacks this functionality**
@@ -57,35 +57,35 @@ end
 ```matlab
 function result = processSimulationOutput(trial_num, config, simOut, capture_workspace)
     result = struct('success', false, 'filename', '', 'data_points', 0, 'columns', 0);
-    
+
     try
         fprintf('Processing simulation output for trial %d...\n', trial_num);
-        
+
         % ADD from standalone: Ensure enhanced config
         config = ensureEnhancedConfig(config);
-        
+
         % ADD from standalone: Diagnostic call (if verbose)
         if isfield(config, 'verbose') && config.verbose
             diagnoseDataExtraction(simOut, config);
         end
-        
+
         % Extract data using the enhanced signal extraction system
         options = struct();
         options.extract_combined_bus = config.use_signal_bus;
         options.extract_logsout = config.use_logsout;
         options.extract_simscape = config.use_simscape;
         options.verbose = isfield(config, 'verbose') && config.verbose; % CHANGED: respect config
-        
+
         [data_table, ~] = extractSignalsFromSimOut(simOut, options);
-        
+
         % KEEP: ENHANCED Simscape extraction (CRITICAL - from Dataset_GUI)
         if config.use_simscape && isfield(simOut, 'simlog') && ~isempty(simOut.simlog)
             fprintf('Extracting additional Simscape data...\n');
             simscape_data = extractSimscapeDataRecursive(simOut.simlog);
-            
+
             if ~isempty(simscape_data) && width(simscape_data) > 1
                 fprintf('Found %d additional Simscape columns\n', width(simscape_data) - 1);
-                
+
                 if height(simscape_data) == height(data_table)
                     data_table = [data_table, simscape_data(:, 2:end)];
                     fprintf('Merged Simscape data: %d total columns\n', width(data_table));
@@ -96,9 +96,9 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
                 fprintf('No additional Simscape data found\n');
             end
         end
-        
+
         % ... rest of function stays same ...
-        
+
         % ADD from standalone: 1956 column target reporting
         fprintf('Trial %d completed: %d data points, %d columns\n', trial_num, num_rows, width(data_table));
         if width(data_table) >= 1956
@@ -107,7 +107,7 @@ function result = processSimulationOutput(trial_num, config, simOut, capture_wor
             fprintf('✗ Trial %d: Target 1956 columns MISSED (%d columns, need %d more)\n', ...
                 trial_num, width(data_table), 1956 - width(data_table));
         end
-        
+
     catch ME
         % ... error handling ...
     end
@@ -130,7 +130,7 @@ end
 
 #### Comparison
 
-**Dataset_GUI approach:** Simple, direct, explicit  
+**Dataset_GUI approach:** Simple, direct, explicit
 **Standalone approach:** More sophisticated, uses helper functions
 
 #### Column Naming Test Needed
@@ -338,5 +338,3 @@ If even Step 1 seems risky, we can take an even safer approach:
 - Risk: NONE
 
 **Which approach do you prefer?**
-
-

@@ -22,22 +22,22 @@ fprintf('Launching MATLAB Code Issues Analyzer...\n');
 try
     % Launch the GUI with sensible defaults
     results = codeIssuesGUI('ShowProgress', true, 'AutoSave', false);
-    
+
     if ~isempty(results) && height(results) > 0
         fprintf('\nAnalysis Results Summary:\n');
         fprintf('========================\n');
         fprintf('Total issues found: %d\n', height(results));
-        
+
         % Show breakdown by file
         if height(results) > 0
             uniqueFiles = unique(results.RelFile);
             fprintf('Files analyzed: %d\n', length(uniqueFiles));
-            
+
             % Show top issue types
             if height(results) > 0
                 uniqueIds = unique(results.Identifier);
                 fprintf('Issue types found: %d\n', length(uniqueIds));
-                
+
                 % Count issues by type
                 [counts, ids] = countIssueTypes(results);
                 fprintf('\nTop issue types:\n');
@@ -46,10 +46,10 @@ try
                 end
             end
         end
-        
+
         fprintf('\nTip: Results are also returned as a table variable.\n');
         fprintf('     Use assignin(''base'', ''codeIssues'', results) to save to workspace.\n');
-        
+
         % Optionally assign to base workspace
         try
             assignin('base', 'codeAnalysisResults', results);
@@ -57,11 +57,11 @@ try
         catch
             % Silent fail if workspace assignment doesn't work
         end
-        
+
     else
         fprintf('No issues found or analysis was cancelled.\n');
     end
-    
+
 catch ME
     fprintf('Error during code analysis: %s\n', ME.message);
     rethrow(ME);

@@ -50,4 +50,3 @@ This directory contains historical documentation files that are no longer active
 ## Note
 
 These files are preserved for historical reference. For current documentation, see the main `docs/` directory.
-

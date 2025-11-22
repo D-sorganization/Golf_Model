@@ -579,40 +579,38 @@ class VideoExportDialog:
 # ============================================================================
 # QUICK INTEGRATION SNIPPET
 # ============================================================================
-
-"""
+#
 # Add to golf_gui_application.py:
-
+#
 # In _setup_menu():
-export_menu = menubar.addMenu("Export")
-export_video_action = QAction("Export Video...", self)
-export_video_action.setShortcut("Ctrl+E")
-export_video_action.triggered.connect(self._export_video)
-export_menu.addAction(export_video_action)
-
+# export_menu = menubar.addMenu("Export")
+# export_video_action = QAction("Export Video...", self)
+# export_video_action.setShortcut("Ctrl+E")
+# export_video_action.triggered.connect(self._export_video)
+# export_menu.addAction(export_video_action)
+#
 # Add method to GolfVisualizerMainWindow:
-def _export_video(self):
-    '''Export current animation to video'''
-    if not hasattr(self, 'motion_capture_tab'):
-        return
-
-    tab = self.motion_capture_tab
-
-    if not tab.frame_processor or not tab.opengl_widget.renderer:
-        QMessageBox.warning(
-            self,
-            "No Data",
-            "Please load motion capture data first."
-        )
-        return
-
-    dialog = VideoExportDialog(
-        self,
-        tab.opengl_widget.renderer,
-        tab.frame_processor
-    )
-    dialog.show_export_dialog()
-"""
+# def _export_video(self):
+#     '''Export current animation to video'''
+#     if not hasattr(self, 'motion_capture_tab'):
+#         return
+#
+#     tab = self.motion_capture_tab
+#
+#     if not tab.frame_processor or not tab.opengl_widget.renderer:
+#         QMessageBox.warning(
+#             self,
+#             "No Data",
+#             "Please load motion capture data first."
+#         )
+#         return
+#
+#     dialog = VideoExportDialog(
+#         self,
+#         tab.opengl_widget.renderer,
+#         tab.frame_processor
+#     )
+#     dialog.show_export_dialog()
 
 
 if __name__ == "__main__":

@@ -52,7 +52,9 @@ class MATLABQualityChecker:
             True if MATLAB files are found, False otherwise
         """
         if not self.matlab_dir.exists():
-            logger.info(f"MATLAB directory not found: {self.matlab_dir} (skipping MATLAB checks)")
+            logger.info(
+                f"MATLAB directory not found: {self.matlab_dir} (skipping MATLAB checks)"
+            )
             return False
 
         m_files = list(self.matlab_dir.rglob("*.m"))
@@ -218,13 +220,16 @@ class MATLABQualityChecker:
                 if not is_comment:
                     # Check for keywords that increase nesting
                     # Note: arguments, properties, methods, events also have 'end'
-                    if re.match(r'\b(function|if|for|while|switch|try|parfor|classdef|arguments|properties|methods|events)\b', line_stripped):
+                    if re.match(
+                        r"\b(function|if|for|while|switch|try|parfor|classdef|arguments|properties|methods|events)\b",
+                        line_stripped,
+                    ):
                         if line_stripped.startswith("function"):
                             in_function = True
                         nesting_level += 1
 
                     # Check for 'end' keyword that decreases nesting
-                    if re.match(r'\bend\b', line_stripped):
+                    if re.match(r"\bend\b", line_stripped):
                         nesting_level -= 1
                         if nesting_level <= 0:
                             in_function = False
@@ -300,7 +305,10 @@ class MATLABQualityChecker:
                     )
 
                 # Check for load without output (loads into workspace)
-                if re.search(r"^\s*load\s+\w+", line_stripped) and "=" not in line_stripped:
+                if (
+                    re.search(r"^\s*load\s+\w+", line_stripped)
+                    and "=" not in line_stripped
+                ):
                     issues.append(
                         f"{file_path.name} (line {i}): load without output variable - use 'data = load(...)' instead"
                     )
@@ -312,8 +320,20 @@ class MATLABQualityChecker:
 
                 # Known acceptable values
                 acceptable_numbers = {
-                    "0.0", "0.5", "1.0", "2.0", "3.0", "4.0", "5.0", "10.0", "100.0", "1000.0",
-                    "0.1", "0.01", "0.001", "0.0001",  # Common tolerances
+                    "0.0",
+                    "0.5",
+                    "1.0",
+                    "2.0",
+                    "3.0",
+                    "4.0",
+                    "5.0",
+                    "10.0",
+                    "100.0",
+                    "1000.0",
+                    "0.1",
+                    "0.01",
+                    "0.001",
+                    "0.0001",  # Common tolerances
                 }
 
                 # Known physics constants (should be defined but at least flag with context)
@@ -340,7 +360,9 @@ class MATLABQualityChecker:
                         # Check if the number appears before a comment on same line
                         comment_idx = line_original.find("%")
                         num_idx = line_original.find(num)
-                        if comment_idx == -1 or (num_idx != -1 and num_idx < comment_idx):
+                        if comment_idx == -1 or (
+                            num_idx != -1 and num_idx < comment_idx
+                        ):
                             issues.append(
                                 f"{file_path.name} (line {i}): Magic number {num} should be defined as constant with units and source"
                             )
@@ -396,21 +418,21 @@ class MATLABQualityChecker:
 
         if "error" in matlab_results:
             self.results["passed"] = False
-            self.results[
-                "summary"
-            ] = f"MATLAB quality checks failed: {matlab_results['error']}"
+            self.results["summary"] = (
+                f"MATLAB quality checks failed: {matlab_results['error']}"
+            )
             self.results["checks"]["matlab"] = matlab_results
         else:
             self.results["checks"]["matlab"] = matlab_results
             if matlab_results.get("passed", False):
-                self.results[
-                    "summary"
-                ] = f"[PASS] MATLAB quality checks PASSED ({self.results['total_files']} files checked)"
+                self.results["summary"] = (
+                    f"[PASS] MATLAB quality checks PASSED ({self.results['total_files']} files checked)"
+                )
             else:
                 self.results["passed"] = False
-                self.results[
-                    "summary"
-                ] = f"[FAIL] MATLAB quality checks FAILED ({self.results['total_files']} files checked)"
+                self.results["summary"] = (
+                    f"[FAIL] MATLAB quality checks FAILED ({self.results['total_files']} files checked)"
+                )
 
         return self.results
 

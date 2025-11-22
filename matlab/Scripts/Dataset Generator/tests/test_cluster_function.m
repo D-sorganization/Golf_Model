@@ -20,7 +20,7 @@ try
         fprintf('✗ performance_optimizer_functions.m not found\n');
         return;
     end
-    
+
     % Test 2: Check if initializeLocalCluster function exists
     if exist('initializeLocalCluster', 'file')
         fprintf('✓ initializeLocalCluster function found\n');
@@ -28,17 +28,17 @@ try
         fprintf('✗ initializeLocalCluster function not found\n');
         return;
     end
-    
+
     % Test 3: Try to call the function with a simple config
     fprintf('\nTesting function call...\n');
-    
+
     % Create a simple test config
     test_config = struct();
     test_config.max_parallel_workers = 4;
-    
+
     % Call the function
     cluster_info = initializeLocalCluster(test_config);
-    
+
     % Check the result
     if isstruct(cluster_info)
         fprintf('✓ Function call successful\n');
@@ -52,9 +52,9 @@ try
     else
         fprintf('✗ Function returned invalid result type: %s\n', class(cluster_info));
     end
-    
+
     fprintf('\n✓ All tests passed! The cluster function is now accessible.\n');
-    
+
 catch ME
     fprintf('✗ Error during testing: %s\n', ME.message);
     fprintf('Stack trace:\n');

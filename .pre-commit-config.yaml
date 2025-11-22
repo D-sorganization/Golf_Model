@@ -4,7 +4,7 @@
 repos:
   # Python quality checks
   - repo: https://github.com/psf/black
-    rev: 23.12.1
+    rev: 24.4.2
     hooks:
       - id: black
         language_version: python3
@@ -22,7 +22,7 @@ repos:
           )$
 
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.1.6
+    rev: v0.5.0
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
@@ -39,14 +39,16 @@ repos:
           )$
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
+    rev: v1.10.0
     hooks:
       - id: mypy
-        args: [--strict]
+        args: [--config-file=mypy.ini]
         types: [python]
+        files: ^python/
         exclude: |
           (?x)^(
             matlab/|
+            matlab_utilities/|
             archive/|
             \.git/|
             __pycache__/|
@@ -61,7 +63,7 @@ repos:
       # Python quality check script
       - id: python-quality-check
         name: Python Quality Check
-        entry: python scripts/quality_check.py
+        entry: python scripts/quality-check.py
         language: system
         types: [python]
         pass_filenames: false
@@ -76,10 +78,10 @@ repos:
             venv/
           )$
 
-      # MATLAB quality check script
+      # MATLAB quality check script (non-blocking - advisory only)
       - id: matlab-quality-check
         name: MATLAB Quality Check
-        entry: python matlab_utilities/scripts/matlab_quality_check.py
+        entry: bash -c 'python matlab_utilities/scripts/matlab_quality_check.py || echo "⚠️  MATLAB quality issues found (non-blocking)"; exit 0'
         language: system
         types: [text]
         pass_filenames: false

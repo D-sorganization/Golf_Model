@@ -59,7 +59,7 @@ end
 try
     cluster_obj = parcluster(cluster_profile);
     fprintf('Using cluster profile: %s\n', cluster_profile);
-    
+
     % Check if cluster supports the requested number of workers
     if isfield(cluster_obj, 'NumWorkers') && cluster_obj.NumWorkers > 0
         cluster_max_workers = cluster_obj.NumWorkers;
@@ -69,17 +69,17 @@ try
     else
         num_workers = max_workers;
     end
-    
+
     fprintf('Starting parallel pool with %d workers using %s profile...\n', num_workers, cluster_profile);
-    
+
     % Start parallel pool with specified cluster profile
     parpool(cluster_obj, num_workers);
     fprintf('Successfully started parallel pool with %s profile (%d workers)\n', cluster_profile, num_workers);
-    
+
 catch ME
     fprintf('Failed to use cluster profile %s: %s\n', cluster_profile, ME.message);
     fprintf('Falling back to local profile...\n');
-    
+
     % Fallback to local profile
     temp_cluster = parcluster('local');
     fallback_workers = min(max_workers, temp_cluster.NumWorkers);

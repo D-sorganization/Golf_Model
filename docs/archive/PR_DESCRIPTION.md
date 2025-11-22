@@ -4,7 +4,7 @@
 
 This PR consolidates all GUI enhancements including:
 - Tabbed GUI framework with embedded visualization
-- Python smooth playback (60+ FPS) and video export  
+- Python smooth playback (60+ FPS) and video export
 - MATLAB playback optimization (33→40 FPS)
 - Comprehensive documentation and testing
 
@@ -185,4 +185,3 @@ git checkout backup/standalone-oct29-2025
 **Ready to merge!** ✅
 
 This is a production-ready enhancement that maintains full backward compatibility while adding significant new capabilities.
-

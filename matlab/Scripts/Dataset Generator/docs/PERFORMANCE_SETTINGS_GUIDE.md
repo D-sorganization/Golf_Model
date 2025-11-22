@@ -45,7 +45,7 @@ The Performance Settings tab in the Enhanced Golf Swing Data Generator GUI provi
 ### Setup Local Cluster
 - **Purpose**: Creates the Local_Cluster profile if it doesn't exist
 - **When to use**: Run this first if you get cluster-related errors
-- **What it does**: 
+- **What it does**:
   - Checks if Local_Cluster profile exists
   - Creates it from the default 'local' profile if missing
   - Configures it with the maximum number of available cores
@@ -147,6 +147,6 @@ If you encounter issues:
 
 ---
 
-**Last Updated**: August 2025  
-**Version**: Enhanced GUI with Performance Tab  
+**Last Updated**: August 2025
+**Version**: Enhanced GUI with Performance Tab
 **Compatibility**: MATLAB R2020b+ with Parallel Computing Toolbox

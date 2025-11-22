@@ -44,7 +44,7 @@ if allFound
         help('codeIssuesGUI');
         help('launchCodeAnalyzer');
         fprintf('\n✓ All functions accessible\n');
-        
+
         % Test that we can create an empty results table
         testResults = exportCodeIssues(tempname(), 'Quiet', true);
         if istable(testResults)
@@ -53,7 +53,7 @@ if allFound
             fprintf('✗ Core functionality test failed\n');
             allFound = false;
         end
-        
+
     catch ME
         fprintf('✗ Function verification failed: %s\n', ME.message);
         allFound = false;
@@ -68,7 +68,7 @@ if allFound
     fprintf('\nTo see help for any function, use:\n');
     fprintf('   help codeIssuesGUI\n');
     fprintf('   help exportCodeIssues\n');
-    
+
     % Save path for future sessions (optional)
     try
         savepath();

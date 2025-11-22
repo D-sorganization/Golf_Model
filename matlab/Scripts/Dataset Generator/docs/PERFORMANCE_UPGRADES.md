@@ -41,7 +41,7 @@ This branch implements comprehensive performance optimizations for the Golf Swin
 
 ### Performance Profiles:
 - **Simple Model**: ~0.5s simulation, ~0.2s extraction, ~50MB memory
-- **Complex Model**: ~2.0s simulation, ~1.0s extraction, ~200MB memory  
+- **Complex Model**: ~2.0s simulation, ~1.0s extraction, ~200MB memory
 - **Very Complex Model**: ~5.0s simulation, ~3.0s extraction, ~500MB memory
 
 ## 🔧 New Features
