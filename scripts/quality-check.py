@@ -104,7 +104,7 @@ def is_quality_check_script(filepath: Path) -> bool:
         "quality-check.py",
         "quality_check.py",
         "quality_check_script.py",
-    ] or ("quality" in str(filepath) and "check" in str(filepath))
+    ] or "quality_check" in str(filepath)
 
 
 def check_banned_patterns(
