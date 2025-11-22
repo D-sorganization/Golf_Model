@@ -42,8 +42,9 @@ repos:
     rev: v1.10.0
     hooks:
       - id: mypy
-        args: [--config-file=mypy.ini, --exclude, '^matlab/', --exclude, '^matlab_utilities/']
+        args: [--config-file=mypy.ini]
         types: [python]
+        files: ^python/
         exclude: |
           (?x)^(
             matlab/|
