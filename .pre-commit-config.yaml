@@ -43,12 +43,13 @@ repos:
     hooks:
       - id: mypy
         args: [--config-file=mypy.ini]
-        types: [python]
-        files: ^python/
+        types: [python]  # Only Python files - MyPy won't check JavaScript/TypeScript
+        files: ^python/  # Only python/ directory
         exclude: |
           (?x)^(
             matlab/|
             matlab_utilities/|
+            javascript/|  # Future-proof: exclude JS/TS directories
             archive/|
             \.git/|
             __pycache__/|
