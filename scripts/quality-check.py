@@ -98,6 +98,15 @@ def is_legitimate_pass_context(lines: list[str], line_num: int) -> bool:
     )
 
 
+def is_quality_check_script(filepath: Path) -> bool:
+    """Check if a filepath is a quality check script (all variants)."""
+    return filepath.name in [
+        "quality-check.py",
+        "quality_check.py",
+        "quality_check_script.py",
+    ] or ("quality" in str(filepath) and "check" in str(filepath))
+
+
 def check_banned_patterns(
     lines: list[str],
     filepath: Path,
@@ -105,11 +114,7 @@ def check_banned_patterns(
     """Check for banned patterns in lines."""
     issues: list[tuple[int, str, str]] = []
     # Skip checking this file for its own patterns
-    if filepath.name in [
-        "quality-check.py",
-        "quality_check.py",
-        "quality_check_script.py",
-    ] or "quality" in str(filepath) and "check" in str(filepath):
+    if is_quality_check_script(filepath):
         return issues
 
     for line_num, line in enumerate(lines, 1):
@@ -138,11 +143,7 @@ def check_magic_numbers(lines: list[str], filepath: Path) -> list[tuple[int, str
     """Check for magic numbers in lines."""
     issues: list[tuple[int, str, str]] = []
     # Skip checking this file for magic numbers
-    if filepath.name in [
-        "quality-check.py",
-        "quality_check.py",
-        "quality_check_script.py",
-    ] or "quality" in str(filepath) and "check" in str(filepath):
+    if is_quality_check_script(filepath):
         return issues
     for line_num, line in enumerate(lines, 1):
         line_content = line[: line.index("#")] if "#" in line else line
@@ -215,10 +216,7 @@ def main() -> None:
     ]
 
     # Exclude quality check scripts from being checked (all variants)
-    python_files = [
-        f for f in python_files
-        if not (("quality" in str(f) and "check" in str(f)) or f.name in ["quality-check.py", "quality_check.py", "quality_check_script.py"])
-    ]
+    python_files = [f for f in python_files if not is_quality_check_script(f)]
 
     all_issues = []
     for filepath in python_files:
