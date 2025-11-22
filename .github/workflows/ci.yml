@@ -1,9 +1,10 @@
-name: CI
+name: CI - Build and Test
 
 on:
   pull_request:
+    branches: [ main, master, copilot/* ]
   push:
-    branches: [ main ]
+    branches: [ main, master, copilot/* ]
 
 jobs:
   lint-and-test:
@@ -23,27 +24,28 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/*requirements*.txt', '**/pyproject.toml', '**/setup.py') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
       - name: Install CI tools
         run: |
           python -m pip install --upgrade pip
-          pip install pre-commit pytest
+          pip install pre-commit==3.5.0 pytest==8.3.3 pytest-cov==6.0.0
 
-      - name: Install project deps (optional)
+      - name: Install project deps
         run: |
-          if [ -f python/requirements.txt ]; then pip install -r python/requirements.txt || true; fi
-          if [ -f requirements.txt ]; then pip install -r requirements.txt || true; fi
+          if [ -f python/requirements.txt ]; then pip install -r python/requirements.txt; fi
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run MATLAB Quality Check (Static Analysis)
+        continue-on-error: true  # Non-blocking due to MATLAB license restrictions
         run: |
           echo "=========================================="
           echo "MATLAB Code Quality Checks"
           echo "=========================================="
-          python matlab_utilities/scripts/matlab_quality_check.py --output-format json > matlab_quality_results.json || true
-          python matlab_utilities/scripts/matlab_quality_check.py --output-format text || echo "⚠️  Quality issues found - see report above (non-blocking)"
+          python matlab_utilities/scripts/matlab_quality_check.py --output-format json > matlab_quality_results.json
+          python matlab_utilities/scripts/matlab_quality_check.py --output-format text
 
       - name: Upload MATLAB Quality Report
         if: always()
@@ -54,7 +56,7 @@ jobs:
           retention-days: 30
 
       - name: Run pre-commit (ruff/black/isort/mypy/etc.)
-        run: pre-commit run --all-files
+        run: pre-commit run --all-files || exit 1
 
       - name: Run pytest (headless-safe)
         env:
