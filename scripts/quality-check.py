@@ -106,9 +106,10 @@ def check_banned_patterns(
     issues: list[tuple[int, str, str]] = []
     # Skip checking this file for its own patterns
     if filepath.name in [
-        "quality_check_script.py",
+        "quality-check.py",
         "quality_check.py",
-    ] or "quality_check" in str(filepath):
+        "quality_check_script.py",
+    ] or "quality" in str(filepath) and "check" in str(filepath):
         return issues
 
     for line_num, line in enumerate(lines, 1):
@@ -138,9 +139,10 @@ def check_magic_numbers(lines: list[str], filepath: Path) -> list[tuple[int, str
     issues: list[tuple[int, str, str]] = []
     # Skip checking this file for magic numbers
     if filepath.name in [
-        "quality_check_script.py",
+        "quality-check.py",
         "quality_check.py",
-    ] or "quality_check" in str(filepath):
+        "quality_check_script.py",
+    ] or "quality" in str(filepath) and "check" in str(filepath):
         return issues
     for line_num, line in enumerate(lines, 1):
         line_content = line[: line.index("#")] if "#" in line else line
@@ -212,8 +214,11 @@ def main() -> None:
         f for f in python_files if not any(part in exclude_dirs for part in f.parts)
     ]
 
-    # Exclude quality check scripts from being checked
-    python_files = [f for f in python_files if "quality_check" not in str(f)]
+    # Exclude quality check scripts from being checked (all variants)
+    python_files = [
+        f for f in python_files
+        if not (("quality" in str(f) and "check" in str(f)) or f.name in ["quality-check.py", "quality_check.py", "quality_check_script.py"])
+    ]
 
     all_issues = []
     for filepath in python_files:
