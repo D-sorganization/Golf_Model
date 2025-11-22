@@ -56,7 +56,7 @@ repos:
             \.pytest_cache/|
             \.venv/|
             venv/
-          )$
+          )
 
   # Custom quality checks
   - repo: local
