@@ -179,24 +179,24 @@ Create a `.cursor-rules` file in your local workspace (not committed to repo):
 def process_golf_data(file_path: Path, threshold: float = 0.5) -> pd.DataFrame:
     """
     Process golf swing data from CSV file.
-    
+
     Args:
         file_path: Path to input CSV file
         threshold: Minimum confidence threshold (0-1)
-        
+
     Returns:
         Processed DataFrame with filtered data
-        
+
     Raises:
         FileNotFoundError: If input file doesn't exist
         ValueError: If threshold is out of range
     """
     if not file_path.exists():
         raise FileNotFoundError(f"Data file not found: {file_path}")
-    
+
     if not 0 <= threshold <= 1:
         raise ValueError(f"Threshold must be 0-1, got {threshold}")
-    
+
     df = pd.read_csv(file_path)
     return df[df['confidence'] >= threshold]
 
@@ -234,13 +234,13 @@ function results = analyzeSwingData(data, options)
     %   Example:
     %       opts.smoothing = true;
     %       results = analyzeSwingData(swingData, opts);
-    
+
     arguments
         data struct
         options.smoothing (1,1) logical = true
         options.plotResults (1,1) logical = false
     end
-    
+
     % Function implementation
     % ...
 end

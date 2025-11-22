@@ -3,28 +3,28 @@
     "description": "Golf swing analysis and simulation model with MATLAB and Python components",
     "language": "python",
     "framework": "matlab",
-    
+
     "cursor_rules": {
         "enforcement": "strict",
         "rules_file": ".cursor/rules/.cursorrules.md",
         "require_rules_acknowledgment": true,
         "pre_work_validation": true
     },
-    
+
     "project_structure": {
         "enforcement": "strict",
         "validation_required": true,
         "auto_check_structure": true,
         "file_organization": "enforced"
     },
-    
+
     "workflow": {
         "pre_work_checklist": true,
         "require_structure_check": true,
         "mandatory_rules_read": true,
         "file_placement_validation": true
     },
-    
+
     "file_organization": {
         "matlab_files": "matlab/",
         "python_files": "python/",
@@ -33,14 +33,14 @@
         "test_files": "matlab/tests/",
         "gui_files": "matlab/2D GUI/ and matlab/Golf Swing Model/Scripts/Simulation_Dataset_GUI/"
     },
-    
+
     "enforcement_rules": {
         "no_file_creation_without_rules": true,
         "require_directory_verification": true,
         "enforce_naming_conventions": true,
         "prevent_wrong_location_creation": true
     },
-    
+
     "preferences": {
         "coding_style": "pep8",
         "documentation_style": "google",
@@ -48,13 +48,13 @@
         "matlab_style": "consistent_naming",
         "file_organization": "strict"
     },
-    
+
     "components": {
         "matlab": "Golf swing simulation and analysis scripts",
         "python": "Data processing and quality check tools",
         "gui": "2D and 3D visualization interfaces"
     },
-    
+
     "validation_requirements": {
         "before_any_work": [
             "read_complete_cursorrules",
@@ -74,14 +74,14 @@
             "maintain_organization"
         ]
     },
-    
+
     "error_prevention": {
         "block_wrong_directory_creation": true,
         "require_structure_understanding": true,
         "enforce_rules_compliance": true,
         "prevent_organization_violations": true
     },
-    
+
     "compliance_tracking": {
         "log_rules_acknowledgment": true,
         "track_file_organization": true,

@@ -19,21 +19,21 @@ end
 % Test 2: Try to call initializeLocalCluster directly
 try
     fprintf('Testing initializeLocalCluster...\n');
-    
+
     % Create a simple test config
     test_config = struct();
     test_config.max_parallel_workers = 4;
-    
+
     % Call the function
     cluster_info = initializeLocalCluster(test_config);
-    
+
     if isstruct(cluster_info)
         fprintf('✓ initializeLocalCluster call successful\n');
         fprintf('  Status: %s\n', cluster_info.status);
     else
         fprintf('✗ initializeLocalCluster returned invalid result\n');
     end
-    
+
 catch ME
     fprintf('✗ Error calling initializeLocalCluster: %s\n', ME.message);
     fprintf('Stack trace:\n');
@@ -46,13 +46,13 @@ end
 try
     fprintf('\nTesting getMemoryUsage...\n');
     memory_info = getMemoryUsage();
-    
+
     if isstruct(memory_info)
         fprintf('✓ getMemoryUsage call successful\n');
     else
         fprintf('✗ getMemoryUsage returned invalid result\n');
     end
-    
+
 catch ME
     fprintf('✗ Error calling getMemoryUsage: %s\n', ME.message);
 end

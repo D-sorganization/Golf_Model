@@ -15,7 +15,7 @@ function golf_swing_analysis_gui()
 
     % Initialize performance tracker
     tracker = performance_tracker();
-    
+
     % Create main figure
     main_fig = figure('Name', config.gui_title, ...
                       'NumberTitle', 'off', ...
@@ -887,7 +887,7 @@ function run_simulation(src, ~)
         % Get the main figure and config
         main_fig = get_main_fig(src);
         config = getappdata(main_fig, 'config');
-        
+
         % Get performance tracker
         tracker = getappdata(main_fig, 'performance_tracker');
         if ~isempty(tracker)
@@ -975,7 +975,7 @@ function run_simulation(src, ~)
         fprintf('   BASEQ: %d frames\n', height(BASEQ));
         fprintf('   ZTCFQ: %d frames\n', height(ZTCFQ));
         fprintf('   DELTAQ: %d frames\n', height(DELTAQ));
-        
+
         % Stop complete simulation timer
         if ~isempty(tracker)
             tracker.stop_timer('Complete_Simulation');
@@ -4074,9 +4074,9 @@ function create_performance_tab(parent, config)
     %
     % This function creates a comprehensive performance monitoring interface
     % that displays real-time metrics, historical data, and performance insights
-    
+
     % Import the performance monitor creation function
     create_performance_monitor(parent, config);
-    
+
     fprintf('🔍 Performance monitoring tab created\n');
 end

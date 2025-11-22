@@ -1,8 +1,8 @@
 # Unified CI/CD Approach - Golf_Model Repository
 
-**Last Updated:** 2025-11-22  
-**Version:** 1.0.0  
-**Repository:** D-sorganization/Golf_Model  
+**Last Updated:** 2025-11-22
+**Version:** 1.0.0
+**Repository:** D-sorganization/Golf_Model
 **Tech Stack:** MATLAB (primary), Python (utilities/testing)
 
 ---
@@ -768,13 +768,13 @@ def main():
     """Run quality checks on all Python files."""
     python_files = Path('.').rglob('*.py')
     all_issues = []
-    
+
     for file_path in python_files:
         if 'venv' in str(file_path) or '.git' in str(file_path):
             continue
         issues = check_file(file_path)
         all_issues.extend(issues)
-    
+
     if all_issues:
         print("Quality check failed:")
         for issue in all_issues:

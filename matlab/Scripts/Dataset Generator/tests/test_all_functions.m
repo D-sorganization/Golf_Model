@@ -15,7 +15,7 @@ try
     test_config = struct();
     test_config.max_parallel_workers = 4;
     cluster_info = initializeLocalCluster(test_config);
-    
+
     if isstruct(cluster_info) && isfield(cluster_info, 'status')
         fprintf('   ✓ initializeLocalCluster: %s\n', cluster_info.status);
         if isfield(cluster_info, 'num_workers')
@@ -34,7 +34,7 @@ try
     test_config = struct();
     test_config.max_parallel_workers = 2;
     pool = getOrCreateParallelPool(test_config);
-    
+
     if ~isempty(pool)
         fprintf('   ✓ getOrCreateParallelPool: Pool created\n');
     else
@@ -48,7 +48,7 @@ end
 fprintf('\n3. Testing getMemoryUsage...\n');
 try
     memory_info = getMemoryUsage();
-    
+
     if isstruct(memory_info) && isfield(memory_info, 'usage_percent')
         fprintf('   ✓ getMemoryUsage: %.1f%% used\n', memory_info.usage_percent);
     else
@@ -64,7 +64,7 @@ try
     % Create a simple test table
     test_data = table([1; 2; 3], [4; 5; 6], 'VariableNames', {'A', 'B'});
     compressed = compressData(test_data, 5);
-    
+
     if isequal(test_data, compressed)
         fprintf('   ✓ compressData: Data preserved\n');
     else

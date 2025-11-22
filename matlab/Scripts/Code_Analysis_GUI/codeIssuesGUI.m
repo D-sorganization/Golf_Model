@@ -1,7 +1,7 @@
 function T = codeIssuesGUI(varargin)
 %CODEISSUESGUI Interactive GUI for MATLAB Code Analyzer with file/folder selection.
 %
-%   T = CODEISSUESGUI() opens a GUI allowing users to select files or 
+%   T = CODEISSUESGUI() opens a GUI allowing users to select files or
 %   folders for code analysis using MATLAB's Code Analyzer (MLint).
 %
 %   T = CODEISSUESGUI('Name', Value, ...) accepts these options:
@@ -65,7 +65,7 @@ end
 T = table();
 for i = 1:length(selectedPaths)
     targetPath = selectedPaths{i};
-    
+
     if opts.ShowProgress
         if length(selectedPaths) > 1
             progressMsg = sprintf('Analyzing %d of %d: %s', i, length(selectedPaths), targetPath);
@@ -74,7 +74,7 @@ for i = 1:length(selectedPaths)
         end
         fprintf('[codeIssuesGUI] %s\n', progressMsg);
     end
-    
+
     % Call the core exportCodeIssues function
     try
         pathResults = exportCodeIssues(targetPath, ...
@@ -84,9 +84,9 @@ for i = 1:length(selectedPaths)
             'ExcludeFiles', analysisOpts.ExcludeFiles, ...
             'OnError', analysisOpts.OnError, ...
             'Quiet', ~opts.ShowProgress);
-        
+
         T = [T; pathResults]; %#ok<AGROW>
-        
+
     catch ME
         if strcmpi(analysisOpts.OnError, 'rethrow')
             rethrow(ME);
@@ -108,7 +108,7 @@ if ~isempty(analysisOpts.OutputFile) || opts.AutoSave
         timestamp = datestr(now, 'yyyymmdd_HHMMSS');
         outputFile = fullfile(pwd, sprintf('code_issues_%s.csv', timestamp));
     end
-    
+
     if ~isempty(outputFile)
         try
             exportCodeIssues('dummy', 'Output', ''); % Just to use the writeOutput function
@@ -245,7 +245,7 @@ currentPaths = {};
         [files, path] = uigetfile({'*.m', 'MATLAB Files (*.m)'; ...
             '*.*', 'All Files (*.*)'}, ...
             'Select MATLAB files', opts.DefaultPath, 'MultiSelect', 'on');
-        
+
         if ~isequal(files, 0)
             if ischar(files)
                 files = {files};
@@ -288,7 +288,7 @@ currentPaths = {};
             '*.json', 'JSON Files (*.json)'; ...
             '*.md', 'Markdown Files (*.md)'}, ...
             'Save analysis results', 'code_issues.csv');
-        
+
         if ~isequal(file, 0)
             set(outputEdit, 'String', fullfile(path, file));
         end
@@ -299,38 +299,38 @@ currentPaths = {};
             uiwait(msgbox('Please select at least one file or folder to analyze.', 'No Selection', 'warn'));
             return;
         end
-        
+
         % Collect options
         selectedPaths = currentPaths;
-        
+
         analysisOpts.Recursive = get(recursiveCheck, 'Value');
-        
+
         extStr = get(extEdit, 'String');
         if isempty(strtrim(extStr))
             analysisOpts.IncludeExt = {'.m'};
         else
             analysisOpts.IncludeExt = strtrim(strsplit(extStr, ','));
         end
-        
+
         excludeDirStr = get(excludeDirEdit, 'String');
         if isempty(strtrim(excludeDirStr))
             analysisOpts.ExcludeDirs = {};
         else
             analysisOpts.ExcludeDirs = strtrim(strsplit(excludeDirStr, ','));
         end
-        
+
         excludeFileStr = get(excludeFileEdit, 'String');
         if isempty(strtrim(excludeFileStr))
             analysisOpts.ExcludeFiles = {};
         else
             analysisOpts.ExcludeFiles = strtrim(strsplit(excludeFileStr, ','));
         end
-        
+
         errorOpts = {'record', 'rethrow'};
         analysisOpts.OnError = errorOpts{get(errorPopup, 'Value')};
-        
+
         analysisOpts.OutputFile = get(outputEdit, 'String');
-        
+
         close(fig);
     end
 

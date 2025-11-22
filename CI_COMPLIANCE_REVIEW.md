@@ -59,10 +59,10 @@ pip install ruff==0.5.0 mypy==1.10.0 black==24.4.2 pytest==8.3.3 pytest-cov==6.0
 ```yaml
 - repo: https://github.com/psf/black
   rev: 23.12.1  # ❌ Outdated version
-  
+
 - repo: https://github.com/charliermarsh/ruff-pre-commit
   rev: v0.1.6  # ❌ Outdated version (standard is ruff==0.5.0)
-  
+
 - repo: https://github.com/pre-commit/mirrors-mypy
   rev: v1.8.0  # ❌ Outdated version (standard is mypy==1.10.0)
 ```
@@ -285,7 +285,7 @@ documentation-check:
   run: |
     npm install -g markdownlint-cli
     markdownlint '**/*.md' --ignore node_modules
-    
+
 - name: Check for broken links
   run: |
     npm install -g markdown-link-check
@@ -432,4 +432,3 @@ The Golf_Model repository has a solid CI/CD foundation with both Python and MATL
 3. Add replicant branch support
 4. Consider consolidating workflows for consistency
 5. Update pre-commit hooks to use standard tool versions
-
