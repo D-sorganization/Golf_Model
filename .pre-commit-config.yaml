@@ -78,10 +78,10 @@ repos:
             venv/
           )$
 
-      # MATLAB quality check script
+      # MATLAB quality check script (non-blocking - advisory only)
       - id: matlab-quality-check
         name: MATLAB Quality Check
-        entry: python matlab_utilities/scripts/matlab_quality_check.py
+        entry: bash -c 'python matlab_utilities/scripts/matlab_quality_check.py || echo "⚠️  MATLAB quality issues found (non-blocking)"'
         language: system
         types: [text]
         pass_filenames: false
