@@ -122,19 +122,21 @@ jobs:
         fi
 
     - name: Run tests
-      env:
-        PYTHONPATH: ${{ github.workspace }}/python/src
       run: |
         echo "🧪 Running tests..."
-        # ✅ Detect source directory for accurate coverage
+        # ✅ Detect source directory for accurate coverage and PYTHONPATH
         if [ -d python/src ]; then
           COV_TARGET="python/src"
+          export PYTHONPATH="${{ github.workspace }}/python/src"
         elif [ -d python ]; then
           COV_TARGET="python"
+          export PYTHONPATH="${{ github.workspace }}/python"
         elif [ -d src ]; then
           COV_TARGET="src"
+          export PYTHONPATH="${{ github.workspace }}/src"
         else
           COV_TARGET="."
+          export PYTHONPATH="${{ github.workspace }}"
         fi
 
         # Check if pytest.ini exists in python/ subdirectory
