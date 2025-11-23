@@ -84,4 +84,3 @@ After CI/CD standardization, Golf_Model tests are failing: **3 of 7 tests passed
 - `.github/workflows/ci.yml` - Line 65: Test discovery logic
 - `pytest.ini` - `testpaths` restriction added (if it didn't exist before)
 - Test execution now respects `pytest.ini` configuration
-

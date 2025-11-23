@@ -1,10 +1,8 @@
 """Tests for logger utilities module."""
 
 import logging
-import sys
-import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+# Import handled by conftest.py
 from logger_utils import get_logger
 
 

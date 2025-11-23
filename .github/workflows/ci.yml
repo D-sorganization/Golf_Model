@@ -61,8 +61,11 @@ jobs:
       - name: Run pytest (headless-safe)
         env:
           PYTEST_ADDOPTS: "-m 'not requires_gl and not slow_numba'"
+          PYTHONPATH: ${{ github.workspace }}/python/src
         run: |
-          if [ -d python/tests ] || ls -1 **/tests 2>/dev/null | grep -q .; then
+          if [ -d python/tests ]; then
+            pytest python/tests/ -v || (echo "pytest failures"; exit 1)
+          elif ls -1 **/tests 2>/dev/null | grep -q .; then
             pytest -q || (echo "pytest failures"; exit 1)
           else
             echo "No tests folder found; skipping pytest."
