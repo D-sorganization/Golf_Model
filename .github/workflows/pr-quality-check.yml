@@ -122,6 +122,8 @@ jobs:
         fi
 
     - name: Run tests
+      env:
+        PYTHONPATH: ${{ github.workspace }}/python/src
       run: |
         echo "🧪 Running tests..."
         # ✅ Detect source directory for accurate coverage
@@ -143,12 +145,12 @@ jobs:
             echo "⚠️ pytest.ini found but tests/ directory not found, skipping tests"
             cd ..
           elif [ -d src ]; then
-            pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing
+            PYTHONPATH=src:$PYTHONPATH pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing
             EXIT_CODE=$?
             cd ..
             exit $EXIT_CODE
           else
-            pytest tests/ --cov=. --cov-report=xml --cov-report=term-missing
+            PYTHONPATH=.:$PYTHONPATH pytest tests/ --cov=. --cov-report=xml --cov-report=term-missing
             EXIT_CODE=$?
             cd ..
             exit $EXIT_CODE
@@ -160,10 +162,10 @@ jobs:
         elif [ -d python/tests ]; then
           cd python
           if [ -d src ]; then
-            pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing
+            PYTHONPATH=src:$PYTHONPATH pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing
             EXIT_CODE=$?
           else
-            pytest tests/ --cov=. --cov-report=xml --cov-report=term-missing
+            PYTHONPATH=.:$PYTHONPATH pytest tests/ --cov=. --cov-report=xml --cov-report=term-missing
             EXIT_CODE=$?
           fi
           cd ..

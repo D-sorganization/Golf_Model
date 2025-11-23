@@ -66,7 +66,7 @@ jobs:
           if [ -d python/tests ]; then
             pytest python/tests/ -v || (echo "pytest failures"; exit 1)
           elif ls -1 **/tests 2>/dev/null | grep -q .; then
-            pytest -q || (echo "pytest failures"; exit 1)
+            pytest -v || (echo "pytest failures"; exit 1)
           else
             echo "No tests folder found; skipping pytest."
           fi
