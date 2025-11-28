@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 import numpy as np
+import numpy.typing as npt
 import ezc3d
 
 from PyQt6 import QtGui, QtWidgets
@@ -37,14 +38,14 @@ from matplotlib.axes import Axes
 @dataclass
 class MarkerData:
     name: str
-    position: np.ndarray  # shape (N, 3)
-    residuals: Optional[np.ndarray] = None
+    position: npt.NDArray[np.float64]  # shape (N, 3)
+    residuals: Optional[npt.NDArray[np.float64]] = None
 
 
 @dataclass
 class AnalogData:
     name: str
-    values: np.ndarray  # shape (N,)
+    values: npt.NDArray[np.float64]  # shape (N,)
     unit: str = ""
 
 
@@ -55,8 +56,8 @@ class C3DDataModel:
     analog: Dict[str, AnalogData] = field(default_factory=dict)
     point_rate: float = 0.0
     analog_rate: float = 0.0
-    point_time: Optional[np.ndarray] = None
-    analog_time: Optional[np.ndarray] = None
+    point_time: Optional[npt.NDArray[np.float64]] = None
+    analog_time: Optional[npt.NDArray[np.float64]] = None
     metadata: Dict[str, str] = field(default_factory=dict)
 
     def marker_names(self) -> List[str]:
@@ -85,13 +86,13 @@ class MplCanvas(FigureCanvas):  # type: ignore[misc]
     ) -> None:
         """Initialize the matplotlib canvas with specified dimensions."""
         self.fig = Figure(figsize=(width, height), dpi=dpi)
-        super().__init__(self.fig)
+        super().__init__(self.fig)  # type: ignore[no-untyped-call]
         self.setParent(parent)
 
     def clear_axes(self) -> None:
         """Clear all axes from the figure."""
         self.fig.clear()
-        self.draw()
+        self.draw()  # type: ignore[no-untyped-call]
 
     def add_subplot(self, *args: Any, **kwargs: Any) -> Axes:
         """Add a subplot to the figure and return the axes."""
@@ -104,7 +105,9 @@ class MplCanvas(FigureCanvas):  # type: ignore[misc]
 # ---------------------------------------------------------------------------
 
 
-def compute_marker_statistics(time: np.ndarray, pos: np.ndarray) -> Dict[str, float]:
+def compute_marker_statistics(
+    time: npt.NDArray[np.float64], pos: npt.NDArray[np.float64]
+) -> Dict[str, float]:
     """
     Compute basic kinematic quantities for a single marker trajectory:
     - total path length
@@ -175,15 +178,15 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
 
     def _create_menus(self) -> None:
         """Create menu bar and menus."""
-        menubar = self.menuBar()  # type: ignore[union-attr]
+        menubar = self.menuBar()
 
-        file_menu = menubar.addMenu("&File")  # type: ignore[union-attr]
-        file_menu.addAction(self.action_open)  # type: ignore[union-attr]
-        file_menu.addSeparator()  # type: ignore[union-attr]
-        file_menu.addAction(self.action_exit)  # type: ignore[union-attr]
+        file_menu = menubar.addMenu("&File")
+        file_menu.addAction(self.action_open)
+        file_menu.addSeparator()
+        file_menu.addAction(self.action_exit)
 
-        help_menu = menubar.addMenu("&Help")  # type: ignore[union-attr]
-        help_menu.addAction(self.action_about)  # type: ignore[union-attr]
+        help_menu = menubar.addMenu("&Help")
+        help_menu.addAction(self.action_about)
 
     def _create_central_widget(self) -> None:
         """Create the central tab widget with all tabs."""
@@ -220,7 +223,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
         self.table_metadata = QtWidgets.QTableWidget()
         self.table_metadata.setColumnCount(2)
         self.table_metadata.setHorizontalHeaderLabels(["Field", "Value"])
-        header = self.table_metadata.horizontalHeader()  # type: ignore[union-attr]
+        header = self.table_metadata.horizontalHeader()
         header.setSectionResizeMode(
             0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
         )
@@ -615,7 +618,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
         ax.set_xlabel("Time (s)")
         ax.grid(True)
         self.canvas_marker.fig.tight_layout()
-        self.canvas_marker.draw()
+        self.canvas_marker.draw()  # type: ignore[no-untyped-call]
 
     # ------------------------ Analog plotting ------------------------------
 
@@ -648,7 +651,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
         ax.legend()
 
         self.canvas_analog.fig.tight_layout()
-        self.canvas_analog.draw()
+        self.canvas_analog.draw()  # type: ignore[no-untyped-call]
 
     # ------------------------ 3D view --------------------------------------
 
@@ -677,7 +680,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
         self.label_frame_info.setText(f"Frame: {frame_index} / Time: {time_str}")
 
         self.canvas_3d.fig.clear()
-        ax = self.canvas_3d.add_subplot(111, projection="3d")  # type: ignore[assignment]
+        ax: Any = self.canvas_3d.add_subplot(111, projection="3d")
 
         # Plot full trajectories (faint) and current point (bold)
         for name in marker_names:
@@ -691,7 +694,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
             ax.plot(pos[:, 0], pos[:, 1], pos[:, 2], alpha=0.3, label=name)
             if 0 <= frame_index < pos.shape[0]:
                 x, y, z = pos[frame_index]
-                ax.scatter([x], [y], [z], s=40)  # type: ignore[misc]
+                ax.scatter([x], [y], [z], s=40)
 
         ax.set_xlabel("X")
         ax.set_ylabel("Y")
@@ -716,11 +719,11 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
                 half = max_range / 2.0
                 ax.set_xlim(mid_x - half, mid_x + half)
                 ax.set_ylim(mid_y - half, mid_y + half)
-                ax.set_zlim(mid_z - half, mid_z + half)  # type: ignore[attr-defined]
+                ax.set_zlim(mid_z - half, mid_z + half)
 
         ax.legend()
         self.canvas_3d.fig.tight_layout()
-        self.canvas_3d.draw()
+        self.canvas_3d.draw()  # type: ignore[no-untyped-call]
 
     # ------------------------ Analysis tab ---------------------------------
 
@@ -789,7 +792,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
             ax.legend()
             self.canvas_analysis.fig.tight_layout()
 
-        self.canvas_analysis.draw()
+        self.canvas_analysis.draw()  # type: ignore[no-untyped-call]
 
     # ------------------------- About dialog --------------------------------
 
