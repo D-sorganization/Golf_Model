@@ -74,7 +74,7 @@ class C3DDataModel:
 # ---------------------------------------------------------------------------
 
 
-class MplCanvas(FigureCanvas):
+class MplCanvas(FigureCanvas):  # type: ignore[misc]
     """Matplotlib canvas widget for embedding plots in Qt."""
 
     def __init__(
@@ -86,13 +86,13 @@ class MplCanvas(FigureCanvas):
     ) -> None:
         """Initialize the matplotlib canvas with specified dimensions."""
         self.fig = Figure(figsize=(width, height), dpi=dpi)
-        super().__init__(self.fig)
+        super().__init__(self.fig)  # type: ignore[no-untyped-call]
         self.setParent(parent)
 
     def clear_axes(self) -> None:
         """Clear all axes from the figure."""
         self.fig.clear()
-        self.draw()
+        self.draw()  # type: ignore[no-untyped-call]
 
     def add_subplot(self, *args: Any, **kwargs: Any) -> Axes:
         """Add a subplot to the figure and return the axes."""
@@ -144,7 +144,7 @@ def compute_marker_statistics(
 # ---------------------------------------------------------------------------
 
 
-class C3DViewerMainWindow(QtWidgets.QMainWindow):
+class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
     """Main window for the C3D motion analysis viewer application."""
 
     def __init__(self) -> None:
@@ -618,7 +618,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
         ax.set_xlabel("Time (s)")
         ax.grid(True)
         self.canvas_marker.fig.tight_layout()
-        self.canvas_marker.draw()
+        self.canvas_marker.draw()  # type: ignore[no-untyped-call]
 
     # ------------------------ Analog plotting ------------------------------
 
@@ -651,7 +651,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
         ax.legend()
 
         self.canvas_analog.fig.tight_layout()
-        self.canvas_analog.draw()
+        self.canvas_analog.draw()  # type: ignore[no-untyped-call]
 
     # ------------------------ 3D view --------------------------------------
 
@@ -723,7 +723,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
 
         ax.legend()
         self.canvas_3d.fig.tight_layout()
-        self.canvas_3d.draw()
+        self.canvas_3d.draw()  # type: ignore[no-untyped-call]
 
     # ------------------------ Analysis tab ---------------------------------
 
