@@ -10,7 +10,7 @@ Features:
 - Basic kinematic analysis: speed, path length, extrema
 
 Dependencies:
-    pip install pyqt6 matplotlib ezc3d numpy
+    See python/requirements.txt for required packages.
 """
 
 import sys
@@ -24,7 +24,7 @@ import ezc3d
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 
@@ -358,12 +358,13 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
         # Point (marker) data
         points = c3d_obj["data"]["points"]  # shape (4, Npoints, Nframes)
         n_dim, n_points, n_frames = points.shape
-        assert n_dim == 4  # x, y, z, residual
+        if n_dim != 4:
+            raise ValueError(f"Expected 4 dimensions for marker data (x, y, z, residual), got {n_dim}")
 
         labels_points = c3d_obj["parameters"]["POINT"]["LABELS"]["value"]
         try:
             units_points = c3d_obj["parameters"]["POINT"]["UNITS"]["value"][0]
-        except Exception:
+        except (KeyError, IndexError, TypeError):
             units_points = "unknown"
 
         frame_rate = float(c3d_obj["parameters"]["POINT"]["RATE"]["value"][0])
@@ -384,12 +385,12 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
             n_sub, n_ch, n_f = analog_data.shape
             analog_rate = float(c3d_obj["parameters"]["ANALOG"]["RATE"]["value"][0])
 
-            analog_flat = analog_data.reshape(n_sub * n_f, n_ch)  # (NanalogSamples, Nchannels)
+            analog_flat = analog_data.transpose(2, 0, 1).reshape(n_sub * n_f, n_ch)  # (n_sub * n_f, n_ch)
 
             # Units per channel, if available
             try:
                 analog_units = c3d_obj["parameters"]["ANALOG"]["UNITS"]["value"]
-            except Exception:
+            except (KeyError, TypeError):
                 analog_units = [""] * len(labels_analog)
 
             for j, name in enumerate(labels_analog):
@@ -699,10 +700,14 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
             dt = np.diff(t)
             dt[dt <= 0] = np.nan
             speed = np.linalg.norm(disp, axis=1) / dt
-            peak_idx = int(np.nanargmax(speed))
-            peak_time = t[peak_idx + 1]
-            text_lines.append("")
-            text_lines.append(f"  Peak speed at time: {peak_time:.4f} s (frame {peak_idx + 1})")
+            if np.all(np.isnan(speed)):
+                text_lines.append("")
+                text_lines.append("  Peak speed: N/A (all speeds are NaN)")
+            else:
+                peak_idx = int(np.nanargmax(speed))
+                peak_time = t[peak_idx + 1]
+                text_lines.append("")
+                text_lines.append(f"  Peak speed at time: {peak_time:.4f} s (frame {peak_idx + 1})")
 
         self.text_analysis.setPlainText("\n".join(text_lines))
 

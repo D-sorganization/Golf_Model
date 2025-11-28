@@ -10,7 +10,7 @@ import ezc3d
 import numpy as np
 import pandas as pd
 
-from logger_utils import get_logger
+from .logger_utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -254,7 +254,7 @@ class C3DDataReader:
         try:
             return c3d_data["parameters"]["POINT"]
         except KeyError as error:  # pragma: no cover - defensive guard
-            raise ValueError("POINT parameters missing from C3D file") from error
+            raise ValueError(f"POINT parameters missing from C3D file: {self.file_path}") from error
 
     def _get_analog_parameters(self) -> Dict[str, Any] | None:
         c3d_data = self._load()
@@ -306,7 +306,7 @@ class C3DDataReader:
     def _load(self) -> C3DMapping:
         if self._c3d_data is None:
             if not self.file_path.exists():
-                raise FileNotFoundError(f"C3D file not found: {self.file_path}")
+                raise FileNotFoundError(f"File not found: {self.file_path}")
             self._c3d_data = ezc3d.c3d(str(self.file_path))
         return self._c3d_data
 

@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from c3d_reader import C3DDataReader, load_tour_average_reader
+from src.c3d_reader import C3DDataReader, load_tour_average_reader
 
 EXPECTED_MARKER_COUNT = 38
 EXPECTED_FRAME_COUNT = 654
