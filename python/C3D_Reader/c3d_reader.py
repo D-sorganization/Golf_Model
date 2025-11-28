@@ -16,21 +16,23 @@ Dependencies:
 import sys
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import ezc3d
 
-from PyQt6 import QtCore, QtGui, QtWidgets
+from PyQt6 import QtGui, QtWidgets
 from PyQt6.QtCore import Qt
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 
 
 # ---------------------------------------------------------------------------
 # Data model for C3D content
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MarkerData:
@@ -70,10 +72,17 @@ class C3DDataModel:
 # Matplotlib canvas embedded in Qt
 # ---------------------------------------------------------------------------
 
-class MplCanvas(FigureCanvas):
+
+class MplCanvas(FigureCanvas):  # type: ignore[misc]
     """Matplotlib canvas widget for embedding plots in Qt."""
 
-    def __init__(self, parent=None, width: float = 5.0, height: float = 4.0, dpi: int = 100) -> None:
+    def __init__(
+        self,
+        parent: QtWidgets.QWidget | None = None,
+        width: float = 5.0,
+        height: float = 4.0,
+        dpi: int = 100,
+    ) -> None:
         """Initialize the matplotlib canvas with specified dimensions."""
         self.fig = Figure(figsize=(width, height), dpi=dpi)
         super().__init__(self.fig)
@@ -84,7 +93,7 @@ class MplCanvas(FigureCanvas):
         self.fig.clear()
         self.draw()
 
-    def add_subplot(self, *args, **kwargs):
+    def add_subplot(self, *args: Any, **kwargs: Any) -> Axes:
         """Add a subplot to the figure and return the axes."""
         ax = self.fig.add_subplot(*args, **kwargs)
         return ax
@@ -93,6 +102,7 @@ class MplCanvas(FigureCanvas):
 # ---------------------------------------------------------------------------
 # Utility: simple kinematic analysis for markers
 # ---------------------------------------------------------------------------
+
 
 def compute_marker_statistics(time: np.ndarray, pos: np.ndarray) -> Dict[str, float]:
     """
@@ -130,7 +140,8 @@ def compute_marker_statistics(time: np.ndarray, pos: np.ndarray) -> Dict[str, fl
 # Main Window
 # ---------------------------------------------------------------------------
 
-class C3DViewerMainWindow(QtWidgets.QMainWindow):
+
+class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
     """Main window for the C3D motion analysis viewer application."""
 
     def __init__(self) -> None:
@@ -209,8 +220,12 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
         self.table_metadata = QtWidgets.QTableWidget()
         self.table_metadata.setColumnCount(2)
         self.table_metadata.setHorizontalHeaderLabels(["Field", "Value"])
-        self.table_metadata.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-        self.table_metadata.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        self.table_metadata.horizontalHeader().setSectionResizeMode(
+            0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+        )
+        self.table_metadata.horizontalHeader().setSectionResizeMode(
+            1, QtWidgets.QHeaderView.ResizeMode.Stretch
+        )
         layout.addWidget(self.table_metadata)
 
         return widget
@@ -225,7 +240,9 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
         # Left: marker list + options
         left_panel = QtWidgets.QVBoxLayout()
         self.list_markers = QtWidgets.QListWidget()
-        self.list_markers.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        self.list_markers.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
+        )
         self.list_markers.itemSelectionChanged.connect(self.update_marker_plot)
         left_panel.addWidget(QtWidgets.QLabel("Markers:"))
         left_panel.addWidget(self.list_markers)
@@ -255,7 +272,9 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
 
         left_panel = QtWidgets.QVBoxLayout()
         self.list_analog = QtWidgets.QListWidget()
-        self.list_analog.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        self.list_analog.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
+        )
         self.list_analog.itemSelectionChanged.connect(self.update_analog_plot)
         left_panel.addWidget(QtWidgets.QLabel("Analog channels:"))
         left_panel.addWidget(self.list_analog)
@@ -278,7 +297,9 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
 
         left_panel = QtWidgets.QVBoxLayout()
         self.list_markers_3d = QtWidgets.QListWidget()
-        self.list_markers_3d.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.MultiSelection)
+        self.list_markers_3d.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.MultiSelection
+        )
         self.list_markers_3d.itemSelectionChanged.connect(self.update_3d_view)
         left_panel.addWidget(QtWidgets.QLabel("Markers to display in 3D:"))
         left_panel.addWidget(self.list_markers_3d)
@@ -313,7 +334,9 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
 
         top_layout = QtWidgets.QHBoxLayout()
         self.combo_marker_analysis = QtWidgets.QComboBox()
-        self.combo_marker_analysis.currentIndexChanged.connect(self.update_analysis_panel)
+        self.combo_marker_analysis.currentIndexChanged.connect(
+            self.update_analysis_panel
+        )
         top_layout.addWidget(QtWidgets.QLabel("Marker:"))
         top_layout.addWidget(self.combo_marker_analysis)
 
@@ -379,7 +402,9 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
         points = c3d_obj["data"]["points"]  # shape (4, Npoints, Nframes)
         n_dim, n_points, n_frames = points.shape
         if n_dim != 4:
-            raise ValueError(f"Expected 4 dimensions for marker data (x, y, z, residual), got {n_dim}")
+            raise ValueError(
+                f"Expected 4 dimensions for marker data (x, y, z, residual), got {n_dim}"
+            )
 
         labels_points = c3d_obj["parameters"]["POINT"]["LABELS"]["value"]
         try:
@@ -400,12 +425,16 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
         analog = {}
         if "ANALOG" in c3d_obj["parameters"]:
             labels_analog = c3d_obj["parameters"]["ANALOG"]["LABELS"]["value"]
-            analog_data = c3d_obj["data"]["analogs"]  # shape (Nsubframes, Nchannels, Nframes)
+            analog_data = c3d_obj["data"][
+                "analogs"
+            ]  # shape (Nsubframes, Nchannels, Nframes)
             # ezc3d stores analog as (Nsubframes, Nchannels, Nframes); flatten in time
             n_sub, n_ch, n_f = analog_data.shape
             analog_rate = float(c3d_obj["parameters"]["ANALOG"]["RATE"]["value"][0])
 
-            analog_flat = analog_data.transpose(2, 0, 1).reshape(n_sub * n_f, n_ch)  # (n_sub * n_f, n_ch)
+            analog_flat = analog_data.transpose(2, 0, 1).reshape(
+                n_sub * n_f, n_ch
+            )  # (n_sub * n_f, n_ch)
 
             # Units per channel, if available
             try:
@@ -415,7 +444,9 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
 
             for j, name in enumerate(labels_analog):
                 unit = analog_units[j] if j < len(analog_units) else ""
-                analog[name] = AnalogData(name=name, values=analog_flat[:, j], unit=unit)
+                analog[name] = AnalogData(
+                    name=name, values=analog_flat[:, j], unit=unit
+                )
         else:
             analog_rate = 0.0
 
@@ -423,7 +454,9 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
         time_point = np.arange(n_frames) / frame_rate if frame_rate > 0 else None
         n_analog_samples = next(iter(analog.values())).values.shape[0] if analog else 0
         time_analog = (
-            np.arange(n_analog_samples) / analog_rate if analog_rate > 0 and n_analog_samples > 0 else None
+            np.arange(n_analog_samples) / analog_rate
+            if analog_rate > 0 and n_analog_samples > 0
+            else None
         )
 
         # Metadata extraction
@@ -520,6 +553,8 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
 
     def _populate_metadata_table(self) -> None:
         """Populate the metadata table with model metadata."""
+        if self.model is None:
+            return
         self.table_metadata.setRowCount(0)
         for key, value in self.model.metadata.items():
             row = self.table_metadata.rowCount()
@@ -733,7 +768,9 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
                 peak_idx = int(np.nanargmax(speed))
                 peak_time = t[peak_idx + 1]
                 text_lines.append("")
-                text_lines.append(f"  Peak speed at time: {peak_time:.4f} s (frame {peak_idx + 1})")
+                text_lines.append(
+                    f"  Peak speed at time: {peak_time:.4f} s (frame {peak_idx + 1})"
+                )
 
         self.text_analysis.setPlainText("\n".join(text_lines))
 
@@ -772,6 +809,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     """Main entry point for the C3D viewer application."""

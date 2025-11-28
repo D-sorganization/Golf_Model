@@ -256,13 +256,17 @@ class C3DDataReader:
         try:
             return cast(Dict[str, Any], c3d_data["parameters"]["POINT"])
         except KeyError as error:  # pragma: no cover - defensive guard
-            raise ValueError(f"POINT parameters missing from C3D file: {self.file_path}") from error
+            raise ValueError(
+                f"POINT parameters missing from C3D file: {self.file_path}"
+            ) from error
 
     def _get_analog_parameters(self) -> Dict[str, Any] | None:
         """Get ANALOG parameters from the C3D file, if present."""
         c3d_data = self._load()
         analog_params = c3d_data["parameters"].get("ANALOG")
-        return cast(Dict[str, Any], analog_params) if analog_params is not None else None
+        return (
+            cast(Dict[str, Any], analog_params) if analog_params is not None else None
+        )
 
     def _get_analog_details(self) -> tuple[list[str], float | None]:
         """Get analog channel labels and sample rate from the C3D file."""
