@@ -58,9 +58,11 @@ class C3DDataModel:
     metadata: Dict[str, str] = field(default_factory=dict)
 
     def marker_names(self) -> List[str]:
+        """Return list of marker names."""
         return list(self.markers.keys())
 
     def analog_names(self) -> List[str]:
+        """Return list of analog channel names."""
         return list(self.analog.keys())
 
 
@@ -69,16 +71,21 @@ class C3DDataModel:
 # ---------------------------------------------------------------------------
 
 class MplCanvas(FigureCanvas):
-    def __init__(self, parent=None, width: float = 5.0, height: float = 4.0, dpi: int = 100):
+    """Matplotlib canvas widget for embedding plots in Qt."""
+
+    def __init__(self, parent=None, width: float = 5.0, height: float = 4.0, dpi: int = 100) -> None:
+        """Initialize the matplotlib canvas with specified dimensions."""
         self.fig = Figure(figsize=(width, height), dpi=dpi)
         super().__init__(self.fig)
         self.setParent(parent)
 
-    def clear_axes(self):
+    def clear_axes(self) -> None:
+        """Clear all axes from the figure."""
         self.fig.clear()
         self.draw()
 
     def add_subplot(self, *args, **kwargs):
+        """Add a subplot to the figure and return the axes."""
         ax = self.fig.add_subplot(*args, **kwargs)
         return ax
 
@@ -124,7 +131,10 @@ def compute_marker_statistics(time: np.ndarray, pos: np.ndarray) -> Dict[str, fl
 # ---------------------------------------------------------------------------
 
 class C3DViewerMainWindow(QtWidgets.QMainWindow):
-    def __init__(self):
+    """Main window for the C3D motion analysis viewer application."""
+
+    def __init__(self) -> None:
+        """Initialize the main window and create UI components."""
         super().__init__()
 
         self.setWindowTitle("C3D Motion Analysis Viewer")
@@ -139,7 +149,8 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
 
     # ----------------------------- UI setup --------------------------------
 
-    def _create_actions(self):
+    def _create_actions(self) -> None:
+        """Create menu actions for the application."""
         self.action_open = QtGui.QAction("Open &C3D…", self)
         self.action_open.setShortcut("Ctrl+O")
         self.action_open.triggered.connect(self.open_c3d_file)
@@ -151,7 +162,8 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
         self.action_about = QtGui.QAction("&About", self)
         self.action_about.triggered.connect(self.show_about_dialog)
 
-    def _create_menus(self):
+    def _create_menus(self) -> None:
+        """Create menu bar and menus."""
         menubar = self.menuBar()
 
         file_menu = menubar.addMenu("&File")
@@ -162,7 +174,8 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
         help_menu = menubar.addMenu("&Help")
         help_menu.addAction(self.action_about)
 
-    def _create_central_widget(self):
+    def _create_central_widget(self) -> None:
+        """Create the central tab widget with all tabs."""
         self.tabs = QtWidgets.QTabWidget()
 
         self.overview_tab = self._create_overview_tab()
@@ -182,6 +195,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
     # ------------------------- Overview tab --------------------------------
 
     def _create_overview_tab(self) -> QtWidgets.QWidget:
+        """Create the overview tab showing file metadata."""
         widget = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(widget)
 
@@ -204,6 +218,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
     # ---------------------- Marker 2D plot tab -----------------------------
 
     def _create_marker_plot_tab(self) -> QtWidgets.QWidget:
+        """Create the marker 2D plotting tab."""
         widget = QtWidgets.QWidget()
         layout = QtWidgets.QHBoxLayout(widget)
 
@@ -234,6 +249,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
     # ---------------------- Analog plot tab --------------------------------
 
     def _create_analog_plot_tab(self) -> QtWidgets.QWidget:
+        """Create the analog channel plotting tab."""
         widget = QtWidgets.QWidget()
         layout = QtWidgets.QHBoxLayout(widget)
 
@@ -256,6 +272,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
     # ---------------------- 3D viewer tab ----------------------------------
 
     def _create_3d_viewer_tab(self) -> QtWidgets.QWidget:
+        """Create the 3D marker trajectory viewer tab."""
         widget = QtWidgets.QWidget()
         layout = QtWidgets.QHBoxLayout(widget)
 
@@ -290,6 +307,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
     # ---------------------- Analysis tab -----------------------------------
 
     def _create_analysis_tab(self) -> QtWidgets.QWidget:
+        """Create the kinematic analysis tab."""
         widget = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(widget)
 
@@ -318,8 +336,8 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
 
     # ---------------------- UI state management ----------------------------
 
-    def _update_ui_state(self, enabled: bool):
-        # Called after loading a model
+    def _update_ui_state(self, enabled: bool) -> None:
+        """Update the enabled state of UI widgets after loading a model."""
         widgets = [
             self.tabs,
         ]
@@ -328,7 +346,8 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
 
     # --------------------------- File I/O ----------------------------------
 
-    def open_c3d_file(self):
+    def open_c3d_file(self) -> None:
+        """Open a file dialog to load a C3D file."""
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self,
             "Open C3D file",
@@ -353,6 +372,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
         self._update_ui_state(True)
 
     def _load_c3d(self, filepath: str) -> C3DDataModel:
+        """Load and parse a C3D file into a C3DDataModel."""
         c3d_obj = ezc3d.c3d(filepath)
 
         # Point (marker) data
@@ -442,7 +462,8 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
 
     # --------------------- Populate UI from model --------------------------
 
-    def _populate_ui_with_model(self):
+    def _populate_ui_with_model(self) -> None:
+        """Populate UI components with data from the loaded model."""
         if self.model is None:
             return
 
@@ -497,7 +518,8 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
             self.list_analog.setCurrentRow(0)
         self.update_analysis_panel()
 
-    def _populate_metadata_table(self):
+    def _populate_metadata_table(self) -> None:
+        """Populate the metadata table with model metadata."""
         self.table_metadata.setRowCount(0)
         for key, value in self.model.metadata.items():
             row = self.table_metadata.rowCount()
@@ -509,7 +531,8 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
 
     # ------------------------ Marker plotting ------------------------------
 
-    def update_marker_plot(self):
+    def update_marker_plot(self) -> None:
+        """Update the marker plot based on selected marker and component."""
         if self.model is None:
             return
         selected_items = self.list_markers.selectedItems()
@@ -562,7 +585,8 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
 
     # ------------------------ Analog plotting ------------------------------
 
-    def update_analog_plot(self):
+    def update_analog_plot(self) -> None:
+        """Update the analog plot based on selected channel."""
         if self.model is None:
             return
         selected_items = self.list_analog.selectedItems()
@@ -594,7 +618,8 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
 
     # ------------------------ 3D view --------------------------------------
 
-    def update_3d_view(self):
+    def update_3d_view(self) -> None:
+        """Update the 3D view based on selected markers and frame."""
         if self.model is None:
             return
 
@@ -665,7 +690,8 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
 
     # ------------------------ Analysis tab ---------------------------------
 
-    def update_analysis_panel(self):
+    def update_analysis_panel(self) -> None:
+        """Update the analysis panel with statistics for the selected marker."""
         if self.model is None:
             self.text_analysis.clear()
             self.canvas_analysis.clear_axes()
@@ -731,7 +757,8 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
 
     # ------------------------- About dialog --------------------------------
 
-    def show_about_dialog(self):
+    def show_about_dialog(self) -> None:
+        """Display the about dialog with application information."""
         QtWidgets.QMessageBox.information(
             self,
             "About",
@@ -746,7 +773,8 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):
 # Main entry point
 # ---------------------------------------------------------------------------
 
-def main():
+def main() -> None:
+    """Main entry point for the C3D viewer application."""
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName("C3D Motion Analysis Viewer")
 
