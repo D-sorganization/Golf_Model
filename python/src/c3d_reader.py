@@ -1,0 +1,377 @@
+"""Utilities for loading and interpreting C3D motion-capture files."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, Iterable, Sequence
+
+import ezc3d
+import numpy as np
+import pandas as pd
+
+from logger_utils import get_logger
+
+logger = get_logger(__name__)
+
+C3DMapping = Dict[str, Any]
+
+
+@dataclass(frozen=True)
+class C3DEvent:
+    """A labeled event occurring at a specific time within a capture."""
+
+    label: str
+    time: float
+
+
+@dataclass(frozen=True)
+class C3DMetadata:
+    """Describes key properties of a C3D motion-capture recording."""
+
+    marker_labels: list[str]
+    frame_count: int
+    frame_rate: float
+    units: str
+    analog_labels: list[str]
+    analog_rate: float | None
+    events: list[C3DEvent]
+
+    @property
+    def marker_count(self) -> int:
+        """Number of tracked markers in the recording."""
+
+        return len(self.marker_labels)
+
+    @property
+    def analog_count(self) -> int:
+        """Number of analog channels in the recording."""
+
+        return len(self.analog_labels)
+
+    @property
+    def duration(self) -> float:
+        """Capture duration in seconds, or ``0`` if the rate is missing."""
+
+        if self.frame_rate == 0:
+            return 0.0
+        return self.frame_count / self.frame_rate
+
+
+class C3DDataReader:
+    """Loads marker trajectories and metadata from a C3D file."""
+
+    def __init__(self, file_path: Path | str):
+        self.file_path = Path(file_path)
+        self._c3d_data: C3DMapping | None = None
+        self._metadata: C3DMetadata | None = None
+
+    def get_metadata(self) -> C3DMetadata:
+        """Return metadata describing marker labels, frame count, rate, and units."""
+
+        if self._metadata is None:
+            point_parameters = self._get_point_parameters()
+            marker_labels = [
+                label.strip() for label in point_parameters["LABELS"]["value"]
+            ]
+            frame_count = int(point_parameters["FRAMES"]["value"][0])
+            frame_rate = float(point_parameters["RATE"]["value"][0])
+            units = str(point_parameters["UNITS"]["value"][0])
+            analog_labels, analog_rate = self._get_analog_details()
+            events = self._get_events()
+            self._metadata = C3DMetadata(
+                marker_labels=marker_labels,
+                frame_count=frame_count,
+                frame_rate=frame_rate,
+                units=units,
+                analog_labels=analog_labels,
+                analog_rate=analog_rate,
+                events=events,
+            )
+
+        return self._metadata
+
+    def points_dataframe(
+        self,
+        include_time: bool = True,
+        markers: Sequence[str] | None = None,
+        residual_nan_threshold: float | None = None,
+        target_units: str | None = None,
+    ) -> pd.DataFrame:
+        """Return marker trajectories as a tidy DataFrame.
+
+        Args:
+            include_time: Whether to include a time column calculated from the frame
+                index and the frame rate reported in the C3D header.
+            markers: Optional list of marker names to retain. All markers are
+                returned when ``None``.
+            residual_nan_threshold: If provided, coordinates with residuals above
+                the threshold are replaced with ``NaN`` to make downstream QA
+                easier in visualization tools.
+            target_units: Optional unit string (``"m"`` or ``"mm"``) for the point
+                coordinates. A no-op when ``None`` or when the requested units match
+                the file's native units.
+
+        Returns:
+            DataFrame with columns ``frame``, ``marker``, ``x``, ``y``, ``z``,
+            ``residual`` (EzC3D stores residuals in the fourth point channel), and
+            an optional ``time`` column in seconds.
+        """
+
+        c3d_data = self._load()
+        metadata = self.get_metadata()
+        points = c3d_data["data"]["points"]
+        coordinates = np.transpose(points[:3, :, :], axes=(2, 1, 0)).reshape(-1, 3)
+        coordinates = coordinates * self._unit_scale(metadata.units, target_units)
+        residuals = points[3, :, :].T.reshape(-1)
+        frame_indices = np.repeat(
+            np.arange(metadata.frame_count), metadata.marker_count
+        )
+        marker_names = np.tile(np.array(metadata.marker_labels), metadata.frame_count)
+
+        data = {
+            "frame": frame_indices,
+            "marker": marker_names,
+            "x": coordinates[:, 0],
+            "y": coordinates[:, 1],
+            "z": coordinates[:, 2],
+            "residual": residuals,
+        }
+
+        if include_time:
+            data["time"] = frame_indices / metadata.frame_rate
+
+        dataframe = pd.DataFrame(data)
+
+        if markers:
+            dataframe = dataframe[dataframe["marker"].isin(set(markers))]
+
+        if residual_nan_threshold is not None:
+            too_noisy = dataframe["residual"] > residual_nan_threshold
+            dataframe.loc[too_noisy, ["x", "y", "z"]] = np.nan
+
+        if include_time and "time" in dataframe.columns:
+            dataframe = dataframe.sort_values(["time", "marker"]).reset_index(drop=True)
+        else:
+            dataframe = dataframe.sort_values(["frame", "marker"]).reset_index(
+                drop=True
+            )
+
+        logger.info(
+            "Loaded %s frames for %s markers from %s",
+            metadata.frame_count,
+            metadata.marker_count,
+            self.file_path.name,
+        )
+        return dataframe
+
+    def analog_dataframe(self, include_time: bool = True) -> pd.DataFrame:
+        """Return analog channels as a tidy DataFrame.
+
+        Rows are ordered by sample index and channel name so downstream GUI
+        components can easily plot synchronized sensor traces.
+        """
+
+        c3d_data = self._load()
+        metadata = self.get_metadata()
+        analog_array = c3d_data["data"]["analogs"]
+        subframes, channel_count, frame_count = analog_array.shape
+        analog_rate = metadata.analog_rate
+
+        columns = ["sample", "channel", "value"]
+        if include_time and analog_rate:
+            columns = ["sample", "time", "channel", "value"]
+
+        if channel_count == 0:
+            return pd.DataFrame(columns=columns)
+
+        values = analog_array.transpose(2, 0, 1).reshape(
+            frame_count * subframes, channel_count
+        )
+        sample_indices = np.arange(values.shape[0])
+        channel_names = np.array(
+            metadata.analog_labels
+            or [f"Analog_{idx+1}" for idx in range(channel_count)]
+        )
+
+        dataframe = pd.DataFrame(
+            {
+                "sample": np.repeat(sample_indices, channel_count),
+                "channel": np.tile(channel_names, values.shape[0]),
+                "value": values.reshape(-1),
+            }
+        )
+
+        if include_time and analog_rate:
+            dataframe.insert(1, "time", dataframe["sample"] / analog_rate)
+
+        return dataframe
+
+    def export_points(
+        self,
+        output_path: Path | str,
+        *,
+        include_time: bool = True,
+        markers: Sequence[str] | None = None,
+        residual_nan_threshold: float | None = None,
+        target_units: str | None = None,
+        file_format: str | None = None,
+    ) -> Path:
+        """Export marker trajectories to a tabular file.
+
+        Supported formats are CSV, JSON (records orientation), and NPZ. The
+        format is inferred from the file extension when ``file_format`` is not
+        provided.
+        """
+
+        dataframe = self.points_dataframe(
+            include_time=include_time,
+            markers=markers,
+            residual_nan_threshold=residual_nan_threshold,
+            target_units=target_units,
+        )
+        return self._export_dataframe(dataframe, output_path, file_format)
+
+    def export_analog(
+        self,
+        output_path: Path | str,
+        *,
+        include_time: bool = True,
+        file_format: str | None = None,
+    ) -> Path:
+        """Export analog channels to a tabular file.
+
+        Supports the same formats as :meth:`export_points`. Empty analog data
+        produces an output file with headers so downstream automation can rely
+        on the presence of the export artifact.
+        """
+
+        dataframe = self.analog_dataframe(include_time=include_time)
+        return self._export_dataframe(dataframe, output_path, file_format)
+
+    def _get_point_parameters(self) -> Dict[str, Any]:
+        c3d_data = self._load()
+        try:
+            return c3d_data["parameters"]["POINT"]
+        except KeyError as error:  # pragma: no cover - defensive guard
+            raise ValueError("POINT parameters missing from C3D file") from error
+
+    def _get_analog_parameters(self) -> Dict[str, Any] | None:
+        c3d_data = self._load()
+        return c3d_data["parameters"].get("ANALOG")
+
+    def _get_analog_details(self) -> tuple[list[str], float | None]:
+        analog_parameters = self._get_analog_parameters()
+        analog_array = self._load()["data"]["analogs"]
+        channel_count = analog_array.shape[1]
+
+        if analog_parameters is None:
+            labels = []
+            analog_rate = None
+        else:
+            labels = [
+                label.strip()
+                for label in analog_parameters.get("LABELS", {}).get("value", [])
+            ]
+            analog_rate = float(analog_parameters.get("RATE", {}).get("value", [0])[0])
+
+        if not labels and channel_count > 0:
+            labels = [f"Analog_{idx+1}" for idx in range(channel_count)]
+
+        return labels, analog_rate
+
+    def _get_events(self) -> list[C3DEvent]:
+        c3d_data = self._load()
+        event_parameters = c3d_data["parameters"].get("EVENT")
+        if not event_parameters:
+            return []
+
+        labels_raw: Iterable[str] = event_parameters.get("LABELS", {}).get("value", [])
+        times = event_parameters.get("TIMES", {}).get("value")
+        if times is None:
+            return []
+
+        times_array = np.asarray(times)
+        if times_array.ndim == 2:
+            times_array = times_array[1, :]
+
+        events: list[C3DEvent] = []
+        for idx, label in enumerate(labels_raw):
+            time_value = float(times_array[idx]) if idx < len(times_array) else np.nan
+            if np.isfinite(time_value):
+                events.append(C3DEvent(label=str(label).strip(), time=time_value))
+
+        return events
+
+    def _load(self) -> C3DMapping:
+        if self._c3d_data is None:
+            if not self.file_path.exists():
+                raise FileNotFoundError(f"C3D file not found: {self.file_path}")
+            self._c3d_data = ezc3d.c3d(str(self.file_path))
+        return self._c3d_data
+
+    @staticmethod
+    def _unit_scale(current_units: str, target_units: str | None) -> float:
+        if target_units is None:
+            return 1.0
+
+        normalized_current = current_units.lower()
+        normalized_target = target_units.lower()
+
+        if normalized_current == normalized_target:
+            return 1.0
+
+        if normalized_current == "m" and normalized_target == "mm":
+            return 1000.0
+        if normalized_current == "mm" and normalized_target == "m":
+            return 0.001
+
+        raise ValueError(
+            f"Unsupported unit conversion from {current_units} to {target_units}."
+        )
+
+    def _export_dataframe(
+        self, dataframe: pd.DataFrame, output_path: Path | str, file_format: str | None
+    ) -> Path:
+        path = Path(output_path)
+        if not file_format:
+            if not path.suffix:
+                raise ValueError(
+                    "File format could not be inferred from the path suffix."
+                )
+            file_format = path.suffix.lstrip(".")
+
+        normalized_format = file_format.lower()
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        if normalized_format == "csv":
+            dataframe.to_csv(path, index=False)
+        elif normalized_format == "json":
+            dataframe.to_json(path, orient="records")
+        elif normalized_format == "npz":
+            np.savez(
+                path, **{column: dataframe[column].to_numpy() for column in dataframe}
+            )
+        else:  # pragma: no cover - defensive guard for unrecognized formats
+            raise ValueError(f"Unsupported export format: {file_format}")
+
+        logger.info("Exported %s rows to %s", len(dataframe), path)
+        return path
+
+
+def load_tour_average_reader(base_directory: Path | None = None) -> C3DDataReader:
+    """Convenience loader for the repository's Tour average capture.
+
+    Args:
+        base_directory: Optional base directory containing the repository files. If
+            omitted, the repository root is derived from this module's location.
+
+    Returns:
+        A configured :class:`C3DDataReader` pointing to the Tour average capture file.
+    """
+
+    base_path = base_directory or Path(__file__).resolve().parents[2]
+    default_path = (
+        base_path / "matlab" / "Data" / "Gears C3D Files" / "C3DExport Tour average.c3d"
+    )
+    return C3DDataReader(default_path)
