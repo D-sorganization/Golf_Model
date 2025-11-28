@@ -86,13 +86,13 @@ class MplCanvas(FigureCanvas):  # type: ignore[misc]
     ) -> None:
         """Initialize the matplotlib canvas with specified dimensions."""
         self.fig = Figure(figsize=(width, height), dpi=dpi)
-        super().__init__(self.fig)  # type: ignore[no-untyped-call]
+        super().__init__(self.fig)
         self.setParent(parent)
 
     def clear_axes(self) -> None:
         """Clear all axes from the figure."""
         self.fig.clear()
-        self.draw()  # type: ignore[no-untyped-call]
+        self.draw()
 
     def add_subplot(self, *args: Any, **kwargs: Any) -> Axes:
         """Add a subplot to the figure and return the axes."""
@@ -618,7 +618,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
         ax.set_xlabel("Time (s)")
         ax.grid(True)
         self.canvas_marker.fig.tight_layout()
-        self.canvas_marker.draw()  # type: ignore[no-untyped-call]
+        self.canvas_marker.draw()
 
     # ------------------------ Analog plotting ------------------------------
 
@@ -651,7 +651,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
         ax.legend()
 
         self.canvas_analog.fig.tight_layout()
-        self.canvas_analog.draw()  # type: ignore[no-untyped-call]
+        self.canvas_analog.draw()
 
     # ------------------------ 3D view --------------------------------------
 
@@ -723,7 +723,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
 
         ax.legend()
         self.canvas_3d.fig.tight_layout()
-        self.canvas_3d.draw()  # type: ignore[no-untyped-call]
+        self.canvas_3d.draw()
 
     # ------------------------ Analysis tab ---------------------------------
 
@@ -792,7 +792,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
             ax.legend()
             self.canvas_analysis.fig.tight_layout()
 
-        self.canvas_analysis.draw()
+        self.canvas_analysis.draw()  # type: ignore[no-untyped-call]
 
     # ------------------------- About dialog --------------------------------
 
