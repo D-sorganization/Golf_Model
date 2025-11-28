@@ -175,15 +175,15 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
 
     def _create_menus(self) -> None:
         """Create menu bar and menus."""
-        menubar = self.menuBar()
+        menubar = self.menuBar()  # type: ignore[union-attr]
 
-        file_menu = menubar.addMenu("&File")
-        file_menu.addAction(self.action_open)
-        file_menu.addSeparator()
-        file_menu.addAction(self.action_exit)
+        file_menu = menubar.addMenu("&File")  # type: ignore[union-attr]
+        file_menu.addAction(self.action_open)  # type: ignore[union-attr]
+        file_menu.addSeparator()  # type: ignore[union-attr]
+        file_menu.addAction(self.action_exit)  # type: ignore[union-attr]
 
-        help_menu = menubar.addMenu("&Help")
-        help_menu.addAction(self.action_about)
+        help_menu = menubar.addMenu("&Help")  # type: ignore[union-attr]
+        help_menu.addAction(self.action_about)  # type: ignore[union-attr]
 
     def _create_central_widget(self) -> None:
         """Create the central tab widget with all tabs."""
@@ -220,12 +220,11 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
         self.table_metadata = QtWidgets.QTableWidget()
         self.table_metadata.setColumnCount(2)
         self.table_metadata.setHorizontalHeaderLabels(["Field", "Value"])
-        self.table_metadata.horizontalHeader().setSectionResizeMode(
+        header = self.table_metadata.horizontalHeader()  # type: ignore[union-attr]
+        header.setSectionResizeMode(
             0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
         )
-        self.table_metadata.horizontalHeader().setSectionResizeMode(
-            1, QtWidgets.QHeaderView.ResizeMode.Stretch
-        )
+        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.table_metadata)
 
         return widget
