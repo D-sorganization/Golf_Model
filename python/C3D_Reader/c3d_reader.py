@@ -74,7 +74,7 @@ class C3DDataModel:
 # ---------------------------------------------------------------------------
 
 
-class MplCanvas(FigureCanvas):
+class MplCanvas(FigureCanvas):  # type: ignore[misc]
     """Matplotlib canvas widget for embedding plots in Qt."""
 
     def __init__(
