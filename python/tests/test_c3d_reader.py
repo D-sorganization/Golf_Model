@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from c3d_reader import C3DDataReader, load_tour_average_reader
+from src.c3d_reader import C3DDataReader, load_tour_average_reader
 
 EXPECTED_MARKER_COUNT = 38
 EXPECTED_FRAME_COUNT = 654
@@ -17,11 +17,13 @@ EXPECTED_ANALOG_COUNT = 0
 
 
 def _tour_average_reader() -> C3DDataReader:
+    """Create a C3DDataReader for the tour average test file."""
     repository_root = Path(__file__).resolve().parents[2]
     return load_tour_average_reader(repository_root)
 
 
 def test_metadata_matches_expected_capture() -> None:
+    """Test that metadata extraction matches expected values from the test file."""
     reader = _tour_average_reader()
     metadata = reader.get_metadata()
 
@@ -38,6 +40,7 @@ def test_metadata_matches_expected_capture() -> None:
 
 
 def test_points_dataframe_shape_and_columns() -> None:
+    """Test that points dataframe has correct shape and columns."""
     reader = _tour_average_reader()
     dataframe = reader.points_dataframe()
 
@@ -49,6 +52,7 @@ def test_points_dataframe_shape_and_columns() -> None:
 
 
 def test_marker_time_series_is_ordered_and_numeric() -> None:
+    """Test that marker time series data is properly ordered and numeric."""
     reader = _tour_average_reader()
     dataframe = reader.points_dataframe()
     waist_left_frames = dataframe[dataframe["marker"] == "WaistLeft"].reset_index(
@@ -65,6 +69,7 @@ def test_marker_time_series_is_ordered_and_numeric() -> None:
 
 
 def test_marker_subset_and_unit_conversion() -> None:
+    """Test marker filtering and unit conversion functionality."""
     reader = _tour_average_reader()
     dataframe_meters = reader.points_dataframe(
         markers=["WaistLeft"], include_time=False
@@ -82,6 +87,7 @@ def test_marker_subset_and_unit_conversion() -> None:
 
 
 def test_residual_filtering_sets_noisy_points_to_nan() -> None:
+    """Test that residual filtering correctly sets noisy points to NaN."""
     reader = _tour_average_reader()
     dataframe = reader.points_dataframe(residual_nan_threshold=0.5)
 
@@ -89,6 +95,7 @@ def test_residual_filtering_sets_noisy_points_to_nan() -> None:
 
 
 def test_analog_dataframe_handles_missing_channels_gracefully() -> None:
+    """Test that analog dataframe handles missing channels without errors."""
     reader = _tour_average_reader()
     analog_df = reader.analog_dataframe()
 
@@ -97,6 +104,7 @@ def test_analog_dataframe_handles_missing_channels_gracefully() -> None:
 
 
 def test_analog_dataframe_orders_samples_and_channels() -> None:
+    """Test that analog dataframe correctly orders samples and channels."""
     reader = C3DDataReader(Path("dummy"))
     analog_array = np.array(
         [
@@ -148,6 +156,7 @@ def test_analog_dataframe_orders_samples_and_channels() -> None:
 
 
 def test_points_export_supports_multiple_formats(tmp_path: Path) -> None:
+    """Test that points can be exported to CSV, JSON, and NPZ formats."""
     reader = _tour_average_reader()
     export_dir = tmp_path / "exports"
 
@@ -170,6 +179,7 @@ def test_points_export_supports_multiple_formats(tmp_path: Path) -> None:
 
 
 def test_analog_export_writes_empty_structure(tmp_path: Path) -> None:
+    """Test that analog export creates proper file structure even with empty data."""
     reader = _tour_average_reader()
     path = reader.export_analog(tmp_path / "analog.csv")
 

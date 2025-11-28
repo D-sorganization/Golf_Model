@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, Sequence
+from typing import Any, Dict, Iterable, Sequence, cast
 
 import ezc3d
 import numpy as np
 import pandas as pd
 
-from logger_utils import get_logger
+from .logger_utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -61,7 +61,8 @@ class C3DMetadata:
 class C3DDataReader:
     """Loads marker trajectories and metadata from a C3D file."""
 
-    def __init__(self, file_path: Path | str):
+    def __init__(self, file_path: Path | str) -> None:
+        """Initialize the C3D data reader with a file path."""
         self.file_path = Path(file_path)
         self._c3d_data: C3DMapping | None = None
         self._metadata: C3DMetadata | None = None
@@ -250,17 +251,25 @@ class C3DDataReader:
         return self._export_dataframe(dataframe, output_path, file_format)
 
     def _get_point_parameters(self) -> Dict[str, Any]:
+        """Get POINT parameters from the C3D file."""
         c3d_data = self._load()
         try:
-            return c3d_data["parameters"]["POINT"]
+            return cast(Dict[str, Any], c3d_data["parameters"]["POINT"])
         except KeyError as error:  # pragma: no cover - defensive guard
-            raise ValueError("POINT parameters missing from C3D file") from error
+            raise ValueError(
+                f"POINT parameters missing from C3D file: {self.file_path}"
+            ) from error
 
     def _get_analog_parameters(self) -> Dict[str, Any] | None:
+        """Get ANALOG parameters from the C3D file, if present."""
         c3d_data = self._load()
-        return c3d_data["parameters"].get("ANALOG")
+        analog_params = c3d_data["parameters"].get("ANALOG")
+        return (
+            cast(Dict[str, Any], analog_params) if analog_params is not None else None
+        )
 
     def _get_analog_details(self) -> tuple[list[str], float | None]:
+        """Get analog channel labels and sample rate from the C3D file."""
         analog_parameters = self._get_analog_parameters()
         analog_array = self._load()["data"]["analogs"]
         channel_count = analog_array.shape[1]
@@ -281,6 +290,7 @@ class C3DDataReader:
         return labels, analog_rate
 
     def _get_events(self) -> list[C3DEvent]:
+        """Extract event markers from the C3D file."""
         c3d_data = self._load()
         event_parameters = c3d_data["parameters"].get("EVENT")
         if not event_parameters:
@@ -304,14 +314,16 @@ class C3DDataReader:
         return events
 
     def _load(self) -> C3DMapping:
+        """Load the C3D file if not already loaded."""
         if self._c3d_data is None:
             if not self.file_path.exists():
-                raise FileNotFoundError(f"C3D file not found: {self.file_path}")
+                raise FileNotFoundError(f"File not found: {self.file_path}")
             self._c3d_data = ezc3d.c3d(str(self.file_path))
         return self._c3d_data
 
     @staticmethod
     def _unit_scale(current_units: str, target_units: str | None) -> float:
+        """Calculate scaling factor for unit conversion."""
         if target_units is None:
             return 1.0
 
@@ -333,6 +345,7 @@ class C3DDataReader:
     def _export_dataframe(
         self, dataframe: pd.DataFrame, output_path: Path | str, file_format: str | None
     ) -> Path:
+        """Export a DataFrame to CSV, JSON, or NPZ format."""
         path = Path(output_path)
         if not file_format:
             if not path.suffix:
