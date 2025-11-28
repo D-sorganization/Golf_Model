@@ -792,6 +792,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
             ax.legend()
             self.canvas_analysis.fig.tight_layout()
 
+        # type: ignore[no-untyped-call]
         self.canvas_analysis.draw()
 
     # ------------------------- About dialog --------------------------------
