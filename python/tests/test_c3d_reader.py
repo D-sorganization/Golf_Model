@@ -96,6 +96,57 @@ def test_analog_dataframe_handles_missing_channels_gracefully() -> None:
     assert list(analog_df.columns) == ["sample", "time", "channel", "value"]
 
 
+def test_analog_dataframe_orders_samples_and_channels() -> None:
+    reader = C3DDataReader(Path("dummy"))
+    analog_array = np.array(
+        [
+            [
+                [1.0, 2.0, 3.0],
+                [4.0, 5.0, 6.0],
+            ],
+            [
+                [7.0, 8.0, 9.0],
+                [10.0, 11.0, 12.0],
+            ],
+        ]
+    )
+    points = np.zeros((4, 1, 3))
+    reader._c3d_data = {
+        "data": {"points": points, "analogs": analog_array},
+        "parameters": {
+            "POINT": {
+                "LABELS": {"value": ["Marker1"]},
+                "FRAMES": {"value": [3]},
+                "RATE": {"value": [120]},
+                "UNITS": {"value": ["m"]},
+            },
+            "ANALOG": {
+                "LABELS": {"value": ["A1", "A2"]},
+                "RATE": {"value": [240]},
+            },
+        },
+    }
+
+    analog_df = reader.analog_dataframe()
+
+    assert list(analog_df.columns) == ["sample", "time", "channel", "value"]
+    assert analog_df["sample"].is_monotonic_increasing
+    assert analog_df[analog_df["sample"] == 1]["time"].iat[0] == pytest.approx(1 / 240)
+
+    pivoted = analog_df.pivot(index="sample", columns="channel", values="value")
+    expected = np.array(
+        [
+            [1.0, 4.0],
+            [7.0, 10.0],
+            [2.0, 5.0],
+            [8.0, 11.0],
+            [3.0, 6.0],
+            [9.0, 12.0],
+        ]
+    )
+    np.testing.assert_allclose(pivoted.to_numpy(), expected)
+
+
 def test_points_export_supports_multiple_formats(tmp_path: Path) -> None:
     reader = _tour_average_reader()
     export_dir = tmp_path / "exports"
@@ -107,8 +158,8 @@ def test_points_export_supports_multiple_formats(tmp_path: Path) -> None:
     )
 
     assert csv_path.exists()
-    csv_frame = csv_path.stat().st_size
-    assert csv_frame > 0
+    csv_file_size = csv_path.stat().st_size
+    assert csv_file_size > 0
 
     assert json_path.exists()
     assert json_path.stat().st_size > 0

@@ -178,13 +178,14 @@ class C3DDataReader:
         subframes, channel_count, frame_count = analog_array.shape
         analog_rate = metadata.analog_rate
 
+        columns = ["sample", "channel", "value"]
+        if include_time and analog_rate:
+            columns = ["sample", "time", "channel", "value"]
+
         if channel_count == 0:
-            columns = ["sample", "channel", "value"]
-            if include_time and analog_rate:
-                columns.insert(1, "time")
             return pd.DataFrame(columns=columns)
 
-        values = analog_array.transpose(2, 1, 0).reshape(
+        values = analog_array.transpose(2, 0, 1).reshape(
             frame_count * subframes, channel_count
         )
         sample_indices = np.arange(values.shape[0])
@@ -265,8 +266,8 @@ class C3DDataReader:
         channel_count = analog_array.shape[1]
 
         if analog_parameters is None:
-            labels: list[str] = []
-            analog_rate: float | None = None
+            labels = []
+            analog_rate = None
         else:
             labels = [
                 label.strip()
