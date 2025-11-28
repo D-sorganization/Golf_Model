@@ -678,7 +678,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
         self.label_frame_info.setText(f"Frame: {frame_index} / Time: {time_str}")
 
         self.canvas_3d.fig.clear()
-        ax = self.canvas_3d.add_subplot(111, projection="3d")
+        ax = self.canvas_3d.add_subplot(111, projection="3d")  # type: ignore[assignment]
 
         # Plot full trajectories (faint) and current point (bold)
         for name in marker_names:
@@ -692,7 +692,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
             ax.plot(pos[:, 0], pos[:, 1], pos[:, 2], alpha=0.3, label=name)
             if 0 <= frame_index < pos.shape[0]:
                 x, y, z = pos[frame_index]
-                ax.scatter([x], [y], [z], s=40)
+                ax.scatter([x], [y], [z], s=40)  # type: ignore[misc]
 
         ax.set_xlabel("X")
         ax.set_ylabel("Y")
@@ -717,7 +717,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
                 half = max_range / 2.0
                 ax.set_xlim(mid_x - half, mid_x + half)
                 ax.set_ylim(mid_y - half, mid_y + half)
-                ax.set_zlim(mid_z - half, mid_z + half)
+                ax.set_zlim(mid_z - half, mid_z + half)  # type: ignore[attr-defined]
 
         ax.legend()
         self.canvas_3d.fig.tight_layout()
