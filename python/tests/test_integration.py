@@ -32,9 +32,6 @@ class TestPackageIntegration:
 
     def test_reproducible_random_generation_workflow(self) -> None:
         """Test a complete workflow with reproducible random generation."""
-        # Initialize logger
-        logger = get_logger("workflow")
-
         # Set seeds for reproducibility
         set_seeds(12345)
 

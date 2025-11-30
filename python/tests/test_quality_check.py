@@ -1,9 +1,9 @@
 """Tests for quality check script."""
 
+import importlib.util
 import sys
+import types
 from pathlib import Path
-
-import pytest
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
@@ -13,8 +13,6 @@ sys.path.insert(0, str(scripts_path))
 
 # Import the quality check module
 # Use importlib to import from scripts directory
-import importlib.util
-import types
 
 spec = importlib.util.spec_from_file_location(
     "quality_check", project_root / "scripts" / "quality-check.py"
