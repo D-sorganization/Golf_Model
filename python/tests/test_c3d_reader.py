@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 
 from src.c3d_reader import C3DDataReader, load_tour_average_reader
+from src.c3d_reader import C3DEvent
 
 EXPECTED_MARKER_COUNT = 38
 EXPECTED_FRAME_COUNT = 654
@@ -20,6 +23,37 @@ def _tour_average_reader() -> C3DDataReader:
     """Create a C3DDataReader for the tour average test file."""
     repository_root = Path(__file__).resolve().parents[2]
     return load_tour_average_reader(repository_root)
+
+
+def _stub_reader_with_points(
+    *,
+    frame_count: int = 2,
+    marker_labels: tuple[str, ...] = ("Marker1", "Marker2"),
+    point_units: str = "m",
+    point_rate: int = 100,
+    analog_array: npt.NDArray[np.floating[Any]] | None = None,
+    analog_parameters: dict[str, Any] | None = None,
+) -> C3DDataReader:
+    """Create a stubbed reader with synthetic point data for isolated testing."""
+
+    points = np.zeros((4, len(marker_labels), frame_count))
+    analogs = (
+        analog_array if analog_array is not None else np.zeros((1, 0, frame_count))
+    )
+    reader = C3DDataReader(Path("synthetic"))
+    reader._c3d_data = {
+        "data": {"points": points, "analogs": analogs},
+        "parameters": {
+            "POINT": {
+                "LABELS": {"value": list(marker_labels)},
+                "FRAMES": {"value": [frame_count]},
+                "RATE": {"value": [point_rate]},
+                "UNITS": {"value": [point_units]},
+            },
+            **({"ANALOG": analog_parameters} if analog_parameters else {}),
+        },
+    }
+    return reader
 
 
 def test_metadata_matches_expected_capture() -> None:
@@ -92,6 +126,28 @@ def test_residual_filtering_sets_noisy_points_to_nan() -> None:
     dataframe = reader.points_dataframe(residual_nan_threshold=0.5)
 
     assert dataframe[["x", "y", "z"]].isna().all().all()
+
+
+def test_points_dataframe_missing_file_raises_file_not_found(tmp_path: Path) -> None:
+    """Ensure missing capture files raise a clear FileNotFoundError."""
+
+    reader = C3DDataReader(tmp_path / "does_not_exist.c3d")
+
+    with pytest.raises(FileNotFoundError):
+        reader.points_dataframe()
+
+
+def test_get_point_parameters_missing_section_raises_value_error() -> None:
+    """Missing POINT parameters should fail fast with a descriptive error."""
+
+    reader = C3DDataReader(Path("incomplete"))
+    reader._c3d_data = {
+        "data": {"points": np.zeros((4, 1, 1)), "analogs": np.zeros((1, 0, 1))},
+        "parameters": {},
+    }
+
+    with pytest.raises(ValueError):
+        reader.get_metadata()
 
 
 def test_analog_dataframe_handles_missing_channels_gracefully() -> None:
@@ -186,3 +242,113 @@ def test_analog_export_writes_empty_structure(tmp_path: Path) -> None:
     assert path.exists()
     contents = path.read_text(encoding="utf-8").strip().splitlines()
     assert contents[0].split(",") == ["sample", "time", "channel", "value"]
+
+
+def test_export_points_requires_inferable_format(tmp_path: Path) -> None:
+    """Exporting without a known extension should raise a ValueError."""
+
+    reader = _stub_reader_with_points()
+
+    with pytest.raises(ValueError):
+        reader.export_points(tmp_path / "points")
+
+
+def test_unit_scale_rejects_unsupported_units() -> None:
+    """Unsupported unit conversions should raise ValueError rather than mis-scale."""
+
+    with pytest.raises(ValueError):
+        C3DDataReader._unit_scale("cm", "m")
+
+
+def test_get_events_parses_event_times() -> None:
+    """Event parsing should produce trimmed labels with finite times only."""
+
+    reader = _stub_reader_with_points()
+    reader._c3d_data["parameters"]["EVENT"] = {
+        "LABELS": {"value": [" Foot Strike", "Follow Through "]},
+        "TIMES": {"value": [[0.0, 1.2], [0.5, 1.7]]},
+    }
+
+    events = reader._get_events()
+
+    assert events == [
+        C3DEvent(label="Foot Strike", time=0.5),
+        C3DEvent(label="Follow Through", time=1.7),
+    ]
+
+
+def test_analog_dataframe_fills_default_labels_without_rate() -> None:
+    """Analog channels without labels should receive stable defaults."""
+
+    analog_array = np.array(
+        [
+            [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]],
+        ]
+    )
+    reader = _stub_reader_with_points(frame_count=3, marker_labels=("M1",))
+    reader._c3d_data["data"]["analogs"] = analog_array
+
+    analog_df = reader.analog_dataframe()
+
+    assert list(analog_df.columns) == ["sample", "channel", "value"]
+    assert set(analog_df["channel"].unique()) == {"Analog_1", "Analog_2"}
+    assert analog_df.iloc[0]["value"] == pytest.approx(1.0)
+
+
+def test_points_dataframe_sorts_by_time_and_marker() -> None:
+    """Points DataFrame should be ordered by time then marker name when requested."""
+
+    reader = _stub_reader_with_points(
+        marker_labels=("B", "A"),
+        frame_count=3,
+        point_rate=50,
+    )
+
+    dataframe = reader.points_dataframe()
+
+    assert dataframe["time"].is_monotonic_increasing
+    grouped = dataframe.groupby("time")["marker"].apply(list)
+    assert all(markers == sorted(markers) for markers in grouped)
+
+
+def test_export_points_rejects_unknown_format(tmp_path: Path) -> None:
+    """Export should fail fast when provided an unsupported file format string."""
+
+    reader = _stub_reader_with_points()
+
+    with pytest.raises(ValueError):
+        reader.export_points(tmp_path / "points.out", file_format="txt")
+
+    assert not (tmp_path / "points.out").exists()
+
+
+def test_get_events_handles_missing_times() -> None:
+    """Event labels without time data should return an empty list."""
+
+    reader = _stub_reader_with_points()
+    reader._c3d_data["parameters"]["EVENT"] = {"LABELS": {"value": ["A", "B"]}}
+
+    assert reader._get_events() == []
+
+
+def test_analog_export_writes_time_when_rate_available(tmp_path: Path) -> None:
+    """Analog export should include the time column when a rate is defined."""
+
+    analog_array = np.array(
+        [
+            [[1.0, 2.0], [3.0, 4.0]],
+            [[5.0, 6.0], [7.0, 8.0]],
+        ]
+    )
+    analog_parameters = {"LABELS": {"value": ["Ch1", "Ch2"]}, "RATE": {"value": [200]}}
+    reader = _stub_reader_with_points(
+        analog_array=analog_array, analog_parameters=analog_parameters, frame_count=2
+    )
+
+    path = reader.export_analog(tmp_path / "analog.csv")
+
+    lines = path.read_text(encoding="utf-8").strip().splitlines()
+    assert lines[0].split(",") == ["sample", "time", "channel", "value"]
+    assert lines[1].startswith("0,0.0,Ch1,1.0")
+    assert lines[2].split(",")[1] == "0.0"
+    assert lines[3].split(",")[1] == "0.005"
