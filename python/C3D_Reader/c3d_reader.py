@@ -16,7 +16,7 @@ Dependencies:
 import sys
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, no_type_check
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -74,11 +74,9 @@ class C3DDataModel:
 # ---------------------------------------------------------------------------
 
 
-@no_type_check
 class MplCanvas(FigureCanvas):
     """Matplotlib canvas widget for embedding plots in Qt."""
 
-    @no_type_check
     def __init__(
         self,
         parent: QtWidgets.QWidget | None = None,
@@ -87,15 +85,14 @@ class MplCanvas(FigureCanvas):
         dpi: int = 100,
     ) -> None:
         """Initialize the matplotlib canvas with specified dimensions."""
-        self.fig: Figure = Figure(figsize=(width, height), dpi=dpi)
-        super().__init__(self.fig)
+        self.fig = Figure(figsize=(width, height), dpi=dpi)
+        super().__init__(self.fig)  # type: ignore
         self.setParent(parent)
 
-    @no_type_check
     def clear_axes(self) -> None:
         """Clear all axes from the figure."""
         self.fig.clear()
-        self.draw()
+        self.draw()  # type: ignore
 
     def add_subplot(self, *args: Any, **kwargs: Any) -> Axes:
         """Add a subplot to the figure and return the axes."""
@@ -147,7 +144,7 @@ def compute_marker_statistics(
 # ---------------------------------------------------------------------------
 
 
-class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
+class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore
     """Main window for the C3D motion analysis viewer application."""
 
     def __init__(self) -> None:
@@ -621,7 +618,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
         ax.set_xlabel("Time (s)")
         ax.grid(True)
         self.canvas_marker.fig.tight_layout()
-        self.canvas_marker.draw()
+        self.canvas_marker.draw()  # type: ignore
 
     # ------------------------ Analog plotting ------------------------------
 
@@ -654,7 +651,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
         ax.legend()
 
         self.canvas_analog.fig.tight_layout()
-        self.canvas_analog.draw()
+        self.canvas_analog.draw()  # type: ignore
 
     # ------------------------ 3D view --------------------------------------
 
@@ -726,7 +723,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
 
         ax.legend()
         self.canvas_3d.fig.tight_layout()
-        self.canvas_3d.draw()
+        self.canvas_3d.draw()  # type: ignore
 
     # ------------------------ Analysis tab ---------------------------------
 
@@ -795,7 +792,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
             ax.legend()
             self.canvas_analysis.fig.tight_layout()
 
-        self.canvas_analysis.draw()
+        self.canvas_analysis.draw()  # type: ignore
 
     # ------------------------- About dialog --------------------------------
 

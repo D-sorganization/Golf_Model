@@ -48,13 +48,57 @@ def test_logger_level_setting() -> None:
     logger.setLevel(original_level)
 
 
-def test_set_seeds_synchronizes_numpy_and_random() -> None:
-    """Setting seeds should produce reproducible sequences across libraries."""
+def test_set_seeds_sets_random_state() -> None:
+    """Test that set_seeds properly sets both random and numpy seeds."""
+    # Set seed and capture initial values
+    set_seeds(42)
+    random_val1 = random.random()
+    numpy_val1 = np.random.random()
 
-    set_seeds(1234)
-    first_sequence = (random.random(), np.random.rand(), np.random.randint(0, 10))
+    # Generate more random values to change state
+    random.random()
+    np.random.random()
 
-    set_seeds(1234)
-    second_sequence = (random.random(), np.random.rand(), np.random.randint(0, 10))
+    # Reset to same seed should produce same values
+    set_seeds(42)
+    random_val2 = random.random()
+    numpy_val2 = np.random.random()
 
-    assert first_sequence == second_sequence
+    assert random_val1 == random_val2
+    assert numpy_val1 == numpy_val2
+
+
+def test_set_seeds_different_seeds_produce_different_values() -> None:
+    """Test that different seeds produce different random values."""
+    set_seeds(42)
+    random_val_42 = random.random()
+    numpy_val_42 = np.random.random()
+
+    set_seeds(123)
+    random_val_123 = random.random()
+    numpy_val_123 = np.random.random()
+
+    assert random_val_42 != random_val_123
+    assert numpy_val_42 != numpy_val_123
+
+
+def test_set_seeds_with_zero() -> None:
+    """Test that set_seeds works with zero seed value."""
+    set_seeds(0)
+    val1 = random.random()
+
+    set_seeds(0)
+    val2 = random.random()
+
+    assert val1 == val2
+
+
+def test_set_seeds_reproducibility_for_arrays() -> None:
+    """Test that set_seeds ensures reproducibility for numpy array generation."""
+    set_seeds(999)
+    array1 = np.random.rand(5)
+
+    set_seeds(999)
+    array2 = np.random.rand(5)
+
+    np.testing.assert_array_equal(array1, array2)
