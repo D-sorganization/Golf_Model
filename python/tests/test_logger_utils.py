@@ -1,9 +1,12 @@
 """Tests for logger utilities module."""
 
 import logging
+import random
+
+import numpy as np
 
 # Import handled by conftest.py
-from logger_utils import get_logger
+from logger_utils import get_logger, set_seeds
 
 
 def test_get_logger_returns_logger() -> None:
@@ -43,3 +46,15 @@ def test_logger_level_setting() -> None:
 
     # Restore original level
     logger.setLevel(original_level)
+
+
+def test_set_seeds_synchronizes_numpy_and_random() -> None:
+    """Setting seeds should produce reproducible sequences across libraries."""
+
+    set_seeds(1234)
+    first_sequence = (random.random(), np.random.rand(), np.random.randint(0, 10))
+
+    set_seeds(1234)
+    second_sequence = (random.random(), np.random.rand(), np.random.randint(0, 10))
+
+    assert first_sequence == second_sequence
