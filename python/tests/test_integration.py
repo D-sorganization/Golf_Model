@@ -10,7 +10,12 @@ import pytest
 from logger_utils import get_logger, set_seeds
 
 # Import c3d_reader using package import (same as test_c3d_reader.py)
-from src.c3d_reader import C3DDataReader, C3DEvent, C3DMetadata, load_tour_average_reader
+from src.c3d_reader import (
+    C3DDataReader,
+    C3DEvent,
+    C3DMetadata,
+    load_tour_average_reader,
+)
 
 
 class TestPackageIntegration:
