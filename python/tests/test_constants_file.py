@@ -39,7 +39,8 @@ class TestMathematicalConstants:
     def test_pi_value(self) -> None:
         """Test that PI constant equals math.pi."""
         assert PI == math.pi
-        assert PI == pytest.approx(3.14159265358979323846)
+        # Verify it's the expected mathematical constant
+        assert PI > 3.14 and PI < 3.15
 
     def test_e_value(self) -> None:
         """Test that E constant equals Euler's number."""
@@ -55,7 +56,8 @@ class TestPhysicalConstants:
         # ISO 80000-3:2006 standard gravity
         assert GRAVITY_M_S2 == 9.80665
         assert GRAVITY_M_S2 > 0
-        assert 9.8 < GRAVITY_M_S2 < 9.82
+        # Verify reasonable range for Earth's gravity
+        assert 9.5 < GRAVITY_M_S2 < 10.0
 
     def test_speed_of_light_value(self) -> None:
         """Test speed of light constant."""

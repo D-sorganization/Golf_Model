@@ -14,11 +14,15 @@ sys.path.insert(0, str(scripts_path))
 # Import the quality check module
 # Use importlib to import from scripts directory
 import importlib.util
+import types
 
 spec = importlib.util.spec_from_file_location(
     "quality_check", project_root / "scripts" / "quality-check.py"
 )
-quality_check = importlib.util.module_from_spec(spec)
+if spec is None or spec.loader is None:
+    raise ImportError("Could not load quality_check module")
+
+quality_check: types.ModuleType = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(quality_check)
 
 
@@ -330,7 +334,7 @@ class TestEdgeCases:
 
     def test_empty_lines_list(self) -> None:
         """Test handling of empty lines list."""
-        lines = []
+        lines: list[str] = []
         filepath = Path("test.py")
 
         issues = quality_check.check_banned_patterns(lines, filepath)
