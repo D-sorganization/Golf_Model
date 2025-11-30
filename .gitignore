@@ -51,3 +51,6 @@ logs/
 # Simulation checkpoint files (temporary, deleted after successful runs)
 **/checkpoint*.mat
 **/*checkpoint*.mat
+.coverage
+coverage_html_report/
+coverage.xml
