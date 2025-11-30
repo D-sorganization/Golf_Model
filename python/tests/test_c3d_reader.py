@@ -37,7 +37,9 @@ def _stub_reader_with_points(
     """Create a stubbed reader with synthetic point data for isolated testing."""
 
     points = np.zeros((4, len(marker_labels), frame_count))
-    analogs = analog_array if analog_array is not None else np.zeros((1, 0, frame_count))
+    analogs = (
+        analog_array if analog_array is not None else np.zeros((1, 0, frame_count))
+    )
     reader = C3DDataReader(Path("synthetic"))
     reader._c3d_data = {
         "data": {"points": points, "analogs": analogs},
