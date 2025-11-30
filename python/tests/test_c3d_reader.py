@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 
 from src.c3d_reader import C3DDataReader, load_tour_average_reader
@@ -29,8 +31,8 @@ def _stub_reader_with_points(
     marker_labels: tuple[str, ...] = ("Marker1", "Marker2"),
     point_units: str = "m",
     point_rate: int = 100,
-    analog_array: np.ndarray | None = None,
-    analog_parameters: dict | None = None,
+    analog_array: npt.NDArray[np.floating[Any]] | None = None,
+    analog_parameters: dict[str, Any] | None = None,
 ) -> C3DDataReader:
     """Create a stubbed reader with synthetic point data for isolated testing."""
 

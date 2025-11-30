@@ -16,7 +16,7 @@ Dependencies:
 import sys
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, no_type_check
 
 import numpy as np
 import numpy.typing as npt
@@ -74,6 +74,7 @@ class C3DDataModel:
 # ---------------------------------------------------------------------------
 
 
+@no_type_check
 class MplCanvas(FigureCanvas):
     """Matplotlib canvas widget for embedding plots in Qt."""
 
