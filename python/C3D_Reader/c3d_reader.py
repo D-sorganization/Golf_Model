@@ -723,7 +723,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
 
         ax.legend()
         self.canvas_3d.fig.tight_layout()
-        self.canvas_3d.draw()  # type: ignore[no-untyped-call]
+        self.canvas_3d.draw()  # type: ignore
 
     # ------------------------ Analysis tab ---------------------------------
 
@@ -792,7 +792,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc]
             ax.legend()
             self.canvas_analysis.fig.tight_layout()
 
-        self.canvas_analysis.draw()  # type: ignore[no-untyped-call]
+        self.canvas_analysis.draw()  # type: ignore
 
     # ------------------------- About dialog --------------------------------
 
