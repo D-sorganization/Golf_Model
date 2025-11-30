@@ -1,18 +1,17 @@
 """Tests for constants_file module."""
 
 import math
-
-import pytest
-
-# Import handled by conftest.py or direct import
 import sys
 from pathlib import Path
+
+import pytest
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from constants_file import (
+# Import constants after adding to path
+from constants_file import (  # noqa: E402
     AIR_DENSITY_SEA_LEVEL_KG_M3,
     BUNKER_DEPTH_MM,
     DRIVER_LOFT_DEG,
