@@ -1,36 +1,26 @@
 """Integration tests for the main package."""
 
+import importlib.util
 import logging
 import random
 
 import numpy as np
 import pytest
 
-# Skip C3D-related tests if ezc3d is not available (e.g., Python 3.9)
-try:
-    import ezc3d
-    EZC3D_AVAILABLE = True
-except ImportError:
-    EZC3D_AVAILABLE = False
-
 # Import handled by conftest.py
 from logger_utils import get_logger, set_seeds
 
 # Import c3d_reader using package import (same as test_c3d_reader.py)
 # This will work even if ezc3d is not available due to our optional import handling
-try:
-    from src.c3d_reader import (
-        C3DDataReader,
-        C3DEvent,
-        C3DMetadata,
-        load_tour_average_reader,
-    )
-except ImportError:
-    # If import fails, define stubs for tests that don't use C3D
-    C3DDataReader = None  # type: ignore[assignment, misc]
-    C3DEvent = None  # type: ignore[assignment, misc]
-    C3DMetadata = None  # type: ignore[assignment, misc]
-    load_tour_average_reader = None  # type: ignore[assignment, misc]
+from src.c3d_reader import (
+    C3DDataReader,
+    C3DEvent,
+    C3DMetadata,
+    load_tour_average_reader,
+)
+
+# Skip C3D-related tests if ezc3d is not available (e.g., Python 3.9)
+EZC3D_AVAILABLE = importlib.util.find_spec("ezc3d") is not None
 
 
 class TestPackageIntegration:
