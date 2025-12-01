@@ -15,8 +15,6 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    strategy:
-      fail-fast: true  # ✅ Always include
     
     steps:
       - uses: actions/checkout@v4
