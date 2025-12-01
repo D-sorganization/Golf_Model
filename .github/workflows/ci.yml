@@ -82,15 +82,18 @@ jobs:
       - name: Check for placeholders
         run: |
           # Fail if TODO, FIXME, or other placeholders found in Python files
-          # Exclude quality check scripts that contain the patterns they check for
+          # Exclude quality check scripts and test files that contain the patterns they check for
           if grep -r "TODO\|FIXME\|XXX\|HACK\|pass #\|\.\.\..*#\|NotImplementedError" \
             --include="*.py" \
             --exclude-dir=".git" \
             --exclude-dir="archive" \
             --exclude-dir="legacy" \
             --exclude-dir="experimental" \
+            --exclude-dir="tests" \
             --exclude="quality_check*.py" \
-            --exclude="matlab_quality_check.py" .; then
+            --exclude="matlab_quality_check.py" \
+            --exclude="test_*.py" \
+            --exclude="*_test.py" .; then
             echo "❌ ERROR: Placeholders found in code"
             exit 1
           else
