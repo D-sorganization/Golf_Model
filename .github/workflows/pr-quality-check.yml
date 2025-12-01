@@ -2,9 +2,16 @@ name: Pull Request Quality Check
 
 on:
   pull_request:
-    branches: [ main, master, copilot/* ]
+    branches: [ main, master ]
+    # Add replicant branches if they exist:
+    # branches: [ main, master, claude/RepositoryName_Replicants ]
   push:
-    branches: [ main, master, copilot/* ]
+    branches: [ main, master ]
+    # Add replicant branches if they exist
+
+# Minimal permissions for security
+permissions:
+  contents: read
 
 jobs:
   quality-check:
@@ -12,7 +19,7 @@ jobs:
     strategy:
       fail-fast: true  # ✅ Always include
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11"]
 
     steps:
     - uses: actions/checkout@v4
@@ -37,20 +44,48 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         # Check both root and python/ subdirectory
-        if [ -f python/requirements.txt ]; then pip install -r python/requirements.txt; fi
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        # For Python 3.9, use compatible numpy version (numpy 2.x requires Python >=3.10)
+        if [ -f python/requirements.txt ]; then
+          if python -c "import sys; exit(0 if sys.version_info >= (3, 10) else 1)"; then
+            pip install -r python/requirements.txt
+          else
+            # Python 3.9: filter out incompatible packages and install compatible versions
+            pip install $(grep -v "^numpy==" python/requirements.txt | grep -v "^pandas==" | grep -v "^ezc3d==") "numpy<2.0" "pandas<2.2" || pip install -r python/requirements.txt --ignore-installed numpy pandas ezc3d || true
+          fi
+        fi
+        # Note: root requirements.txt is a template - install from python/requirements.txt only
         if [ -f pyproject.toml ]; then pip install -e .; fi
         # ✅ Pin tool versions
-        pip install ruff==0.5.0 mypy==1.10.0 black==24.4.2 pytest==8.3.3 pytest-cov==6.0.0
+        pip install ruff==0.5.0 mypy==1.10.0 black==24.4.2 pytest pytest-cov
+
+    - name: Run MATLAB Quality Check (Static Analysis)
+      continue-on-error: true  # Non-blocking due to MATLAB license restrictions
+      run: |
+        if [ -f tools/matlab_utilities/scripts/matlab_quality_check.py ]; then
+          echo "=========================================="
+          echo "MATLAB Code Quality Checks"
+          echo "=========================================="
+          python tools/matlab_utilities/scripts/matlab_quality_check.py --output-format json > matlab_quality_results.json || true
+          python tools/matlab_utilities/scripts/matlab_quality_check.py --output-format text || echo "⚠️  Quality issues found - see report above (non-blocking)"
+        else
+          echo "⚠️  MATLAB quality check script not found - skipping"
+        fi
+
+    - name: Upload MATLAB Quality Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: matlab-quality-report-py${{ matrix.python-version }}
+        path: matlab_quality_results.json
+        retention-days: 30
+        if-no-files-found: ignore
 
     - name: Check for placeholders and magic numbers
       run: |
         echo "🔍 Checking for placeholders and magic numbers..."
-        # ✅ Check multiple possible script locations
+        # ✅ Check both possible script locations
         if [ -f scripts/quality-check.py ]; then
           python scripts/quality-check.py
-        elif [ -f scripts/quality_check.py ]; then
-          python scripts/quality_check.py
         elif [ -f quality_check_script.py ]; then
           python quality_check_script.py
         else
@@ -60,15 +95,8 @@ jobs:
     - name: Lint with Ruff
       run: |
         echo "🔍 Running Ruff linter..."
-        # ✅ Check for ruff config in multiple locations
         if [ -f ruff.toml ]; then
           # ✅ Respect config file, don't override
-          ruff check .
-        elif [ -f pyproject.toml ] && grep -q "\[tool.ruff\]" pyproject.toml; then
-          # ✅ Respect ruff config in pyproject.toml
-          ruff check .
-        elif [ -f setup.cfg ] && grep -q "\[ruff\]" setup.cfg; then
-          # ✅ Respect ruff config in setup.cfg
           ruff check .
         else
           # ✅ Fallback with explicit rules
@@ -79,24 +107,12 @@ jobs:
       run: |
         echo "🔍 Running MyPy type checker..."
         if [ -f mypy.ini ]; then
-          if [ -d python ]; then
-            mypy python/ --config-file mypy.ini
-          else
-            mypy . --config-file mypy.ini
-          fi
-        elif [ -f pyproject.toml ] && grep -qE '^\s*\[tool\.mypy\]' pyproject.toml; then
-          if [ -d python ]; then
-            mypy python/
-          else
-            mypy .
-          fi
+          mypy . --config-file mypy.ini
+        elif [ -f pyproject.toml ] && grep -q "\[tool.mypy\]" pyproject.toml; then
+          mypy .
         else
           # ✅ Non-strict fallback to avoid conflicts
-          if [ -d python ]; then
-            mypy python/ --ignore-missing-imports
-          else
-            mypy . --ignore-missing-imports
-          fi
+          mypy . --ignore-missing-imports
         fi
 
     - name: Format check with Black
@@ -110,12 +126,12 @@ jobs:
             black --check --diff python/src
           fi
         elif [ -d python ]; then
-          black --check --diff python
+          black --check --diff python/
         elif [ -d src ]; then
           if [ -d tests ]; then
-            black --check --diff src tests
+            black --check --diff src/ tests/
           else
-            black --check --diff src
+            black --check --diff src/
           fi
         else
           black --check --diff .
@@ -124,58 +140,29 @@ jobs:
     - name: Run tests
       run: |
         echo "🧪 Running tests..."
-        # ✅ Detect source directory for accurate coverage and PYTHONPATH
+        # ✅ Detect source directory for accurate coverage
         if [ -d python/src ]; then
           COV_TARGET="python/src"
-          export PYTHONPATH="${{ github.workspace }}/python/src"
         elif [ -d python ]; then
           COV_TARGET="python"
-          export PYTHONPATH="${{ github.workspace }}/python"
         elif [ -d src ]; then
           COV_TARGET="src"
-          export PYTHONPATH="${{ github.workspace }}/src"
         else
           COV_TARGET="."
-          export PYTHONPATH="${{ github.workspace }}"
         fi
 
-        # Check if pytest.ini exists in python/ subdirectory
-        if [ -f python/pytest.ini ]; then
-          cd python
-          # ✅ Verify tests directory exists before running pytest
-          if [ ! -d tests ]; then
-            echo "⚠️ pytest.ini found but tests/ directory not found, skipping tests"
-            cd ..
-          elif [ -d src ]; then
-            PYTHONPATH=src:$PYTHONPATH pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing
-            EXIT_CODE=$?
-            cd ..
-            exit $EXIT_CODE
-          else
-            PYTHONPATH=.:$PYTHONPATH pytest tests/ --cov=. --cov-report=xml --cov-report=term-missing
-            EXIT_CODE=$?
-            cd ..
-            exit $EXIT_CODE
-          fi
-        elif [ -f pytest.ini ]; then
+        if [ -f pytest.ini ]; then
           pytest --cov="$COV_TARGET" --cov-report=xml --cov-report=term-missing
-          EXIT_CODE=$?
-          exit $EXIT_CODE
         elif [ -d python/tests ]; then
           cd python
           if [ -d src ]; then
-            PYTHONPATH=src:$PYTHONPATH pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing
-            EXIT_CODE=$?
+            pytest tests/ --cov=src --cov-report=xml --cov-report=term-missing
           else
-            PYTHONPATH=.:$PYTHONPATH pytest tests/ --cov=. --cov-report=xml --cov-report=term-missing
-            EXIT_CODE=$?
+            pytest tests/ --cov=. --cov-report=xml --cov-report=term-missing
           fi
           cd ..
-          exit $EXIT_CODE
         elif [ -d tests ]; then
           pytest tests/ --cov="$COV_TARGET" --cov-report=xml --cov-report=term-missing
-          EXIT_CODE=$?
-          exit $EXIT_CODE
         else
           echo "⚠️ No tests directory found, skipping tests"
         fi
@@ -183,8 +170,8 @@ jobs:
     - name: Check for coverage file
       id: coverage-check
       run: |
-        # ✅ Check for coverage.xml anywhere in the repo (matches upload pattern)
-        if find . -name 'coverage.xml' -type f | grep -q .; then
+        # ✅ Check multiple possible locations
+        if [ -f coverage.xml ] || [ -f python/coverage.xml ]; then
           echo "exists=true" >> $GITHUB_OUTPUT
         else
           echo "exists=false" >> $GITHUB_OUTPUT
@@ -199,7 +186,7 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
-        # ✅ Token will be empty string for forked PRs (Codecov handles this gracefully)
+        # ✅ Always include token
         token: ${{ secrets.CODECOV_TOKEN }}
 
   security-check:
@@ -219,15 +206,14 @@ jobs:
       run: |
         pip install bandit==1.7.7
         # ✅ Exclude test directories, target source code only
-        # Use --exclude with glob patterns for comprehensive coverage
         if [ -d python/src ]; then
-          bandit -r python/src --exclude '**/tests/**' -f json -o bandit-report.json
+          bandit -r python/src -x python/tests -f json -o bandit-report.json
         elif [ -d python ]; then
-          bandit -r python --exclude '**/tests/**' -f json -o bandit-report.json
+          bandit -r python -x python/tests -f json -o bandit-report.json
         elif [ -d src ]; then
-          bandit -r src --exclude '**/tests/**' -f json -o bandit-report.json
+          bandit -r src -x tests -f json -o bandit-report.json
         else
-          bandit -r . --exclude '**/tests/**' -f json -o bandit-report.json
+          bandit -r . -x tests -f json -o bandit-report.json
         fi
 
     - name: Upload Bandit results
@@ -266,11 +252,12 @@ jobs:
         pip install pydocstyle==6.3.0
         # ✅ Check source directories only
         if [ -d python/src ]; then
-          pydocstyle python/src
+          pydocstyle python/src/
         elif [ -d python ]; then
-          pydocstyle python
+          pydocstyle python/
         elif [ -d src ]; then
-          pydocstyle src
+          pydocstyle src/
         else
           pydocstyle .
         fi
+

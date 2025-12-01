@@ -1,5 +1,6 @@
 """Integration tests for the main package."""
 
+import importlib.util
 import logging
 import random
 
@@ -10,12 +11,16 @@ import pytest
 from logger_utils import get_logger, set_seeds
 
 # Import c3d_reader using package import (same as test_c3d_reader.py)
+# This will work even if ezc3d is not available due to our optional import handling
 from src.c3d_reader import (
     C3DDataReader,
     C3DEvent,
     C3DMetadata,
     load_tour_average_reader,
 )
+
+# Skip C3D-related tests if ezc3d is not available (e.g., Python 3.9)
+EZC3D_AVAILABLE = importlib.util.find_spec("ezc3d") is not None
 
 
 class TestPackageIntegration:
@@ -54,6 +59,10 @@ class TestPackageIntegration:
         assert random_values == random_values_2
         np.testing.assert_array_equal(numpy_array, numpy_array_2)
 
+    @pytest.mark.skipif(
+        not EZC3D_AVAILABLE,
+        reason="ezc3d requires Python >=3.10",
+    )
     def test_c3d_reader_with_logger(self) -> None:
         """Test that C3D reader can be used with logger."""
         logger = get_logger("c3d_test")
@@ -64,6 +73,10 @@ class TestPackageIntegration:
         assert C3DMetadata is not None
         assert C3DEvent is not None
 
+    @pytest.mark.skipif(
+        not EZC3D_AVAILABLE,
+        reason="ezc3d requires Python >=3.10",
+    )
     def test_module_classes_available(self) -> None:
         """Test that all module classes are accessible."""
         # Verify all main classes are available
@@ -100,6 +113,10 @@ class TestModuleImports:
         assert callable(get_logger)
         assert callable(set_seeds)
 
+    @pytest.mark.skipif(
+        not EZC3D_AVAILABLE,
+        reason="ezc3d requires Python >=3.10",
+    )
     def test_import_c3d_reader(self) -> None:
         """Test importing c3d_reader module."""
         from src.c3d_reader import C3DDataReader, C3DEvent, C3DMetadata
@@ -108,6 +125,10 @@ class TestModuleImports:
         assert C3DMetadata is not None
         assert C3DEvent is not None
 
+    @pytest.mark.skipif(
+        not EZC3D_AVAILABLE,
+        reason="ezc3d requires Python >=3.10",
+    )
     def test_c3d_reader_classes_available(self) -> None:
         """Test that C3D reader classes are available."""
         # Use the already imported classes

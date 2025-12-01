@@ -6,7 +6,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, Sequence, cast
 
-import ezc3d
+try:
+    import ezc3d
+except ImportError:
+    ezc3d = None  # type: ignore[assignment, unused-ignore]
+
 import numpy as np
 import pandas as pd
 
@@ -316,6 +320,13 @@ class C3DDataReader:
     def _load(self) -> C3DMapping:
         """Load the C3D file if not already loaded."""
         if self._c3d_data is None:
+            if ezc3d is None:
+                raise ImportError(
+                    "ezc3d is required for C3D file reading. "
+                    "Install it with: pip install ezc3d\n"
+                    "Note: ezc3d requires Python >=3.10. "
+                    "For Python 3.9, this functionality is not available."
+                )
             if not self.file_path.exists():
                 raise FileNotFoundError(f"File not found: {self.file_path}")
             self._c3d_data = ezc3d.c3d(str(self.file_path))
