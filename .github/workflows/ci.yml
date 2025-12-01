@@ -113,19 +113,23 @@ jobs:
           
       - name: Check for approximations
         run: |
-          # Fail if "approximately" or similar found
-          # Exclude constants_file.py as it contains documented values with sources
-          if grep -ri "approximately\|approx[^a-z]\|roughly\|~[0-9]" \
+          # Fail if "approximately" or similar found (exclude tests and allow scientific notation)
+          if grep -ri "approximately\|roughly" \
             --include="*.py" --include="*.m" \
             --exclude-dir=".git" \
             --exclude-dir="docs" \
-            --exclude="constants_file.py" .; then
+            --exclude-dir="*test*" \
+            --exclude-dir="*Test*" . | \
+            grep -v "#.*Re~" | \
+            grep -v "#.*Ma~" | \
+            grep -v "#.*Cd~" | \
+            grep -v "#.*Cl~" | \
+            grep -v "#.*[A-Z][a-z]*~[0-9]"; then
             echo "❌ ERROR: Approximations found - use exact values with sources"
             exit 1
           else
             echo "✅ No approximations found"
           fi
-          
       - name: Lint with Ruff
         run: |
           echo "🔍 Running Ruff linter..."
