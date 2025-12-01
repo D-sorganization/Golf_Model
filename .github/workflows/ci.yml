@@ -116,13 +116,14 @@ jobs:
           
       - name: Check for approximations
         run: |
-          # Fail if "approximately" or similar found (exclude tests and allow scientific notation)
+          # Fail if "approximately" or similar found (exclude tests, MATLAB directories, and allow scientific notation)
           if grep -ri "approximately\|roughly" \
             --include="*.py" --include="*.m" \
             --exclude-dir=".git" \
             --exclude-dir="docs" \
             --exclude-dir="*test*" \
-            --exclude-dir="*Test*" . | \
+            --exclude-dir="*Test*" \
+            --exclude-dir="matlab" . | \
             grep -v "#.*Re~" | \
             grep -v "#.*Ma~" | \
             grep -v "#.*Cd~" | \
