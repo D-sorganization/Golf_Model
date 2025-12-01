@@ -16,6 +16,7 @@ try:
         C3DMetadata as _C3DMetadata_imported,
         load_tour_average_reader as _load_tour_average_reader_imported,
     )
+
     _C3D_AVAILABLE = True
     _C3DDataReader = _C3DDataReader_imported
     _C3DEvent = _C3DEvent_imported
