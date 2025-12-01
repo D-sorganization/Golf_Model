@@ -44,7 +44,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f pyproject.toml ]; then pip install -e .; fi
           # ✅ Pin tool versions
-          pip install ruff==0.5.0 mypy==1.10.0 black==24.4.2 pytest pytest-cov pre-commit
+          pip install ruff==0.5.0 mypy==1.10.0 black==24.4.2 pytest==8.3.3 pytest-cov==6.0.0 pre-commit
           
       - name: Run MATLAB Quality Check (Static Analysis)
         continue-on-error: true  # Non-blocking due to MATLAB license restrictions
@@ -285,7 +285,7 @@ jobs:
       # ✅ Use continue-on-error instead of || true
       continue-on-error: true
       run: |
-        pip install bandit
+        pip install bandit==1.7.7
         # ✅ Exclude test directories, target source code only
         if [ -d python/src ]; then
           bandit -r python/src -x python/tests -f json -o bandit-report.json
@@ -331,7 +331,7 @@ jobs:
       continue-on-error: true
       run: |
         echo "📝 Checking for docstrings..."
-        pip install pydocstyle
+        pip install pydocstyle==6.3.0
         # ✅ Check source directories only
         if [ -d python/src ]; then
           pydocstyle python/src/

@@ -196,7 +196,7 @@ jobs:
       # ✅ Use continue-on-error instead of || true
       continue-on-error: true
       run: |
-        pip install bandit
+        pip install bandit==1.7.7
         # ✅ Exclude test directories, target source code only
         if [ -d python/src ]; then
           bandit -r python/src -x python/tests -f json -o bandit-report.json
@@ -241,7 +241,7 @@ jobs:
       continue-on-error: true
       run: |
         echo "📝 Checking for docstrings..."
-        pip install pydocstyle
+        pip install pydocstyle==6.3.0
         # ✅ Check source directories only
         if [ -d python/src ]; then
           pydocstyle python/src/
