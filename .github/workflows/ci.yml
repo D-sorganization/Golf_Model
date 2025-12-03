@@ -192,6 +192,10 @@ jobs:
         continue-on-error: true  # Non-blocking
         run: |
           pre-commit run --all-files --show-diff-on-failure
+          PRECOMMIT_EXIT_CODE=$?
+          if [ $PRECOMMIT_EXIT_CODE -ne 0 ]; then
+            echo "⚠️ Pre-commit checks failed, but this does not block CI. Please fix these issues."
+          fi
           
       - name: Run tests with coverage
         id: tests
