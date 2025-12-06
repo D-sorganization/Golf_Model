@@ -323,10 +323,6 @@ function v = getNumericField(s, fn)
         v = NaN;
     end
 end
-    else
-        v = NaN;
-    end
-end
 
 function v = getCharField(s, fn)
     if isfield(s, fn)

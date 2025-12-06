@@ -17,5 +17,16 @@ function [InputFunctionOutput] = HexPolyInputFunction(A,B,C,D,E,F,G,x)
 %
 %   See also: POLYVAL
 
+    arguments
+        A {mustBeNumeric}
+        B {mustBeNumeric}
+        C {mustBeNumeric}
+        D {mustBeNumeric}
+        E {mustBeNumeric}
+        F {mustBeNumeric}
+        G {mustBeNumeric}
+        x {mustBeNumeric}
+    end
+
     InputFunctionOutput = A.*x.^6 + B.*x.^5 + C.*x.^4 + D.*x.^3 + E.*x.^2 + F.*x + G;
 end

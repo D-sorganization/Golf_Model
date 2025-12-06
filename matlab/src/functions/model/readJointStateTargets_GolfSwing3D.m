@@ -1,4 +1,11 @@
 function readJointStateTargets_GolfSwing3D()
+% READJOINTSTATETARGETS_GOLFSWING3D Reads and displays joint priority targets.
+%   READJOINTSTATETARGETS_GOLFSWING3D() scans the 'GolfSwing3D_Kinetic' model
+%   and prints the priority settings for Revolute, Universal, and Gimbal joints.
+
+    arguments
+    end
+
     disp('🔍 Reading joint priority values in GolfSwing3D_Kinetic...');
 
     %% Revolute Joints
