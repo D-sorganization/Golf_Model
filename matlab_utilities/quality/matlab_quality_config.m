@@ -50,9 +50,56 @@ function results = matlab_quality_config()
 
     % 4. Find all MATLAB files
     fprintf('\n📋 Scanning MATLAB files...\n');
-    m_files = dir('**/*.m');
+    all_files = dir('**/*.m');
+
+    % Filter files
+    m_files = [];
+    % Exclude folders containing these strings
+    excluded_dirs = {'Archive', 'Backup', 'Old Revs', 'Older Revs', 'Python Version', 'legacy', 'examples', 'demos'};
+    % Exclude files starting with these strings
+    excluded_prefixes = {'Copy_of_', 'Safe_Copy_of_'};
+
+    excluded_count = 0;
+
+    for i = 1:length(all_files)
+        file_path = fullfile(all_files(i).folder, all_files(i).name);
+
+        % Check directory exclusions
+        is_excluded = false;
+        for j = 1:length(excluded_dirs)
+            if contains(file_path, excluded_dirs{j}, 'IgnoreCase', true)
+                is_excluded = true;
+                break;
+            end
+        end
+
+        if is_excluded
+            excluded_count = excluded_count + 1;
+            continue;
+        end
+
+        % Check filename exclusions
+        for j = 1:length(excluded_prefixes)
+            if startsWith(all_files(i).name, excluded_prefixes{j}, 'IgnoreCase', true)
+                is_excluded = true;
+                break;
+            end
+        end
+
+        if is_excluded
+            excluded_count = excluded_count + 1;
+            continue;
+        end
+
+        if isempty(m_files)
+            m_files = all_files(i);
+        else
+            m_files(end+1) = all_files(i);
+        end
+    end
+
     results.total_files = length(m_files);
-    fprintf('Found %d MATLAB files\n', results.total_files);
+    fprintf('Found %d active MATLAB files (filtered %d files)\n', results.total_files, excluded_count);
 
     % 5. Run comprehensive quality checks
     fprintf('\n🔍 Running comprehensive quality checks...\n');
@@ -62,9 +109,10 @@ function results = matlab_quality_config()
         file_path = fullfile(m_files(i).folder, m_files(i).name);
         fprintf('Checking: %s\n', file_path);
 
-        % Run mlint on individual file
+        % Run checkcode on individual file
         try
-            file_issues = mlint(file_path);
+            % Use checkcode instead of mlint
+            file_issues = checkcode(file_path);
             if ~isempty(file_issues)
                 for j = 1:length(file_issues)
                     issue_msg = sprintf('%s (line %d): %s', ...
@@ -74,7 +122,7 @@ function results = matlab_quality_config()
                 end
             end
         catch ME
-            issue_msg = sprintf('%s: mlint failed - %s', m_files(i).name, ME.message);
+            issue_msg = sprintf('%s: checkcode failed - %s', m_files(i).name, ME.message);
             results.issues{end+1} = issue_msg;
             results.passed = false;
         end
@@ -92,27 +140,6 @@ function results = matlab_quality_config()
                 fprintf('  ⚠️  Could not check structure: %s\n', ME.message);
             end
         end
-    end
-
-    % 6. Run mlint on entire directory
-    try
-        fprintf('\n🔍 Running mlint on entire directory...\n');
-        dir_issues = mlint('.');
-        if isempty(dir_issues)
-            fprintf('✅ No directory-wide mlint issues found\n');
-        else
-            fprintf('⚠️  Found %d directory-wide mlint issues\n', length(dir_issues));
-            for i = 1:min(5, length(dir_issues))
-                fprintf('  - %s\n', dir_issues(i).message);
-            end
-            if length(dir_issues) > 5
-                fprintf('  ... and %d more issues\n', length(dir_issues) - 5);
-            end
-        end
-    catch ME
-        fprintf('❌ Directory mlint failed: %s\n', ME.message);
-        results.passed = false;
-        results.issues{end+1} = sprintf('Directory mlint failed: %s', ME.message);
     end
 
     % 7. Generate summary

@@ -11,25 +11,48 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 # Import constants after adding to path
-from constants_file import (  # noqa: E402
-    AIR_DENSITY_SEA_LEVEL_KG_M3,
-    BUNKER_DEPTH_MM,
-    DRIVER_LOFT_DEG,
-    E,
-    GOLF_BALL_DIAMETER_M,
-    GOLF_BALL_DRAG_COEFFICIENT,
-    GOLF_BALL_MASS_KG,
-    GRAVITY_M_S2,
-    GREEN_SPEED_STIMP,
-    HUMIDITY_PERCENT,
-    IRON_7_LOFT_DEG,
-    PI,
-    PRESSURE_HPA,
-    PUTTER_LOFT_DEG,
-    ROUGH_HEIGHT_MM,
-    SPEED_OF_LIGHT_M_S,
-    TEMPERATURE_C,
-)
+# Use try/except to handle different path configurations
+try:
+    from src.constants import (
+        AIR_DENSITY_SEA_LEVEL_KG_M3,
+        BUNKER_DEPTH_MM,
+        DRIVER_LOFT_DEG,
+        E,
+        GOLF_BALL_DIAMETER_M,
+        GOLF_BALL_DRAG_COEFFICIENT,
+        GOLF_BALL_MASS_KG,
+        GRAVITY_M_S2,
+        GREEN_SPEED_STIMP,
+        HUMIDITY_PERCENT,
+        IRON_7_LOFT_DEG,
+        PI,
+        PRESSURE_HPA,
+        PUTTER_LOFT_DEG,
+        ROUGH_HEIGHT_MM,
+        SPEED_OF_LIGHT_M_S,
+        TEMPERATURE_C,
+    )
+except ImportError:
+    # Fallback for when python/src is directly in path (e.g. via conftest.py)
+    from constants import (
+        AIR_DENSITY_SEA_LEVEL_KG_M3,
+        BUNKER_DEPTH_MM,
+        DRIVER_LOFT_DEG,
+        E,
+        GOLF_BALL_DIAMETER_M,
+        GOLF_BALL_DRAG_COEFFICIENT,
+        GOLF_BALL_MASS_KG,
+        GRAVITY_M_S2,
+        GREEN_SPEED_STIMP,
+        HUMIDITY_PERCENT,
+        IRON_7_LOFT_DEG,
+        PI,
+        PRESSURE_HPA,
+        PUTTER_LOFT_DEG,
+        ROUGH_HEIGHT_MM,
+        SPEED_OF_LIGHT_M_S,
+        TEMPERATURE_C,
+    )
 
 
 class TestMathematicalConstants:

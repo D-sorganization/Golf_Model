@@ -132,7 +132,7 @@ Model/PolynomialInputValues.mat
 # Required Data Files
 # ==================
 # Configuration and input data files
-constants_file.py
+python/src/constants.py
 
 # Notes
 # =====
