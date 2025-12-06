@@ -1,4 +1,12 @@
-function setJointStateTargets_GolfSwing3D()
+function setJointPriorities_GolfSwing3D()
+% SETJOINTPRIORITIES_GOLFSWING3D Sets the joint priority targets.
+%   SETJOINTPRIORITIES_GOLFSWING3D() configures the priority settings
+%   (High, Low, None) for Position and Velocity targets of Revolute,
+%   Universal, and Gimbal joints in the 'GolfSwing3D_Kinetic' model.
+
+    arguments
+    end
+
     %% Revolute Joints (1 DoF: Rz)
     revoluteJoints = {
         'GolfSwing3D_Kinetic/Left Elbow Joint/Revolute Joint',        'High', 'Low';

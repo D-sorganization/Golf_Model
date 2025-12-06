@@ -22,6 +22,12 @@ function [BASEQ, ZTCFQ, DELTAQ] = calculatePathVectors3D(BASEQ, ZTCFQ, DELTAQ)
 %       ZTCFQ  - Updated ZTCFQ table with added path vector columns.
 %       DELTAQ - Updated DELTAQ table with added path vector columns.
 
+    arguments
+        BASEQ table
+        ZTCFQ table
+        DELTAQ table
+    end
+
 % --- Compute Clubhead Path Vectors (CHPx, CHPy, CHPz) ---
 % Calculated as the displacement from one time step to the next.
 % The original script assigned the difference (t+dt - t) to time t.
