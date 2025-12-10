@@ -126,13 +126,24 @@ class C3DDataReader:
         c3d_data = self._load()
         metadata = self.get_metadata()
         points = c3d_data["data"]["points"]
+
+        # Sort markers alphabetically to avoid expensive DataFrame sorting later
+        marker_labels = np.array(metadata.marker_labels)
+        sort_indices = np.argsort(marker_labels)
+        sorted_labels = marker_labels[sort_indices]
+
+        # Reorder points data: (4, Markers, Frames) -> (4, SortedMarkers, Frames)
+        # This aligns the data with the sorted labels so we can construct the DataFrame
+        # already sorted by frame and marker.
+        points = points[:, sort_indices, :]
+
         coordinates = np.transpose(points[:3, :, :], axes=(2, 1, 0)).reshape(-1, 3)
         coordinates = coordinates * self._unit_scale(metadata.units, target_units)
         residuals = points[3, :, :].T.reshape(-1)
         frame_indices = np.repeat(
             np.arange(metadata.frame_count), metadata.marker_count
         )
-        marker_names = np.tile(np.array(metadata.marker_labels), metadata.frame_count)
+        marker_names = np.tile(sorted_labels, metadata.frame_count)
 
         data = {
             "frame": frame_indices,
@@ -155,12 +166,7 @@ class C3DDataReader:
             too_noisy = dataframe["residual"] > residual_nan_threshold
             dataframe.loc[too_noisy, ["x", "y", "z"]] = np.nan
 
-        if include_time and "time" in dataframe.columns:
-            dataframe = dataframe.sort_values(["time", "marker"]).reset_index(drop=True)
-        else:
-            dataframe = dataframe.sort_values(["frame", "marker"]).reset_index(
-                drop=True
-            )
+        dataframe = dataframe.reset_index(drop=True)
 
         logger.info(
             "Loaded %s frames for %s markers from %s",
