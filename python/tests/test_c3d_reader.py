@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -361,3 +362,18 @@ def test_analog_export_writes_time_when_rate_available(tmp_path: Path) -> None:
     assert lines[1].startswith("0,0.0,Ch1,1.0")
     assert lines[2].split(",")[1] == "0.0"
     assert lines[3].split(",")[1] == "0.005"
+
+
+def test_points_dataframe_handles_zero_frame_rate() -> None:
+    """Test that zero frame rate handles gracefully (omits time column)."""
+    reader = _stub_reader_with_points(point_rate=0)
+
+    with warnings.catch_warnings(record=True) as record:
+        warnings.simplefilter("always")
+        dataframe = reader.points_dataframe(include_time=True)
+
+        # Ensure no runtime warnings (division by zero)
+        runtime_warnings = [w for w in record if issubclass(w.category, RuntimeWarning)]
+        assert len(runtime_warnings) == 0
+
+    assert "time" not in dataframe.columns

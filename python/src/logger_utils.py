@@ -3,8 +3,6 @@ import random
 
 import numpy as np
 
-logger = logging.getLogger(__name__)
-
 
 def get_logger(name: str) -> logging.Logger:
     """Get a logger instance with the specified name.
@@ -28,6 +26,9 @@ def get_logger(name: str) -> logging.Logger:
         logger_instance.setLevel(logging.INFO)
 
     return logger_instance
+
+
+logger = get_logger(__name__)
 
 
 def set_seeds(seed: int) -> None:
