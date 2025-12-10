@@ -6,6 +6,7 @@ import random
 import numpy as np
 
 # Import handled by conftest.py
+import logger_utils
 from logger_utils import get_logger, set_seeds
 
 
@@ -102,3 +103,8 @@ def test_set_seeds_reproducibility_for_arrays() -> None:
     array2 = np.random.rand(5)
 
     np.testing.assert_array_equal(array1, array2)
+
+
+def test_module_logger_has_handlers() -> None:
+    """Test that the module-level logger in logger_utils has handlers configured."""
+    assert len(logger_utils.logger.handlers) > 0
