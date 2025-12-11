@@ -151,6 +151,9 @@ class VideoExporter(QObject):
         settings = quality_settings.get(config.quality, quality_settings["high"])
 
         # Build ffmpeg command
+        # Use absolute path to prevent argument injection (starting with -)
+        output_abspath = str(Path(config.output_path).resolve())
+
         command = [
             "ffmpeg",
             "-y",  # Overwrite output file
@@ -175,7 +178,7 @@ class VideoExporter(QObject):
             settings["crf"],
             "-pix_fmt",
             "yuv420p",  # Compatibility with most players
-            config.output_path,
+            output_abspath,
         ]
 
         print(
