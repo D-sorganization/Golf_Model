@@ -144,7 +144,7 @@ def compute_marker_statistics(
 # ---------------------------------------------------------------------------
 
 
-class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore
+class C3DViewerMainWindow(QtWidgets.QMainWindow):
     """Main window for the C3D motion analysis viewer application."""
 
     def __init__(self) -> None:
@@ -167,6 +167,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore
         """Create menu actions for the application."""
         self.action_open = QtGui.QAction("Open &C3D…", self)
         self.action_open.setShortcut("Ctrl+O")
+        self.action_open.setStatusTip("Open a C3D file for analysis")
         self.action_open.triggered.connect(self.open_c3d_file)
 
         self.action_exit = QtGui.QAction("E&xit", self)
@@ -343,6 +344,7 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore
         top_layout.addWidget(self.combo_marker_analysis)
 
         self.button_recompute_stats = QtWidgets.QPushButton("Recompute stats")
+        self.button_recompute_stats.setToolTip("Recalculate statistics for the selected marker")
         self.button_recompute_stats.clicked.connect(self.update_analysis_panel)
         top_layout.addWidget(self.button_recompute_stats)
 
@@ -383,18 +385,19 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore
             return
 
         try:
+            QtWidgets.QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
             model = self._load_c3d(path)
+            self.model = model
+            self._populate_ui_with_model()
+            self._update_ui_state(True)
         except Exception as e:
             QtWidgets.QMessageBox.critical(
                 self,
                 "Error loading C3D",
                 f"Failed to load file:\n{path}\n\nError:\n{e}",
             )
-            return
-
-        self.model = model
-        self._populate_ui_with_model()
-        self._update_ui_state(True)
+        finally:
+            QtWidgets.QApplication.restoreOverrideCursor()
 
     def _load_c3d(self, filepath: str) -> C3DDataModel:
         """Load and parse a C3D file into a C3DDataModel."""
