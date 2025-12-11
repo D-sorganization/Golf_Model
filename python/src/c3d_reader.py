@@ -127,8 +127,16 @@ class C3DDataReader:
         metadata = self.get_metadata()
         points = c3d_data["data"]["points"]
 
-        # Sort markers alphabetically to avoid expensive DataFrame sorting later
         marker_labels = np.array(metadata.marker_labels)
+
+        if markers:
+            # Filter markers early to avoid processing unneeded data
+            requested_set = set(markers)
+            mask = np.array([label in requested_set for label in marker_labels])
+            marker_labels = marker_labels[mask]
+            points = points[:, mask, :]
+
+        # Sort markers alphabetically to avoid expensive DataFrame sorting later
         sort_indices = np.argsort(marker_labels)
         sorted_labels = marker_labels[sort_indices]
 
@@ -140,8 +148,10 @@ class C3DDataReader:
         coordinates = np.transpose(points[:3, :, :], axes=(2, 1, 0)).reshape(-1, 3)
         coordinates = coordinates * self._unit_scale(metadata.units, target_units)
         residuals = points[3, :, :].T.reshape(-1)
+
+        current_marker_count = len(sorted_labels)
         frame_indices = np.repeat(
-            np.arange(metadata.frame_count), metadata.marker_count
+            np.arange(metadata.frame_count), current_marker_count
         )
         marker_names = np.tile(sorted_labels, metadata.frame_count)
 
@@ -163,9 +173,6 @@ class C3DDataReader:
                 )
 
         dataframe = pd.DataFrame(data)
-
-        if markers:
-            dataframe = dataframe[dataframe["marker"].isin(set(markers))]
 
         if residual_nan_threshold is not None:
             too_noisy = dataframe["residual"] > residual_nan_threshold
