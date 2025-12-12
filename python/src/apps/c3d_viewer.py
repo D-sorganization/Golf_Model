@@ -144,7 +144,7 @@ def compute_marker_statistics(
 # ---------------------------------------------------------------------------
 
 
-class C3DViewerMainWindow(QtWidgets.QMainWindow):
+class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc, unused-ignore]
     """Main window for the C3D motion analysis viewer application."""
 
     def __init__(self) -> None:
