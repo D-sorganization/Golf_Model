@@ -144,7 +144,7 @@ def compute_marker_statistics(
 # ---------------------------------------------------------------------------
 
 
-class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc, unused-ignore]
+class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore
     """Main window for the C3D motion analysis viewer application."""
 
     def __init__(self) -> None:
@@ -180,14 +180,17 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc, unused-i
     def _create_menus(self) -> None:
         """Create menu bar and menus."""
         menubar = self.menuBar()
+        assert menubar is not None
 
         file_menu = menubar.addMenu("&File")
-        file_menu.addAction(self.action_open)
-        file_menu.addSeparator()
-        file_menu.addAction(self.action_exit)
+        if file_menu is not None:
+            file_menu.addAction(self.action_open)
+            file_menu.addSeparator()
+            file_menu.addAction(self.action_exit)
 
         help_menu = menubar.addMenu("&Help")
-        help_menu.addAction(self.action_about)
+        if help_menu is not None:
+            help_menu.addAction(self.action_about)
 
     def _create_central_widget(self) -> None:
         """Create the central tab widget with all tabs."""
@@ -225,10 +228,11 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc, unused-i
         self.table_metadata.setColumnCount(2)
         self.table_metadata.setHorizontalHeaderLabels(["Field", "Value"])
         header = self.table_metadata.horizontalHeader()
-        header.setSectionResizeMode(
-            0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
-        )
-        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        if header is not None:
+            header.setSectionResizeMode(
+                0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+            )
+            header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.table_metadata)
 
         return widget
@@ -344,7 +348,9 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc, unused-i
         top_layout.addWidget(self.combo_marker_analysis)
 
         self.button_recompute_stats = QtWidgets.QPushButton("Recompute stats")
-        self.button_recompute_stats.setToolTip("Recalculate statistics for the selected marker")
+        self.button_recompute_stats.setToolTip(
+            "Recalculate statistics for the selected marker"
+        )
         self.button_recompute_stats.clicked.connect(self.update_analysis_panel)
         top_layout.addWidget(self.button_recompute_stats)
 
@@ -386,15 +392,31 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore[misc, unused-i
 
         try:
             QtWidgets.QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
-            model = self._load_c3d(path)
+
+            # Step 1: Load file
+            try:
+                model = self._load_c3d(path)
+            except Exception as e:
+                # Re-raise with context so outer block handles UI feedback
+                raise RuntimeError(
+                    f"Failed to load file:\n{path}\n\nError:\n{e}"
+                ) from e
+
+            # Step 2: Update UI
             self.model = model
-            self._populate_ui_with_model()
-            self._update_ui_state(True)
+            try:
+                self._populate_ui_with_model()
+                self._update_ui_state(True)
+            except Exception as e:
+                raise RuntimeError(
+                    f"File loaded successfully, but failed to populate UI.\n\nError:\n{e}"
+                ) from e
+
+        except RuntimeError as re:
+            QtWidgets.QMessageBox.critical(self, "Error", str(re))
         except Exception as e:
             QtWidgets.QMessageBox.critical(
-                self,
-                "Error loading C3D",
-                f"Failed to load file:\n{path}\n\nError:\n{e}",
+                self, "Error", f"An unexpected error occurred:\n{e}"
             )
         finally:
             QtWidgets.QApplication.restoreOverrideCursor()
