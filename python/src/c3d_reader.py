@@ -137,11 +137,25 @@ class C3DDataReader:
         # already sorted by frame and marker.
         points = points[:, sort_indices, :]
 
+        if markers:
+            # Filter arrays before creating the DataFrame to reduce memory usage and processing time
+            requested_markers = set(markers)
+            mask = np.isin(sorted_labels, list(requested_markers))
+            sorted_labels = sorted_labels[mask]
+            points = points[:, mask, :]
+
+        current_marker_count = len(sorted_labels)
+
         coordinates = np.transpose(points[:3, :, :], axes=(2, 1, 0)).reshape(-1, 3)
         coordinates = coordinates * self._unit_scale(metadata.units, target_units)
         residuals = points[3, :, :].T.reshape(-1)
+
+        if residual_nan_threshold is not None:
+            too_noisy = residuals > residual_nan_threshold
+            coordinates[too_noisy] = np.nan
+
         frame_indices = np.repeat(
-            np.arange(metadata.frame_count), metadata.marker_count
+            np.arange(metadata.frame_count), current_marker_count
         )
         marker_names = np.tile(sorted_labels, metadata.frame_count)
 
@@ -163,15 +177,6 @@ class C3DDataReader:
                 )
 
         dataframe = pd.DataFrame(data)
-
-        if markers:
-            dataframe = dataframe[dataframe["marker"].isin(set(markers))]
-
-        if residual_nan_threshold is not None:
-            too_noisy = dataframe["residual"] > residual_nan_threshold
-            dataframe.loc[too_noisy, ["x", "y", "z"]] = np.nan
-
-        dataframe = dataframe.reset_index(drop=True)
 
         logger.info(
             "Loaded %s frames for %s markers from %s",
