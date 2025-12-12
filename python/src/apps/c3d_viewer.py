@@ -382,19 +382,34 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore
         if not path:
             return
 
+        QtWidgets.QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        self.statusBar().showMessage(f"Loading {os.path.basename(path)}...")
+
+        success = False
+        error = None
+
         try:
             model = self._load_c3d(path)
+            self.model = model
+            self._populate_ui_with_model()
+            self._update_ui_state(True)
+            success = True
         except Exception as e:
+            error = e
+        finally:
+            QtWidgets.QApplication.restoreOverrideCursor()
+
+        if success:
+            self.statusBar().showMessage(
+                f"Loaded {os.path.basename(path)} successfully", 5000
+            )
+        else:
             QtWidgets.QMessageBox.critical(
                 self,
                 "Error loading C3D",
-                f"Failed to load file:\n{path}\n\nError:\n{e}",
+                f"Failed to load file:\n{path}\n\nError:\n{error}",
             )
-            return
-
-        self.model = model
-        self._populate_ui_with_model()
-        self._update_ui_state(True)
+            self.statusBar().showMessage("Error loading file")
 
     def _load_c3d(self, filepath: str) -> C3DDataModel:
         """Load and parse a C3D file into a C3DDataModel."""
