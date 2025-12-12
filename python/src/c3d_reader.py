@@ -238,6 +238,11 @@ class C3DDataReader:
         Supported formats are CSV, JSON (records orientation), and NPZ. The
         format is inferred from the file extension when ``file_format`` is not
         provided.
+
+        Note:
+            CSV exports are sanitized to prevent Excel Formula Injection (CSV Injection).
+            String values starting with '=', '+', '-', or '@' will be escaped with a
+            leading single quote (').
         """
 
         dataframe = self.points_dataframe(
@@ -344,6 +349,15 @@ class C3DDataReader:
         return self._c3d_data
 
     @staticmethod
+    def _sanitize_for_csv(value: Any) -> Any:
+        """Sanitize a value to prevent CSV injection."""
+        if not isinstance(value, str):
+            return value
+        if value.startswith(("=", "+", "-", "@")):
+            return f"'{value}"
+        return value
+
+    @staticmethod
     def _unit_scale(current_units: str, target_units: str | None) -> float:
         """Calculate scaling factor for unit conversion."""
         if target_units is None:
@@ -380,7 +394,11 @@ class C3DDataReader:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         if normalized_format == "csv":
-            dataframe.to_csv(path, index=False)
+            # Sanitize for CSV Injection (Excel Formula Injection)
+            df_to_export = dataframe.copy()
+            for col in df_to_export.select_dtypes(include=[object, "string"]):
+                df_to_export[col] = df_to_export[col].apply(self._sanitize_for_csv)
+            df_to_export.to_csv(path, index=False)
         elif normalized_format == "json":
             dataframe.to_json(path, orient="records")
         elif normalized_format == "npz":
