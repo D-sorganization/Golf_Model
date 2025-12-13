@@ -144,7 +144,7 @@ def compute_marker_statistics(
 # ---------------------------------------------------------------------------
 
 
-class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore
+class C3DViewerMainWindow(QtWidgets.QMainWindow):
     """Main window for the C3D motion analysis viewer application."""
 
     def __init__(self) -> None:
@@ -180,14 +180,18 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore
     def _create_menus(self) -> None:
         """Create menu bar and menus."""
         menubar = self.menuBar()
+        if menubar is None:
+            return
 
         file_menu = menubar.addMenu("&File")
-        file_menu.addAction(self.action_open)
-        file_menu.addSeparator()
-        file_menu.addAction(self.action_exit)
+        if file_menu is not None:
+            file_menu.addAction(self.action_open)
+            file_menu.addSeparator()
+            file_menu.addAction(self.action_exit)
 
         help_menu = menubar.addMenu("&Help")
-        help_menu.addAction(self.action_about)
+        if help_menu is not None:
+            help_menu.addAction(self.action_about)
 
     def _create_central_widget(self) -> None:
         """Create the central tab widget with all tabs."""
@@ -225,10 +229,11 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore
         self.table_metadata.setColumnCount(2)
         self.table_metadata.setHorizontalHeaderLabels(["Field", "Value"])
         header = self.table_metadata.horizontalHeader()
-        header.setSectionResizeMode(
-            0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
-        )
-        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        if header is not None:
+            header.setSectionResizeMode(
+                0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+            )
+            header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self.table_metadata)
 
         return widget
@@ -344,7 +349,9 @@ class C3DViewerMainWindow(QtWidgets.QMainWindow):  # type: ignore
         top_layout.addWidget(self.combo_marker_analysis)
 
         self.button_recompute_stats = QtWidgets.QPushButton("Recompute stats")
-        self.button_recompute_stats.setToolTip("Recalculate statistics for the selected marker")
+        self.button_recompute_stats.setToolTip(
+            "Recalculate statistics for the selected marker"
+        )
         self.button_recompute_stats.clicked.connect(self.update_analysis_panel)
         top_layout.addWidget(self.button_recompute_stats)
 
