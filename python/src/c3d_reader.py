@@ -149,9 +149,7 @@ class C3DDataReader:
         residuals = points[3, :, :].T.reshape(-1)
 
         current_marker_count = len(sorted_labels)
-        frame_indices = np.repeat(
-            np.arange(metadata.frame_count), current_marker_count
-        )
+        frame_indices = np.repeat(np.arange(metadata.frame_count), current_marker_count)
         marker_names = np.tile(sorted_labels, metadata.frame_count)
 
         data = {
