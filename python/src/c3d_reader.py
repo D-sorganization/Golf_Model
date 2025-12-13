@@ -137,7 +137,7 @@ class C3DDataReader:
         # already sorted by frame and marker.
         points = points[:, sort_indices, :]
 
-        if markers:
+        if markers is not None:
             # Filter arrays before creating the DataFrame to reduce memory usage and processing time
             requested_markers = set(markers)
             mask = np.isin(sorted_labels, list(requested_markers))
