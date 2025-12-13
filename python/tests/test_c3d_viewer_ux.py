@@ -1,18 +1,16 @@
 
 import sys
 import os
-from typing import Any
 from unittest.mock import MagicMock, patch
-import pytest
+from pytestqt.qtbot import QtBot
 from PyQt6.QtCore import Qt
-from PyQt6 import QtWidgets
 
 # Ensure python/src is in sys.path (conftest handles this usually, but for direct run/safety)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 
 from apps.c3d_viewer import C3DViewerMainWindow
 
-def test_open_c3d_file_shows_wait_cursor(qtbot: Any) -> None:
+def test_open_c3d_file_shows_wait_cursor(qtbot: QtBot) -> None:
     """Test that opening a C3D file sets the wait cursor and restores it."""
 
     # Create the window
@@ -57,7 +55,7 @@ def test_open_c3d_file_shows_wait_cursor(qtbot: Any) -> None:
                          # We expect "Loading..." then "Loaded..." or similar
                          assert mock_status_bar.showMessage.call_count >= 1
 
-def test_open_c3d_file_restores_cursor_on_error(qtbot: Any) -> None:
+def test_open_c3d_file_restores_cursor_on_error(qtbot: QtBot) -> None:
     """Test that cursor is restored even if loading fails."""
 
     window = C3DViewerMainWindow()
