@@ -131,8 +131,7 @@ class C3DDataReader:
 
         if markers:
             # Filter markers early to avoid processing unneeded data
-            requested_set = set(markers)
-            mask = np.array([label in requested_set for label in marker_labels])
+            mask = np.isin(marker_labels, markers)
             marker_labels = marker_labels[mask]
             points = points[:, mask, :]
 
