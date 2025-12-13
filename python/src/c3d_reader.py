@@ -127,8 +127,15 @@ class C3DDataReader:
         metadata = self.get_metadata()
         points = c3d_data["data"]["points"]
 
-        # Sort markers alphabetically to avoid expensive DataFrame sorting later
         marker_labels = np.array(metadata.marker_labels)
+
+        if markers:
+            # Filter markers early to avoid processing unneeded data
+            mask = np.isin(marker_labels, list(markers))
+            marker_labels = marker_labels[mask]
+            points = points[:, mask, :]
+
+        # Sort markers alphabetically to avoid expensive DataFrame sorting later
         sort_indices = np.argsort(marker_labels)
         sorted_labels = marker_labels[sort_indices]
 
@@ -136,13 +143,6 @@ class C3DDataReader:
         # This aligns the data with the sorted labels so we can construct the DataFrame
         # already sorted by frame and marker.
         points = points[:, sort_indices, :]
-
-        if markers is not None:
-            # Filter arrays before creating the DataFrame to reduce memory usage and processing time
-            requested_markers = set(markers)
-            mask = np.isin(sorted_labels, list(requested_markers))
-            sorted_labels = sorted_labels[mask]
-            points = points[:, mask, :]
 
         current_marker_count = len(sorted_labels)
 
@@ -154,9 +154,7 @@ class C3DDataReader:
             too_noisy = residuals > residual_nan_threshold
             coordinates[too_noisy] = np.nan
 
-        frame_indices = np.repeat(
-            np.arange(metadata.frame_count), current_marker_count
-        )
+        frame_indices = np.repeat(np.arange(metadata.frame_count), current_marker_count)
         marker_names = np.tile(sorted_labels, metadata.frame_count)
 
         data = {
