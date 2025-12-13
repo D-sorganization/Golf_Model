@@ -1,6 +1,5 @@
 """Tests for security vulnerabilities in C3D data reader."""
 
-import pytest
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -39,11 +38,18 @@ def test_csv_injection_prevention_default(tmp_path: Path) -> None:
     reader.export_points(export_path)
 
     assert export_path.exists()
-    content = export_path.read_text(encoding="utf-8")
 
-    # Expect escaped label
-    escaped_label = f"'{malicious_label}"
-    assert f"{escaped_label}" in content
+    # Read back with pandas to verify value
+    df = pd.read_csv(export_path)
+
+    # Verify the marker column value is escaped
+    # The 'marker' column should be the second column (index 1) or named 'marker'
+    assert 'marker' in df.columns
+    actual_label = df['marker'].iloc[0]
+
+    expected_escaped = f"'{malicious_label}"
+    assert actual_label == expected_escaped
+    assert str(actual_label).startswith("'")
 
 def test_csv_injection_allowed_when_requested(tmp_path: Path) -> None:
     """
@@ -56,15 +62,13 @@ def test_csv_injection_allowed_when_requested(tmp_path: Path) -> None:
     reader.export_points(export_path, sanitize=False)
 
     assert export_path.exists()
-    content = export_path.read_text(encoding="utf-8")
 
-    # Expect raw label (no escape)
-    # Note: Depending on CSV formatting, it might just be the string.
-    # We ensure it does NOT start with '
+    # Read back with pandas to verify value
+    df = pd.read_csv(export_path)
 
-    # Split by comma to find the marker column
-    # format: frame,marker,x,y,z,residual,time
-    # 0,=SUM(1+1),...
+    assert 'marker' in df.columns
+    actual_label = df['marker'].iloc[0]
 
-    assert f",{malicious_label}," in content or f"\n{malicious_label}," in content
-    assert f"'{malicious_label}" not in content
+    # Should be the raw malicious label
+    assert actual_label == malicious_label
+    assert not str(actual_label).startswith("'")
