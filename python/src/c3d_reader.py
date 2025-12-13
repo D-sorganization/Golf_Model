@@ -232,6 +232,7 @@ class C3DDataReader:
         residual_nan_threshold: float | None = None,
         target_units: str | None = None,
         file_format: str | None = None,
+        sanitize: bool = True,
     ) -> Path:
         """Export marker trajectories to a tabular file.
 
@@ -239,10 +240,15 @@ class C3DDataReader:
         format is inferred from the file extension when ``file_format`` is not
         provided.
 
-        Note:
-            CSV exports are sanitized to prevent Excel Formula Injection (CSV Injection).
-            String values starting with '=', '+', '-', or '@' will be escaped with a
-            leading single quote (').
+        Args:
+            output_path: Destination file path.
+            include_time: Include a time column in the output.
+            markers: Filter for specific markers.
+            residual_nan_threshold: Threshold to filter noisy data.
+            target_units: Unit conversion (e.g. 'm', 'mm').
+            file_format: Explicit format ('csv', 'json', 'npz').
+            sanitize: Whether to sanitize CSV output to prevent Excel Formula Injection.
+                Defaults to True. Strings starting with =, +, -, @ will be escaped.
         """
 
         dataframe = self.points_dataframe(
@@ -251,7 +257,7 @@ class C3DDataReader:
             residual_nan_threshold=residual_nan_threshold,
             target_units=target_units,
         )
-        return self._export_dataframe(dataframe, output_path, file_format)
+        return self._export_dataframe(dataframe, output_path, file_format, sanitize)
 
     def export_analog(
         self,
@@ -259,16 +265,24 @@ class C3DDataReader:
         *,
         include_time: bool = True,
         file_format: str | None = None,
+        sanitize: bool = True,
     ) -> Path:
         """Export analog channels to a tabular file.
 
         Supports the same formats as :meth:`export_points`. Empty analog data
         produces an output file with headers so downstream automation can rely
         on the presence of the export artifact.
+
+        Args:
+            output_path: Destination file path.
+            include_time: Include a time column in the output.
+            file_format: Explicit format ('csv', 'json', 'npz').
+            sanitize: Whether to sanitize CSV output to prevent Excel Formula Injection.
+                Defaults to True.
         """
 
         dataframe = self.analog_dataframe(include_time=include_time)
-        return self._export_dataframe(dataframe, output_path, file_format)
+        return self._export_dataframe(dataframe, output_path, file_format, sanitize)
 
     def _get_point_parameters(self) -> Dict[str, Any]:
         """Get POINT parameters from the C3D file."""
@@ -379,7 +393,11 @@ class C3DDataReader:
         )
 
     def _export_dataframe(
-        self, dataframe: pd.DataFrame, output_path: Path | str, file_format: str | None
+        self,
+        dataframe: pd.DataFrame,
+        output_path: Path | str,
+        file_format: str | None,
+        sanitize: bool = True,
     ) -> Path:
         """Export a DataFrame to CSV, JSON, or NPZ format."""
         path = Path(output_path)
@@ -394,10 +412,11 @@ class C3DDataReader:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         if normalized_format == "csv":
-            # Sanitize for CSV Injection (Excel Formula Injection)
-            df_to_export = dataframe.copy()
-            for col in df_to_export.select_dtypes(include=[object, "string"]):
-                df_to_export[col] = df_to_export[col].apply(self._sanitize_for_csv)
+            df_to_export = dataframe.copy() if sanitize else dataframe
+            if sanitize:
+                # Sanitize for CSV Injection (Excel Formula Injection)
+                for col in df_to_export.select_dtypes(include=[object, "string"]):
+                    df_to_export[col] = df_to_export[col].apply(self._sanitize_for_csv)
             df_to_export.to_csv(path, index=False)
         elif normalized_format == "json":
             dataframe.to_json(path, orient="records")
