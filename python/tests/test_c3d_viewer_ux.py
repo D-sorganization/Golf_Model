@@ -6,20 +6,25 @@ from unittest.mock import MagicMock, patch, call
 
 # Gracefully skip if PyQt6 is not installed (e.g. in CI environments)
 try:
-    from PyQt6.QtWidgets import QApplication, QStatusBar
+    from PyQt6.QtWidgets import QApplication
     from PyQt6.QtCore import Qt
+
     # Import dependencies to prevent reloading issues when patching sys.modules
-    import numpy
-    import matplotlib
-    import matplotlib.figure
-    import matplotlib.artist
+    import numpy  # noqa: F401
+    import matplotlib  # noqa: F401
+    import matplotlib.figure  # noqa: F401
+    import matplotlib.artist  # noqa: F401
 except ImportError:
-    pytest.skip("Required packages (PyQt6, matplotlib, numpy) not installed", allow_module_level=True)
+    pytest.skip(
+        "Required packages (PyQt6, matplotlib, numpy) not installed",
+        allow_module_level=True,
+    )
 
 
 # Ensure QApplication exists
 @pytest.fixture(scope="session")
 def qapp() -> typing.Generator[QApplication, None, None]:
+    """Fixture that ensures a QApplication exists for the test session."""
     instance = QApplication.instance()
     if instance is None:
         app = QApplication(sys.argv)
@@ -97,7 +102,9 @@ def test_c3d_viewer_open_file_ux(qapp: QApplication) -> None:
                             assert mock_c3d.called
 
                             # Verify Cursor UX
-                            mock_set_cursor.assert_called_once_with(Qt.CursorShape.WaitCursor)
+                            mock_set_cursor.assert_called_once_with(
+                                Qt.CursorShape.WaitCursor
+                            )
                             mock_restore_cursor.assert_called_once()
 
                             # Verify Status Bar UX

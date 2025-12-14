@@ -54,3 +54,4 @@ logs/
 .coverage
 coverage_html_report/
 coverage.xml
+.mypy_cache/
