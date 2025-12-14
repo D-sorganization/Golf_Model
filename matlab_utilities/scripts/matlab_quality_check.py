@@ -84,7 +84,9 @@ class MATLABQualityChecker:
         """
         try:
             # Check if we can run MATLAB from command line
-            matlab_script = self.project_root / "matlab_utilities/quality/matlab_quality_config.m"
+            matlab_script = (
+                self.project_root / "matlab_utilities/quality/matlab_quality_config.m"
+            )
             if not matlab_script.exists():
                 # Config script not found - fall back to static analysis (primary use case)
                 logger.info(
