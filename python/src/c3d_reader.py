@@ -174,6 +174,7 @@ class C3DDataReader:
                 )
 
         dataframe = pd.DataFrame(data)
+
         dataframe = dataframe.reset_index(drop=True)
 
         logger.info(
