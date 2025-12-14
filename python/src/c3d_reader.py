@@ -236,12 +236,23 @@ class C3DDataReader:
         residual_nan_threshold: float | None = None,
         target_units: str | None = None,
         file_format: str | None = None,
+        sanitize: bool = True,
     ) -> Path:
         """Export marker trajectories to a tabular file.
 
         Supported formats are CSV, JSON (records orientation), and NPZ. The
         format is inferred from the file extension when ``file_format`` is not
         provided.
+
+        Args:
+            output_path: Destination file path.
+            include_time: Include a time column in the output.
+            markers: Filter for specific markers.
+            residual_nan_threshold: Threshold to filter noisy data.
+            target_units: Unit conversion (e.g. 'm', 'mm').
+            file_format: Explicit format ('csv', 'json', 'npz').
+            sanitize: Whether to sanitize CSV output to prevent Excel Formula Injection.
+                Defaults to True. Strings starting with =, +, -, @ will be escaped.
         """
 
         dataframe = self.points_dataframe(
@@ -250,7 +261,7 @@ class C3DDataReader:
             residual_nan_threshold=residual_nan_threshold,
             target_units=target_units,
         )
-        return self._export_dataframe(dataframe, output_path, file_format)
+        return self._export_dataframe(dataframe, output_path, file_format, sanitize)
 
     def export_analog(
         self,
@@ -258,16 +269,24 @@ class C3DDataReader:
         *,
         include_time: bool = True,
         file_format: str | None = None,
+        sanitize: bool = True,
     ) -> Path:
         """Export analog channels to a tabular file.
 
         Supports the same formats as :meth:`export_points`. Empty analog data
         produces an output file with headers so downstream automation can rely
         on the presence of the export artifact.
+
+        Args:
+            output_path: Destination file path.
+            include_time: Include a time column in the output.
+            file_format: Explicit format ('csv', 'json', 'npz').
+            sanitize: Whether to sanitize CSV output to prevent Excel Formula Injection.
+                Defaults to True.
         """
 
         dataframe = self.analog_dataframe(include_time=include_time)
-        return self._export_dataframe(dataframe, output_path, file_format)
+        return self._export_dataframe(dataframe, output_path, file_format, sanitize)
 
     def _get_point_parameters(self) -> Dict[str, Any]:
         """Get POINT parameters from the C3D file."""
@@ -348,6 +367,15 @@ class C3DDataReader:
         return self._c3d_data
 
     @staticmethod
+    def _sanitize_for_csv(value: Any) -> Any:
+        """Sanitize a value to prevent CSV injection."""
+        if not isinstance(value, str):
+            return value
+        if value.startswith(("=", "+", "-", "@")):
+            return f"'{value}"
+        return value
+
+    @staticmethod
     def _unit_scale(current_units: str, target_units: str | None) -> float:
         """Calculate scaling factor for unit conversion."""
         if target_units is None:
@@ -369,7 +397,11 @@ class C3DDataReader:
         )
 
     def _export_dataframe(
-        self, dataframe: pd.DataFrame, output_path: Path | str, file_format: str | None
+        self,
+        dataframe: pd.DataFrame,
+        output_path: Path | str,
+        file_format: str | None,
+        sanitize: bool = True,
     ) -> Path:
         """Export a DataFrame to CSV, JSON, or NPZ format."""
         path = Path(output_path)
@@ -384,7 +416,14 @@ class C3DDataReader:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         if normalized_format == "csv":
-            dataframe.to_csv(path, index=False)
+            df_to_export = dataframe.copy() if sanitize else dataframe
+            if sanitize:
+                # Sanitize for CSV Injection (Excel Formula Injection)
+                for col in df_to_export.select_dtypes(
+                    include=[object, "string"]
+                ).columns:
+                    df_to_export[col] = df_to_export[col].apply(self._sanitize_for_csv)
+            df_to_export.to_csv(path, index=False)
         elif normalized_format == "json":
             dataframe.to_json(path, orient="records")
         elif normalized_format == "npz":
