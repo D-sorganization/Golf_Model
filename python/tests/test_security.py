@@ -5,6 +5,7 @@ import numpy as np
 from pathlib import Path
 from src.c3d_reader import C3DDataReader
 
+
 def _stub_reader_with_points_mock(
     marker_labels: tuple[str, ...] = ("Marker1",),
 ) -> C3DDataReader:
@@ -27,6 +28,7 @@ def _stub_reader_with_points_mock(
     }
     return reader
 
+
 def test_csv_injection_prevention_default(tmp_path: Path) -> None:
     """
     Test that CSV injection is prevented by sanitizing output by default.
@@ -44,12 +46,13 @@ def test_csv_injection_prevention_default(tmp_path: Path) -> None:
 
     # Verify the marker column value is escaped
     # The 'marker' column should be the second column (index 1) or named 'marker'
-    assert 'marker' in df.columns
-    actual_label = df['marker'].iloc[0]
+    assert "marker" in df.columns
+    actual_label = df["marker"].iloc[0]
 
     expected_escaped = f"'{malicious_label}"
     assert actual_label == expected_escaped
     assert str(actual_label).startswith("'")
+
 
 def test_csv_injection_allowed_when_requested(tmp_path: Path) -> None:
     """
@@ -66,8 +69,8 @@ def test_csv_injection_allowed_when_requested(tmp_path: Path) -> None:
     # Read back with pandas to verify value
     df = pd.read_csv(export_path)
 
-    assert 'marker' in df.columns
-    actual_label = df['marker'].iloc[0]
+    assert "marker" in df.columns
+    actual_label = df["marker"].iloc[0]
 
     # Should be the raw malicious label
     assert actual_label == malicious_label

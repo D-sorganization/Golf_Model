@@ -415,7 +415,9 @@ class C3DDataReader:
             df_to_export = dataframe.copy() if sanitize else dataframe
             if sanitize:
                 # Sanitize for CSV Injection (Excel Formula Injection)
-                for col in df_to_export.select_dtypes(include=[object, "string"]).columns:
+                for col in df_to_export.select_dtypes(
+                    include=[object, "string"]
+                ).columns:
                     df_to_export[col] = df_to_export[col].apply(self._sanitize_for_csv)
             df_to_export.to_csv(path, index=False)
         elif normalized_format == "json":
