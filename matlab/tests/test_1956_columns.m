@@ -76,7 +76,7 @@ if ~silent
 end
 
 % Add paths
-addpath(genpath('matlab/Scripts'));
+addpath(genpath('matlab/src'));
 
 % Create test output directory
 test_output_base = fullfile(pwd, 'test_output', '1956_column_test');
@@ -117,17 +117,13 @@ for mode_idx = 1:length(modes_to_test)
         % Run simulation
         test_start = tic;
 
-        % Call the Dataset_GUI simulation function
-        % For now, we'll simulate by calling compileDataset on existing trial data
-        % In Phase 2, this will be: [trials, path, metadata] = runSimulation(config);
-
-        % Run trials (using Dataset_GUI function)
-        successful_trials = runSimulationTest(config);
+        % Call the actual runSimulation function
+        [successful_trials, dataset_path, ~] = runSimulation(config);
 
         % Compile master dataset
-        master_file = fullfile(test_output_dir, 'master_dataset.csv');
+        master_file = dataset_path;
 
-        if ~exist(master_file, 'file')
+        if isempty(master_file) || ~exist(master_file, 'file')
             error('Master dataset file not created');
         end
 
@@ -242,41 +238,5 @@ save(results_file, 'results');
 if ~silent
     fprintf('Results saved to: %s\n\n', results_file);
 end
-
-end
-
-function successful_trials = runSimulationTest(config)
-% RUNSIMULATIONTEST Run simulation for testing purposes
-%
-% This is a placeholder for the actual runSimulation() function
-% that will be created in Phase 2. For now, it returns a mock result.
-%
-% In Phase 2, this will be replaced with:
-%   [successful_trials, ~, ~] = runSimulation(config);
-
-% TODO: Replace with actual runSimulation() call in Phase 2
-% For now, just verify the config is valid
-assert(config.num_simulations > 0, 'Invalid num_simulations');
-assert(ismember(config.execution_mode, {'sequential', 'parallel'}), 'Invalid execution_mode');
-
-% Mock return value
-successful_trials = config.num_simulations;
-
-% Create mock master dataset file for testing
-master_file = fullfile(config.output_folder, 'master_dataset.csv');
-if ~exist(config.output_folder, 'dir')
-    mkdir(config.output_folder);
-end
-
-% Create a table with 1956 columns for testing
-% (In real implementation, this will be created by compileDataset)
-mock_data = array2table(rand(config.num_simulations, 1956));
-for i = 1:1956
-    mock_data.Properties.VariableNames{i} = sprintf('Column_%d', i);
-end
-writetable(mock_data, master_file);
-
-warning('test_1956_columns:MockData', ...
-    'Using mock data. This test will be fully functional after Phase 2 extraction.');
 
 end
