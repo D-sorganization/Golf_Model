@@ -123,8 +123,8 @@ for mode_idx = 1:length(modes_to_test)
         % Compile master dataset
         master_file = dataset_path;
 
-        if isempty(master_file) || ~exist(master_file, 'file')
-            error('Master dataset file not created');
+        if exist(master_file, 'file') ~= 2
+            error('Master dataset file not created or is a directory');
         end
 
         % Read and check column count
