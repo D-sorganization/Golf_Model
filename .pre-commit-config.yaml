@@ -1,52 +1,37 @@
-# Pre-commit configuration for Golf Model project
-# This file configures automated quality checks that run before each commit
-
 repos:
-  # Python quality checks
+  # Python formatters
   - repo: https://github.com/psf/black
     rev: 24.4.2
     hooks:
       - id: black
-        language_version: python3
-        args: [--line-length=88]
-        types: [python]
-        exclude: |
-          (?x)^(
-            matlab/|
-            archive/|
-            \.git/|
-            __pycache__/|
-            \.pytest_cache/|
-            \.venv/|
-            venv/
-          )$
+        language_version: python3.11
 
-  - repo: https://github.com/charliermarsh/ruff-pre-commit
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+
+  # Python linter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.5.0
     hooks:
       - id: ruff
-        args: [--fix, --exit-non-zero-on-fix]
-        types: [python]
-        exclude: |
-          (?x)^(
-            matlab/|
-            archive/|
-            \.git/|
-            __pycache__/|
-            \.pytest_cache/|
-            \.venv/|
-            venv/
-          )$
+        args: ["--fix", "--select", "E,F,W,I,B,UP", "--ignore", "D"]
 
+  # Type checker
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.10.0
     hooks:
       - id: mypy
+        additional_dependencies: ["types-requests", "types-PyYAML"]
         args: [--config-file=mypy.ini]
-        types: [python]  # Only Python files - MyPy won't check JavaScript/TypeScript
-        files: ^python/.*  # All files under python/ and subdirectories
+        types: [python] # Only Python files - MyPy won't check JavaScript/TypeScript
+        files: ^python/.* # All files under python/ and subdirectories
         exclude: |
           (?x)^(
+            python/matlab/|
+            python/javascript/|  # Future-proof: exclude JS/TS directories
             python/archive/|
             python/legacy/|
             python/experimental/|
@@ -57,63 +42,37 @@ repos:
             python/venv/
           )
 
-  # Custom quality checks
+  # Jupyter notebook cleaner
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.7.1
+    hooks:
+      - id: nbstripout
+
+  # Local quality checks
   - repo: local
     hooks:
-      # Python quality check script
-      - id: python-quality-check
-        name: Python Quality Check
-        entry: python scripts/quality-check.py
-        language: system
-        types: [python]
+      # Main quality gate
+      - id: quality-check
+        name: Quality check (no placeholders/magic numbers)
+        entry: python tools/scientific_auditor.py
+        language: python
         pass_filenames: false
-        exclude: |
-          (?x)^(
-            matlab/|
-            archive/|
-            \.git/|
-            __pycache__/|
-            \.pytest_cache/|
-            \.venv/|
-            venv/
-          )$
+        always_run: true
+        additional_dependencies: []
 
-      # MATLAB quality check script (non-blocking - advisory only)
-      - id: matlab-quality-check
-        name: MATLAB Quality Check
-        entry: bash -c 'python matlab_utilities/scripts/matlab_quality_check.py || echo "⚠️  MATLAB quality issues found (non-blocking)"; exit 0'
-        language: system
-        types: [text]
-        pass_filenames: false
-        exclude: |
-          (?x)^(
-            archive/|
-            \.git/|
-            __pycache__/|
-            \.pytest_cache/|
-            \.venv/|
-            venv/
-          )$
-
-  # File size checks and general hooks
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+  # Infrastructure formatter (YAML, JSON, MD)
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
     hooks:
-      - id: check-added-large-files
-        args: ['--maxkb=10000']  # 10MB max file size
+      - id: prettier
+        # Only target the files we care about
+        types_or: [yaml, markdown, json, css, javascript]
+        # explicitly exclude python/matlab just in case
+        exclude: '\.(py|m)$'
 
-      - id: check-merge-conflict
+# Global settings
+default_language_version:
+  python: python3.11
 
-      - id: check-yaml
-        args: ['--allow-multiple-documents']
-
-      - id: check-json
-
-      - id: trailing-whitespace
-
-      - id: end-of-file-fixer
-
-      - id: check-case-conflict
-
-      - id: check-docstring-first
-        types: [python]
+# Files to always exclude
+exclude: '^(archive/|legacy/|experimental/|\.git/)'
